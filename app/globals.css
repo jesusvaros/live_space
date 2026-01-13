@@ -120,3 +120,29 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Mobile-first responsive adjustments */
+@media (max-width: 768px) {
+  body {
+    font-size: 14px;
+  }
+}
+
+/* Safe area insets for mobile devices */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Capacitor app specific styles */
+.capacitor {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+/* Ensure proper layout for mobile app */
+html, body {
+  height: 100%;
+  overflow: hidden;
+}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Live Space</string>
+    <string name="title_activity_main">Live Space</string>
+    <string name="package_name">com.livespace.app</string>
+    <string name="custom_url_scheme">com.livespace.app</string>
+</resources>

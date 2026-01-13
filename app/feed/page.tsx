@@ -4,17 +4,14 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Video } from '@/lib/types'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
 import { User } from '@supabase/supabase-js'
+import { Music, Users, MapPin } from 'lucide-react'
 
-export default function FeedPage() {
+export default function Feed() {
   const router = useRouter()
   const [videos, setVideos] = useState<Video[]>([])
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<User | null>(null)
-  const [emailConfirmed, setEmailConfirmed] = useState(true)
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -23,8 +20,6 @@ export default function FeedPage() {
         router.push('/welcome')
       } else {
         setUser(user)
-        // Verificar si el email está confirmado
-        setEmailConfirmed(!!user.email_confirmed_at)
       }
     }
     checkAuth()
@@ -45,105 +40,71 @@ export default function FeedPage() {
     fetchVideos()
   }, [])
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push('/welcome')
-  }
-
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Cargando...</p>
+      <div className="flex justify-center items-center h-64">
+        <p className="text-gray-500">Cargando...</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
+    <div>
       {/* Header */}
-      <header className="bg-white dark:bg-gray-950 border-b sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">🎵 AppMusic</h1>
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => router.push(`/profile/${user?.id}`)}>
-              Mi perfil
-            </Button>
-            <Button variant="outline" onClick={handleSignOut}>
-              Salir
-            </Button>
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h1 className="text-2xl font-bold text-gray-900">Live Space</h1>
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                <Music className="w-5 h-5 text-white" />
+              </div>
+            </div>
+          </div>
+          
+          {/* Stats */}
+          <div className="flex space-x-6 text-sm">
+            <div className="flex items-center space-x-1">
+              <Users className="w-4 h-4 text-gray-500" />
+              <span className="text-gray-600">1.2k artistas</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <MapPin className="w-4 h-4 text-gray-500" />
+              <span className="text-gray-600">45 lugares</span>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Feed */}
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        {/* Banner de confirmación de email */}
-        {!emailConfirmed && (
-          <div className="mb-6 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">📧</span>
-              <div className="flex-1">
-                <p className="font-semibold text-yellow-900 dark:text-yellow-100">
-                  Confirma tu email
-                </p>
-                <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                  Revisa tu bandeja de entrada y confirma tu email para desbloquear todas las funciones.
-                </p>
+      {/* Feed Content */}
+      <div className="space-y-4">
+        {videos.length === 0 ? (
+          // Mock videos when no real videos
+          [1, 2, 3, 4, 5, 6].map((i: number) => (
+            <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mx-4 mt-4">
+              <div className="aspect-video bg-gray-200 rounded-lg mb-3 flex items-center justify-center">
+                <div className="text-4xl">🎵</div>
+              </div>
+              <h3 className="font-semibold text-gray-900">Video Title {i}</h3>
+              <p className="text-sm text-gray-600 mt-1">Description for video {i}</p>
+              <div className="mt-3 flex items-center space-x-2">
+                <div className="w-6 h-6 bg-gray-300 rounded-full"></div>
+                <span className="text-xs text-gray-500">Artist {i}</span>
               </div>
             </div>
-          </div>
+          ))
+        ) : (
+          videos.map((video) => (
+            <div key={video.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mx-4 mt-4">
+              <div className="aspect-video bg-gray-200 rounded-lg mb-3 flex items-center justify-center">
+                <div className="text-4xl">🎸</div>
+              </div>
+              <h3 className="font-semibold text-gray-900">{video.title}</h3>
+              <p className="text-sm text-gray-600 mt-1">by {video.profile?.username}</p>
+            </div>
+          ))
         )}
-
-        <div className="mb-6">
-          <h2 className="text-3xl font-bold mb-2">Feed de videos</h2>
-          <p className="text-muted-foreground">Descubre los mejores momentos musicales</p>
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-2">
-          {videos.map((video) => (
-            <Card key={video.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-3 mb-2">
-                  <Avatar className="w-10 h-10">
-                    <AvatarImage src={video.profile?.avatar_url || ''} />
-                    <AvatarFallback>{video.profile?.username?.[0]?.toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-semibold text-sm">{video.profile?.username}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(video.created_at).toLocaleDateString('es-ES')}
-                    </p>
-                  </div>
-                </div>
-                <CardTitle className="text-lg">{video.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {/* Placeholder para el video */}
-                <div className="aspect-video bg-gradient-to-br from-purple-200 to-blue-200 dark:from-purple-900 dark:to-blue-900 rounded-lg flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="text-6xl mb-2">🎸</div>
-                    <p className="text-sm text-muted-foreground">Video placeholder</p>
-                  </div>
-                </div>
-                <div className="mt-4 flex gap-2">
-                  <Button variant="ghost" size="sm" className="flex-1">
-                    ❤️ Me gusta
-                  </Button>
-                  <Button variant="ghost" size="sm" className="flex-1">
-                    💬 Comentar
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {videos.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">No hay videos todavía</p>
-          </div>
-        )}
-      </main>
+      </div>
     </div>
   )
 }
