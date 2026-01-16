@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { IonContent, IonModal, IonSpinner } from '@ionic/react';
+import { IonSpinner } from '@ionic/react';
 import { MapContainer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -12,7 +12,6 @@ type ArtistOption = Pick<Profile, 'id' | 'display_name' | 'username' | 'role'>;
 type PriceTier = { label: string; price: number };
 
 type CreateEventModalProps = {
-  isOpen: boolean;
   onDismiss: () => void;
   onCreated?: (eventId: string) => void;
   userId?: string | null;
@@ -34,6 +33,26 @@ const toNumber = (value: number | string | null | undefined) => {
   if (typeof value === 'number') return Number.isNaN(value) ? null : value;
   const parsed = Number(value);
   return Number.isNaN(parsed) ? null : parsed;
+};
+
+const buildPinIcon = (variant: 'venue', label: string, imageUrl?: string | null) => {
+  const safeUrl = imageUrl ? encodeURI(imageUrl).replace(/'/g, '%27') : '';
+  const avatar = imageUrl
+    ? `<div class="map-pin-avatar" style="background-image:url('${safeUrl}')"></div>`
+    : '<div class="map-pin-avatar map-pin-avatar--empty"></div>';
+  const html = `
+    <div class="map-pin map-pin--${variant}">
+      ${avatar}
+      <span class="map-pin-label">${label}</span>
+    </div>
+  `;
+  return L.divIcon({
+    className: 'map-pin-wrapper',
+    html,
+    iconSize: [52, 60],
+    iconAnchor: [26, 60],
+    popupAnchor: [0, -54],
+  });
 };
 
 const MapFocus: React.FC<{ center: [number, number] | null }> = ({ center }) => {
@@ -61,7 +80,6 @@ const VenueMapClick: React.FC<{ enabled: boolean; onSelect: (lat: number, lng: n
 };
 
 const CreateEventModal: React.FC<CreateEventModalProps> = ({
-  isOpen,
   onDismiss,
   onCreated,
   userId,
@@ -102,20 +120,10 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const [selectedArtistId, setSelectedArtistId] = useState<string | null>(null);
   const [mapCenter, setMapCenter] = useState<[number, number]>(defaultCenter);
-  const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
 
   const organizerAllowed = Boolean(profileRole && ['artist', 'venue', 'label'].includes(profileRole));
 
   useEffect(() => {
-    L.Icon.Default.mergeOptions({
-      iconRetinaUrl: new URL('leaflet/dist/images/marker-icon-2x.png', import.meta.url).toString(),
-      iconUrl: new URL('leaflet/dist/images/marker-icon.png', import.meta.url).toString(),
-      shadowUrl: new URL('leaflet/dist/images/marker-shadow.png', import.meta.url).toString(),
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!isOpen) return;
     setError('');
     setVenueSearch('');
     setSelectedVenue(null);
@@ -139,11 +147,11 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
     setPriceTiers([]);
     setTierLabel('');
     setTierPrice('');
-    setSelectedArtistId(profileRole === 'artist' ? userId ?? null : null);
-  }, [isOpen, profileCity, profileRole, userId]);
+    setSelectedArtistId(null);
+    setMapCenter(defaultCenter);
+  }, [profileCity]);
 
   useEffect(() => {
-    if (!isOpen) return;
     const loadVenues = async () => {
       setVenuesLoading(true);
       const { data, error: venueError } = await supabase
@@ -178,10 +186,10 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
     loadVenues();
     loadArtists();
-  }, [isOpen, profileRole]);
+  }, [profileRole]);
 
   useEffect(() => {
-    if (!isOpen || !navigator.geolocation) return;
+    if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       position => {
         setMapCenter([position.coords.latitude, position.coords.longitude]);
@@ -189,13 +197,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
       () => undefined,
       { enableHighAccuracy: true, timeout: 5000 }
     );
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen || !mapInstance) return;
-    const timeout = window.setTimeout(() => mapInstance.invalidateSize(), 150);
-    return () => window.clearTimeout(timeout);
-  }, [isOpen, mapInstance]);
+  }, []);
 
   useEffect(() => {
     if (!posterFile) {
@@ -437,24 +439,22 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
   };
 
   return (
-    <IonModal isOpen={isOpen} onDidDismiss={onDismiss}>
-      <IonContent fullscreen>
-        <div className="app-modal">
-          <div className="app-modal-header">
-            <h2 className="app-modal-title">Create event</h2>
-            <button
-              type="button"
-              className="app-button app-button--ghost app-button--small"
-              onClick={onDismiss}
-              disabled={saving}
-            >
-              Close
-            </button>
-          </div>
+    <div className="app-modal">
+      <div className="app-modal-header">
+        <h2 className="app-modal-title">Create event</h2>
+        <button
+          type="button"
+          className="app-button app-button--ghost app-button--small"
+          onClick={onDismiss}
+          disabled={saving}
+        >
+          Close
+        </button>
+      </div>
 
-          {error && <p className="text-sm text-rose-400">{error}</p>}
+      {error && <p className="text-sm text-rose-400">{error}</p>}
 
-          <section className="app-card space-y-4 p-4">
+      <section className="app-card space-y-4 p-4">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">Venue</p>
@@ -487,7 +487,6 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 zoom={12}
                 className="venue-map-inner"
                 zoomControl={false}
-                whenCreated={setMapInstance}
               >
                 <MapLibreLayer />
                 <MapResizeObserver />
@@ -495,10 +494,12 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   const lat = toNumber(venue.latitude);
                   const lng = toNumber(venue.longitude);
                   if (lat === null || lng === null) return null;
+                  const icon = buildPinIcon('venue', 'SALA', venue.photos?.[0] || null);
                   return (
                     <Marker
                       key={venue.id}
                       position={[lat, lng]}
+                      icon={icon}
                       eventHandlers={{
                         click: () => selectVenue(venue),
                       }}
@@ -506,7 +507,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   );
                 })}
                 {venueMode === 'new' && venueLat !== null && venueLng !== null && (
-                  <Marker position={[venueLat, venueLng]} />
+                  <Marker position={[venueLat, venueLng]} icon={buildPinIcon('venue', 'SALA')} />
                 )}
                 <MapFocus center={mapCenter} />
                 <VenueMapClick enabled={venueMode === 'new'} onSelect={handleMapSelect} />
@@ -525,7 +526,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
                     No venues found. Switch to &quot;New venue&quot; to add one.
                   </p>
                 ) : (
-                  <div className="venue-results">
+                  <div className="venue-results max-h-64 overflow-y-auto pr-1">
                     {filteredVenues.map(venue => (
                       <button
                         key={venue.id}
@@ -831,17 +832,15 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
             )}
           </section>
 
-          <button
-            type="button"
-            className="app-button app-button--block"
-            onClick={handleCreate}
-            disabled={saving || !organizerAllowed}
-          >
-            {saving ? 'Creating...' : 'Create event'}
-          </button>
-        </div>
-      </IonContent>
-    </IonModal>
+      <button
+        type="button"
+        className="app-button app-button--block"
+        onClick={handleCreate}
+        disabled={saving || !organizerAllowed}
+      >
+        {saving ? 'Creating...' : 'Create event'}
+      </button>
+    </div>
   );
 };
 

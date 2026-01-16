@@ -13,9 +13,9 @@ import { buildMomentItems, parseDatetimeLocalValue, MomentItem } from '../lib/mo
 import AppHeader from '../components/AppHeader';
 import EventHero, { EventEntity } from '../components/event/EventHero';
 import TimelinePlayer, { MediaFilter } from '../components/event/TimelinePlayer';
-import SecondaryActions from '../components/event/SecondaryActions';
 import { TimelineBucket } from '../components/event/TimelineScrubber';
 import ShareSheet from '../components/ShareSheet';
+import { IconCheckCircle, IconHeart, IconHeartFilled } from '../components/icons';
 
 type EventDetailData = Event & {
   organizer?: Profile | null;
@@ -747,6 +747,35 @@ const EventDetail: React.FC = () => {
                   meta={heroMeta}
                   entities={entities}
                   onSelectEntity={handleSelectEntity}
+                  coverImageUrl={event.cover_image_url ?? undefined}
+                  actions={
+                    <>
+                      <button
+                        type="button"
+                        className={`flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold text-white transition ${
+                          followed ? 'bg-white/20' : 'bg-white/10'
+                        }`}
+                        onClick={handleFollowClick}
+                        disabled={followLoading}
+                        aria-pressed={followed}
+                      >
+                        {followed ? <IconHeartFilled className="h-4 w-4" /> : <IconHeart className="h-4 w-4" />}
+                        <span>Like</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold text-white transition ${
+                          attendanceActive ? 'bg-white/20' : 'bg-white/10'
+                        }`}
+                        onClick={handleAttendanceClick}
+                        disabled={attendanceLoading}
+                        aria-pressed={attendanceActive}
+                      >
+                        <IconCheckCircle className="h-4 w-4" />
+                        <span>{attendanceLabel}</span>
+                      </button>
+                    </>
+                  }
                 />
 
                 <div className="event-cta">
@@ -765,17 +794,6 @@ const EventDetail: React.FC = () => {
                     </p>
                   )}
                 </div>
-
-                <SecondaryActions
-                  followed={followed}
-                  attendanceActive={attendanceActive}
-                  attendanceLabel={attendanceLabel}
-                  followLoading={followLoading}
-                  attendanceLoading={attendanceLoading}
-                  onToggleFollow={handleFollowClick}
-                  onToggleAttendance={handleAttendanceClick}
-                  onShare={() => setShowShare(true)}
-                />
 
                 {engagementError && (
                   <p className="text-sm text-rose-400">{engagementError}</p>

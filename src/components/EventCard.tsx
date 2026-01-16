@@ -1,5 +1,6 @@
 import React from 'react';
 import { Event, Profile, VenuePlace } from '../lib/types';
+import { IconCheckCircle, IconHeart } from './icons';
 
 type EventCardEvent = Event & {
   organizer?: Profile | null;
@@ -44,14 +45,29 @@ const getVenueLabel = (event: EventCardEvent) => {
 const EventCard: React.FC<EventCardProps> = ({ event, onSelect }) => {
   const artistLabel = getPrimaryArtist(event) || 'Lineup TBA';
   const venueLabel = getVenueLabel(event);
+  const now = new Date();
+  const eventStart = new Date(event.starts_at);
+  const eventEnd = event.ends_at ? new Date(event.ends_at) : null;
+  const isPastEvent = eventEnd ? now > eventEnd : now > eventStart;
+  const attendanceLabel = isPastEvent ? 'I went' : "I'm here";
   return (
     <button type="button" className="event-card fade-up" onClick={() => onSelect(event)}>
-      <div className="event-card-media">
+      <div className="event-card-media relative">
         {event.cover_image_url ? (
           <img src={event.cover_image_url} alt={event.name} />
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-[#1b2232] via-[#141824] to-[#0b0e14]" />
         )}
+        <div className="pointer-events-none absolute inset-x-3 bottom-3 flex gap-2">
+          <div className="flex items-center gap-1 rounded-full bg-black/50 px-3 py-1 text-[11px] font-semibold text-white backdrop-blur">
+            <IconHeart className="h-4 w-4" />
+            <span>Like</span>
+          </div>
+          <div className="flex items-center gap-1 rounded-full bg-black/50 px-3 py-1 text-[11px] font-semibold text-white backdrop-blur">
+            <IconCheckCircle className="h-4 w-4" />
+            <span>{attendanceLabel}</span>
+          </div>
+        </div>
       </div>
       <div className="event-card-content">
         <p className="text-xs text-slate-400">{artistLabel}</p>

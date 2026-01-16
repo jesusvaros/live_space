@@ -10,7 +10,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useHistory } from 'react-router-dom';
 import EventCard from '../components/EventCard';
 import AppHeader from '../components/AppHeader';
-import CreateEventModal from '../components/event/CreateEventModal';
 
 type EventListItem = Event & {
   organizer?: Profile | null;
@@ -57,7 +56,6 @@ const OrganizerEventsTab: React.FC = () => {
   const [events, setEvents] = useState<EventListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showCreate, setShowCreate] = useState(false);
 
   const upcomingEvents = useMemo(() => {
     return [...events].sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
@@ -117,10 +115,6 @@ const OrganizerEventsTab: React.FC = () => {
     }
   }, [fetchEvents, profile?.role]);
 
-  const handleEventCreated = () => {
-    setShowCreate(false);
-    fetchEvents();
-  };
 
   const organizerLabel = profile?.display_name || profile?.username || 'your profile';
 
@@ -147,7 +141,7 @@ const OrganizerEventsTab: React.FC = () => {
               <button
                 type="button"
                 className="app-button app-button--ghost app-button--small"
-                onClick={() => setShowCreate(true)}
+                onClick={() => history.push('/create-event')}
               >
                 Create event
               </button>
@@ -180,15 +174,6 @@ const OrganizerEventsTab: React.FC = () => {
           </div>
         </div>
 
-        <CreateEventModal
-          isOpen={showCreate}
-          onDismiss={() => setShowCreate(false)}
-          onCreated={handleEventCreated}
-          userId={user?.id}
-          profileRole={profile?.role ?? null}
-          profileCity={profile?.primary_city ?? null}
-          profileName={profile?.display_name || profile?.username || null}
-        />
       </IonContent>
     </IonPage>
   );

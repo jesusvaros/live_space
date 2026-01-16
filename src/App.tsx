@@ -19,6 +19,7 @@ import Events from './pages/Events';
 import Profile from './pages/Profile';
 import Map from './pages/Map';
 import OrganizerEventsTab from './pages/OrganizerEventsTab';
+import CreateEventPage from './pages/CreateEvent';
 import QrScannerPage from './pages/QrScanner';
 import ResetPassword from './pages/ResetPassword';
 import EventDetail from './pages/EventDetail';
@@ -58,6 +59,7 @@ const App: React.FC = () => {
           <Route exact path="/profile/:id" component={ProfileDetail} />
           <Route exact path="/post/:id" component={PostDetail} />
           <Route exact path="/reset" component={ResetPassword} />
+          <Route exact path="/create-event" component={CreateEventPage} />
           <Route
             path="/tabs"
             render={() => (

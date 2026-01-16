@@ -11,7 +11,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useHistory } from 'react-router-dom';
 import EventCard from '../components/EventCard';
 import AppHeader from '../components/AppHeader';
-import CreateEventModal from '../components/event/CreateEventModal';
 
 type EventListItem = Event & {
   organizer?: Profile | null;
@@ -27,7 +26,6 @@ const Events: React.FC = () => {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
-  const [showCreate, setShowCreate] = useState(false);
   const [showNearby, setShowNearby] = useState(false);
   const [nearbyEvents, setNearbyEvents] = useState<EventListItem[]>([]);
   const [nearbyLoading, setNearbyLoading] = useState(false);
@@ -199,9 +197,6 @@ const Events: React.FC = () => {
 
   const organizerAllowed = Boolean(profile && ['artist', 'venue', 'label'].includes(profile.role));
 
-  const openCreateModal = () => {
-    setShowCreate(true);
-  };
 
   const renderEventCard = (event: EventListItem) => (
     <EventCard
@@ -239,7 +234,7 @@ const Events: React.FC = () => {
                 <button
                   type="button"
                   className="app-button app-button--ghost app-button--small"
-                  onClick={openCreateModal}
+                  onClick={() => history.push('/create-event')}
                 >
                   Create event
                 </button>
@@ -312,16 +307,6 @@ const Events: React.FC = () => {
           )}
           </div>
         </div>
-
-        <CreateEventModal
-          isOpen={showCreate}
-          onDismiss={() => setShowCreate(false)}
-          onCreated={() => fetchEvents(false)}
-          userId={user?.id}
-          profileRole={profile?.role ?? null}
-          profileCity={profile?.primary_city ?? null}
-          profileName={profile?.display_name || profile?.username || null}
-        />
 
         <IonModal
           isOpen={showNearby}

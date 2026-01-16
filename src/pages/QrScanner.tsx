@@ -5,16 +5,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import AppHeader from '../components/AppHeader';
 import QrScanner from '../components/QrScanner';
-import CreateEventModal from '../components/event/CreateEventModal';
 
 const QrScannerPage: React.FC = () => {
   const history = useHistory();
   const { user, profile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showCreate, setShowCreate] = useState(false);
-
-  const organizerAllowed = Boolean(profile && ['artist', 'venue', 'label'].includes(profile.role));
+  const organizerAllowed = Boolean(profile && ['artist', 'venue'].includes(profile.role));
 
   const handleQrDetected = async (data: string) => {
     if (!user) {
@@ -130,7 +127,7 @@ const QrScannerPage: React.FC = () => {
                 <button
                   type="button"
                   className="app-button app-button--block mt-4"
-                  onClick={() => setShowCreate(true)}
+                  onClick={() => history.push('/create-event', { from: '/tabs/qr-scanner' })}
                 >
                   Create event
                 </button>
@@ -138,21 +135,6 @@ const QrScannerPage: React.FC = () => {
             )}
           </div>
         </div>
-
-        <CreateEventModal
-          isOpen={showCreate}
-          onDismiss={() => setShowCreate(false)}
-          onCreated={(eventId) => {
-            setShowCreate(false);
-            if (eventId) {
-              history.push(`/event/${eventId}`);
-            }
-          }}
-          userId={user?.id}
-          profileRole={profile?.role ?? null}
-          profileCity={profile?.primary_city ?? null}
-          profileName={profile?.display_name || profile?.username || null}
-        />
       </IonContent>
     </IonPage>
   );

@@ -127,6 +127,14 @@ const Map: React.FC = () => {
             latitude,
             longitude,
             photos
+          ),
+          event_artists (
+            artist:profiles!event_artists_artist_id_fkey (
+              id,
+              username,
+              display_name,
+              avatar_url
+            )
           )
           `
         );

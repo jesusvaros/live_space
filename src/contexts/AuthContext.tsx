@@ -47,6 +47,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('id', userId)
         .single();
 
+      if (!profile && userRecord) {
+        const metadata = userRecord.user_metadata ?? {};
+        const { data: createdProfile } = await supabase
+          .from('profiles')
+          .insert({
+            id: userId,
+            username: metadata.username ?? null,
+            display_name: metadata.display_name ?? metadata.displayName ?? null,
+            primary_city: metadata.primary_city ?? metadata.primaryCity ?? null,
+          })
+          .select('*')
+          .single();
+
+        setAuthState(prev => ({
+          ...prev,
+          user: userRecord,
+          profile: createdProfile ?? null,
+          loading: false,
+        }));
+        return;
+      }
+
       setAuthState(prev => ({
         ...prev,
         user: userRecord,
