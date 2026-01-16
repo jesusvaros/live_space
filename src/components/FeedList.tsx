@@ -1,14 +1,4 @@
 import React from 'react';
-import { 
-  IonCard, 
-  IonCardContent, 
-  IonCardHeader, 
-  IonCardTitle, 
-  IonItem, 
-  IonAvatar, 
-  IonLabel,
-  IonImg
-} from '@ionic/react';
 
 const FeedList: React.FC = () => {
   // Mock data for now
@@ -22,23 +12,21 @@ const FeedList: React.FC = () => {
   return (
     <div>
       {posts.map(post => (
-        <IonCard key={post.id}>
-          <IonCardHeader>
-            <IonItem>
-              <IonAvatar slot="start">
-                <IonImg src={`https://picsum.photos/seed/${post.user}/40/40`} alt="avatar" />
-              </IonAvatar>
-              <IonLabel>
-                <h2>{post.user}</h2>
-                <p>{post.location} • {post.date}</p>
-              </IonLabel>
-            </IonItem>
-          </IonCardHeader>
-          <IonCardContent>
-            <IonImg src={`https://picsum.photos/seed/${post.id}/300/200`} alt="event" />
-            <IonCardTitle>{post.title}</IonCardTitle>
-          </IonCardContent>
-        </IonCard>
+        <div key={post.id} className="app-card space-y-3 p-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 overflow-hidden rounded-full bg-slate-800">
+              <img src={`https://picsum.photos/seed/${post.user}/40/40`} alt="avatar" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-slate-50">{post.user}</h2>
+              <p className="text-xs text-slate-500">
+                {post.location} • {post.date}
+              </p>
+            </div>
+          </div>
+          <img src={`https://picsum.photos/seed/${post.id}/300/200`} alt="event" className="rounded-2xl" />
+          <h3 className="font-display text-lg text-slate-50">{post.title}</h3>
+        </div>
       ))}
     </div>
   );
