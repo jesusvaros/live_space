@@ -81,9 +81,9 @@ const QrScannerPage: React.FC = () => {
   return (
     <IonPage>
       <IonContent fullscreen>
-        <div className="app-layout">
+        <div className="min-h-full">
           <AppHeader />
-          <div className="app-screen">
+          <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
             <div className="text-center fade-up">
               <p className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Scan QR</p>
               <h2 className="mt-2 font-display text-2xl text-slate-50">Event Check-in</h2>
@@ -116,7 +116,7 @@ const QrScannerPage: React.FC = () => {
             </div>
 
             {organizerAllowed && (
-              <div className="mt-8 app-card p-4 text-left">
+              <div className="mt-8 space-y-3 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 text-left shadow-[0_24px_50px_rgba(0,0,0,0.45)]">
                 <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">
                   Organizing?
                 </p>
@@ -126,7 +126,7 @@ const QrScannerPage: React.FC = () => {
                 </p>
                 <button
                   type="button"
-                  className="app-button app-button--block mt-4"
+                  className="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-[#ff6b4a] px-4 py-2 text-sm font-semibold text-white"
                   onClick={() => history.push('/create-event', { from: '/tabs/qr-scanner' })}
                 >
                   Create event

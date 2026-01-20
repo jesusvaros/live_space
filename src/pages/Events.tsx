@@ -21,7 +21,7 @@ type EventListItem = Event & {
 
 const Events: React.FC = () => {
   const history = useHistory();
-  const { user, profile } = useAuth();
+  const { profile } = useAuth();
   const [events, setEvents] = useState<EventListItem[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -209,31 +209,37 @@ const Events: React.FC = () => {
   return (
     <IonPage>
       <IonContent fullscreen>
-        <div className="app-layout">
+        <div className="min-h-full">
           <AppHeader />
-          <div className="app-screen">
-            <div className="fade-up">
-            <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Events</p>
-            <h2 className="mt-2 font-display text-2xl text-slate-50">Find your next night</h2>
-            <p className="mt-2 text-sm text-slate-500">Tap an event to enter its timeline.</p>
+          <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
+            <div className="animate-fade-up motion-reduce:animate-none">
+              <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Events</p>
+              <h2 className="mt-2 font-display text-2xl text-slate-50">Find your next night</h2>
+              <p className="mt-2 text-sm text-slate-500">Tap an event to enter its timeline.</p>
             </div>
 
-            <div className="mt-4 fade-up fade-up-delay-1">
+            <div
+              className="mt-4 animate-fade-up motion-reduce:animate-none"
+              style={{ animationDelay: '0.08s' }}
+            >
               <input
                 type="search"
                 placeholder="Search events"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="app-search"
+                className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 shadow-[0_16px_32px_rgba(0,0,0,0.4)] placeholder:text-slate-500"
               />
             </div>
 
-            <div className="mt-4 flex items-center justify-between gap-3 fade-up fade-up-delay-2">
+            <div
+              className="mt-4 flex items-center justify-between gap-3 animate-fade-up motion-reduce:animate-none"
+              style={{ animationDelay: '0.16s' }}
+            >
               <p className="text-xs text-slate-500">Tonight and beyond.</p>
               {organizerAllowed && (
                 <button
                   type="button"
-                  className="app-button app-button--ghost app-button--small"
+                  className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
                   onClick={() => history.push('/create-event')}
                 >
                   Create event
@@ -286,7 +292,7 @@ const Events: React.FC = () => {
                   </div>
                   <button
                     type="button"
-                    className="app-button app-button--ghost app-button--small"
+                    className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
                     onClick={getUserLocation}
                     disabled={nearbyLoading}
                   >
@@ -313,12 +319,12 @@ const Events: React.FC = () => {
           onDidDismiss={() => setShowNearby(false)}
         >
           <IonContent fullscreen>
-            <div className="app-modal">
-              <div className="app-modal-header">
-                <h2 className="app-modal-title">Events Near You</h2>
+            <div className="flex flex-col gap-4 rounded-3xl bg-[#141824] p-5 shadow-[0_24px_50px_rgba(0,0,0,0.45)]">
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="font-display text-lg font-semibold text-slate-50">Events Near You</h2>
                 <button
                   type="button"
-                  className="app-button app-button--ghost app-button--small"
+                  className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
                   onClick={() => setShowNearby(false)}
                 >
                   Close

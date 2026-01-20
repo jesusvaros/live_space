@@ -102,22 +102,26 @@ const TimelinePlayer: React.FC<TimelinePlayerProps> = ({
   );
 
   return (
-    <section className="timeline-player">
-      <div className="timeline-meta">
+    <section className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="timeline-kicker">Timeline</p>
-          <p className="timeline-time">{selectedBucketLabel || '+00:00'}</p>
+          <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">Timeline</p>
+          <p className="mt-1.5 font-display text-lg font-semibold text-slate-50">
+            {selectedBucketLabel || '+00:00'}
+          </p>
         </div>
-        <div className="timeline-meta-right">
-          {totalMoments > 0 && (
-            <span className="timeline-count">{totalMoments} moments</span>
-          )}
-          <div className="timeline-filter">
+        <div className="inline-flex items-center gap-3">
+          {totalMoments > 0 && <span className="text-xs text-slate-400">{totalMoments} moments</span>}
+          <div className="inline-flex gap-1 rounded-full border border-white/10 bg-white/5 p-1">
             {(['all', 'video', 'image'] as MediaFilter[]).map(filter => (
               <button
                 key={filter}
                 type="button"
-                className={`timeline-filter-btn ${mediaFilter === filter ? 'is-active' : ''}`}
+                className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] transition ${
+                  mediaFilter === filter
+                    ? 'bg-[#ff6b4a]/25 text-[#ffd1c4]'
+                    : 'text-slate-400'
+                }`}
                 onClick={() => onFilterChange(filter)}
               >
                 {filter === 'all' ? 'All' : filter === 'video' ? 'Video' : 'Photos'}
@@ -127,15 +131,21 @@ const TimelinePlayer: React.FC<TimelinePlayerProps> = ({
         </div>
       </div>
 
-      <div className={`timeline-surface ${loading ? 'is-loading' : ''}`}>
+      <div
+        className={`relative aspect-video overflow-hidden rounded-[26px] shadow-[0_24px_50px_rgba(0,0,0,0.45)] ${
+          loading
+            ? 'bg-[#0f1420]'
+            : 'bg-[radial-gradient(circle_at_30%_20%,rgba(255,107,74,0.18),rgba(13,17,27,0.95))]'
+        }`}
+      >
         {loading ? (
-          <div className="timeline-loading">
+          <div className="flex h-full items-center justify-center">
             <IonSpinner name="crescent" />
           </div>
         ) : selectedMoment ? (
           <div
             key={selectedMoment.id}
-            className="timeline-surface-media"
+            className="relative h-full w-full animate-[timeline-fade_0.35s_ease]"
             onClick={() => {
               const video = videoRef.current;
               if (!video) return;
@@ -162,11 +172,11 @@ const TimelinePlayer: React.FC<TimelinePlayerProps> = ({
                 <source src={selectedMoment.media_url} />
               </video>
             ) : (
-              <img src={selectedMoment.media_url} alt={selectedMoment.caption || 'Moment'} />
+              <img src={selectedMoment.media_url} alt={selectedMoment.caption || 'Moment'} className="h-full w-full object-cover" />
             )}
-            <div className="timeline-surface-overlay">
-              <p>{selectedMomentLabel}</p>
-              <h4>
+            <div className="absolute inset-0 flex flex-col justify-end bg-[linear-gradient(180deg,rgba(0,0,0,0.05)_45%,rgba(0,0,0,0.75)_100%)] p-4">
+              <p className="text-xs text-white/70">{selectedMomentLabel}</p>
+              <h4 className="mt-1.5 text-lg font-semibold text-slate-50">
                 {selectedMoment.profiles?.display_name ||
                   selectedMoment.profiles?.username ||
                   'Anonymous'}
@@ -174,11 +184,15 @@ const TimelinePlayer: React.FC<TimelinePlayerProps> = ({
             </div>
           </div>
         ) : (
-          <div className="timeline-empty">
-            <p>No moments yet.</p>
-            <span>Relive the show by adding the first clip.</span>
+          <div className="flex min-h-full flex-col items-center justify-center gap-2 px-6 text-center">
+            <p className="text-lg text-slate-50">No moments yet.</p>
+            <span className="text-xs text-slate-400">Relive the show by adding the first clip.</span>
             {onAddMoments && (
-              <button type="button" className="timeline-empty-cta" onClick={onAddMoments}>
+              <button
+                type="button"
+                className="mt-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-[#ffd1c4]"
+                onClick={onAddMoments}
+              >
                 Add the first moment
               </button>
             )}

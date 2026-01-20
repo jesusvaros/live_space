@@ -187,13 +187,12 @@ const Upload: React.FC = () => {
   const nearbyEvents = useMemo<NearbyEvent[]>(() => {
     if (userLocation) {
       return events
-        .map(event => {
+        .flatMap(event => {
           const lat = toNumber(event.latitude);
           const lng = toNumber(event.longitude);
-          if (lat === null || lng === null) return null;
-          return { event, distanceKm: distanceKm(userLocation, { lat, lng }) };
+          if (lat === null || lng === null) return [];
+          return [{ event, distanceKm: distanceKm(userLocation, { lat, lng }) }];
         })
-        .filter((item): item is NearbyEvent => Boolean(item))
         .sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0))
         .slice(0, 6);
     }
@@ -406,7 +405,7 @@ const Upload: React.FC = () => {
       key={event.id}
       type="button"
       onClick={() => handleSelectEvent(event)}
-      className="app-card w-full space-y-2 p-4 text-left"
+      className="w-full space-y-2 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 text-left shadow-[0_24px_50px_rgba(0,0,0,0.35)]"
     >
       <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">
         {event.venue_place?.city || event.city}
@@ -425,15 +424,15 @@ const Upload: React.FC = () => {
   return (
     <IonPage>
       <IonContent fullscreen>
-        <div className="app-layout">
+        <div className="min-h-full">
           <AppHeader />
-          <div className="app-screen">
-            <div className="fade-up">
-            <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Upload</p>
-            <h2 className="mt-2 font-display text-2xl text-slate-50">Add moments</h2>
-            <p className="mt-2 text-sm text-slate-500">
-              Choose the event first, then drop your clips.
-            </p>
+          <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
+            <div className="animate-fade-up motion-reduce:animate-none">
+              <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Upload</p>
+              <h2 className="mt-2 font-display text-2xl text-slate-50">Add moments</h2>
+              <p className="mt-2 text-sm text-slate-500">
+                Choose the event first, then drop your clips.
+              </p>
             </div>
 
           {loadingEvents && (
@@ -454,11 +453,11 @@ const Upload: React.FC = () => {
                   placeholder="Search events"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="app-search"
+                  className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 shadow-[0_16px_32px_rgba(0,0,0,0.4)] placeholder:text-slate-500"
                 />
                 <button
                   type="button"
-                  className="app-button app-button--outline app-button--block"
+                  className="inline-flex w-full items-center justify-center rounded-2xl border border-[#ff6b4a]/40 px-4 py-2 text-sm font-semibold text-[#ffd1c4]"
                   onClick={() => setShowScanner(true)}
                 >
                   Scan event QR
@@ -521,7 +520,7 @@ const Upload: React.FC = () => {
 
           {selectedEvent && (
             <div className="mt-4 space-y-4">
-              <div className="app-card space-y-3 p-4">
+              <div className="space-y-3 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 shadow-[0_24px_50px_rgba(0,0,0,0.35)]">
                 <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">
                   {selectedEvent.venue_place?.city || selectedEvent.city}
                 </p>
@@ -539,7 +538,7 @@ const Upload: React.FC = () => {
                 <>
                   <button
                     type="button"
-                    className="app-button app-button--block primary-cta"
+                    className="inline-flex w-full items-center justify-center rounded-2xl bg-[#ff6b4a] px-4 py-2 text-sm font-semibold text-white"
                     onClick={handleAddMomentsClick}
                   >
                     Add moments
@@ -556,7 +555,7 @@ const Upload: React.FC = () => {
               ) : (
                 <button
                   type="button"
-                  className="app-button app-button--block"
+                  className="inline-flex w-full items-center justify-center rounded-2xl bg-[#ff6b4a] px-4 py-2 text-sm font-semibold text-white"
                   onClick={() => history.push('/welcome')}
                 >
                   Sign in to upload
@@ -565,7 +564,7 @@ const Upload: React.FC = () => {
 
               <button
                 type="button"
-                className="app-button app-button--ghost app-button--block"
+                className="inline-flex w-full items-center justify-center rounded-2xl border border-transparent px-4 py-2 text-sm font-semibold text-[#ffd1c4]"
                 onClick={() => setSelectedEvent(null)}
               >
                 Choose another event
@@ -584,12 +583,12 @@ const Upload: React.FC = () => {
 
         <IonModal isOpen={showScanner} onDidDismiss={() => setShowScanner(false)}>
           <IonContent fullscreen>
-            <div className="app-modal">
-              <div className="app-modal-header">
-                <h2 className="app-modal-title">Scan QR</h2>
+            <div className="flex flex-col gap-4 rounded-3xl bg-[#141824] p-5 shadow-[0_24px_50px_rgba(0,0,0,0.45)]">
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="font-display text-lg font-semibold text-slate-50">Scan QR</h2>
                 <button
                   type="button"
-                  className="app-button app-button--ghost app-button--small"
+                  className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
                   onClick={() => setShowScanner(false)}
                 >
                   Close
@@ -602,12 +601,12 @@ const Upload: React.FC = () => {
 
         <IonModal isOpen={showAddMoments} onDidDismiss={() => setShowAddMoments(false)}>
           <IonContent fullscreen>
-            <div className="app-modal">
-              <div className="app-modal-header">
-                <h2 className="app-modal-title">Add moments</h2>
+            <div className="flex flex-col gap-4 rounded-3xl bg-[#141824] p-5 shadow-[0_24px_50px_rgba(0,0,0,0.45)]">
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="font-display text-lg font-semibold text-slate-50">Add moments</h2>
                 <button
                   type="button"
-                  className="app-button app-button--ghost app-button--small"
+                  className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
                   onClick={() => setShowAddMoments(false)}
                   disabled={uploading}
                 >
@@ -621,7 +620,10 @@ const Upload: React.FC = () => {
               {momentItems.map(item => {
                 const captureTimeLabel = formatMomentTime(item.captureAt);
                 return (
-                  <div key={item.id} className="app-card space-y-3 p-4">
+                  <div
+                    key={item.id}
+                    className="space-y-3 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 shadow-[0_24px_50px_rgba(0,0,0,0.35)]"
+                  >
                     <div className="flex items-start gap-3">
                       <div className="h-20 w-20 overflow-hidden rounded-2xl bg-slate-900">
                         {item.mediaType === 'video' ? (
@@ -640,24 +642,26 @@ const Upload: React.FC = () => {
                       </div>
                       <button
                         type="button"
-                        className="app-button app-button--ghost app-button--small"
+                        className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
                         onClick={() => handleRemoveMoment(item.id)}
                       >
                         Remove
                       </button>
                     </div>
-                    <label className="app-field">
-                      <span className="app-label">Captured time</span>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                        Captured time
+                      </span>
                       <input
                         type="datetime-local"
                         value={item.manualValue}
                         onChange={e => handleMomentTimeChange(item.id, e.target.value)}
-                        className="app-input"
+                        className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                       />
                     </label>
                     <button
                       type="button"
-                      className="app-button app-button--ghost app-button--small"
+                      className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
                       onClick={() => handleUseUploadTime(item.id)}
                     >
                       Use upload time
@@ -681,7 +685,7 @@ const Upload: React.FC = () => {
 
               <button
                 type="button"
-                className="app-button app-button--block"
+                className="inline-flex w-full items-center justify-center rounded-2xl bg-[#ff6b4a] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={handleUploadMoments}
                 disabled={uploading || momentItems.length === 0}
               >
@@ -689,7 +693,7 @@ const Upload: React.FC = () => {
               </button>
               <button
                 type="button"
-                className="app-button app-button--outline app-button--block"
+                className="inline-flex w-full items-center justify-center rounded-2xl border border-[#ff6b4a]/40 px-4 py-2 text-sm font-semibold text-[#ffd1c4] disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={handleAddMomentsClick}
                 disabled={uploading}
               >

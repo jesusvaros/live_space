@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { IonPage, IonContent, IonSpinner } from '@ionic/react';
 import { useParams, useHistory } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { PostWithRelations } from '../lib/types';
+import { Event, PostWithRelations, VenuePlace } from '../lib/types';
 import AppHeader from '../components/AppHeader';
 import { IconHeart, IconShare } from '../components/icons';
 
@@ -12,6 +12,9 @@ const PostDetail: React.FC = () => {
   const [post, setPost] = useState<PostWithRelations | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  type EventWithVenue = Event & { venue_place?: VenuePlace | null };
+  const event = (post?.events as EventWithVenue | null | undefined) ?? null;
 
   useEffect(() => {
     const loadPost = async () => {
@@ -55,7 +58,7 @@ const PostDetail: React.FC = () => {
         if (postError || !data) {
           throw postError;
         }
-        setPost(data as PostWithRelations);
+        setPost(data as unknown as PostWithRelations);
       } catch {
         setError('Post not found.');
         setPost(null);
@@ -70,9 +73,9 @@ const PostDetail: React.FC = () => {
   return (
     <IonPage>
       <IonContent fullscreen>
-        <div className="app-layout">
+        <div className="min-h-full">
           <AppHeader />
-          <div className="app-screen">
+          <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
             {loading && (
               <div className="flex items-center justify-center py-12">
                 <IonSpinner name="crescent" />
@@ -83,7 +86,7 @@ const PostDetail: React.FC = () => {
 
             {!loading && post && (
               <>
-                <div className="app-card overflow-hidden fade-up">
+                <div className="overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 shadow-[0_24px_50px_rgba(0,0,0,0.45)]">
                   {post.media_type === 'video' ? (
                     <video
                       controls
@@ -114,42 +117,52 @@ const PostDetail: React.FC = () => {
                           {post.profiles?.display_name || post.profiles?.username || 'Anonymous'}
                         </p>
                         <p className="text-xs text-slate-500">
-                      {post.events?.venue_place?.city || post.events?.city || 'Unknown'} ·{' '}
+                          {event?.venue_place?.city || event?.city || 'Unknown'} ·{' '}
                           {new Date(post.created_at).toLocaleString()}
                         </p>
                       </div>
-                      {post.events?.name && <span className="app-chip">Live</span>}
+                      {event?.name && (
+                        <span className="rounded-full border border-[#ff6b4a]/40 bg-[#ff6b4a]/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#ffd1c4]">
+                          Live
+                        </span>
+                      )}
                     </div>
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">Moment</p>
                       <h2 className="mt-2 font-display text-xl text-slate-50">
-                        {post.caption || post.events?.name || 'Live moment'}
+                        {post.caption || event?.name || 'Live moment'}
                       </h2>
                     </div>
                     <div className="flex gap-3">
-                      <button type="button" className="app-button app-button--outline app-button--block">
-                        <IconHeart className="app-icon" />
+                      <button
+                        type="button"
+                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[#ff6b4a]/40 px-4 py-2 text-sm font-semibold text-[#ffd1c4]"
+                      >
+                        <IconHeart className="h-4 w-4" />
                         Like
                       </button>
-                      <button type="button" className="app-button app-button--outline app-button--block">
-                        <IconShare className="app-icon" />
+                      <button
+                        type="button"
+                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[#ff6b4a]/40 px-4 py-2 text-sm font-semibold text-[#ffd1c4]"
+                      >
+                        <IconShare className="h-4 w-4" />
                         Share
                       </button>
                     </div>
                   </div>
                 </div>
 
-                {post.events && (
+                {event && (
                   <button
                     type="button"
-                    onClick={() => history.push(`/event/${post.events?.id}`)}
-                    className="app-card p-4 fade-up fade-up-delay-1 hover:bg-slate-800 transition-colors text-left"
+                    onClick={() => history.push(`/event/${event.id}`)}
+                    className="rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 text-left shadow-[0_24px_50px_rgba(0,0,0,0.45)] transition-colors hover:bg-slate-900"
                   >
                     <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">Event</p>
-                    <h3 className="mt-2 font-display text-lg text-slate-50">{post.events.name}</h3>
+                    <h3 className="mt-2 font-display text-lg text-slate-50">{event.name}</h3>
                     <p className="mt-1 text-sm text-slate-400">
-                      {post.events.venue_place?.name || post.events.address || 'Venue TBD'} ·{' '}
-                      {new Date(post.events.starts_at).toLocaleString()}
+                      {event.venue_place?.name || event.address || 'Venue TBD'} ·{' '}
+                      {new Date(event.starts_at).toLocaleString()}
                     </p>
                     <p className="mt-2 text-xs text-slate-500">Tap to view event details →</p>
                   </button>

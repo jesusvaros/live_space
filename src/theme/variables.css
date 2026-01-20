@@ -1,4 +1,6 @@
 :root {
+  --ion-font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+  
   --ion-color-primary: #ff6b4a;
   --ion-color-primary-rgb: 255, 107, 74;
   --ion-color-primary-contrast: #ffffff;

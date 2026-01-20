@@ -27,7 +27,7 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
   onSelectArtist,
 }) => {
   return (
-    <section className="app-card space-y-3 p-4">
+    <section className="space-y-3 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 shadow-[0_24px_50px_rgba(0,0,0,0.45)]">
       <div>
         <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">Artist</p>
         <p className="mt-2 text-sm text-slate-500">One artist per event.</p>
@@ -40,8 +40,10 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
           </div>
         </div>
       ) : (
-        <label className="app-field">
-          <span className="app-label">Select artist</span>
+        <label className="flex flex-col gap-2">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+            Select artist
+          </span>
           {artistsLoading ? (
             <div className="flex items-center gap-3 text-sm text-slate-400">
               <IonSpinner name="crescent" />
@@ -49,7 +51,7 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
             </div>
           ) : (
             <select
-              className="app-select"
+              className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100"
               value={selectedArtistId || ''}
               onChange={e => onSelectArtist(e.target.value || null)}
             >

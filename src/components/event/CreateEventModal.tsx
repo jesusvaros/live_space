@@ -137,10 +137,10 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
   })();
 
   return (
-    <div className="app-modal space-y-4">
-      <div className="app-modal-header">
+    <div className="flex flex-col gap-4 rounded-3xl bg-[#141824] px-4 py-5">
+      <div className="flex items-center justify-between gap-4">
         <div className="flex-1">
-          <h2 className="app-modal-title">Create event</h2>
+          <h2 className="font-display text-lg font-semibold text-slate-50">Create event</h2>
           <div className="relative mt-4">
             <div className="absolute left-0 right-0 top-4 h-px bg-white/10" />
             <div className="flex items-start justify-between">
@@ -163,7 +163,11 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
             </div>
           </div>
         </div>
-        <button type="button" className="app-button app-button--ghost app-button--small" onClick={onDismiss}>
+        <button
+          type="button"
+          className="inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold text-[#ffd1c4]"
+          onClick={onDismiss}
+        >
           Close
         </button>
       </div>
@@ -172,15 +176,19 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
       {content}
 
-      <div className="flex flex-col gap-2 sm:flex-row">
+      <div className="flex flex-col gap-2 sm:flex-row tw">
         {stepIndex > 0 && (
-          <button type="button" className="app-button app-button--outline app-button--block" onClick={handleBack}>
+          <button
+            type="button"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#ff6b4a]/40 bg-transparent px-6 py-3 text-sm font-semibold text-[#ffd1c4] transition sm:w-auto"
+            onClick={handleBack}
+          >
             Back
           </button>
         )}
         <button
           type="button"
-          className="app-button app-button--block"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#ff6b4a] px-6 py-3 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60"
           onClick={handlePrimary}
           disabled={form.saving || (stepIndex === steps.length - 1 && !organizerAllowed)}
         >

@@ -5,8 +5,8 @@ import App from './App'
 import { AuthProvider } from './contexts/AuthContext'
 
 import '@ionic/react/css/core.css'
-import '@ionic/react/css/normalize.css'
 import '@ionic/react/css/structure.css'
+// import '@ionic/react/css/normalize.css'; // Commented out to avoid conflicts
 
 import './theme/variables.css'
 import './index.css'

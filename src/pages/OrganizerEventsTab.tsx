@@ -121,10 +121,10 @@ const OrganizerEventsTab: React.FC = () => {
   return (
     <IonPage>
       <IonContent fullscreen>
-        <div className="app-layout">
+        <div className="min-h-full">
           <AppHeader />
-          <div className="app-screen space-y-6">
-            <div className="fade-up">
+          <div className="flex flex-col gap-6 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
+            <div className="animate-fade-up motion-reduce:animate-none">
               <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Events</p>
               <h2 className="mt-2 font-display text-2xl text-slate-50">
                 Next events for {organizerLabel}
@@ -140,7 +140,7 @@ const OrganizerEventsTab: React.FC = () => {
               </p>
               <button
                 type="button"
-                className="app-button app-button--ghost app-button--small"
+                className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
                 onClick={() => history.push('/create-event')}
               >
                 Create event

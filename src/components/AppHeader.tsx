@@ -24,36 +24,36 @@ const AppHeader: React.FC<AppHeaderProps> = ({ rightSlot, showBack }) => {
   };
 
   return (
-    <header className="app-header">
-      <div className="app-header-inner">
-        <div className="app-header-left">
+    <header className="sticky top-0 z-20 border-b border-white/10 bg-[#0b0e14]/85 px-4 py-3 pt-[calc(12px+env(safe-area-inset-top,0px))] backdrop-blur-xl">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-1 items-center gap-2">
           {shouldShowBack ? (
             <button
               type="button"
-              className="app-button app-button--ghost app-button--small"
+              className="inline-flex items-center justify-center rounded-full px-3 py-2 text-sm font-semibold text-[#ffd1c4] disabled:cursor-not-allowed disabled:opacity-60"
               onClick={handleBackClick}
               aria-label="Go back"
             >
-              <IconChevronLeft className="app-icon" />
+              <IconChevronLeft className="h-4 w-4" />
             </button>
           ) : null}
           <button
             type="button"
-            className="app-header-brand"
+            className="flex items-center"
             onClick={handleBrandClick}
             aria-label="Go to home"
           >
             <AppBrand />
           </button>
         </div>
-        <div className="app-header-actions">
+        <div className="inline-flex items-center gap-2">
           <button
             type="button"
-            className="app-button app-button--ghost app-button--small"
+            className="inline-flex items-center justify-center rounded-full px-3 py-2 text-sm font-semibold text-[#ffd1c4] disabled:cursor-not-allowed disabled:opacity-60"
             aria-label="Notifications"
             disabled
           >
-            <IconBell className="app-icon" />
+            <IconBell className="h-4 w-4" />
           </button>
           {rightSlot}
         </div>

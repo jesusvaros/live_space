@@ -147,7 +147,7 @@ const Profile: React.FC = () => {
           .eq('venue_id', user.id)
           .order('starts_at', { ascending: false });
 
-        venueEvents = (venueEventData || []) as Event[];
+        venueEvents = (venueEventData || []) as unknown as Event[];
       }
 
       setPosts((postsData || []) as PostWithRelations[]);
@@ -203,6 +203,7 @@ const Profile: React.FC = () => {
   }, [profile]);
 
   const selectedVenuePlace = managedVenues.find(venue => venue.id === selectedVenuePlaceId) || null;
+  const displayVenue = selectedVenuePlace ?? managedVenues[0] ?? null;
 
   useEffect(() => {
     if (!selectedVenuePlace) {
@@ -449,10 +450,10 @@ const Profile: React.FC = () => {
   return (
     <IonPage>
       <IonContent fullscreen>
-        <div className="app-layout">
+        <div className="min-h-full">
           <AppHeader />
-          <div className="app-screen">
-            <div className="flex items-center gap-4 fade-up">
+          <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
+            <div className="flex items-center gap-4 animate-fade-up motion-reduce:animate-none">
               <div className="h-16 w-16 overflow-hidden rounded-full bg-slate-800">
                 <img
                   src={profile?.avatar_url || `https://picsum.photos/seed/${profile?.id}/120/120`}
@@ -470,15 +471,18 @@ const Profile: React.FC = () => {
               </div>
               <button
                 type="button"
-                className="app-button app-button--outline app-button--small"
+                className="inline-flex items-center gap-2 rounded-xl border border-[#ff6b4a]/40 px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
                 onClick={() => setShowEdit(prev => !prev)}
               >
-                <IconEdit className="app-icon" />
+                <IconEdit className="h-4 w-4" />
                 Edit
               </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 text-center fade-up fade-up-delay-1">
+            <div
+              className="grid grid-cols-3 gap-3 text-center animate-fade-up motion-reduce:animate-none"
+              style={{ animationDelay: '0.08s' }}
+            >
               {[
                 { label: 'Posts', value: posts.length.toString() },
                 { label: 'Role', value: profile?.role || 'user' },
@@ -495,21 +499,39 @@ const Profile: React.FC = () => {
             </div>
 
             {profile?.role === 'artist' && (linkWebsite || linkInstagram || linkSpotify) && (
-              <div className="app-card space-y-3 p-4 fade-up fade-up-delay-2">
+              <div
+                className="space-y-3 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 shadow-[0_24px_50px_rgba(0,0,0,0.35)]"
+                style={{ animationDelay: '0.16s' }}
+              >
                 <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">Artist links</p>
                 <div className="space-y-2 text-sm text-slate-300">
                   {linkWebsite && (
-                    <a href={linkWebsite} target="_blank" rel="noreferrer" className="venue-link">
+                    <a
+                      href={linkWebsite}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-slate-200 hover:text-slate-50"
+                    >
                       {linkWebsite.replace(/^https?:\/\//, '')}
                     </a>
                   )}
                   {linkInstagram && (
-                    <a href={linkInstagram} target="_blank" rel="noreferrer" className="venue-link">
+                    <a
+                      href={linkInstagram}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-slate-200 hover:text-slate-50"
+                    >
                       {linkInstagram.replace(/^https?:\/\//, '')}
                     </a>
                   )}
                   {linkSpotify && (
-                    <a href={linkSpotify} target="_blank" rel="noreferrer" className="venue-link">
+                    <a
+                      href={linkSpotify}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-slate-200 hover:text-slate-50"
+                    >
                       {linkSpotify.replace(/^https?:\/\//, '')}
                     </a>
                   )}
@@ -517,24 +539,35 @@ const Profile: React.FC = () => {
               </div>
             )}
 
-            {profile?.role === 'venue' && venueProfile && (
-              <div className="app-card space-y-3 p-4 fade-up fade-up-delay-2">
+            {profile?.role === 'venue' && displayVenue && (
+              <div
+                className="space-y-3 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 shadow-[0_24px_50px_rgba(0,0,0,0.35)]"
+                style={{ animationDelay: '0.16s' }}
+              >
                 <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">Venue details</p>
                 <div className="space-y-2 text-sm text-slate-300">
-                  {(venueProfile.address || profile.primary_city) && (
-                    <p>{venueProfile.address || profile.primary_city}</p>
+                  {(displayVenue.address || profile.primary_city) && (
+                    <p>{displayVenue.address || profile.primary_city}</p>
                   )}
-                  {venueProfile.website_url && (
-                    <a href={venueProfile.website_url} target="_blank" rel="noreferrer" className="venue-link">
-                      {venueProfile.website_url.replace(/^https?:\/\//, '')}
+                  {displayVenue.website_url && (
+                    <a
+                      href={displayVenue.website_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-slate-200 hover:text-slate-50"
+                    >
+                      {displayVenue.website_url.replace(/^https?:\/\//, '')}
                     </a>
                   )}
                 </div>
-                {venueProfile.photos.length > 0 && (
-                  <div className="venue-photo-row">
-                    {venueProfile.photos.map((url, index) => (
-                      <div key={`${url}-${index}`} className="venue-photo">
-                        <img src={url} alt="Venue" />
+                {(displayVenue.photos ?? []).length > 0 && (
+                  <div className="flex gap-3 overflow-x-auto pb-1">
+                    {(displayVenue.photos ?? []).map((url: string, index: number) => (
+                      <div
+                        key={`${url}-${index}`}
+                        className="h-24 w-40 flex-shrink-0 overflow-hidden rounded-2xl bg-[#0f1320]"
+                      >
+                        <img src={url} alt="Venue" className="h-full w-full object-cover" />
                       </div>
                     ))}
                   </div>
@@ -543,46 +576,59 @@ const Profile: React.FC = () => {
             )}
 
             {showEdit && (
-              <div className="app-card space-y-4 p-4 fade-up fade-up-delay-2">
-                <label className="app-field">
-                  <span className="app-label">Display name</span>
+              <div
+                className="space-y-4 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 shadow-[0_24px_50px_rgba(0,0,0,0.35)]"
+                style={{ animationDelay: '0.16s' }}
+              >
+                <label className="flex flex-col gap-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    Display name
+                  </span>
                   <input
                     value={displayName}
                     onChange={e => setDisplayName(e.target.value)}
-                    className="app-input"
+                    className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                   />
                 </label>
-                <label className="app-field">
-                  <span className="app-label">Username</span>
+                <label className="flex flex-col gap-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    Username
+                  </span>
                   <input
                     value={username}
                     onChange={e => setUsername(e.target.value)}
-                    className="app-input"
+                    className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                   />
                 </label>
-                <label className="app-field">
-                  <span className="app-label">Primary city</span>
+                <label className="flex flex-col gap-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    Primary city
+                  </span>
                   <input
                     value={primaryCity}
                     onChange={e => setPrimaryCity(e.target.value)}
-                    className="app-input"
+                    className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                   />
                 </label>
-                <label className="app-field">
-                  <span className="app-label">Bio</span>
+                <label className="flex flex-col gap-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    Bio
+                  </span>
                   <textarea
                     value={bio}
                     onChange={e => setBio(e.target.value)}
-                    className="app-textarea"
+                    className="min-h-[96px] w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                   />
                 </label>
                 {isDev && (
-                  <label className="app-field">
-                    <span className="app-label">Role (dev)</span>
+                  <label className="flex flex-col gap-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                      Role (dev)
+                    </span>
                     <select
                       value={role}
                       onChange={e => setRole(e.target.value as ProfileRole)}
-                      className="app-select"
+                      className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100"
                     >
                       <option value="user">User</option>
                       <option value="artist">Artist</option>
@@ -597,30 +643,36 @@ const Profile: React.FC = () => {
                 {profile?.role === 'artist' && (
                   <div className="space-y-3">
                     <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">Artist links</p>
-                    <label className="app-field">
-                      <span className="app-label">Website</span>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                        Website
+                      </span>
                       <input
                         value={linkWebsite}
                         onChange={e => setLinkWebsite(e.target.value)}
-                        className="app-input"
+                        className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                         placeholder="https://your-site.com"
                       />
                     </label>
-                    <label className="app-field">
-                      <span className="app-label">Instagram</span>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                        Instagram
+                      </span>
                       <input
                         value={linkInstagram}
                         onChange={e => setLinkInstagram(e.target.value)}
-                        className="app-input"
+                        className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                         placeholder="https://instagram.com/you"
                       />
                     </label>
-                    <label className="app-field">
-                      <span className="app-label">Spotify</span>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                        Spotify
+                      </span>
                       <input
                         value={linkSpotify}
                         onChange={e => setLinkSpotify(e.target.value)}
-                        className="app-input"
+                        className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                         placeholder="https://open.spotify.com/artist/..."
                       />
                     </label>
@@ -637,12 +689,14 @@ const Profile: React.FC = () => {
                     ) : (
                       <>
                         {managedVenues.length > 1 && (
-                          <label className="app-field">
-                            <span className="app-label">Managed venue</span>
+                          <label className="flex flex-col gap-2">
+                            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                              Managed venue
+                            </span>
                             <select
                               value={selectedVenuePlaceId || ''}
                               onChange={e => setSelectedVenuePlaceId(e.target.value || null)}
-                              className="app-select"
+                              className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100"
                             >
                               {managedVenues.map(venue => (
                                 <option key={venue.id} value={venue.id}>
@@ -652,84 +706,102 @@ const Profile: React.FC = () => {
                             </select>
                           </label>
                         )}
-                        <label className="app-field">
-                          <span className="app-label">Venue name</span>
+                        <label className="flex flex-col gap-2">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                            Venue name
+                          </span>
                           <input
                             value={venueName}
                             onChange={e => setVenueName(e.target.value)}
-                            className="app-input"
+                            className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                             placeholder="Venue name"
                           />
                         </label>
-                        <label className="app-field">
-                          <span className="app-label">City</span>
+                        <label className="flex flex-col gap-2">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                            City
+                          </span>
                           <input
                             value={venueCity}
                             onChange={e => setVenueCity(e.target.value)}
-                            className="app-input"
+                            className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                             placeholder="City"
                           />
                         </label>
-                        <label className="app-field">
-                          <span className="app-label">Venue type</span>
+                        <label className="flex flex-col gap-2">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                            Venue type
+                          </span>
                           <input
                             value={venueType}
                             onChange={e => setVenueType(e.target.value)}
-                            className="app-input"
+                            className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                             placeholder="Club, hall, theatre..."
                           />
                         </label>
-                        <label className="app-field">
-                          <span className="app-label">Capacity</span>
+                        <label className="flex flex-col gap-2">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                            Capacity
+                          </span>
                           <input
                             value={venueCapacity}
                             onChange={e => setVenueCapacity(e.target.value)}
-                            className="app-input"
+                            className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                             placeholder="450"
                           />
                         </label>
-                        <label className="app-field">
-                          <span className="app-label">Address</span>
+                        <label className="flex flex-col gap-2">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                            Address
+                          </span>
                           <input
                             value={venueAddress}
                             onChange={e => setVenueAddress(e.target.value)}
-                            className="app-input"
+                            className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                             placeholder="Street address"
                           />
                         </label>
-                        <label className="app-field">
-                          <span className="app-label">Website</span>
+                        <label className="flex flex-col gap-2">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                            Website
+                          </span>
                           <input
                             value={venueWebsite}
                             onChange={e => setVenueWebsite(e.target.value)}
-                            className="app-input"
+                            className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                             placeholder="https://venue-site.com"
                           />
                         </label>
                         <div className="grid grid-cols-2 gap-3">
-                          <label className="app-field">
-                            <span className="app-label">Latitude</span>
+                          <label className="flex flex-col gap-2">
+                            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                              Latitude
+                            </span>
                             <input
                               value={venueLatitude}
                               onChange={e => setVenueLatitude(e.target.value)}
-                              className="app-input"
+                              className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100"
                             />
                           </label>
-                          <label className="app-field">
-                            <span className="app-label">Longitude</span>
+                          <label className="flex flex-col gap-2">
+                            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                              Longitude
+                            </span>
                             <input
                               value={venueLongitude}
                               onChange={e => setVenueLongitude(e.target.value)}
-                              className="app-input"
+                              className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100"
                             />
                           </label>
                         </div>
-                        <label className="app-field">
-                          <span className="app-label">Venue photos (URLs)</span>
+                        <label className="flex flex-col gap-2">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                            Venue photos (URLs)
+                          </span>
                           <textarea
                             value={venuePhotos}
                             onChange={e => setVenuePhotos(e.target.value)}
-                            className="app-textarea"
+                            className="min-h-[96px] w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                             placeholder="One URL per line"
                           />
                         </label>
@@ -743,7 +815,7 @@ const Profile: React.FC = () => {
 
                 <button
                   type="button"
-                  className="app-button app-button--block"
+                  className="inline-flex w-full items-center justify-center rounded-2xl bg-[#ff6b4a] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                   onClick={handleSave}
                   disabled={saving}
                 >
@@ -751,7 +823,7 @@ const Profile: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  className="app-button app-button--ghost app-button--block"
+                  className="inline-flex w-full items-center justify-center rounded-2xl border border-transparent px-4 py-2 text-sm font-semibold text-[#ffd1c4]"
                   onClick={() => setShowEdit(false)}
                 >
                   Cancel
@@ -759,45 +831,65 @@ const Profile: React.FC = () => {
               </div>
             )}
 
-            <div className="profile-tabs fade-up fade-up-delay-2">
+            <div
+              className="flex gap-2 animate-fade-up motion-reduce:animate-none"
+              style={{ animationDelay: '0.16s' }}
+            >
               <button
                 type="button"
-                className={`profile-tab ${selectedTab === 'liked' ? 'is-active' : ''}`}
+                className={`flex flex-1 items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-xs font-semibold transition ${
+                  selectedTab === 'liked'
+                    ? 'border-[#ff6b4a]/40 bg-[#ff6b4a]/20 text-[#ffd1c4]'
+                    : 'border-white/10 bg-white/5 text-slate-300'
+                }`}
                 onClick={() => setSelectedTab('liked')}
               >
-                <IconHeart className="app-icon" />
+                <IconHeart className="h-4 w-4" />
                 Liked
               </button>
               <button
                 type="button"
-                className={`profile-tab ${selectedTab === 'attended' ? 'is-active' : ''}`}
+                className={`flex flex-1 items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-xs font-semibold transition ${
+                  selectedTab === 'attended'
+                    ? 'border-[#ff6b4a]/40 bg-[#ff6b4a]/20 text-[#ffd1c4]'
+                    : 'border-white/10 bg-white/5 text-slate-300'
+                }`}
                 onClick={() => setSelectedTab('attended')}
               >
-                {React.createElement(getAttendedTabIcon(), { className: 'app-icon' })}
+                {React.createElement(getAttendedTabIcon(), { className: 'h-4 w-4' })}
                 {getAttendedTabLabel()}
               </button>
               <button
                 type="button"
-                className={`profile-tab ${selectedTab === 'moments' ? 'is-active' : ''}`}
+                className={`flex flex-1 items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-xs font-semibold transition ${
+                  selectedTab === 'moments'
+                    ? 'border-[#ff6b4a]/40 bg-[#ff6b4a]/20 text-[#ffd1c4]'
+                    : 'border-white/10 bg-white/5 text-slate-300'
+                }`}
                 onClick={() => setSelectedTab('moments')}
               >
-                <IconPlay className="app-icon" />
+                <IconPlay className="h-4 w-4" />
                 Moments
               </button>
             </div>
 
-            <div className="fade-up fade-up-delay-3">{renderTabContent()}</div>
+            <div
+              className="animate-fade-up motion-reduce:animate-none"
+              style={{ animationDelay: '0.24s' }}
+            >
+              {renderTabContent()}
+            </div>
 
             {!showEdit && formError && <p className="text-sm text-rose-400">{formError}</p>}
             {!showEdit && message && <p className="text-sm text-emerald-400">{message}</p>}
 
             <button
               type="button"
-              className="app-button app-button--outline app-button--block"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#ff6b4a]/40 px-4 py-2 text-sm font-semibold text-[#ffd1c4] disabled:cursor-not-allowed disabled:opacity-60"
               onClick={handleSignOut}
               disabled={signingOut}
             >
-              <IconLogout className="app-icon" />
+              <IconLogout className="h-4 w-4" />
               {signingOut ? 'Signing out...' : 'Log out'}
             </button>
           </div>

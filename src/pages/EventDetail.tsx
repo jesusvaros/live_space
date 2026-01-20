@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   IonPage,
   IonContent,
@@ -28,7 +28,7 @@ const EventDetail: React.FC = () => {
   const history = useHistory();
   const location = useLocation();
   const { id } = useParams<{ id: string }>();
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [event, setEvent] = useState<EventDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -281,7 +281,7 @@ const EventDetail: React.FC = () => {
         throw bucketError;
       }
 
-      const moments = (data || []) as PostWithRelations[];
+      const moments = (data || []) as unknown as PostWithRelations[];
       bucketCacheRef.current[cacheKey] = moments;
       if (setAsSelected) {
         setBucketMoments(moments);
@@ -434,21 +434,21 @@ const EventDetail: React.FC = () => {
       minute: '2-digit',
     });
     return (
-      <span className="event-meta-line">
+      <span className="flex flex-wrap items-center gap-2 text-sm text-slate-400">
         {event.venue_place ? (
           <button
             type="button"
-            className="event-meta-link"
+            className="font-semibold text-slate-50"
             onClick={() => history.push(`/venue/${event.venue_place?.id}`)}
           >
             {venueName}
           </button>
         ) : (
-          <span>{venueName}</span>
+          <span className="font-semibold text-slate-50">{venueName}</span>
         )}
-        <span className="event-meta-dot">•</span>
+        <span className="text-slate-500">•</span>
         <span>{venueCity}</span>
-        <span className="event-meta-dot">•</span>
+        <span className="text-slate-500">•</span>
         <span>{timeLabel}</span>
       </span>
     );
@@ -727,9 +727,9 @@ const EventDetail: React.FC = () => {
   return (
     <IonPage>
       <IonContent fullscreen>
-        <div className="app-layout">
+        <div className="min-h-full">
           <AppHeader />
-          <div className="app-screen">
+          <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
             {loading && (
               <div className="flex items-center justify-center py-12">
                 <IonSpinner name="crescent" />
@@ -778,18 +778,20 @@ const EventDetail: React.FC = () => {
                   }
                 />
 
-                <div className="event-cta">
+                <div className="flex flex-col gap-2">
                   <button
                     type="button"
-                    className={`app-button app-button--block primary-cta ${canAddMoments ? '' : 'is-muted'} ${
-                      canAddMoments ? '' : 'app-button--outline'
+                    className={`inline-flex w-full items-center justify-center rounded-2xl px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                      canAddMoments
+                        ? 'bg-[#ff6b4a] text-white'
+                        : 'border border-[#ff6b4a]/40 text-[#ffd1c4]'
                     }`}
                     onClick={handlePrimaryCtaClick}
                   >
                     Add moments
                   </button>
                   {user && !canAddMoments && (
-                    <p className="event-cta-hint">
+                    <p className="text-xs text-slate-400">
                       Mark "I went" to unlock uploads.
                     </p>
                   )}
@@ -829,12 +831,12 @@ const EventDetail: React.FC = () => {
 
         <IonModal isOpen={showAddMoments} onDidDismiss={() => setShowAddMoments(false)}>
           <IonContent fullscreen>
-            <div className="app-modal">
-              <div className="app-modal-header">
-                <h2 className="app-modal-title">Add moments</h2>
+            <div className="flex flex-col gap-4 rounded-3xl bg-[#141824] p-5 shadow-[0_24px_50px_rgba(0,0,0,0.45)]">
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="font-display text-lg font-semibold text-slate-50">Add moments</h2>
                 <button
                   type="button"
-                  className="app-button app-button--ghost app-button--small"
+                  className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
                   onClick={() => setShowAddMoments(false)}
                   disabled={uploading}
                 >
@@ -846,7 +848,10 @@ const EventDetail: React.FC = () => {
               )}
 
               {momentItems.map(item => (
-                <div key={item.id} className="app-card space-y-3 p-4">
+                <div
+                  key={item.id}
+                  className="space-y-3 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 shadow-[0_24px_50px_rgba(0,0,0,0.35)]"
+                >
                   <div className="flex items-start gap-3">
                     <div className="h-20 w-20 overflow-hidden rounded-2xl bg-slate-900">
                       {item.mediaType === 'video' ? (
@@ -872,24 +877,26 @@ const EventDetail: React.FC = () => {
                     </div>
                     <button
                       type="button"
-                      className="app-button app-button--ghost app-button--small"
+                      className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
                       onClick={() => handleRemoveMoment(item.id)}
                     >
                       Remove
                     </button>
                   </div>
-                  <label className="app-field">
-                    <span className="app-label">Captured time</span>
+                  <label className="flex flex-col gap-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                      Captured time
+                    </span>
                     <input
                       type="datetime-local"
-                      className="app-input"
+                      className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                       value={item.manualValue}
                       onChange={e => handleMomentTimeChange(item.id, e.target.value)}
                     />
                   </label>
                   <button
                     type="button"
-                    className="app-button app-button--ghost app-button--small"
+                    className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
                     onClick={() => handleUseUploadTime(item.id)}
                   >
                     Use upload time
@@ -912,7 +919,7 @@ const EventDetail: React.FC = () => {
 
               <button
                 type="button"
-                className="app-button app-button--block"
+                className="inline-flex w-full items-center justify-center rounded-2xl bg-[#ff6b4a] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={handleUploadMoments}
                 disabled={uploading || momentItems.length === 0}
               >
@@ -920,7 +927,7 @@ const EventDetail: React.FC = () => {
               </button>
               <button
                 type="button"
-                className="app-button app-button--outline app-button--block"
+                className="inline-flex w-full items-center justify-center rounded-2xl border border-[#ff6b4a]/40 px-4 py-2 text-sm font-semibold text-[#ffd1c4] disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={openFilePicker}
                 disabled={uploading}
               >
@@ -938,12 +945,12 @@ const EventDetail: React.FC = () => {
           className="gate-sheet"
         >
           <IonContent fullscreen>
-            <div className="app-modal">
-              <div className="app-modal-header">
-                <h2 className="app-modal-title">Unlock moments</h2>
+            <div className="flex flex-col gap-4 rounded-3xl bg-[#141824] p-5 shadow-[0_24px_50px_rgba(0,0,0,0.45)]">
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="font-display text-lg font-semibold text-slate-50">Unlock moments</h2>
                 <button
                   type="button"
-                  className="app-button app-button--ghost app-button--small"
+                  className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
                   onClick={() => setShowGatePrompt(false)}
                   disabled={attendanceLoading}
                 >
@@ -955,7 +962,7 @@ const EventDetail: React.FC = () => {
               </p>
               <button
                 type="button"
-                className="app-button app-button--block"
+                className="inline-flex w-full items-center justify-center rounded-2xl bg-[#ff6b4a] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={handleGateConfirm}
                 disabled={attendanceLoading}
               >
@@ -963,7 +970,7 @@ const EventDetail: React.FC = () => {
               </button>
               <button
                 type="button"
-                className="app-button app-button--ghost app-button--block"
+                className="inline-flex w-full items-center justify-center rounded-2xl border border-transparent px-4 py-2 text-sm font-semibold text-[#ffd1c4] disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={() => setShowGatePrompt(false)}
                 disabled={attendanceLoading}
               >

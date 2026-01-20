@@ -134,9 +134,9 @@ const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
   const selectedRatio = maxOffset ? selectedOffset / maxOffset : 0;
 
   return (
-    <div className="timeline-scrubber">
+    <div className="flex flex-col gap-2">
       <div
-        className="scrubber-track"
+        className="relative h-8 cursor-pointer touch-none"
         ref={trackRef}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -144,23 +144,32 @@ const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
         onPointerCancel={handlePointerUp}
         onPointerLeave={handlePointerUp}
       >
-        <div className="scrubber-line" />
+        <div className="absolute inset-x-0 top-1/2 h-0.5 -translate-y-1/2 bg-white/10" />
         {segments.map(segment => (
           <div
             key={segment.key}
-            className={`scrubber-segment ${segment.isGap ? 'is-gap' : ''}`}
+            className={`absolute top-1/2 h-0.5 -translate-y-1/2 rounded-full ${
+              segment.isGap
+                ? 'bg-[repeating-linear-gradient(90deg,rgba(255,255,255,0.08),rgba(255,255,255,0.08)_6px,transparent_6px,transparent_12px)]'
+                : 'bg-white/30'
+            }`}
             style={{ left: `${segment.left}%`, width: `${segment.width}%` }}
           />
         ))}
         {buckets.map((bucket, index) => {
           const ratio = maxOffset ? (offsets[index] ?? 0) / maxOffset : 0;
           const strength = bucket.moment_count >= 5 ? 3 : bucket.moment_count >= 3 ? 2 : 1;
+          const sizeClass =
+            strength === 3 ? 'h-3 w-3' : strength === 2 ? 'h-2.5 w-2.5' : 'h-2 w-2';
           return (
             <button
               key={bucket.bucket_time}
               type="button"
-              className={`scrubber-marker ${index === selectedIndex ? 'is-active' : ''}`}
-              data-strength={strength}
+              className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full ${sizeClass} ${
+                index === selectedIndex
+                  ? 'bg-[#ff6b4a] shadow-[0_0_12px_rgba(255,107,74,0.6)]'
+                  : 'bg-white/40'
+              }`}
               style={{ left: `${ratio * 100}%` }}
               onClick={() => onSelectIndex(index)}
             >
@@ -168,9 +177,12 @@ const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
             </button>
           );
         })}
-        <div className="scrubber-thumb" style={{ left: `${selectedRatio * 100}%` }} />
+        <div
+          className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#ff6b4a] bg-[#ff6b4a]/20 shadow-[0_0_14px_rgba(255,107,74,0.35)]"
+          style={{ left: `${selectedRatio * 100}%` }}
+        />
       </div>
-      <div className="scrubber-labels">
+      <div className="flex justify-between text-[11px] text-slate-400">
         <span>{formatRelative(0)}</span>
         <span>{formatRelative(maxOffset)}</span>
       </div>

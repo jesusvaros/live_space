@@ -85,9 +85,9 @@ const Welcome: React.FC = () => {
   return (
     <IonPage>
       <IonContent fullscreen>
-        <div className="app-layout">
+        <div className="min-h-full">
           <AppHeader />
-          <div className="app-screen">
+          <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
             <div className="relative min-h-full">
               <div
                 aria-hidden="true"
@@ -98,7 +98,7 @@ const Welcome: React.FC = () => {
                 className="pointer-events-none absolute left-0 top-32 h-40 w-40 rounded-full bg-[radial-gradient(circle_at_top,_#f97316_0%,_transparent_70%)] opacity-40 blur-2xl"
               />
 
-              <div className="mx-auto max-w-md text-center fade-up">
+              <div className="mx-auto max-w-md text-center">
                 <p className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Local moments</p>
                 <h1 className="mt-4 font-display text-4xl leading-tight text-slate-50">
                   Live Space
@@ -108,61 +108,71 @@ const Welcome: React.FC = () => {
                 </p>
               </div>
 
-              <div className="app-card mt-8 space-y-4 p-5 fade-up fade-up-delay-1">
+              <div className="mt-8 space-y-4 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-5 shadow-[0_24px_50px_rgba(0,0,0,0.45)]">
                 <h2 className="font-display text-base font-semibold text-slate-50">
                   {isSignUp ? 'Create Account' : 'Sign In'}
                 </h2>
                 <div className="space-y-3">
                   {isSignUp && (
                     <>
-                      <label className="app-field">
-                        <span className="app-label">Username</span>
+                      <label className="flex flex-col gap-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                          Username
+                        </span>
                         <input
                           value={username}
                           onChange={e => setUsername(e.target.value)}
                           placeholder="Choose a username"
-                          className="app-input"
+                          className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                         />
                       </label>
-                      <label className="app-field">
-                        <span className="app-label">Display name</span>
+                      <label className="flex flex-col gap-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                          Display name
+                        </span>
                         <input
                           value={displayName}
                           onChange={e => setDisplayName(e.target.value)}
                           placeholder="How should we call you?"
-                          className="app-input"
+                          className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                         />
                       </label>
-                      <label className="app-field">
-                        <span className="app-label">Primary city</span>
+                      <label className="flex flex-col gap-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                          Primary city
+                        </span>
                         <input
                           value={primaryCity}
                           onChange={e => setPrimaryCity(e.target.value)}
                           placeholder="Barcelona"
-                          className="app-input"
+                          className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                         />
                       </label>
                     </>
                   )}
 
-                  <label className="app-field">
-                    <span className="app-label">Email</span>
+                  <label className="flex flex-col gap-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                      Email
+                    </span>
                     <input
                       type="email"
                       value={email}
                       onChange={e => setEmail(e.target.value)}
                       placeholder="your@email.com"
-                      className="app-input"
+                      className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                     />
                   </label>
-                  <label className="app-field">
-                    <span className="app-label">Password</span>
+                  <label className="flex flex-col gap-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                      Password
+                    </span>
                     <input
                       type="password"
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="app-input"
+                      className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                     />
                   </label>
                 </div>
@@ -171,7 +181,7 @@ const Welcome: React.FC = () => {
 
                 <button
                   type="button"
-                  className="app-button app-button--block"
+                  className="inline-flex w-full items-center justify-center rounded-2xl bg-[#ff6b4a] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                   onClick={handleAuth}
                   disabled={loading || !email || !password || (isSignUp && !username)}
                 >
@@ -189,7 +199,7 @@ const Welcome: React.FC = () => {
 
                 <button
                   type="button"
-                  className="app-button app-button--ghost app-button--block"
+                  className="inline-flex w-full items-center justify-center rounded-2xl border border-transparent px-4 py-2 text-sm font-semibold text-[#ffd1c4]"
                   onClick={() => setIsSignUp(!isSignUp)}
                 >
                   {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
@@ -198,7 +208,7 @@ const Welcome: React.FC = () => {
                 {!isSignUp && (
                   <button
                     type="button"
-                    className="app-button app-button--ghost app-button--block"
+                    className="inline-flex w-full items-center justify-center rounded-2xl border border-transparent px-4 py-2 text-sm font-semibold text-[#ffd1c4]"
                     onClick={() => setShowReset(prev => !prev)}
                   >
                     Forgot your password?
@@ -207,19 +217,21 @@ const Welcome: React.FC = () => {
 
                 {showReset && (
                   <div className="space-y-3 rounded-2xl bg-slate-900/60 p-4">
-                    <label className="app-field">
-                      <span className="app-label">Reset email</span>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                        Reset email
+                      </span>
                       <input
                         type="email"
                         value={resetEmail || email}
                         onChange={e => setResetEmail(e.target.value)}
                         placeholder="you@email.com"
-                        className="app-input"
+                        className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                       />
                     </label>
                     <button
                       type="button"
-                      className="app-button app-button--block"
+                      className="inline-flex w-full items-center justify-center rounded-2xl bg-[#ff6b4a] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                       onClick={handlePasswordReset}
                       disabled={loading}
                     >

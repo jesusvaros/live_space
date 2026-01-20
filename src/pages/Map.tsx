@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { IonPage, IonContent, useIonViewDidEnter } from '@ionic/react';
 import { MapContainer } from 'react-leaflet';
 import L from 'leaflet';
@@ -55,6 +55,7 @@ const Map: React.FC = () => {
   const [initialViewApplied, setInitialViewApplied] = useState(false);
   const [locationRequested, setLocationRequested] = useState(false);
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
   const {
@@ -205,21 +206,16 @@ const Map: React.FC = () => {
   return (
     <IonPage>
       <IonContent fullscreen>
-        <div className="app-layout">
+        <div className="min-h-full">
           <AppHeader />
-          <div className="app-screen p-0 relative">
-            <div className="absolute left-4 right-4 top-4 z-[100] map-search-overlay">
+          <div className="relative flex min-h-full flex-col p-0">
+            <div className="pointer-events-auto absolute left-4 right-4 top-4 z-[1000] flex flex-col gap-2">
               <input
                 type="search"
                 placeholder="Search events"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="app-search"
-                style={{
-                  backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                  backdropFilter: 'blur(16px)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)'
-                }}
+                className="w-full rounded-2xl border border-white/20 bg-slate-900/95 px-4 py-3 text-sm text-slate-100 shadow-[0_16px_32px_rgba(0,0,0,0.4)] backdrop-blur placeholder:text-slate-500"
               />
               <MapFilterBar
                 filterToday={filterToday}
@@ -244,9 +240,10 @@ const Map: React.FC = () => {
               center={center}
               zoom={zoom}
               style={{ height: 'calc(100vh - 60px)', width: '100%' }}
-              className="map-fullscreen"
+              className="rounded-none [&_.leaflet-container]:rounded-none"
               zoomControl={false}
-              whenCreated={setMapInstance}
+              ref={mapRef}
+              whenReady={() => setMapInstance(mapRef.current)}
             >
               <MapLibreLayer />
               <MapResizeObserver />

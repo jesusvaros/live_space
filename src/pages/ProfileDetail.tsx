@@ -160,9 +160,9 @@ const ProfileDetail: React.FC = () => {
   return (
     <IonPage>
       <IonContent fullscreen>
-        <div className="app-layout">
+        <div className="min-h-full">
           <AppHeader />
-          <div className="app-screen">
+          <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
             {loading && (
               <div className="flex items-center justify-center py-12">
                 <IonSpinner name="crescent" />
@@ -175,7 +175,7 @@ const ProfileDetail: React.FC = () => {
 
             {!loading && profile && (
               <>
-                <div className="app-card space-y-4 p-5">
+                <div className="space-y-4 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-5 shadow-[0_24px_50px_rgba(0,0,0,0.35)]">
                   <div className="flex items-center gap-4">
                     <div className="h-16 w-16 overflow-hidden rounded-full bg-slate-800">
                       {profile.avatar_url ? (
@@ -201,7 +201,7 @@ const ProfileDetail: React.FC = () => {
                 </div>
 
                 {externalLinks.length > 0 && (
-                  <div className="app-card space-y-3 p-4">
+                  <div className="space-y-3 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 shadow-[0_24px_50px_rgba(0,0,0,0.35)]">
                     <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">Links</p>
                     <div className="space-y-2 text-sm text-slate-300">
                       {externalLinks.map(link => (
@@ -210,7 +210,7 @@ const ProfileDetail: React.FC = () => {
                           href={link.value}
                           target="_blank"
                           rel="noreferrer"
-                          className="venue-link"
+                          className="text-slate-200 hover:text-slate-50"
                         >
                           {link.value.replace(/^https?:\/\//, '')}
                         </a>
@@ -220,7 +220,7 @@ const ProfileDetail: React.FC = () => {
                 )}
 
                 {profile.role === 'venue' && venuePlaces.length > 0 && (
-                  <div className="app-card space-y-4 p-4">
+                  <div className="space-y-4 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 shadow-[0_24px_50px_rgba(0,0,0,0.35)]">
                     <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">Venues</p>
                     <div className="space-y-4">
                       {venuePlaces.map(venue => (
@@ -241,16 +241,19 @@ const ProfileDetail: React.FC = () => {
                               href={venue.website_url}
                               target="_blank"
                               rel="noreferrer"
-                              className="venue-link"
+                              className="text-slate-200 hover:text-slate-50"
                             >
                               {venue.website_url.replace(/^https?:\/\//, '')}
                             </a>
                           )}
                           {venue.photos.length > 0 && (
-                            <div className="venue-photo-row">
+                            <div className="flex gap-3 overflow-x-auto pb-1">
                               {venue.photos.map((url, index) => (
-                                <div key={`${url}-${index}`} className="venue-photo">
-                                  <img src={url} alt="Venue" />
+                                <div
+                                  key={`${url}-${index}`}
+                                  className="h-24 w-40 flex-shrink-0 overflow-hidden rounded-2xl bg-[#0f1320]"
+                                >
+                                  <img src={url} alt="Venue" className="h-full w-full object-cover" />
                                 </div>
                               ))}
                             </div>
@@ -291,7 +294,10 @@ const ProfileDetail: React.FC = () => {
                   ) : (
                     <div className="grid grid-cols-3 gap-2">
                       {moments.map(moment => (
-                        <div key={moment.id} className="venue-moment">
+                        <div
+                          key={moment.id}
+                          className="overflow-hidden rounded-2xl bg-[#0f1320]"
+                        >
                           {moment.media_type === 'video' ? (
                             <video className="h-full w-full object-cover" muted>
                               <source src={moment.media_url} />
@@ -313,7 +319,7 @@ const ProfileDetail: React.FC = () => {
 
             <button
               type="button"
-              className="app-button app-button--ghost app-button--block"
+              className="inline-flex w-full items-center justify-center rounded-2xl border border-transparent px-4 py-2 text-sm font-semibold text-[#ffd1c4]"
               onClick={() => history.goBack()}
             >
               Back

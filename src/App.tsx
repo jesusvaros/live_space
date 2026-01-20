@@ -30,13 +30,25 @@ import VenueDetail from './pages/VenueDetail';
 const App: React.FC = () => {
   const { user, loading, profile } = useAuth();
   const isOrganizerRole = Boolean(profile && ['artist', 'venue'].includes(profile.role));
+  const tabBarStyle: { [key: string]: string } = {
+    '--background': 'rgba(12, 15, 22, 0.95)',
+    '--border': '1px solid rgba(255, 255, 255, 0.08)',
+    '--color': '#7c8798',
+    '--color-selected': 'var(--app-ink)',
+    '--padding-top': '6px',
+    '--padding-bottom': '6px',
+    '--padding-start': '10px',
+    '--padding-end': '10px',
+    '--border-radius': '16px',
+    '--background-focused': 'rgba(255, 107, 74, 0.2)',
+  };
 
   if (loading) {
     return (
       <IonApp>
         <IonPage>
           <IonContent fullscreen>
-            <div className="app-screen flex items-center justify-center">
+            <div className="flex min-h-full flex-col items-center justify-center gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
               <IonSpinner name="crescent" />
             </div>
           </IonContent>
@@ -79,35 +91,39 @@ const App: React.FC = () => {
                     <Route exact path="/tabs/profile" component={Profile} />
                     <Route exact path="/tabs" render={() => <Redirect to="/tabs/events" />} />
                   </IonRouterOutlet>
-                  <IonTabBar slot="bottom" className="app-tab-bar">
+                  <IonTabBar
+                    slot="bottom"
+                    className="mx-4 mb-[calc(10px+var(--ion-safe-area-bottom,0px))] mt-2 h-16 rounded-3xl px-2 py-2 shadow-[0_16px_30px_rgba(0,0,0,0.4)]"
+                    style={tabBarStyle}
+                  >
                     <IonTabButton tab="events" href="/tabs/events">
-                      <IconCalendar className="tab-icon" />
-                      <span className="tab-label">Events</span>
+                      <IconCalendar className="h-5 w-5" />
+                      <span className="text-[11px] uppercase tracking-[0.12em]">Events</span>
                     </IonTabButton>
                     <IonTabButton tab="map" href="/tabs/map">
-                      <IconMap className="tab-icon" />
-                      <span className="tab-label">Map</span>
+                      <IconMap className="h-5 w-5" />
+                      <span className="text-[11px] uppercase tracking-[0.12em]">Map</span>
                     </IonTabButton>
                     <IonTabButton tab="qr-scanner" href="/tabs/qr-scanner">
                       {isOrganizerRole ? (
                         <>
-                          <IconCalendar className="tab-icon" />
-                          <span className="tab-label">My Space</span>
+                          <IconCalendar className="h-5 w-5" />
+                          <span className="text-[11px] uppercase tracking-[0.12em]">My Space</span>
                         </>
                       ) : (
                         <>
-                          <IconQrCode className="tab-icon" />
-                          <span className="tab-label">Scan</span>
+                          <IconQrCode className="h-5 w-5" />
+                          <span className="text-[11px] uppercase tracking-[0.12em]">Scan</span>
                         </>
                       )}
                     </IonTabButton>
                     <IonTabButton tab="profile" href="/tabs/profile">
-                      <IconUser className="tab-icon" />
-                      <span className="tab-label">Profile</span>
+                      <IconUser className="h-5 w-5" />
+                      <span className="text-[11px] uppercase tracking-[0.12em]">Profile</span>
                     </IonTabButton>
                     <IonTabButton tab="feed" href="/tabs/feed">
-                      <IconPlay className="tab-icon" />
-                      <span className="tab-label">Moments</span>
+                      <IconPlay className="h-5 w-5" />
+                      <span className="text-[11px] uppercase tracking-[0.12em]">Moments</span>
                     </IonTabButton>
                   </IonTabBar>
                 </IonTabs>

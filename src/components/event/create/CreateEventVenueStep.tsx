@@ -72,14 +72,14 @@ const CreateEventVenueStep: React.FC<CreateEventVenueStepProps> = ({
   onNewVenueLngChange,
 }) => {
   return (
-    <section className="app-card space-y-4 p-4">
+    <section className="space-y-4 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 shadow-[0_24px_50px_rgba(0,0,0,0.45)]">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-[14px] font-semibold uppercase tracking-[0.3em] text-slate-400">Venue</p>
         </div>
         <button
           type="button"
-          className="app-button app-button--ghost app-button--small"
+          className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold text-[#ffd1c4]"
           onClick={onToggleVenueMode}
         >
           {venueMode === 'existing' ? 'New venue' : 'Use existing'}
@@ -88,7 +88,7 @@ const CreateEventVenueStep: React.FC<CreateEventVenueStepProps> = ({
 
       <input
         type="search"
-        className="app-search"
+        className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 shadow-[0_16px_32px_rgba(0,0,0,0.4)] placeholder:text-slate-500"
         placeholder="Search venues"
         value={venueSearch}
         onChange={e => onVenueSearchChange(e.target.value)}
@@ -104,16 +104,17 @@ const CreateEventVenueStep: React.FC<CreateEventVenueStepProps> = ({
         >
           <MapLibreLayer />
           <MapResizeObserver />
-          {venueMarkers.map(marker => (
-            <Marker
-              key={marker.venue.id}
-              position={marker.position}
-              icon={marker.icon}
-              eventHandlers={{
-                click: () => onSelectVenue(marker.venue),
-              }}
-            />
-          ))}
+          {venueMode === 'existing' &&
+            venueMarkers.map(marker => (
+              <Marker
+                key={marker.venue.id}
+                position={marker.position}
+                icon={marker.icon}
+                eventHandlers={{
+                  click: () => onSelectVenue(marker.venue),
+                }}
+              />
+            ))}
           {venueMode === 'new' && venueLat !== null && venueLng !== null && (
             <Marker position={[venueLat, venueLng]} icon={newVenueIcon} />
           )}
@@ -131,7 +132,7 @@ const CreateEventVenueStep: React.FC<CreateEventVenueStepProps> = ({
               Loading venues...
             </div>
           ) : visibleVenues.length === 0 ? (
-            <p className="text-sm text-slate-500 h-[72px] ">
+            <p className="h-[72px] text-sm text-slate-500">
               No venues found. Switch to &quot;New venue&quot; to add one.
             </p>
           ) : (
@@ -164,15 +165,15 @@ const CreateEventVenueStep: React.FC<CreateEventVenueStepProps> = ({
               </div>
               <button
                 type="button"
-                className="app-button app-button--ghost app-button--small"
+                className="inline-flex items-center justify-center rounded-xl px-2.5 py-1.5 text-xs font-semibold text-[#ffd1c4]"
                 onClick={onClearVenue}
               >
                 Clear
               </button>
             </div>
           ) : (
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3"> 
-                <p className="text-sm text-slate-50">Select a venue to continue</p>
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+              <p className="text-sm text-slate-50">Select a venue to continue</p>
             </div>
           )}
         </>
@@ -180,47 +181,53 @@ const CreateEventVenueStep: React.FC<CreateEventVenueStepProps> = ({
 
       {venueMode === 'new' && (
         <div className="space-y-3">
-          <label className="app-field">
-            <span className="app-label">Venue name</span>
+          <label className="flex flex-col gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+              Venue name
+            </span>
             <input
-              className="app-input"
+              className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
               value={newVenueName}
               onChange={e => onNewVenueNameChange(e.target.value)}
               placeholder="Venue name"
             />
           </label>
-          <label className="app-field">
-            <span className="app-label">City</span>
+          <label className="flex flex-col gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">City</span>
             <input
-              className="app-input"
+              className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
               value={newVenueCity}
               onChange={e => onNewVenueCityChange(e.target.value)}
               placeholder="City"
             />
           </label>
-          <label className="app-field">
-            <span className="app-label">Address</span>
+          <label className="flex flex-col gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Address</span>
             <input
-              className="app-input"
+              className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
               value={newVenueAddress}
               onChange={e => onNewVenueAddressChange(e.target.value)}
               placeholder="Street address"
             />
           </label>
           <div className="grid grid-cols-2 gap-3">
-            <label className="app-field">
-              <span className="app-label">Latitude</span>
+            <label className="flex flex-col gap-2">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Latitude
+              </span>
               <input
-                className="app-input"
+                className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                 value={newVenueLat}
                 onChange={e => onNewVenueLatChange(e.target.value)}
                 placeholder="41.3874"
               />
             </label>
-            <label className="app-field">
-              <span className="app-label">Longitude</span>
+            <label className="flex flex-col gap-2">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Longitude
+              </span>
               <input
-                className="app-input"
+                className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                 value={newVenueLng}
                 onChange={e => onNewVenueLngChange(e.target.value)}
                 placeholder="2.1686"

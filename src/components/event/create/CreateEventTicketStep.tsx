@@ -38,64 +38,72 @@ const CreateEventTicketStep: React.FC<CreateEventTicketStepProps> = ({
   onRemoveTier,
 }) => {
   return (
-    <section className="app-card space-y-3 p-4">
+    <section className="space-y-3 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 shadow-[0_24px_50px_rgba(0,0,0,0.45)]">
       <div>
         <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">Entrada</p>
         <p className="mt-2 text-sm text-slate-500">Define lo esencial y el tipo de ticket.</p>
       </div>
-      <label className="app-field">
-        <span className="app-label">Event name</span>
+      <label className="flex flex-col gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+          Event name
+        </span>
         <input
-          className="app-input"
+          className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
           value={eventName}
           onChange={e => onEventNameChange(e.target.value)}
           placeholder="Night Session"
         />
       </label>
-      <label className="app-field">
-        <span className="app-label">Starts at</span>
+      <label className="flex flex-col gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Starts at</span>
         <input
-          className="app-input"
+          className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100"
           type="datetime-local"
           value={eventStart}
           onChange={e => onEventStartChange(e.target.value)}
         />
       </label>
-      <label className="app-field">
-        <span className="app-label">Event link</span>
+      <label className="flex flex-col gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Event link</span>
         <input
-          className="app-input"
+          className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
           value={eventUrl}
           onChange={e => onEventUrlChange(e.target.value)}
           placeholder="https://..."
         />
       </label>
 
-      <label className="app-toggle">
-        <input
-          type="checkbox"
-          checked={isFree}
-          onChange={e => onToggleFree(e.target.checked)}
-        />
+      <label className="flex items-center gap-3 text-sm text-slate-100">
+        <span className="relative inline-flex items-center">
+          <input
+            type="checkbox"
+            className="peer h-5 w-10 appearance-none rounded-full border border-white/10 bg-white/10 transition checked:border-[#ff6b4a] checked:bg-[#ff6b4a]"
+            checked={isFree}
+            onChange={e => onToggleFree(e.target.checked)}
+          />
+          <span className="pointer-events-none absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5" />
+        </span>
         <span>{isFree ? 'Free event' : 'Paid event'}</span>
       </label>
 
       {!isFree && (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <label className="app-field">
-              <span className="app-label">Tier name</span>
+            <label className="flex flex-col gap-2">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Tier name
+              </span>
               <input
-                className="app-input"
+                className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                 value={tierLabel}
                 onChange={e => onTierLabelChange(e.target.value)}
                 placeholder="Presale"
               />
             </label>
-            <label className="app-field">
-              <span className="app-label">Price</span>
+            <label className="flex flex-col gap-2">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Price</span>
               <input
-                className="app-input"
+                className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
                 value={tierPrice}
                 onChange={e => onTierPriceChange(e.target.value)}
                 placeholder="12"
@@ -104,7 +112,7 @@ const CreateEventTicketStep: React.FC<CreateEventTicketStepProps> = ({
           </div>
           <button
             type="button"
-            className="app-button app-button--ghost app-button--small"
+            className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold text-[#ffd1c4]"
             onClick={onAddTier}
           >
             Add tier
@@ -123,7 +131,7 @@ const CreateEventTicketStep: React.FC<CreateEventTicketStepProps> = ({
                   </div>
                   <button
                     type="button"
-                    className="app-button app-button--ghost app-button--small"
+                    className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold text-[#ffd1c4]"
                     onClick={() => onRemoveTier(index)}
                   >
                     Remove
