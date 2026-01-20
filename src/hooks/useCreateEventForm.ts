@@ -67,7 +67,10 @@ export const useCreateEventForm = ({ userId, profileRole, profileCity }: UseCrea
   const [tierLabel, setTierLabel] = useState('');
   const [tierPrice, setTierPrice] = useState('');
 
-  const [selectedArtistId, setSelectedArtistId] = useState<string | null>(null);
+  const [selectedArtistIds, setSelectedArtistIds] = useState<string[]>([]);
+  const [artistMode, setArtistMode] = useState<'existing' | 'new'>('existing');
+  const [newArtistName, setNewArtistName] = useState('');
+  const [newArtistUsername, setNewArtistUsername] = useState('');
   const [mapCenter, setMapCenter] = useState<[number, number]>(defaultCenter);
   const [mapBounds, setMapBounds] = useState<L.LatLngBounds | null>(null);
 
@@ -94,7 +97,7 @@ export const useCreateEventForm = ({ userId, profileRole, profileCity }: UseCrea
     setPriceTiers([]);
     setTierLabel('');
     setTierPrice('');
-    setSelectedArtistId(null);
+    setSelectedArtistIds([]);
     setMapCenter(defaultCenter);
   }, [profileCity]);
 
@@ -272,9 +275,9 @@ export const useCreateEventForm = ({ userId, profileRole, profileCity }: UseCrea
         return null;
       }
     }
-    const artistId = selectedArtistId || (profileRole === 'artist' ? userId : null);
-    if (!artistId) {
-      setError('Select an artist.');
+    const artistIds = selectedArtistIds.length > 0 ? selectedArtistIds : (profileRole === 'artist' && userId ? [userId] : []);
+    if (artistIds.length === 0) {
+      setError('Select at least one artist.');
       return null;
     }
 
@@ -381,25 +384,30 @@ export const useCreateEventForm = ({ userId, profileRole, profileCity }: UseCrea
         throw eventError || new Error('Event creation failed.');
       }
 
-      const { error: artistError } = await supabase.from('event_artists').insert({
-        event_id: eventData.id,
-        artist_id: artistId,
-      });
+      // Insert artist relationships
+      for (const artistId of artistIds) {
+        const { error: artistError } = await supabase.from('event_artists').insert({
+          event_id: eventData.id,
+          artist_id: artistId,
+        });
 
-      if (artistError) {
-        await supabase.from('events').delete().eq('id', eventData.id);
-        throw artistError;
+        if (artistError) {
+          await supabase.from('events').delete().eq('id', eventData.id);
+          throw artistError;
+        }
       }
 
       return eventData.id;
-    } catch (err: any) {
-      setError(err?.message || 'Unable to create event.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(message);
       return null;
     } finally {
       setSaving(false);
     }
   };
 
+      
   return {
     artists,
     artistsLoading,
@@ -427,7 +435,10 @@ export const useCreateEventForm = ({ userId, profileRole, profileCity }: UseCrea
     priceTiers,
     tierLabel,
     tierPrice,
-    selectedArtistId,
+    selectedArtistIds,
+    artistMode,
+    newArtistName,
+    newArtistUsername,
     mapCenter,
     mapBounds,
     visibleVenues,
@@ -453,7 +464,10 @@ export const useCreateEventForm = ({ userId, profileRole, profileCity }: UseCrea
     setIsFree,
     setTierLabel,
     setTierPrice,
-    setSelectedArtistId,
+    setSelectedArtistIds,
+    setArtistMode,
+    setNewArtistName,
+    setNewArtistUsername,
     setMapBounds,
     setError,
     addPriceTier,

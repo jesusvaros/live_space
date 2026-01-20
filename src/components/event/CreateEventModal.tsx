@@ -88,9 +88,9 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
             profileRole={profileRole}
             profileName={profileName}
             artists={form.artists}
-            selectedArtistId={form.selectedArtistId}
+            selectedArtistIds={form.selectedArtistIds}
             artistsLoading={form.artistsLoading}
-            onSelectArtist={form.setSelectedArtistId}
+            onSelectArtists={form.setSelectedArtistIds}
           />
         );
       case 2:
