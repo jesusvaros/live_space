@@ -1,8 +1,7 @@
-import React from 'react';
-import { PostWithRelations } from '../../lib/types';
+import { PostWithSetlist } from '../../lib/types';
 
 type SecondStackProps = {
-  moments: PostWithRelations[];
+  moments: PostWithSetlist[];
   selectedIndex: number;
   onSelect: (index: number) => void;
 };

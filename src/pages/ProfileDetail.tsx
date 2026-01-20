@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { IonPage, IonContent, IonSpinner } from '@ionic/react';
 import { useHistory, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Event, Profile, VenuePlace } from '../lib/types';
+import { Event, Profile, VenuePlace, PostWithSetlist } from '../lib/types';
+import { socialService } from '../services/social.service';
+import { useAuth } from '../contexts/AuthContext';
 import AppHeader from '../components/AppHeader';
 import EventCard from '../components/EventCard';
 
@@ -13,24 +15,21 @@ type ProfileEvent = Event & {
   event_artists?: { artist: Profile | null }[];
 };
 
-type ProfileMoment = {
-  id: string;
-  media_url: string;
-  media_type: 'video' | 'image';
-  caption: string | null;
-  event_id: string;
-  created_at: string;
-};
-
 const ProfileDetail: React.FC = () => {
   const history = useHistory();
   const { id } = useParams<{ id: string }>();
+  const { user, profile: currentUserProfile } = useAuth();
+  
   const [profile, setProfile] = useState<Profile | null>(null);
   const [venuePlaces, setVenuePlaces] = useState<VenuePlace[]>([]);
   const [events, setEvents] = useState<ProfileEvent[]>([]);
-  const [moments, setMoments] = useState<ProfileMoment[]>([]);
+  const [moments, setMoments] = useState<PostWithSetlist[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -42,8 +41,22 @@ const ProfileDetail: React.FC = () => {
           .select('*')
           .eq('id', id)
           .single();
+        
         if (profileError || !profileData) {
           throw profileError;
+        }
+
+        setProfile(profileData as Profile);
+
+        if (profileData.subject_id) {
+          const [count, following] = await Promise.all([
+            socialService.getFollowersCount(profileData.subject_id),
+            user && currentUserProfile?.subject_id 
+              ? socialService.isFollowing(currentUserProfile.subject_id, profileData.subject_id)
+              : Promise.resolve(false)
+          ]);
+          setFollowersCount(count);
+          setIsFollowing(following);
         }
 
         const eventSelect = `
@@ -78,8 +91,6 @@ const ProfileDetail: React.FC = () => {
           )
         `;
 
-        setProfile(profileData as Profile);
-
         let eventIds: string[] = [];
         let eventRows: ProfileEvent[] = [];
 
@@ -97,9 +108,7 @@ const ProfileDetail: React.FC = () => {
               .order('starts_at', { ascending: false });
             eventRows = (eventsData || []) as ProfileEvent[];
           }
-        }
-
-        if (profileData.role === 'venue') {
+        } else if (profileData.role === 'venue') {
           const { data: venuesData } = await supabase
             .from('venue_places')
             .select('*')
@@ -114,11 +123,7 @@ const ProfileDetail: React.FC = () => {
             .order('starts_at', { ascending: false });
           eventRows = (eventsData || []) as ProfileEvent[];
           eventIds = eventRows.map(event => event.id);
-        } else {
-          setVenuePlaces([]);
-        }
-
-        if (profileData.role === 'label') {
+        } else if (profileData.role === 'label') {
           const { data: eventsData } = await supabase
             .from('events')
             .select(eventSelect)
@@ -133,11 +138,11 @@ const ProfileDetail: React.FC = () => {
         if (eventIds.length > 0) {
           const { data: momentsData } = await supabase
             .from('posts')
-            .select('id, media_url, media_type, caption, event_id, created_at')
+            .select('id, media_url, media_type, caption, event_id, created_at, actor_subject_id, song_title')
             .in('event_id', eventIds)
             .order('created_at', { ascending: false })
             .limit(18);
-          setMoments((momentsData || []) as ProfileMoment[]);
+          setMoments((momentsData || []) as PostWithSetlist[]);
         } else {
           setMoments([]);
         }
@@ -148,10 +153,34 @@ const ProfileDetail: React.FC = () => {
       }
     };
     loadProfile();
-  }, [id]);
+  }, [id, user, currentUserProfile?.subject_id]);
+
+  const handleFollowToggle = async () => {
+    if (!user || !currentUserProfile?.subject_id || !profile?.subject_id) {
+      if (!user) history.push('/welcome');
+      return;
+    }
+
+    setFollowLoading(true);
+    try {
+      if (isFollowing) {
+        await socialService.unfollow(currentUserProfile.subject_id, profile.subject_id);
+        setIsFollowing(false);
+        setFollowersCount(prev => Math.max(0, prev - 1));
+      } else {
+        await socialService.follow(currentUserProfile.subject_id, profile.subject_id);
+        setIsFollowing(true);
+        setFollowersCount(prev => prev + 1);
+      }
+    } catch (err) {
+      console.error('Failed to toggle follow', err);
+    } finally {
+      setFollowLoading(false);
+    }
+  };
 
   const externalLinks = useMemo(() => {
-    const links = profile?.external_links || {};
+    const links = (profile?.external_links || {}) as Record<string, string>;
     return Object.entries(links)
       .map(([key, value]) => ({ key, value }))
       .filter(link => Boolean(link.value));
@@ -192,12 +221,33 @@ const ProfileDetail: React.FC = () => {
                       <h2 className="font-display text-xl text-slate-50">
                         {profile.display_name || profile.username || 'Unknown'}
                       </h2>
-                      <p className="text-xs text-slate-400">
-                        {profile.role.toUpperCase()} · {profile.primary_city || 'City TBD'}
-                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-xs text-slate-400">
+                          {profile.role.toUpperCase()} · {profile.primary_city || 'City TBD'}
+                        </p>
+                        <span className="text-slate-600">|</span>
+                        <p className="text-xs font-semibold text-slate-300">
+                          {followersCount} followers
+                        </p>
+                      </div>
                     </div>
                   </div>
                   {profile.bio && <p className="text-sm text-slate-300">{profile.bio}</p>}
+                  
+                  {user && profile.id !== user.id && (
+                    <button
+                      type="button"
+                      disabled={followLoading}
+                      onClick={handleFollowToggle}
+                      className={`w-full rounded-xl py-2 text-sm font-semibold transition ${
+                        isFollowing
+                          ? 'bg-white/10 text-white border border-white/10'
+                          : 'bg-[#ff6b4a] text-white'
+                      }`}
+                    >
+                      {followLoading ? <IonSpinner name="crescent" /> : (isFollowing ? 'Following' : 'Follow')}
+                    </button>
+                  )}
                 </div>
 
                 {externalLinks.length > 0 && (
@@ -246,7 +296,7 @@ const ProfileDetail: React.FC = () => {
                               {venue.website_url.replace(/^https?:\/\//, '')}
                             </a>
                           )}
-                          {venue.photos.length > 0 && (
+                          {(venue.photos || []).length > 0 && (
                             <div className="flex gap-3 overflow-x-auto pb-1">
                               {venue.photos.map((url, index) => (
                                 <div
@@ -294,9 +344,11 @@ const ProfileDetail: React.FC = () => {
                   ) : (
                     <div className="grid grid-cols-3 gap-2">
                       {moments.map(moment => (
-                        <div
+                        <button
                           key={moment.id}
-                          className="overflow-hidden rounded-2xl bg-[#0f1320]"
+                          type="button"
+                          onClick={() => history.push(`/post/${moment.id}`)}
+                          className="overflow-hidden rounded-2xl bg-[#0f1320] aspect-square"
                         >
                           {moment.media_type === 'video' ? (
                             <video className="h-full w-full object-cover" muted>
@@ -309,7 +361,7 @@ const ProfileDetail: React.FC = () => {
                               className="h-full w-full object-cover"
                             />
                           )}
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}

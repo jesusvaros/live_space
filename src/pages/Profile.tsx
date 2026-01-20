@@ -2,17 +2,30 @@ import React, { useEffect, useState } from 'react';
 import { IonPage, IonContent, IonSpinner } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Event, PostWithRelations, Profile as ProfileRecord, ProfileRole, VenuePlace } from '../lib/types';
+import { Event, PostWithSetlist, ProfileRole } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
 import AppHeader from '../components/AppHeader';
 import EventCard from '../components/EventCard';
-import { IconCalendar, IconEdit, IconHeart, IconLogout, IconPlay } from '../components/icons';
+import { IconCalendar, IconEdit, IconHeart, IconLogout, IconPlay, IconBriefcase } from '../components/icons';
 
 const Profile: React.FC = () => {
-  const { user, profile, updateProfile, signOut, refreshProfile } = useAuth();
-  const isDev = Boolean((import.meta as any).env?.DEV);
+  const { 
+    user, 
+    profile, 
+    updateProfile, 
+    signOut, 
+    refreshProfile,
+    managedEntities,
+    activeEntity,
+    isManagementMode,
+    setManagementMode,
+    setActiveEntity
+  } = useAuth();
+
   const history = useHistory();
-  const [posts, setPosts] = useState<PostWithRelations[]>([]);
+  const isDev = Boolean((import.meta as any).env?.DEV);
+
+  const [posts, setPosts] = useState<PostWithSetlist[]>([]);
   const [likedEvents, setLikedEvents] = useState<Event[]>([]);
   const [attendedEvents, setAttendedEvents] = useState<Event[]>([]);
   const [artistEvents, setArtistEvents] = useState<Event[]>([]);
@@ -29,7 +42,7 @@ const Profile: React.FC = () => {
   const [linkWebsite, setLinkWebsite] = useState(profile?.external_links?.website || '');
   const [linkInstagram, setLinkInstagram] = useState(profile?.external_links?.instagram || '');
   const [linkSpotify, setLinkSpotify] = useState(profile?.external_links?.spotify || '');
-  const [managedVenues, setManagedVenues] = useState<VenuePlace[]>([]);
+  
   const [selectedVenuePlaceId, setSelectedVenuePlaceId] = useState<string | null>(null);
   const [venueName, setVenueName] = useState('');
   const [venueCity, setVenueCity] = useState('');
@@ -45,8 +58,20 @@ const Profile: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
-  const loadProfileData = async () => {
-    if (!user) return;
+  const activeProfile = isManagementMode && activeEntity 
+    ? (activeEntity.type === 'user' ? activeEntity.profile : null)
+    : profile;
+
+  const lastLoadedRef = React.useRef<string>('');
+
+  const loadProfileData = async (isManualRefresh = false) => {
+    if (!user?.id) return;
+    
+    const loadContext = `${user.id}-${isManagementMode}-${activeEntity?.subject_id}`;
+    if (!isManualRefresh && lastLoadedRef.current === loadContext) {
+      return;
+    }
+
     setLoading(true);
     setError('');
 
@@ -86,100 +111,90 @@ const Profile: React.FC = () => {
         )
       `;
 
-      // Load posts (moments shared)
-      const { data: postsData } = await supabase
+      // Use a local variable to check if we're still relevant after async calls
+      const currentContext = loadContext;
+
+      // Load posts (moments shared) - if management mode, show posts BY that actor
+      let postsQuery = supabase
         .from('posts')
-        .select('id, media_url, media_type, caption, created_at')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(12);
+        .select('id, media_url, media_type, caption, created_at, event_offset_ms, song_title');
+      
+      if (isManagementMode && activeEntity) {
+        postsQuery = postsQuery.eq('actor_subject_id', activeEntity.subject_id);
+      } else {
+        postsQuery = postsQuery.eq('user_id', user.id);
+      }
 
-      // Load liked events (event_saves)
-      const { data: likedData } = await supabase
-        .from('event_saves')
-        .select(
-          `
-            events!inner (
-              ${eventCardSelect}
-            )
-          `
-        )
-        .eq('user_id', user.id);
+      const [postsRes, likedRes, attendedRes] = await Promise.all([
+        postsQuery.order('created_at', { ascending: false }).limit(12),
+        supabase.from('event_saves').select(`events!inner (${eventCardSelect})`).eq('user_id', user.id),
+        supabase.from('event_attendance').select(`status, events!inner (${eventCardSelect})`).eq('user_id', user.id)
+      ]);
 
-      // Load attended events (event_attendance)
-      const { data: attendedData } = await supabase
-        .from('event_attendance')
-        .select(
-          `
-            status,
-            events!inner (
-              ${eventCardSelect}
-            )
-          `
-        )
-        .eq('user_id', user.id);
+      if (lastLoadedRef.current !== currentContext && !isManualRefresh) return;
 
-      // Load role-specific data
+      const postsData = postsRes.data;
+      const likedData = likedRes.data;
+      const attendedData = attendedRes.data;
+
+      // Load role-specific data based on ACTIVE role
       let artistEvents: Event[] = [];
       let venueEvents: Event[] = [];
 
-      if (profile?.role === 'artist') {
-        // Load events where this artist participated
-        const { data: artistEventData } = await supabase
-          .from('event_artists')
-          .select(`
-              events!inner (
-                ${eventCardSelect}
-              )
-            `)
-          .eq('artist_id', user.id);
+      const activeRole = isManagementMode && activeEntity ? activeEntity.type : profile?.role;
 
-        artistEvents = (artistEventData || [])
-          .map((item: any) => item.events)
-          .filter((event: any): event is Event => Boolean(event));
+      if (activeRole === 'artist') {
+        const artistId = isManagementMode && activeEntity 
+          ? activeEntity.artist?.id 
+          : user.id;
+
+        if (artistId) {
+          const { data: artistEventData } = await supabase
+            .from('event_artists')
+            .select(`
+                events!inner (
+                  ${eventCardSelect}
+                )
+              `)
+            .eq('artist_id', artistId);
+
+          artistEvents = (artistEventData || [])
+            .map((item: any) => item.events)
+            .filter((event: any): event is Event => Boolean(event));
+        }
       }
 
-      if (profile?.role === 'venue') {
-        // Load events at this venue
-        const { data: venueEventData } = await supabase
-          .from('events')
-          .select(eventCardSelect)
-          .eq('venue_id', user.id)
-          .order('starts_at', { ascending: false });
+      if (activeRole === 'venue') {
+        const venueId = isManagementMode && activeEntity 
+          ? activeEntity.venue?.id 
+          : user.id;
 
-        venueEvents = (venueEventData || []) as unknown as Event[];
+        if (venueId) {
+          const { data: venueEventData } = await supabase
+            .from('events')
+            .select(eventCardSelect)
+            .eq('venue_id', venueId)
+            .order('starts_at', { ascending: false });
+
+          venueEvents = (venueEventData || []) as unknown as Event[];
+        }
       }
 
-      setPosts((postsData || []) as PostWithRelations[]);
+      if (lastLoadedRef.current !== currentContext && !isManualRefresh) return;
+
+      setPosts((postsData || []) as PostWithSetlist[]);
       const liked = (likedData || [])
         .map((item: any) => item.events)
         .filter((event: any): event is Event => Boolean(event));
       const attended = (attendedData || [])
         .map((item: any) => item.events)
         .filter((event: any): event is Event => Boolean(event));
+      
       setLikedEvents(liked);
-      setAttendedEvents([...attended, ...artistEvents]); // Combine attended + artist events
+      setAttendedEvents([...attended, ...artistEvents]);
       setArtistEvents(artistEvents);
       setVenueEvents(venueEvents);
-      if (profile?.role === 'venue') {
-        const { data: venuePlaceData } = await supabase
-          .from('venue_places')
-          .select('*')
-          .eq('created_by', user.id)
-          .order('name', { ascending: true });
-        const venueList = (venuePlaceData || []) as VenuePlace[];
-        setManagedVenues(venueList);
-        if (venueList.length > 0) {
-          setSelectedVenuePlaceId(prev =>
-            prev && venueList.some(venue => venue.id === prev) ? prev : venueList[0].id
-          );
-        } else {
-          setSelectedVenuePlaceId(null);
-        }
-      } else {
-        setManagedVenues([]);
-        setSelectedVenuePlaceId(null);
-      }
+      lastLoadedRef.current = currentContext;
     } catch (err) {
       setError('Could not load profile data. Check your Supabase connection.');
     } finally {
@@ -188,8 +203,10 @@ const Profile: React.FC = () => {
   };
 
   useEffect(() => {
-    loadProfileData();
-  }, [user, profile?.role]);
+    if (user?.id) {
+      loadProfileData();
+    }
+  }, [user?.id, profile?.role, isManagementMode, activeEntity?.subject_id]);
 
   useEffect(() => {
     setDisplayName(profile?.display_name || '');
@@ -202,8 +219,8 @@ const Profile: React.FC = () => {
     setLinkSpotify(profile?.external_links?.spotify || '');
   }, [profile]);
 
-  const selectedVenuePlace = managedVenues.find(venue => venue.id === selectedVenuePlaceId) || null;
-  const displayVenue = selectedVenuePlace ?? managedVenues[0] ?? null;
+  const selectedVenuePlace = managedEntities.find(ent => ent.venue?.id === selectedVenuePlaceId)?.venue || null;
+  const displayVenue = selectedVenuePlace ?? managedEntities.find(ent => ent.type === 'venue')?.venue ?? null;
 
   useEffect(() => {
     if (!selectedVenuePlace) {
@@ -255,8 +272,8 @@ const Profile: React.FC = () => {
     setMessage('');
     setSaving(true);
 
-    const nextLinks: ProfileRecord['external_links'] = {
-      ...(profile?.external_links || {}),
+    const nextLinks: any = {
+      ...(activeProfile?.external_links || {}),
     };
 
     const applyLink = (key: string, value: string) => {
@@ -272,7 +289,7 @@ const Profile: React.FC = () => {
     applyLink('instagram', linkInstagram);
     applyLink('spotify', linkSpotify);
 
-    const updates: Partial<ProfileRecord> = {
+    const updates: any = {
       display_name: displayName || null,
       username: username || null,
       primary_city: primaryCity || null,
@@ -283,6 +300,10 @@ const Profile: React.FC = () => {
     if (isDev) {
       updates.role = role;
     }
+
+    // If management mode, we should update the entity instead of the user profile
+    // For now, let's keep it simple and update the personal profile.
+    // TODO: Implement entity update logic (artist/venue)
 
     const { error: updateError } = await updateProfile(updates);
 
@@ -454,30 +475,84 @@ const Profile: React.FC = () => {
           <AppHeader />
           <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
             <div className="flex items-center gap-4 animate-fade-up motion-reduce:animate-none">
-              <div className="h-16 w-16 overflow-hidden rounded-full bg-slate-800">
+              <div className="h-16 w-16 overflow-hidden rounded-full bg-slate-800 ring-2 ring-white/5">
                 <img
-                  src={profile?.avatar_url || `https://picsum.photos/seed/${profile?.id}/120/120`}
+                  src={
+                    isManagementMode && activeEntity
+                      ? activeEntity.type === 'artist'
+                        ? activeEntity.artist?.avatar_url || `https://picsum.photos/seed/artist-${activeEntity.subject_id}/120/120`
+                        : activeEntity.venue?.photos?.[0] || `https://picsum.photos/seed/venue-${activeEntity.subject_id}/120/120`
+                      : profile?.avatar_url || `https://picsum.photos/seed/${profile?.id}/120/120`
+                  }
                   alt="Profile avatar"
                   className="h-full w-full object-cover"
                 />
               </div>
               <div className="flex-1">
                 <h2 className="font-display text-xl text-slate-50">
-                  {profile?.display_name || profile?.username || 'Your profile'}
+                  {isManagementMode && activeEntity
+                    ? activeEntity.type === 'artist'
+                      ? activeEntity.artist?.name
+                      : activeEntity.venue?.name
+                    : profile?.display_name || profile?.username || 'Your profile'}
                 </h2>
                 <p className="text-sm text-slate-400">
-                  {profile?.primary_city || 'City'} · @{profile?.username || 'user'}
+                  {isManagementMode && activeEntity
+                    ? activeEntity.type === 'artist'
+                      ? 'Managed Artist'
+                      : 'Managed Venue'
+                    : (profile?.primary_city || 'City') + ' · @' + (profile?.username || 'user')}
                 </p>
               </div>
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-xl border border-[#ff6b4a]/40 px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
-                onClick={() => setShowEdit(prev => !prev)}
-              >
-                <IconEdit className="h-4 w-4" />
-                Edit
-              </button>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-xl border border-[#ff6b4a]/40 px-3 py-1.5 text-xs font-semibold text-[#ffd1c4] transition hover:bg-[#ff6b4a]/10"
+                  onClick={() => setShowEdit(prev => !prev)}
+                >
+                  <IconEdit className="h-4 w-4" />
+                  Edit
+                </button>
+                {managedEntities.length > 0 && (
+                  <button
+                    type="button"
+                    className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
+                      isManagementMode
+                        ? 'border-[#ff6b4a] bg-[#ff6b4a] text-white'
+                        : 'border-white/10 bg-white/5 text-slate-400 hover:bg-white/10'
+                    }`}
+                    onClick={() => {
+                      if (!isManagementMode && managedEntities.length > 0) {
+                        setActiveEntity(managedEntities[0]);
+                      }
+                      setManagementMode(!isManagementMode);
+                    }}
+                  >
+                    <IconBriefcase className="h-4 w-4" />
+                    {isManagementMode ? 'Exit Mgmt' : 'Mgmt Mode'}
+                  </button>
+                )}
+              </div>
             </div>
+
+            {isManagementMode && managedEntities.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-1 animate-fade-in">
+                {managedEntities.map(ent => (
+                  <button
+                    key={ent.subject_id}
+                    type="button"
+                    className={`flex-shrink-0 rounded-full px-4 py-1.5 text-xs font-medium transition ${
+                      activeEntity?.subject_id === ent.subject_id
+                        ? 'bg-white text-[#141824]'
+                        : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                    }`}
+                    onClick={() => setActiveEntity(ent)}
+                  >
+                    {ent.type === 'artist' ? ent.artist?.name : ent.venue?.name}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <div
               className="grid grid-cols-3 gap-3 text-center animate-fade-up motion-reduce:animate-none"
@@ -485,8 +560,18 @@ const Profile: React.FC = () => {
             >
               {[
                 { label: 'Posts', value: posts.length.toString() },
-                { label: 'Role', value: profile?.role || 'user' },
-                { label: 'Verified', value: profile?.is_verified ? 'Yes' : 'No' },
+                { 
+                  label: 'Role', 
+                  value: isManagementMode && activeEntity 
+                    ? activeEntity.type.charAt(0).toUpperCase() + activeEntity.type.slice(1)
+                    : profile?.role || 'user' 
+                },
+                { 
+                  label: 'Verified', 
+                  value: isManagementMode && activeEntity 
+                    ? (activeEntity.type === 'artist' ? 'Yes' : 'No') // Artists are usually verified in this context
+                    : profile?.is_verified ? 'Yes' : 'No' 
+                },
               ].map(stat => (
                 <div
                   key={stat.label}
@@ -682,13 +767,13 @@ const Profile: React.FC = () => {
                 {profile?.role === 'venue' && (
                   <div className="space-y-3">
                     <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">Venue management</p>
-                    {managedVenues.length === 0 ? (
+                    {managedEntities.filter(e => e.type === 'venue').length === 0 ? (
                       <p className="text-sm text-slate-500">
                         No managed venue place yet. Create or claim a venue to edit its details.
                       </p>
                     ) : (
                       <>
-                        {managedVenues.length > 1 && (
+                        {managedEntities.filter(e => e.type === 'venue').length > 1 && (
                           <label className="flex flex-col gap-2">
                             <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                               Managed venue
@@ -698,11 +783,13 @@ const Profile: React.FC = () => {
                               onChange={e => setSelectedVenuePlaceId(e.target.value || null)}
                               className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100"
                             >
-                              {managedVenues.map(venue => (
-                                <option key={venue.id} value={venue.id}>
-                                  {venue.name}
-                                </option>
-                              ))}
+                              {managedEntities
+                                .filter(e => e.type === 'venue')
+                                .map(ent => (
+                                  <option key={ent.venue?.id} value={ent.venue?.id}>
+                                    {ent.venue?.name}
+                                  </option>
+                                ))}
                             </select>
                           </label>
                         )}

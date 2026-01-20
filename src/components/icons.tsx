@@ -118,12 +118,18 @@ export const IconChevronLeft: React.FC<IconProps> = ({ className, size = 20 }) =
   </svg>
 );
 
+export const IconBriefcase: React.FC<IconProps> = ({ className, size = 20 }) => (
+  <svg {...baseProps(size)} className={className}>
+    <rect x="2" y="7" width="20" height="14" rx="2" />
+    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+  </svg>
+);
+
 export const IconQrCode: React.FC<IconProps> = ({ className, size = 20 }) => (
   <svg {...baseProps(size)} className={className}>
-    <rect x="3" y="3" width="7" height="7" />
-    <rect x="14" y="3" width="7" height="7" />
-    <rect x="14" y="14" width="7" height="7" />
-    <rect x="3" y="14" width="7" height="7" />
-    <rect x="8" y="8" width="8" height="8" />
+    <rect x="3" y="3" width="7" height="7" rx="1" />
+    <rect x="14" y="3" width="7" height="7" rx="1" />
+    <rect x="3" y="14" width="7" height="7" rx="1" />
+    <path d="M14 14h3M21 14h-3M14 17h3M14 21h3M21 17v4" />
   </svg>
 );

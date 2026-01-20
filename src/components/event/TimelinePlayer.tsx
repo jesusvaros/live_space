@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { IonSpinner } from '@ionic/react';
-import { PostWithRelations } from '../../lib/types';
+import { PostWithSetlist } from '../../lib/types';
 import TimelineScrubber, { TimelineBucket } from './TimelineScrubber';
 import SecondStack from './SecondStack';
 
@@ -10,7 +10,7 @@ type TimelinePlayerProps = {
   buckets: TimelineBucket[];
   selectedBucketIndex: number;
   selectedMomentIndex: number;
-  moments: PostWithRelations[];
+  moments: PostWithSetlist[];
   loading: boolean;
   totalMoments: number;
   eventStart: Date | null;
@@ -47,7 +47,7 @@ const formatBucketLabel = (bucketTime: string | null, eventStart: Date | null) =
   });
 };
 
-const formatMomentLabel = (moment: PostWithRelations | null, eventStart: Date | null) => {
+const formatMomentLabel = (moment: PostWithSetlist | null, eventStart: Date | null) => {
   if (!moment) return '';
   const timestamp = moment.captured_at || moment.created_at;
   const date = new Date(timestamp);
@@ -175,9 +175,17 @@ const TimelinePlayer: React.FC<TimelinePlayerProps> = ({
               <img src={selectedMoment.media_url} alt={selectedMoment.caption || 'Moment'} className="h-full w-full object-cover" />
             )}
             <div className="absolute inset-0 flex flex-col justify-end bg-[linear-gradient(180deg,rgba(0,0,0,0.05)_45%,rgba(0,0,0,0.75)_100%)] p-4">
+              {selectedMoment.resolved_song_title && (
+                <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[#ff6b4a]/20 px-2.5 py-1 backdrop-blur-sm">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#ffd1c4]">
+                    {selectedMoment.resolved_song_title}
+                  </span>
+                </div>
+              )}
               <p className="text-xs text-white/70">{selectedMomentLabel}</p>
               <h4 className="mt-1.5 text-lg font-semibold text-slate-50">
-                {selectedMoment.profiles?.display_name ||
+                {selectedMoment.actor_name ||
+                  selectedMoment.profiles?.display_name ||
                   selectedMoment.profiles?.username ||
                   'Anonymous'}
               </h4>

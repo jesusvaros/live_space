@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { IonPage, IonContent, IonSpinner } from '@ionic/react';
 import { useHistory, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Event, Profile, VenuePlace } from '../lib/types';
+import { Event, Profile, VenuePlace, PostWithSetlist } from '../lib/types';
+import { socialService } from '../services/social.service';
+import { useAuth } from '../contexts/AuthContext';
 import AppHeader from '../components/AppHeader';
 import EventCard from '../components/EventCard';
 
@@ -13,23 +15,20 @@ type VenueEvent = Event & {
   event_artists?: { artist: Profile | null }[];
 };
 
-type VenueMoment = {
-  id: string;
-  media_url: string;
-  media_type: 'video' | 'image';
-  caption: string | null;
-  event_id: string;
-  created_at: string;
-};
-
 const VenueDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const history = useHistory();
+  const { user, profile: currentUserProfile } = useAuth();
+  
   const [venue, setVenue] = useState<VenuePlace | null>(null);
   const [events, setEvents] = useState<VenueEvent[]>([]);
-  const [moments, setMoments] = useState<VenueMoment[]>([]);
+  const [moments, setMoments] = useState<PostWithSetlist[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
 
   useEffect(() => {
     const loadVenue = async () => {
@@ -91,15 +90,26 @@ const VenueDetail: React.FC = () => {
         setVenue(venueData as VenuePlace);
         setEvents((eventsData || []) as VenueEvent[]);
 
+        if (venueData.subject_id) {
+          const [count, following] = await Promise.all([
+            socialService.getFollowersCount(venueData.subject_id),
+            user && currentUserProfile?.subject_id 
+              ? socialService.isFollowing(currentUserProfile.subject_id, venueData.subject_id)
+              : Promise.resolve(false)
+          ]);
+          setFollowersCount(count);
+          setIsFollowing(following);
+        }
+
         const eventIds = (eventsData || []).map(event => event.id);
         if (eventIds.length > 0) {
           const { data: momentsData } = await supabase
             .from('posts')
-            .select('id, media_url, media_type, caption, event_id, created_at')
+            .select('id, media_url, media_type, caption, event_id, created_at, actor_subject_id, song_title')
             .in('event_id', eventIds)
             .order('created_at', { ascending: false })
             .limit(18);
-          setMoments((momentsData || []) as VenueMoment[]);
+          setMoments((momentsData || []) as PostWithSetlist[]);
         } else {
           setMoments([]);
         }
@@ -114,7 +124,31 @@ const VenueDetail: React.FC = () => {
     };
 
     loadVenue();
-  }, [id]);
+  }, [id, user, currentUserProfile?.subject_id]);
+
+  const handleFollowToggle = async () => {
+    if (!user || !currentUserProfile?.subject_id || !venue?.subject_id) {
+      if (!user) history.push('/welcome');
+      return;
+    }
+
+    setFollowLoading(true);
+    try {
+      if (isFollowing) {
+        await socialService.unfollow(currentUserProfile.subject_id, venue.subject_id);
+        setIsFollowing(false);
+        setFollowersCount(prev => Math.max(0, prev - 1));
+      } else {
+        await socialService.follow(currentUserProfile.subject_id, venue.subject_id);
+        setIsFollowing(true);
+        setFollowersCount(prev => prev + 1);
+      }
+    } catch (err) {
+      console.error('Failed to toggle follow', err);
+    } finally {
+      setFollowLoading(false);
+    }
+  };
 
   const addressLine = useMemo(() => {
     if (!venue) return '';
@@ -129,7 +163,7 @@ const VenueDetail: React.FC = () => {
       <IonContent fullscreen>
         <div className="app-layout">
           <AppHeader />
-          <div className="app-screen">
+          <div className="app-screen p-4">
             {loading && (
               <div className="flex items-center justify-center py-12">
                 <IonSpinner name="crescent" />
@@ -142,25 +176,45 @@ const VenueDetail: React.FC = () => {
 
             {!loading && venue && (
               <>
-                <section className="venue-hero">
-                  <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">
-                    Venue
-                  </p>
-                  <h1 className="mt-2 font-display text-2xl text-slate-50">
-                    {venue.name}
-                  </h1>
+                <section className="venue-hero space-y-4 mb-6">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">
+                      Venue
+                    </p>
+                    <h1 className="mt-2 font-display text-2xl text-slate-50">
+                      {venue.name}
+                    </h1>
+                    <div className="flex items-center gap-3 mt-1 text-xs">
+                      <p className="text-slate-400 font-semibold uppercase tracking-wider">
+                        {followersCount} followers
+                      </p>
+                      {user && (
+                        <button
+                          type="button"
+                          disabled={followLoading}
+                          onClick={handleFollowToggle}
+                          className={`rounded-full px-4 py-1 text-[10px] font-bold uppercase tracking-widest transition ${
+                            isFollowing
+                              ? 'bg-white/10 text-white border border-white/10'
+                              : 'bg-[#ff6b4a] text-white'
+                          }`}
+                        >
+                          {followLoading ? <IonSpinner name="crescent" /> : (isFollowing ? 'Following' : 'Follow')}
+                        </button>
+                      )}
+                    </div>
+                  </div>
                   {addressLine && (
                     <p className="text-sm text-slate-400">{addressLine}</p>
                   )}
                   {(venue.venue_type || venue.capacity) && (
                     <p className="text-xs text-slate-500">
-                      {venue.venue_type || 'Venue'}
-                      {venue.capacity ? ` · ${venue.capacity} cap` : ''}
+                      {venue.venue_type || 'Venue'}{venue.capacity ? ` · ${venue.capacity} cap` : ''}
                     </p>
                   )}
                   {venue.website_url && (
                     <a
-                      className="venue-link"
+                      className="text-xs text-[#ffd1c4] hover:text-[#ff6b4a] transition-colors"
                       href={venue.website_url}
                       target="_blank"
                       rel="noreferrer"
@@ -170,17 +224,17 @@ const VenueDetail: React.FC = () => {
                   )}
                 </section>
 
-                {venue.photos.length > 0 && (
-                  <section className="venue-photo-row">
-                    {venue.photos.map((url, index) => (
-                      <div key={`${url}-${index}`} className="venue-photo">
-                        <img src={url} alt={`Venue ${venue.name}`} />
+                {(venue.photos || []).length > 0 && (
+                  <section className="flex gap-3 overflow-x-auto pb-4 mb-6 scrollbar-hide">
+                    {(venue.photos || []).map((url, index) => (
+                      <div key={`${url}-${index}`} className="h-32 w-48 flex-shrink-0 overflow-hidden rounded-2xl bg-[#0f1320] border border-white/5 shadow-lg">
+                        <img src={url} alt={`Venue ${venue.name}`} className="h-full w-full object-cover" />
                       </div>
                     ))}
                   </section>
                 )}
 
-                <section className="space-y-3">
+                <section className="space-y-3 mb-8">
                   <div>
                     <h2 className="font-display text-lg text-slate-50">Events</h2>
                     <p className="text-xs text-slate-500">
@@ -204,7 +258,7 @@ const VenueDetail: React.FC = () => {
                   )}
                 </section>
 
-                <section className="space-y-3">
+                <section className="space-y-3 mb-8">
                   <div>
                     <h2 className="font-display text-lg text-slate-50">Recent moments</h2>
                     <p className="text-xs text-slate-500">Latest media from this space.</p>
@@ -216,7 +270,12 @@ const VenueDetail: React.FC = () => {
                   ) : (
                     <div className="grid grid-cols-3 gap-2">
                       {moments.map(moment => (
-                        <div key={moment.id} className="venue-moment">
+                        <button
+                          key={moment.id}
+                          type="button"
+                          onClick={() => history.push(`/post/${moment.id}`)}
+                          className="overflow-hidden rounded-2xl bg-[#0f1320] aspect-square border border-white/5 hover:ring-2 hover:ring-slate-600 transition-all"
+                        >
                           {moment.media_type === 'video' ? (
                             <video className="h-full w-full object-cover" muted>
                               <source src={moment.media_url} />
@@ -228,13 +287,21 @@ const VenueDetail: React.FC = () => {
                               className="h-full w-full object-cover"
                             />
                           )}
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}
                 </section>
               </>
             )}
+
+            <button
+              type="button"
+              className="inline-flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/5 py-3 text-sm font-semibold text-slate-300 hover:bg-white/10 transition-colors"
+              onClick={() => history.goBack()}
+            >
+              Back
+            </button>
           </div>
         </div>
       </IonContent>

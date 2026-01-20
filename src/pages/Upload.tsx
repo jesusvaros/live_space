@@ -76,7 +76,7 @@ const getCaptureLabel = (source: string | null, capturedAt: Date | null) => {
 const Upload: React.FC = () => {
   const history = useHistory();
   const location = useLocation();
-  const { user, profile } = useAuth();
+  const { user, profile, isManagementMode, activeEntity } = useAuth();
   const [events, setEvents] = useState<EventWithVenue[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [eventsError, setEventsError] = useState('');
@@ -373,8 +373,13 @@ const Upload: React.FC = () => {
 
         const { data: publicUrl } = supabase.storage.from('media').getPublicUrl(path);
 
+        const actorSubjectId = isManagementMode && activeEntity 
+          ? activeEntity.subject_id 
+          : profile?.subject_id;
+
         const { error: insertError } = await supabase.from('posts').insert({
           user_id: user.id,
+          actor_subject_id: actorSubjectId,
           event_id: selectedEvent.id,
           media_url: publicUrl.publicUrl,
           media_type: item.mediaType,

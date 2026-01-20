@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { AuthError } from '@supabase/supabase-js';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import { AuthError, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { Profile, AuthState } from '../lib/types';
+import { Profile, AuthState, ManagedEntity } from '../lib/types';
+import { managementService } from '../services/management.service';
 
 interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
@@ -19,6 +20,11 @@ interface AuthContextType extends AuthState {
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: AuthError | null }>;
   refreshProfile: () => Promise<void>;
+  managedEntities: ManagedEntity[];
+  activeEntity: ManagedEntity | null;
+  isManagementMode: boolean;
+  setManagementMode: (enabled: boolean) => void;
+  setActiveEntity: (entity: ManagedEntity | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,78 +43,86 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     profile: null,
     loading: true,
   });
+  
+  const [managedEntities, setManagedEntities] = useState<ManagedEntity[]>([]);
+  const [activeEntity, setActiveEntity] = useState<ManagedEntity | null>(null);
+  const [isManagementMode, setIsManagementMode] = useState(false);
+  
   const isDev = Boolean((import.meta as any).env?.DEV);
+  const profileUserIdRef = useRef<string | null>(null);
+  const loadingProfileRef = useRef<string | null>(null);
+  const lastLoadedEntitiesUserRef = useRef<string>('');
+  const loadingEntitiesRef = useRef<string | null>(null);
+
+    const loadProfile = async (userId: string, userRecord: User, mounted: boolean) => {
+      if (!mounted) return;
+      
+      // Skip if already loaded OR currently loading for this user
+      if (profileUserIdRef.current === userId && authState.profile && !authState.loading) return;
+      if (loadingProfileRef.current === userId) return;
+      
+      loadingProfileRef.current = userId;
+      setAuthState(prev => ({ ...prev, user: userRecord, loading: true }));
+
+      try {
+        // Use the view v_subject_users to get profile + subject_id
+        const { data: profile, error } = await supabase
+          .from('v_subject_users')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (!mounted || loadingProfileRef.current !== userId) return;
+
+        let finalProfile = profile;
+        if (!profile && !error) {
+          const metadata = userRecord.user_metadata ?? {};
+          const { data: createdProfile } = await supabase
+            .from('profiles')
+            .insert({
+              id: userId,
+              username: metadata.username ?? null,
+              display_name: metadata.display_name ?? metadata.displayName ?? null,
+              primary_city: metadata.primary_city ?? metadata.primaryCity ?? null,
+            })
+            .select('*')
+            .single();
+
+          if (createdProfile) {
+            // Ensure subject exists for the new user
+            const { data: subjectId } = await supabase
+              .rpc('get_or_create_user_subject', { p_profile_id: userId });
+            
+            finalProfile = { ...createdProfile, subject_id: subjectId };
+          }
+        }
+
+        profileUserIdRef.current = userId;
+        setAuthState({
+          user: userRecord,
+          profile: finalProfile ?? null,
+          loading: false,
+        });
+      } catch (err) {
+        console.error('[auth] failed to load profile', err);
+        if (mounted) setAuthState(prev => ({ ...prev, loading: false }));
+      } finally {
+        if (loadingProfileRef.current === userId) {
+          loadingProfileRef.current = null;
+        }
+      }
+    };
 
   useEffect(() => {
-    const loadProfile = async (userId: string, userRecord: AuthState['user']) => {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+    let mounted = true;
+    let authListener: { subscription: { unsubscribe: () => void } } | null = null;
 
-      if (!profile && userRecord) {
-        const metadata = userRecord.user_metadata ?? {};
-        const { data: createdProfile } = await supabase
-          .from('profiles')
-          .insert({
-            id: userId,
-            username: metadata.username ?? null,
-            display_name: metadata.display_name ?? metadata.displayName ?? null,
-            primary_city: metadata.primary_city ?? metadata.primaryCity ?? null,
-          })
-          .select('*')
-          .single();
-
-        setAuthState(prev => ({
-          ...prev,
-          user: userRecord,
-          profile: createdProfile ?? null,
-          loading: false,
-        }));
-        return;
-      }
-
-      setAuthState(prev => ({
-        ...prev,
-        user: userRecord,
-        profile: profile ?? null,
-        loading: false,
-      }));
-    };
-
-    // Get initial session
-    const getInitialSession = async () => {
+    const initAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (session?.user) {
-        setAuthState({
-          user: session.user,
-          profile: null,
-          loading: false,
-        });
-        await loadProfile(session.user.id, session.user);
-      } else {
-        setAuthState({
-          user: null,
-          profile: null,
-          loading: false,
-        });
-      }
-    };
-
-    getInitialSession();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      if (mounted) {
         if (session?.user) {
-          setAuthState({
-            user: session.user,
-            profile: null,
-            loading: false,
-          });
-          await loadProfile(session.user.id, session.user);
+          await loadProfile(session.user.id, session.user, mounted);
         } else {
           setAuthState({
             user: null,
@@ -117,10 +131,68 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
         }
       }
-    );
 
-    return () => subscription.unsubscribe();
+      const { data } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          if (!mounted) return;
+
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+            if (session?.user) {
+              await loadProfile(session.user.id, session.user, mounted);
+            }
+          } else if (event === 'SIGNED_OUT') {
+            profileUserIdRef.current = null;
+            setAuthState({
+              user: null,
+              profile: null,
+              loading: false,
+            });
+          }
+        }
+      );
+      authListener = data;
+    };
+
+    initAuth();
+
+    return () => {
+      mounted = false;
+      if (authListener) authListener.subscription.unsubscribe();
+    };
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadManagedEntities = async () => {
+      const userId = authState.user?.id;
+      if (userId) {
+        if (lastLoadedEntitiesUserRef.current === userId || loadingEntitiesRef.current === userId) return;
+        loadingEntitiesRef.current = userId;
+
+        try {
+          const entities = await managementService.getManagedEntities(userId);
+          if (mounted && authState.user?.id === userId) {
+            setManagedEntities(entities);
+            lastLoadedEntitiesUserRef.current = userId;
+          }
+        } catch (err) {
+          console.error('[auth] failed to load managed entities', err);
+        } finally {
+          if (loadingEntitiesRef.current === userId) {
+            loadingEntitiesRef.current = null;
+          }
+        }
+      } else if (mounted) {
+        setManagedEntities([]);
+        setActiveEntity(null);
+        setIsManagementMode(false);
+        lastLoadedEntitiesUserRef.current = '';
+        loadingEntitiesRef.current = null;
+      }
+    };
+    loadManagedEntities();
+    return () => { mounted = false; };
+  }, [authState.user?.id]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -163,15 +235,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
-    if (isDev) {
-      console.info('[auth] signOut');
-    }
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
         await supabase.auth.signOut({ scope: 'local' });
       }
     } finally {
+      profileUserIdRef.current = null;
       setAuthState({
         user: null,
         profile: null,
@@ -182,14 +252,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateProfile = async (updates: Partial<Profile>) => {
     if (!authState.user) {
-      if (isDev) {
-        console.warn('[auth] updateProfile skipped: no user');
-      }
       return { error: { message: 'No user logged in' } as AuthError };
-    }
-
-    if (isDev) {
-      console.info('[auth] updateProfile', { id: authState.user.id, updates });
     }
 
     const { role: requestedRole, ...safeUpdates } = updates;
@@ -207,14 +270,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .select('*')
       .single();
 
-    if (isDev) {
-      console.info('[auth] updateProfile result', { error: error?.message || null });
-    }
-
-    if (!error) {
+    if (!error && data) {
       setAuthState(prev => ({
         ...prev,
-        profile: data ?? (prev.profile ? { ...prev.profile, ...safeUpdates } : null),
+        profile: data,
       }));
     }
 
@@ -229,10 +288,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .eq('id', authState.user.id)
       .single();
 
-    setAuthState(prev => ({
-      ...prev,
-      profile: profile ?? null,
-    }));
+    if (profile) {
+      setAuthState(prev => ({
+        ...prev,
+        profile: profile,
+      }));
+    }
   };
 
   const value: AuthContextType = {
@@ -244,6 +305,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signOut,
     updateProfile,
     refreshProfile,
+    managedEntities,
+    activeEntity,
+    isManagementMode,
+    setManagementMode: setIsManagementMode,
+    setActiveEntity,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
