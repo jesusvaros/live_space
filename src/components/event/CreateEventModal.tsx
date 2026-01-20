@@ -137,63 +137,79 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
   })();
 
   return (
-    <div className="flex flex-col gap-4 rounded-3xl bg-[#141824] px-4 py-5">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex-1">
-          <h2 className="font-display text-lg font-semibold text-slate-50">Create event</h2>
-          <div className="relative mt-4">
-            <div className="absolute left-0 right-0 top-4 h-px bg-white/10" />
-            <div className="flex items-start justify-between">
-              {steps.map((label, index) => (
-                <div key={label} className="flex w-full flex-col items-center">
-                  <div
-                    className={`flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold ${
-                      index === stepIndex
-                        ? 'border-orange-400/70 bg-orange-500/20 text-orange-100'
-                        : 'border-white/20 bg-slate-900 text-slate-300'
-                    }`}
-                  >
-                    {index + 1}
-                  </div>
-                  <span className="mt-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                    {label}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-        <button
-          type="button"
-          className="inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold text-[#ffd1c4]"
-          onClick={onDismiss}
-        >
-          Close
-        </button>
-      </div>
-
-      {form.error && <p className="text-sm text-rose-400">{form.error}</p>}
-
-      {content}
-
-      <div className="flex flex-col gap-2 sm:flex-row tw">
-        {stepIndex > 0 && (
+    <div className="flex flex-col rounded-3xl bg-[#141824] overflow-hidden max-h-[100vh] h-full overflow-hidden">
+      {/* Header - Title + Close in same row */}
+      <div className="flex items-center justify-between gap-4 p-4 py-4 bg-gradient-to-r from-[#1a1f2e] to-[#151922] border-b border-white/10 flex-shrink-0">
+        <h2 className="font-display text-lg font-semibold text-slate-50 ">Create event</h2>
+        <div className="flex-1 flex justify-end">
           <button
             type="button"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#ff6b4a]/40 bg-transparent px-6 py-3 text-sm font-semibold text-[#ffd1c4] transition sm:w-auto"
-            onClick={handleBack}
+            className="inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold text-[#ffd1c4]"
+            onClick={onDismiss}
           >
-            Back
+            Close
           </button>
-        )}
-        <button
-          type="button"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#ff6b4a] px-6 py-3 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60"
-          onClick={handlePrimary}
-          disabled={form.saving || (stepIndex === steps.length - 1 && !organizerAllowed)}
-        >
-          {stepIndex === steps.length - 1 ? (form.saving ? 'Creating...' : 'Create event') : 'Next'}
-        </button>
+        </div>
+      </div>
+
+      {/* Progress Steps */}
+      <div className="px-4 pt-4 flex-shrink-0">
+        <div className="relative">
+          <div className="absolute left-0 right-0 top-4 h-px bg-white/10" />
+          <div className="flex items-start justify-between">
+            {steps.map((label, index) => (
+              <div key={label} className="flex w-full flex-col items-center">
+                <div
+                  className={`flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold ${
+                    index === stepIndex
+                      ? 'border-orange-400/70 bg-orange-500/20 text-orange-100'
+                      : 'border-white/20 bg-slate-900 text-slate-300'
+                  }`}
+                >
+                  {index + 1}
+                </div>
+                <span className="mt-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  {label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Error Message */}
+      {form.error && (
+        <div className="px-4 pt-4 flex-shrink-0">
+          <p className="text-sm text-rose-400">{form.error}</p>
+        </div>
+      )}
+
+      {/* Content - Scrollable */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 min-h-0">
+        {content}
+      </div>
+
+      {/* Footer - Always visible */}
+      <div className="p-4 pt-0 flex-shrink-0">
+        <div className="flex flex-col gap-2 sm:flex-row tw">
+          {stepIndex > 0 && (
+            <button
+              type="button"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#ff6b4a]/40 bg-transparent px-6 py-3 text-sm font-semibold text-[#ffd1c4] transition sm:w-auto"
+              onClick={handleBack}
+            >
+              Back
+            </button>
+          )}
+          <button
+            type="button"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#ff6b4a] px-6 py-3 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={handlePrimary}
+            disabled={form.saving || (stepIndex === steps.length - 1 && !organizerAllowed)}
+          >
+            {stepIndex === steps.length - 1 ? (form.saving ? 'Creating...' : 'Create event') : 'Next'}
+          </button>
+        </div>
       </div>
     </div>
   );

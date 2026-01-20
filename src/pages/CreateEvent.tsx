@@ -21,7 +21,7 @@ const CreateEventPage: React.FC = () => {
 
   return (
     <IonPage>
-      <IonContent fullscreen>
+      <IonContent fullscreen >
         <CreateEventModal
           onDismiss={() => history.push(fallbackRoute)}
           onCreated={eventId => {

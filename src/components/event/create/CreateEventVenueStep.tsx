@@ -72,14 +72,14 @@ const CreateEventVenueStep: React.FC<CreateEventVenueStepProps> = ({
   onNewVenueLngChange,
 }) => {
   return (
-    <section className="space-y-4 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 shadow-[0_24px_50px_rgba(0,0,0,0.45)]">
+    <section className="space-y-4 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 shadow-[0_24px_50px_rgba(0,0,0,0.45)] h-full">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-[14px] font-semibold uppercase tracking-[0.3em] text-slate-400">Venue</p>
         </div>
         <button
           type="button"
-          className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold text-[#ffd1c4]"
+          className="inline-flex items-center justify-center rounded-full  text-sm font-semibold text-[#ffd1c4]"
           onClick={onToggleVenueMode}
         >
           {venueMode === 'existing' ? 'New venue' : 'Use existing'}
@@ -132,50 +132,68 @@ const CreateEventVenueStep: React.FC<CreateEventVenueStepProps> = ({
               Loading venues...
             </div>
           ) : visibleVenues.length === 0 ? (
-            <p className="h-[72px] text-sm text-slate-500">
+            <p className="h-[250px] text-sm text-slate-500">
               No venues found. Switch to &quot;New venue&quot; to add one.
             </p>
           ) : (
-            <div className="grid h-[72px] grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2 overflow-auto pr-1">
-              {visibleVenues.map(venue => (
-                <div
-                  key={venue.id}
-                  className={`flex h-8 cursor-pointer items-center gap-2 rounded-full border px-3 py-2 text-left text-[11px] font-semibold text-slate-100 transition ${
-                    selectedVenue?.id === venue.id
-                      ? 'border-orange-400/60 bg-orange-500/20 text-orange-100'
-                      : 'border-white/10 bg-white/5'
-                  }`}
-                  onClick={() => onSelectVenue(venue)}
-                >
-                  <span className="truncate text-slate-50">{venue.name}</span>
-                  <span className="text-[10px] text-slate-400">{venue.city}</span>
-                </div>
-              ))}
+            <div className="overflow-auto pr-1 max-h-[250px]" >
+              <div className="space-y-3">
+                {visibleVenues.map(venue => (
+                  <div
+                    key={venue.id}
+                    className={`flex cursor-pointer items-center gap-4 rounded-2xl border p-4 text-left transition-all ${
+                      selectedVenue?.id === venue.id
+                        ? 'border-orange-400/60 bg-gradient-to-r from-orange-500/20 to-orange-600/10 text-orange-100 shadow-lg shadow-orange-500/10'
+                        : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
+                    }`}
+                    onClick={() => onSelectVenue(venue)}
+                  >
+                    {/* Venue Image */}
+                    <div className="flex h-16 w-16 items-center justify-center rounded-xl overflow-hidden bg-gradient-to-br from-slate-700 to-slate-800 flex-shrink-0">
+                      {venue.photos && venue.photos.length > 0 ? (
+                        <img 
+                          src={venue.photos[0]} 
+                          alt={venue.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <svg className="h-8 w-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                      )}
+                    </div>
+                    
+                    {/* Venue Info */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-semibold text-slate-50 mb-1">
+                        {venue.name}
+                      </h3>
+                      <p className="text-xs text-slate-400 mb-1">
+                        {venue.city}
+                        {venue.address ? ` · ${venue.address}` : ''}
+                      </p>
+                      {venue.venue_type && (
+                        <p className="text-xs text-slate-500">
+                          {venue.venue_type}
+                          {venue.capacity ? ` · Capacity: ${venue.capacity}` : ''}
+                        </p>
+                      )}
+                    </div>
+                    
+                    {/* Selection Indicator */}
+                    {selectedVenue?.id === venue.id && (
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 text-white flex-shrink-0">
+                        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
-          {selectedVenue ? (
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
-              <div>
-                <p className="text-sm text-slate-50">{selectedVenue.name}</p>
-                <p className="text-xs text-slate-400">
-                  {selectedVenue.city}
-                  {selectedVenue.address ? ` · ${selectedVenue.address}` : ''}
-                </p>
-              </div>
-              <button
-                type="button"
-                className="inline-flex items-center justify-center rounded-xl px-2.5 py-1.5 text-xs font-semibold text-[#ffd1c4]"
-                onClick={onClearVenue}
-              >
-                Clear
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
-              <p className="text-sm text-slate-50">Select a venue to continue</p>
-            </div>
-          )}
         </>
       )}
 
@@ -210,31 +228,6 @@ const CreateEventVenueStep: React.FC<CreateEventVenueStepProps> = ({
               placeholder="Street address"
             />
           </label>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="flex flex-col gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                Latitude
-              </span>
-              <input
-                className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
-                value={newVenueLat}
-                onChange={e => onNewVenueLatChange(e.target.value)}
-                placeholder="41.3874"
-              />
-            </label>
-            <label className="flex flex-col gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                Longitude
-              </span>
-              <input
-                className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
-                value={newVenueLng}
-                onChange={e => onNewVenueLngChange(e.target.value)}
-                placeholder="2.1686"
-              />
-            </label>
-          </div>
-          <p className="text-xs text-slate-500">Tap the map to set the venue coordinates.</p>
         </div>
       )}
     </section>
