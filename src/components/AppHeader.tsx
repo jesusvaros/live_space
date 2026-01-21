@@ -2,13 +2,15 @@ import React from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import AppBrand from './AppBrand';
 import { IconBell, IconChevronLeft } from './icons';
+import WorkspaceSwitcher from './WorkspaceSwitcher';
 
 type AppHeaderProps = {
+  title?: string;
   rightSlot?: React.ReactNode;
   showBack?: boolean;
 };
 
-const AppHeader: React.FC<AppHeaderProps> = ({ rightSlot, showBack }) => {
+const AppHeader: React.FC<AppHeaderProps> = ({ title, rightSlot, showBack }) => {
   const history = useHistory();
   const location = useLocation();
 
@@ -37,16 +39,21 @@ const AppHeader: React.FC<AppHeaderProps> = ({ rightSlot, showBack }) => {
               <IconChevronLeft className="h-4 w-4" />
             </button>
           ) : null}
-          <button
-            type="button"
-            className="flex items-center"
-            onClick={handleBrandClick}
-            aria-label="Go to home"
-          >
-            <AppBrand />
-          </button>
+          {title ? (
+            <h1 className="text-lg font-bold text-app-light">{title}</h1>
+          ) : (
+            <button
+              type="button"
+              className="flex items-center"
+              onClick={handleBrandClick}
+              aria-label="Go to home"
+            >
+              <AppBrand />
+            </button>
+          )}
         </div>
         <div className="inline-flex items-center gap-2">
+          <WorkspaceSwitcher />
           <button
             type="button"
             className="inline-flex items-center justify-center rounded-full px-3 py-2 text-sm font-semibold text-[#ffd1c4] disabled:cursor-not-allowed disabled:opacity-60"

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { IonPage, IonContent, IonSpinner } from '@ionic/react';
 import { useHistory, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Event, Profile, VenuePlace, PostWithSetlist } from '../lib/types';
+import { Event, Profile, VenuePlace, PostWithSetlist, Artist } from '../lib/types';
 import { socialService } from '../services/social.service';
 import { useAuth } from '../contexts/AuthContext';
 import AppHeader from '../components/AppHeader';
@@ -10,9 +10,8 @@ import EventCard from '../components/EventCard';
 
 type ProfileEvent = Event & {
   organizer?: Profile | null;
-  venue?: Profile | null;
   venue_place?: VenuePlace | null;
-  event_artists?: { artist: Profile | null }[];
+  event_artists?: { artist: Artist | null }[];
 };
 
 const ProfileDetail: React.FC = () => {
@@ -67,12 +66,6 @@ const ProfileDetail: React.FC = () => {
             display_name,
             role
           ),
-          venue:profiles!events_venue_id_fkey (
-            id,
-            username,
-            display_name,
-            role
-          ),
           venue_place:venue_places!events_venue_place_id_fkey (
             id,
             name,
@@ -82,11 +75,10 @@ const ProfileDetail: React.FC = () => {
             longitude
           ),
           event_artists (
-            artist:profiles!event_artists_artist_id_fkey (
+            artist:artists!event_artists_artist_entity_fk (
               id,
-              username,
-              display_name,
-              role
+              name,
+              avatar_url
             )
           )
         `;
@@ -98,7 +90,7 @@ const ProfileDetail: React.FC = () => {
           const { data: artistEvents } = await supabase
             .from('event_artists')
             .select('event_id')
-            .eq('artist_id', id);
+            .eq('artist_entity_id', id);
           eventIds = (artistEvents || []).map((row: any) => row.event_id);
           if (eventIds.length > 0) {
             const { data: eventsData } = await supabase
@@ -114,15 +106,22 @@ const ProfileDetail: React.FC = () => {
             .select('*')
             .eq('created_by', id)
             .order('name', { ascending: true });
-          setVenuePlaces((venuesData || []) as VenuePlace[]);
+          const venuePlacesList = (venuesData || []) as VenuePlace[];
+          setVenuePlaces(venuePlacesList);
 
-          const { data: eventsData } = await supabase
-            .from('events')
-            .select(eventSelect)
-            .eq('venue_id', id)
-            .order('starts_at', { ascending: false });
-          eventRows = (eventsData || []) as ProfileEvent[];
-          eventIds = eventRows.map(event => event.id);
+          const venuePlaceIds = venuePlacesList.map(v => v.id).filter(Boolean);
+          if (venuePlaceIds.length > 0) {
+            const { data: eventsData } = await supabase
+              .from('events')
+              .select(eventSelect)
+              .in('venue_place_id', venuePlaceIds)
+              .order('starts_at', { ascending: false });
+            eventRows = (eventsData || []) as ProfileEvent[];
+            eventIds = eventRows.map(event => event.id);
+          } else {
+            eventRows = [];
+            eventIds = [];
+          }
         } else if (profileData.role === 'label') {
           const { data: eventsData } = await supabase
             .from('events')

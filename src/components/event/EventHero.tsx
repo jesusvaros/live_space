@@ -4,20 +4,20 @@ import { Profile } from '../../lib/types';
 export type EventEntity = {
   id: string;
   name: string;
-  role: Profile['role'];
+  role: Profile['role'] | 'artist_entity';
 };
 
 type EventHeroProps = {
   title: string;
   meta: React.ReactNode;
   entities: EventEntity[];
-  onSelectEntity: (id: string) => void;
+  onSelectEntity: (id: string, role: EventEntity['role']) => void;
   coverImageUrl?: string | null;
   actions?: React.ReactNode;
 };
 
-const formatRole = (role: Profile['role']) => {
-  if (role === 'artist') return 'Artist';
+const formatRole = (role: EventEntity['role']) => {
+  if (role === 'artist' || role === 'artist_entity') return 'Artist';
   if (role === 'venue') return 'Venue';
   if (role === 'label') return 'Label';
   return 'User';
@@ -54,7 +54,7 @@ const EventHero: React.FC<EventHeroProps> = ({
               key={entity.id}
               type="button"
               className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-100"
-              onClick={() => onSelectEntity(entity.id)}
+              onClick={() => onSelectEntity(entity.id, entity.role)}
             >
               <span className="font-semibold text-slate-50">{entity.name}</span>
               <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400">

@@ -6,22 +6,21 @@ import {
   IonModal,
 } from '@ionic/react';
 import { supabase } from '../lib/supabase';
-import { Event, Profile, VenuePlace } from '../lib/types';
-import { useAuth } from '../contexts/AuthContext';
+import { Event, Profile, VenuePlace, Artist } from '../lib/types';
+import { useWorkspace } from '../contexts/WorkspaceContext';
 import { useHistory } from 'react-router-dom';
 import EventCard from '../components/EventCard';
 import AppHeader from '../components/AppHeader';
 
 type EventListItem = Event & {
   organizer?: Profile | null;
-  venue?: Profile | null;
   venue_place?: VenuePlace | null;
-  event_artists?: { artist: Profile | null }[];
+  event_artists?: { artist: Artist | null }[];
 };
 
 const Events: React.FC = () => {
   const history = useHistory();
-  const { profile } = useAuth();
+  const { canCreateEvent } = useWorkspace();
   const [events, setEvents] = useState<EventListItem[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -155,12 +154,6 @@ const Events: React.FC = () => {
             display_name,
             role
           ),
-          venue:profiles!events_venue_id_fkey (
-            id,
-            username,
-            display_name,
-            role
-          ),
           venue_place:venue_places!events_venue_place_id_fkey (
             id,
             name,
@@ -170,11 +163,10 @@ const Events: React.FC = () => {
             longitude
           ),
           event_artists (
-            artist:profiles!event_artists_artist_id_fkey (
+            artist:artists!event_artists_artist_entity_fk (
               id,
-              username,
-              display_name,
-              role
+              name,
+              avatar_url
             )
           )
         `
@@ -194,9 +186,6 @@ const Events: React.FC = () => {
   useEffect(() => {
     fetchEvents();
   }, []);
-
-  const organizerAllowed = Boolean(profile && ['artist', 'venue', 'label'].includes(profile.role));
-
 
   const renderEventCard = (event: EventListItem) => (
     <EventCard
@@ -236,7 +225,7 @@ const Events: React.FC = () => {
               style={{ animationDelay: '0.16s' }}
             >
               <p className="text-xs text-slate-500">Tonight and beyond.</p>
-              {organizerAllowed && (
+              {canCreateEvent && (
                 <button
                   type="button"
                   className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"

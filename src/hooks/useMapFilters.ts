@@ -6,13 +6,16 @@ type EventWithVenue = Event & { venue_place?: VenuePlace | null };
 type AttendanceStatus = 'going' | 'attended';
 
 type UseMapFiltersParams = {
-  events: EventWithVenue[];
+  events: (EventWithVenue & {
+    event_artists?: { artist?: { artist_type?: string | null } | null }[];
+  })[];
   venues: VenuePlace[];
   userId?: string | null;
 };
 
 export const useMapFilters = ({ events, venues, userId }: UseMapFiltersParams) => {
   const [search, setSearch] = useState('');
+  const [showEvents, setShowEvents] = useState(true);
   const [showVenues, setShowVenues] = useState(true);
   const [filterToday, setFilterToday] = useState(false);
   const [filterTomorrow, setFilterTomorrow] = useState(false);
@@ -22,6 +25,9 @@ export const useMapFilters = ({ events, venues, userId }: UseMapFiltersParams) =
   const [filterGenres, setFilterGenres] = useState('');
   const [priceMin, setPriceMin] = useState('');
   const [priceMax, setPriceMax] = useState('');
+  const [filterDayPart, setFilterDayPart] = useState<'day' | 'night' | ''>('');
+  const [filterBandOnly, setFilterBandOnly] = useState(false);
+  const [selectedArtistIds, setSelectedArtistIds] = useState<string[]>([]);
   const [filterGoing, setFilterGoing] = useState(false);
   const [filterAttended, setFilterAttended] = useState(false);
   const [attendanceMap, setAttendanceMap] = useState<Record<string, AttendanceStatus>>({});
@@ -48,6 +54,8 @@ export const useMapFilters = ({ events, venues, userId }: UseMapFiltersParams) =
   }, [userId, filterGoing, filterAttended]);
 
   const filteredEvents = useMemo(() => {
+    if (!showEvents) return [];
+
     const query = search.trim().toLowerCase();
     const now = new Date();
     const startOfToday = new Date(now);
@@ -105,6 +113,28 @@ export const useMapFilters = ({ events, venues, userId }: UseMapFiltersParams) =
       if (filterFree && event.is_free === false) {
         return false;
       }
+      if (filterDayPart) {
+        const hour = startsAt.getHours();
+        const isDay = hour >= 6 && hour < 18;
+        if (filterDayPart === 'day' && !isDay) return false;
+        if (filterDayPart === 'night' && isDay) return false;
+      }
+      if (filterBandOnly) {
+        const hasBand =
+          Array.isArray((event as any).event_artists) &&
+          (event as any).event_artists.some(
+            (item: any) => item?.artist?.artist_type === 'band'
+          );
+        if (!hasBand) return false;
+      }
+      if (selectedArtistIds.length > 0) {
+        const hasSelected =
+          Array.isArray((event as any).event_artists) &&
+          (event as any).event_artists.some(
+            (item: any) => item?.artist?.id && selectedArtistIds.includes(item.artist.id)
+          );
+        if (!hasSelected) return false;
+      }
       if (genreFilters.length > 0) {
         const eventGenres = (event.genres || []).map(item => item.toLowerCase());
         if (!genreFilters.some(filterItem => eventGenres.includes(filterItem))) {
@@ -143,9 +173,13 @@ export const useMapFilters = ({ events, venues, userId }: UseMapFiltersParams) =
     filterGenres,
     priceMin,
     priceMax,
+    filterDayPart,
+    filterBandOnly,
+    selectedArtistIds,
     filterGoing,
     filterAttended,
     attendanceMap,
+    showEvents,
   ]);
 
   const filteredVenues = useMemo(() => {
@@ -192,6 +226,9 @@ export const useMapFilters = ({ events, venues, userId }: UseMapFiltersParams) =
     setFilterGenres('');
     setPriceMin('');
     setPriceMax('');
+    setFilterDayPart('');
+    setFilterBandOnly(false);
+    setSelectedArtistIds([]);
     setFilterGoing(false);
     setFilterAttended(false);
   };
@@ -199,6 +236,8 @@ export const useMapFilters = ({ events, venues, userId }: UseMapFiltersParams) =
   return {
     search,
     setSearch,
+    showEvents,
+    setShowEvents,
     showVenues,
     setShowVenues,
     filterToday,
@@ -209,6 +248,12 @@ export const useMapFilters = ({ events, venues, userId }: UseMapFiltersParams) =
     filterGenres,
     priceMin,
     priceMax,
+    filterDayPart,
+    setFilterDayPart,
+    filterBandOnly,
+    setFilterBandOnly,
+    selectedArtistIds,
+    setSelectedArtistIds,
     filterGoing,
     filterAttended,
     toggleToday,

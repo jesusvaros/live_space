@@ -13,6 +13,7 @@ import { IonReactRouter } from '@ionic/react-router';
 import { Redirect, Route } from 'react-router-dom';
 import { IconCalendar, IconMap, IconQrCode, IconUser, IconPlay } from './components/icons';
 import { useAuth } from './contexts/AuthContext';
+import { useWorkspace } from './contexts/WorkspaceContext';
 import Welcome from './pages/Welcome';
 import Feed from './pages/Feed';
 import Events from './pages/Events';
@@ -26,10 +27,11 @@ import EventDetail from './pages/EventDetail';
 import ProfileDetail from './pages/ProfileDetail';
 import PostDetail from './pages/PostDetail';
 import VenueDetail from './pages/VenueDetail';
+import AdminGrants from './pages/AdminGrants';
 
 const App: React.FC = () => {
-  const { user, loading, profile } = useAuth();
-  const isOrganizerRole = Boolean(profile && ['artist', 'venue'].includes(profile.role));
+  const { user, loading } = useAuth();
+  const { isActingAsEntity } = useWorkspace();
   const tabBarStyle: { [key: string]: string } = {
     '--background': 'rgba(12, 15, 22, 0.95)',
     '--border': '1px solid rgba(255, 255, 255, 0.08)',
@@ -70,6 +72,7 @@ const App: React.FC = () => {
           <Route exact path="/venue/:id" component={VenueDetail} />
           <Route exact path="/profile/:id" component={ProfileDetail} />
           <Route exact path="/post/:id" component={PostDetail} />
+          <Route exact path="/admin/grants" component={AdminGrants} />
           <Route exact path="/reset" component={ResetPassword} />
           <Route exact path="/create-event" component={CreateEventPage} />
           <Route
@@ -84,7 +87,7 @@ const App: React.FC = () => {
                       exact
                       path="/tabs/qr-scanner"
                       render={() =>
-                        isOrganizerRole ? <OrganizerEventsTab /> : <QrScannerPage />
+                        isActingAsEntity ? <OrganizerEventsTab /> : <QrScannerPage />
                       }
                     />
                     <Route exact path="/tabs/events" component={Events} />
@@ -105,7 +108,7 @@ const App: React.FC = () => {
                       <span className="text-[11px] uppercase tracking-[0.12em]">Map</span>
                     </IonTabButton>
                     <IonTabButton tab="qr-scanner" href="/tabs/qr-scanner">
-                      {isOrganizerRole ? (
+                      {isActingAsEntity ? (
                         <>
                           <IconCalendar className="h-5 w-5" />
                           <span className="text-[11px] uppercase tracking-[0.12em]">My Space</span>

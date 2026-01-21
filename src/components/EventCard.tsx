@@ -1,12 +1,12 @@
 import React from 'react';
-import { Event, Profile, VenuePlace } from '../lib/types';
+import { Event, Profile, VenuePlace, Artist } from '../lib/types';
 import { IconCheckCircle, IconHeart } from './icons';
 
 type EventCardEvent = Event & {
   organizer?: Profile | null;
   venue?: Profile | null;
   venue_place?: VenuePlace | null;
-  event_artists?: { artist: Profile | null }[];
+  event_artists?: { artist: Artist | null }[];
 };
 
 type EventCardProps = {
@@ -26,9 +26,12 @@ const formatEventDate = (event: Event) =>
 const getProfileName = (profile?: Profile | null) =>
   profile?.display_name || profile?.username || null;
 
+const getArtistName = (artist?: Artist | null) =>
+  artist?.name || null;
+
 const getPrimaryArtist = (event: EventCardEvent) => {
   const artist = event.event_artists?.find(item => item.artist)?.artist;
-  if (artist) return getProfileName(artist);
+  if (artist) return getArtistName(artist);
   if (event.organizer && event.organizer.role !== 'venue') {
     return getProfileName(event.organizer);
   }

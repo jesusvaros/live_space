@@ -3,16 +3,25 @@ import { ManagedEntity } from '../lib/types';
 
 export const managementService = {
   async getManagedEntities(profileId: string): Promise<ManagedEntity[]> {
+    // 1. Get user_subject_id
+    const { data: subjectId, error: subjectError } = await supabase
+      .rpc('get_or_create_user_subject', { p_profile_id: profileId });
+    
+    if (subjectError) throw subjectError;
+
+    // 2. Query entity_members where admin_subject_id = user_subject_id
     const { data, error } = await supabase
-      .from('entity_admins')
+      .from('entity_members')
       .select(`
-        subject_id,
+        admin_subject_id,
+        entity_subject_id,
         role,
-        subjects!inner (
+        subjects:entity_subject_id (
+          id,
           type
         )
       `)
-      .eq('profile_id', profileId);
+      .eq('admin_subject_id', subjectId);
 
     if (error) throw error;
 
@@ -20,7 +29,7 @@ export const managementService = {
       (data as any[]).map(async (item) => {
         const type = item.subjects.type;
         const entity: ManagedEntity = {
-          subject_id: item.subject_id,
+          subject_id: item.entity_subject_id,
           role: item.role,
           type: type
         };
@@ -29,45 +38,71 @@ export const managementService = {
           const { data: artist } = await supabase
             .from('v_subject_artists')
             .select('*')
-            .eq('subject_id', item.subject_id)
+            .eq('subject_id', item.entity_subject_id)
             .maybeSingle();
           if (artist) entity.artist = artist;
         } else if (type === 'venue') {
           const { data: venue } = await supabase
             .from('v_subject_venues')
             .select('*')
-            .eq('subject_id', item.subject_id)
+            .eq('subject_id', item.entity_subject_id)
             .maybeSingle();
           if (venue) entity.venue = venue;
-        } else if (type === 'user') {
-          const { data: profile } = await supabase
-            .from('v_subject_users')
-            .select('*')
-            .eq('subject_id', item.subject_id)
-            .maybeSingle();
-          if (profile) entity.profile = profile;
         }
         return entity;
       })
     );
   },
 
-  async addAdmin(subjectId: string, profileId: string, role: string = 'admin'): Promise<void> {
-    const { error } = await supabase
-      .from('entity_admins')
-      .insert({
-        subject_id: subjectId,
-        profile_id: profileId,
-        role
-      });
+  async adminGrantEntityAccess(
+    targetProfileId: string,
+    entityType: 'artist' | 'venue',
+    entityId: string,
+    role: 'owner' | 'admin' | 'editor' | 'moderator' = 'admin'
+  ): Promise<void> {
+    const { error } = await supabase.rpc('admin_grant_entity_access', {
+      p_target_profile_id: targetProfileId,
+      p_entity_type: entityType,
+      p_entity_id: entityId,
+      p_role: role
+    });
     if (error) throw error;
   },
 
-  async removeAdmin(subjectId: string, profileId: string): Promise<void> {
+  async removeMember(adminSubjectId: string, entitySubjectId: string): Promise<void> {
     const { error } = await supabase
-      .from('entity_admins')
+      .from('entity_members')
       .delete()
-      .match({ subject_id: subjectId, profile_id: profileId });
+      .match({ admin_subject_id: adminSubjectId, entity_subject_id: entitySubjectId });
     if (error) throw error;
+  },
+
+  async searchProfiles(query: string) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, username, display_name, avatar_url')
+      .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
+      .limit(10);
+    
+    if (error) throw error;
+    return data;
+  },
+
+  async searchArtists(query: string) {
+    const { data, error } = await supabase.rpc('search_artists', {
+      search_query: query,
+      result_limit: 10
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  async searchVenues(query: string) {
+    const { data, error } = await supabase.rpc('search_venues', {
+      search_query: query,
+      result_limit: 10
+    });
+    if (error) throw error;
+    return data;
   }
 };

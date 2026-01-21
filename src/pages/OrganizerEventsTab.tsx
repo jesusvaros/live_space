@@ -5,28 +5,22 @@ import {
   IonSpinner,
 } from '@ionic/react';
 import { supabase } from '../lib/supabase';
-import { Event, Profile, VenuePlace } from '../lib/types';
+import { Event, Profile, VenuePlace, Artist } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
+import { useWorkspace } from '../contexts/WorkspaceContext';
 import { useHistory } from 'react-router-dom';
 import EventCard from '../components/EventCard';
 import AppHeader from '../components/AppHeader';
 
 type EventListItem = Event & {
   organizer?: Profile | null;
-  venue?: Profile | null;
   venue_place?: VenuePlace | null;
-  event_artists?: { artist: Profile | null }[];
+  event_artists?: { artist: Artist | null }[];
 };
 
 const EVENT_SELECT = `
   *,
   organizer:profiles!events_organizer_id_fkey (
-    id,
-    username,
-    display_name,
-    role
-  ),
-  venue:profiles!events_venue_id_fkey (
     id,
     username,
     display_name,
@@ -41,18 +35,18 @@ const EVENT_SELECT = `
     longitude
   ),
   event_artists (
-    artist:profiles!event_artists_artist_id_fkey (
+    artist:artists!event_artists_artist_entity_fk (
       id,
-      username,
-      display_name,
-      role
+      name,
+      avatar_url
     )
   )
 `;
 
 const OrganizerEventsTab: React.FC = () => {
   const history = useHistory();
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
+  const { activeWorkspace, canCreateEvent } = useWorkspace();
   const [events, setEvents] = useState<EventListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -62,7 +56,7 @@ const OrganizerEventsTab: React.FC = () => {
   }, [events]);
 
   const fetchEvents = useCallback(async () => {
-    if (!user || !profile) {
+    if (!user || !activeWorkspace) {
       setEvents([]);
       setLoading(false);
       return;
@@ -73,11 +67,11 @@ const OrganizerEventsTab: React.FC = () => {
     try {
       let results: EventListItem[] = [];
 
-      if (profile.role === 'artist') {
+      if (activeWorkspace.type === 'artist') {
         const { data: eventArtistLinks, error: linkError } = await supabase
           .from('event_artists')
           .select('event_id')
-          .eq('artist_id', user.id);
+          .eq('artist_entity_id', activeWorkspace.artist?.id);
         if (linkError) throw linkError;
         const eventIds = (eventArtistLinks || []).map((item: any) => item.event_id);
         if (eventIds.length > 0) {
@@ -89,11 +83,11 @@ const OrganizerEventsTab: React.FC = () => {
           if (eventsError) throw eventsError;
           results = (eventData || []) as EventListItem[];
         }
-      } else if (profile.role === 'venue') {
+      } else if (activeWorkspace.type === 'venue') {
         const { data: eventData, error: eventsError } = await supabase
           .from('events')
           .select(EVENT_SELECT)
-          .eq('venue_id', user.id)
+          .eq('venue_place_id', activeWorkspace.venue?.id)
           .order('starts_at', { ascending: true });
         if (eventsError) throw eventsError;
         results = (eventData || []) as EventListItem[];
@@ -107,16 +101,15 @@ const OrganizerEventsTab: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [profile?.role, user?.id]);
+  }, [activeWorkspace, user?.id]);
 
   useEffect(() => {
-    if (profile?.role && ['artist', 'venue'].includes(profile.role)) {
+    if (activeWorkspace) {
       fetchEvents();
     }
-  }, [fetchEvents, profile?.role]);
+  }, [fetchEvents, activeWorkspace]);
 
-
-  const organizerLabel = profile?.display_name || profile?.username || 'your profile';
+  const organizerLabel = activeWorkspace?.artist?.name || activeWorkspace?.venue?.name || 'your workspace';
 
   return (
     <IonPage>
@@ -136,15 +129,17 @@ const OrganizerEventsTab: React.FC = () => {
 
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs text-slate-500">
-                {profile?.role === 'venue' ? 'Shows at your venue' : 'Upcoming gigs you are booked on'}
+                {activeWorkspace?.type === 'venue' ? 'Shows at your venue' : 'Upcoming gigs you are booked on'}
               </p>
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
-                onClick={() => history.push('/create-event')}
-              >
-                Create event
-              </button>
+              {canCreateEvent && (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
+                  onClick={() => history.push('/create-event')}
+                >
+                  Create event
+                </button>
+              )}
             </div>
 
             {loading ? (

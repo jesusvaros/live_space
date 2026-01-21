@@ -7,7 +7,7 @@ import {
 } from '@ionic/react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Event, PostWithSetlist, Profile, VenuePlace, EventSetlistEntry } from '../lib/types';
+import { Event, PostWithSetlist, Profile, VenuePlace, EventSetlistEntry, Artist } from '../lib/types';
 import { eventService } from '../services/event.service';
 import { useAuth } from '../contexts/AuthContext';
 import { buildMomentItems, parseDatetimeLocalValue, MomentItem } from '../lib/moments';
@@ -20,9 +20,8 @@ import { IconCheckCircle, IconHeart, IconHeartFilled } from '../components/icons
 
 type EventDetailData = Event & {
   organizer?: Profile | null;
-  venue?: Profile | null;
   venue_place?: VenuePlace | null;
-  event_artists?: { artist: Profile | null }[];
+  event_artists?: { artist: Artist | null }[];
 };
 
 const EventDetail: React.FC = () => {
@@ -93,13 +92,6 @@ const EventDetail: React.FC = () => {
             avatar_url,
             role
           ),
-          venue:profiles!events_venue_id_fkey (
-            id,
-            username,
-            display_name,
-            avatar_url,
-            role
-          ),
           venue_place:venue_places!events_venue_place_id_fkey (
             id,
             name,
@@ -111,12 +103,10 @@ const EventDetail: React.FC = () => {
             photos
           ),
           event_artists (
-            artist:profiles!event_artists_artist_id_fkey (
+            artist:artists!event_artists_artist_entity_fk (
               id,
-              username,
-              display_name,
-              avatar_url,
-              role
+              name,
+              avatar_url
             )
           )
         `
@@ -394,7 +384,7 @@ const EventDetail: React.FC = () => {
     if (!event) return [];
     const list: EventEntity[] = [];
     const seen = new Set<string>();
-    const pushEntity = (profile: Profile | null | undefined) => {
+    const pushProfile = (profile: Profile | null | undefined) => {
       if (!profile || seen.has(profile.id)) return;
       list.push({
         id: profile.id,
@@ -404,21 +394,31 @@ const EventDetail: React.FC = () => {
       seen.add(profile.id);
     };
 
-    pushEntity(event.organizer);
-    pushEntity(event.venue);
-    event.event_artists?.forEach(item => pushEntity(item.artist));
+    const pushArtist = (artist: Artist | null | undefined) => {
+      if (!artist || seen.has(artist.id)) return;
+      list.push({
+        id: artist.id,
+        name: artist.name || 'Unknown Artist',
+        role: 'artist_entity',
+      });
+      seen.add(artist.id);
+    };
+
+    pushProfile(event.organizer);
+    pushProfile(event.venue);
+    event.event_artists?.forEach(item => pushArtist(item.artist));
     return list;
   }, [event]);
 
   const heroTitle = useMemo(() => {
     if (!event) return 'Event';
-    const getName = (profile: Profile | null | undefined) =>
-      profile?.display_name || profile?.username || null;
     const artist = event.event_artists?.find(item => item.artist)?.artist;
-    const artistName = getName(artist);
+    if (artist) return artist.name;
     const organizerName =
-      event.organizer && event.organizer.role !== 'venue' ? getName(event.organizer) : null;
-    return artistName || organizerName || event.name;
+      event.organizer && event.organizer.role !== 'venue' 
+        ? (event.organizer.display_name || event.organizer.username) 
+        : null;
+    return organizerName || event.name;
   }, [event]);
 
   const heroMeta = useMemo(() => {
@@ -461,8 +461,12 @@ const EventDetail: React.FC = () => {
   const eventStart = useMemo(() => (event ? new Date(event.starts_at) : null), [event]);
   const eventEnd = useMemo(() => (event?.ends_at ? new Date(event.ends_at) : null), [event]);
 
-  const handleSelectEntity = (profileId: string) => {
-    history.push(`/profile/${profileId}`);
+  const handleSelectEntity = (id: string, role: EventEntity['role']) => {
+    if (role === 'artist_entity') {
+      history.push(`/artist/${id}`);
+    } else {
+      history.push(`/profile/${id}`);
+    }
   };
 
   const canAddMoments = Boolean(user && (arrivedViaQr || attendanceStatus));
@@ -685,7 +689,7 @@ const EventDetail: React.FC = () => {
             subject_id: targetSubjectId || null,
             status 
           },
-          { onConflict: 'event_id,subject_id' }
+          { onConflict: 'event_id,user_id' }
         );
       if (upsertError) throw upsertError;
       setAttendanceStatus(status);

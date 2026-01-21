@@ -2,16 +2,17 @@ import React, { useState } from 'react';
 import { IonPage, IonContent, IonSpinner } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useWorkspace } from '../contexts/WorkspaceContext';
 import { supabase } from '../lib/supabase';
 import AppHeader from '../components/AppHeader';
 import QrScanner from '../components/QrScanner';
 
 const QrScannerPage: React.FC = () => {
   const history = useHistory();
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
+  const { canCreateEvent } = useWorkspace();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const organizerAllowed = Boolean(profile && ['artist', 'venue'].includes(profile.role));
 
   const handleQrDetected = async (data: string) => {
     if (!user) {
@@ -115,7 +116,7 @@ const QrScannerPage: React.FC = () => {
               </p>
             </div>
 
-            {organizerAllowed && (
+            {canCreateEvent && (
               <div className="mt-8 space-y-3 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 text-left shadow-[0_24px_50px_rgba(0,0,0,0.45)]">
                 <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">
                   Organizing?

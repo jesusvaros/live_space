@@ -6,11 +6,16 @@ type MapFilterBarProps = {
   filterDate: string;
   filterNow: boolean;
   filterFree: boolean;
+  showEvents: boolean;
+  showVenues: boolean;
   onToggleToday: () => void;
   onToggleTomorrow: () => void;
   onDateChange: (value: string) => void;
   onToggleNow: () => void;
   onToggleFree: () => void;
+  onToggleEvents: () => void;
+  onToggleVenues: () => void;
+  onOpenArtistSearch: () => void;
   onOpenFilters: () => void;
 };
 
@@ -20,11 +25,16 @@ const MapFilterBar: React.FC<MapFilterBarProps> = ({
   filterDate,
   filterNow,
   filterFree,
+  showEvents,
+  showVenues,
   onToggleToday,
   onToggleTomorrow,
   onDateChange,
   onToggleNow,
   onToggleFree,
+  onToggleEvents,
+  onToggleVenues,
+  onOpenArtistSearch,
   onOpenFilters,
 }) => {
   const baseChip =
@@ -39,7 +49,25 @@ const MapFilterBar: React.FC<MapFilterBarProps> = ({
     }
   };
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1">
+    <div className="flex flex-wrap gap-2 overflow-x-auto pb-1">
+      <div
+        role="button"
+        tabIndex={0}
+        className={`${baseChip} ${showEvents ? activeChip : inactiveChip}`}
+        onClick={onToggleEvents}
+        onKeyDown={handleKeyActivate(onToggleEvents)}
+      >
+        🎟 Eventos
+      </div>
+      <div
+        role="button"
+        tabIndex={0}
+        className={`${baseChip} ${showVenues ? activeChip : inactiveChip}`}
+        onClick={onToggleVenues}
+        onKeyDown={handleKeyActivate(onToggleVenues)}
+      >
+        🏛 Salas
+      </div>
       <div
         role="button"
         tabIndex={0}
@@ -73,7 +101,7 @@ const MapFilterBar: React.FC<MapFilterBarProps> = ({
         onClick={onToggleNow}
         onKeyDown={handleKeyActivate(onToggleNow)}
       >
-        Ahora
+        ⚡ Ahora
       </div>
       <div
         role="button"
@@ -82,7 +110,16 @@ const MapFilterBar: React.FC<MapFilterBarProps> = ({
         onClick={onToggleFree}
         onKeyDown={handleKeyActivate(onToggleFree)}
       >
-        Gratis
+        💸 Gratis
+      </div>
+      <div
+        role="button"
+        tabIndex={0}
+        className={`${baseChip} bg-[#1f2a3d] text-slate-100 border-white/30 shadow-[0_8px_18px_rgba(0,0,0,0.35)]`}
+        onClick={onOpenArtistSearch}
+        onKeyDown={handleKeyActivate(onOpenArtistSearch)}
+      >
+        🎤 Artista
       </div>
       <div
         role="button"

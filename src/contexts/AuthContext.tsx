@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { AuthError, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { Profile, AuthState, ManagedEntity } from '../lib/types';
-import { managementService } from '../services/management.service';
+import { Profile, AuthState } from '../lib/types';
 
 interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
@@ -20,11 +19,6 @@ interface AuthContextType extends AuthState {
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: AuthError | null }>;
   refreshProfile: () => Promise<void>;
-  managedEntities: ManagedEntity[];
-  activeEntity: ManagedEntity | null;
-  isManagementMode: boolean;
-  setManagementMode: (enabled: boolean) => void;
-  setActiveEntity: (entity: ManagedEntity | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -44,15 +38,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading: true,
   });
   
-  const [managedEntities, setManagedEntities] = useState<ManagedEntity[]>([]);
-  const [activeEntity, setActiveEntity] = useState<ManagedEntity | null>(null);
-  const [isManagementMode, setIsManagementMode] = useState(false);
-  
   const isDev = Boolean((import.meta as any).env?.DEV);
   const profileUserIdRef = useRef<string | null>(null);
   const loadingProfileRef = useRef<string | null>(null);
-  const lastLoadedEntitiesUserRef = useRef<string>('');
-  const loadingEntitiesRef = useRef<string | null>(null);
 
     const loadProfile = async (userId: string, userRecord: User, mounted: boolean) => {
       if (!mounted) return;
@@ -65,19 +53,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAuthState(prev => ({ ...prev, user: userRecord, loading: true }));
 
       try {
-        // Use the view v_subject_users to get profile + subject_id
-        const { data: profile, error } = await supabase
-          .from('v_subject_users')
+        // Load the profile row directly and keep subjects aligned
+        const { data: profileRow, error: profileError } = await supabase
+          .from('profiles')
           .select('*')
           .eq('id', userId)
           .maybeSingle();
 
+        if (profileError) throw profileError;
         if (!mounted || loadingProfileRef.current !== userId) return;
 
-        let finalProfile = profile;
-        if (!profile && !error) {
+        let finalProfileData = profileRow;
+        if (!finalProfileData) {
           const metadata = userRecord.user_metadata ?? {};
-          const { data: createdProfile } = await supabase
+          const { data: createdProfile, error: creationError } = await supabase
             .from('profiles')
             .insert({
               id: userId,
@@ -88,14 +77,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .select('*')
             .single();
 
-          if (createdProfile) {
-            // Ensure subject exists for the new user
-            const { data: subjectId } = await supabase
-              .rpc('get_or_create_user_subject', { p_profile_id: userId });
-            
-            finalProfile = { ...createdProfile, subject_id: subjectId };
-          }
+          if (creationError) throw creationError;
+          finalProfileData = createdProfile;
         }
+
+        const { data: subjectId, error: subjectError } = await supabase
+          .rpc('get_or_create_user_subject', { p_profile_id: userId });
+        if (subjectError) throw subjectError;
+
+        if (!mounted || loadingProfileRef.current !== userId) return;
+
+        const finalProfile = finalProfileData
+          ? { ...finalProfileData, subject_id: subjectId }
+          : null;
 
         profileUserIdRef.current = userId;
         setAuthState({
@@ -160,39 +154,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (authListener) authListener.subscription.unsubscribe();
     };
   }, []);
-
-  useEffect(() => {
-    let mounted = true;
-    const loadManagedEntities = async () => {
-      const userId = authState.user?.id;
-      if (userId) {
-        if (lastLoadedEntitiesUserRef.current === userId || loadingEntitiesRef.current === userId) return;
-        loadingEntitiesRef.current = userId;
-
-        try {
-          const entities = await managementService.getManagedEntities(userId);
-          if (mounted && authState.user?.id === userId) {
-            setManagedEntities(entities);
-            lastLoadedEntitiesUserRef.current = userId;
-          }
-        } catch (err) {
-          console.error('[auth] failed to load managed entities', err);
-        } finally {
-          if (loadingEntitiesRef.current === userId) {
-            loadingEntitiesRef.current = null;
-          }
-        }
-      } else if (mounted) {
-        setManagedEntities([]);
-        setActiveEntity(null);
-        setIsManagementMode(false);
-        lastLoadedEntitiesUserRef.current = '';
-        loadingEntitiesRef.current = null;
-      }
-    };
-    loadManagedEntities();
-    return () => { mounted = false; };
-  }, [authState.user?.id]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -305,11 +266,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signOut,
     updateProfile,
     refreshProfile,
-    managedEntities,
-    activeEntity,
-    isManagementMode,
-    setManagementMode: setIsManagementMode,
-    setActiveEntity,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

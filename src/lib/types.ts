@@ -1,6 +1,6 @@
 import { User } from '@supabase/supabase-js';
 
-export type ProfileRole = 'user' | 'artist' | 'venue' | 'label';
+export type ProfileRole = 'user' | 'artist' | 'venue' | 'label' | 'admin';
 export type MediaType = 'video' | 'image';
 export type AttendanceStatus = 'going' | 'attended';
 export type PriceTier = {

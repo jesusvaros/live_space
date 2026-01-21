@@ -750,3 +750,93 @@ join public.artists a on a.id = s.artist_id
 where s.type = 'artist';
 
 commit;
+-- Requires pgcrypto for token hashing if you later do invites;
+-- for this grant function it is not strictly required, but safe to enable.
+create extension if not exists pgcrypto;
+
+-- 1) Subject-to-subject membership: a user-subject manages an entity-subject (artist/venue)
+create table if not exists public.entity_members (
+  admin_subject_id uuid not null references public.subjects(id) on delete cascade,
+  entity_subject_id uuid not null references public.subjects(id) on delete cascade,
+  role text not null check (role in ('owner','admin','editor','moderator')),
+  created_at timestamptz not null default now(),
+  primary key (admin_subject_id, entity_subject_id)
+);
+
+create index if not exists entity_members_entity_idx on public.entity_members(entity_subject_id);
+create index if not exists entity_members_admin_idx on public.entity_members(admin_subject_id);
+
+-- 2) One admin-only RPC: grant a user (profile) access to an artist or venue
+-- Usage:
+--   select public.admin_grant_entity_access(
+--     p_target_profile_id := '<user_profile_uuid>',
+--     p_entity_type := 'artist',
+--     p_entity_id := '<artists.id>',
+--     p_role := 'admin'
+--   );
+--
+--   select public.admin_grant_entity_access(
+--     p_target_profile_id := '<user_profile_uuid>',
+--     p_entity_type := 'venue',
+--     p_entity_id := '<venue_places.id>',
+--     p_role := 'owner'
+--   );
+
+create or replace function public.admin_grant_entity_access(
+  p_target_profile_id uuid,
+  p_entity_type text,          -- 'artist' or 'venue'
+  p_entity_id uuid,            -- artists.id or venue_places.id
+  p_role text default 'admin'  -- owner|admin|editor|moderator
+)
+returns void
+language plpgsql
+security definer
+as $$
+declare
+  v_admin_profile_id uuid := auth.uid();
+  v_admin_role public.profile_role;
+  v_target_user_subject_id uuid;
+  v_entity_subject_id uuid;
+begin
+  if v_admin_profile_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  -- Only platform admins can grant access
+  select role into v_admin_role
+  from public.profiles
+  where id = v_admin_profile_id;
+
+  if v_admin_role is distinct from 'admin'::public.profile_role then
+    raise exception 'Forbidden: admin only';
+  end if;
+
+  -- Ensure the target user has a user-subject
+  select public.get_or_create_user_subject(p_target_profile_id)
+  into v_target_user_subject_id;
+
+  -- Resolve entity subject based on type
+  if p_entity_type = 'artist' then
+    select public.get_or_create_artist_subject(p_entity_id)
+    into v_entity_subject_id;
+
+  elsif p_entity_type = 'venue' then
+    select public.get_or_create_venue_subject(p_entity_id)
+    into v_entity_subject_id;
+
+  else
+    raise exception 'Invalid entity_type. Must be artist or venue.';
+  end if;
+
+  -- Create membership (idempotent)
+  insert into public.entity_members(admin_subject_id, entity_subject_id, role)
+  values (v_target_user_subject_id, v_entity_subject_id, p_role)
+  on conflict (admin_subject_id, entity_subject_id)
+  do update set role = excluded.role;
+
+end;
+$$;
+
+-- Recommended: allow only authenticated users to call it, but it will still enforce admin role
+revoke all on function public.admin_grant_entity_access(uuid, text, uuid, text) from public;
+grant execute on function public.admin_grant_entity_access(uuid, text, uuid, text) to authenticated;

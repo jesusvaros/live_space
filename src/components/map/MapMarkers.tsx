@@ -1,11 +1,11 @@
 import React from 'react';
-import { Marker, Popup } from 'react-leaflet';
+import { Marker } from 'react-leaflet';
 import L from 'leaflet';
-import { Event, Profile, VenuePlace } from '../../lib/types';
+import { Event, Artist, VenuePlace } from '../../lib/types';
 
 type EventWithVenue = Event & {
   venue_place?: VenuePlace | null;
-  event_artists?: { artist: Profile | null }[];
+  event_artists?: { artist: Artist | null }[];
 };
 
 type MapMarkersProps = {
@@ -14,6 +14,7 @@ type MapMarkersProps = {
   showVenues: boolean;
   onSelectEvent: (eventId: string) => void;
   onSelectVenue: (venueId: string) => void;
+  activeSelection?: { type: 'event' | 'venue'; id: string } | null;
 };
 
 const toNumber = (value: number | string | null) => {
@@ -24,23 +25,24 @@ const toNumber = (value: number | string | null) => {
   return value;
 };
 
-const buildPinIcon = (variant: 'free' | 'paid' | 'venue', label: string, imageUrl?: string | null) => {
+const buildPinIcon = (variant: 'free' | 'paid' | 'venue', label: string, imageUrl?: string | null, isActive = false) => {
   const safeUrl = imageUrl ? encodeURI(imageUrl).replace(/'/g, '%27') : '';
   const avatar = imageUrl
     ? `<div class="map-pin-avatar" style="background-image:url('${safeUrl}')"></div>`
     : '<div class="map-pin-avatar map-pin-avatar--empty"></div>';
   const html = `
-    <div class="map-pin map-pin--${variant}">
+    <div class="map-pin map-pin--${variant} ${isActive ? 'map-pin--active' : ''}" style="pointer-events:auto;">
       ${avatar}
       <span class="map-pin-label">${label}</span>
     </div>
   `;
   return L.divIcon({
-    className: 'map-pin-wrapper',
+    className: `leaflet-div-icon leaflet-interactive map-pin-wrapper`,
     html,
-    iconSize: [52, 60],
+    iconSize: isActive ? [56, 64] : [52, 60],
     iconAnchor: [26, 60],
     popupAnchor: [0, -54],
+    interactive: true,
   });
 };
 
@@ -53,6 +55,7 @@ const MapMarkers: React.FC<MapMarkersProps> = ({
   showVenues,
   onSelectEvent,
   onSelectVenue,
+  activeSelection,
 }) => {
   return (
     <>
@@ -63,39 +66,21 @@ const MapMarkers: React.FC<MapMarkersProps> = ({
         const groupImageUrl = getGroupImage(event);
         const eventIsFree = event.is_free !== false;
         const label = eventIsFree ? 'GRATIS' : 'PAGO';
-        const icon = buildPinIcon(eventIsFree ? 'free' : 'paid', label, groupImageUrl);
+        const isActive = activeSelection?.type === 'event' && activeSelection.id === event.id;
+        const icon = buildPinIcon(eventIsFree ? 'free' : 'paid', label, groupImageUrl, isActive);
         return (
           <Marker
             key={event.id}
             position={[lat, lng]}
             icon={icon}
+            pane="markerPane"
+            interactive
+            bubblingMouseEvents={false}
+            zIndexOffset={isActive ? 200 : 0}
             eventHandlers={{
               click: () => onSelectEvent(event.id),
             }}
-          >
-            <Popup>
-              <div className="flex items-center gap-3">
-                {groupImageUrl && (
-                  <div className="h-12 w-12 overflow-hidden rounded-full bg-slate-200">
-                    <img src={groupImageUrl} alt={event.name} className="h-full w-full object-cover" />
-                  </div>
-                )}
-                <div>
-                  <strong>{event.name}</strong>
-                  <div className="text-xs text-slate-500">{event.venue_place?.city || event.city}</div>
-                </div>
-              </div>
-              <div className="mt-2">
-                <button
-                  type="button"
-                  className="app-button app-button--ghost app-button--small"
-                  onClick={() => onSelectEvent(event.id)}
-                >
-                  Open event
-                </button>
-              </div>
-            </Popup>
-          </Marker>
+          />
         );
       })}
       {showVenues &&
@@ -104,31 +89,21 @@ const MapMarkers: React.FC<MapMarkersProps> = ({
           const lng = toNumber(venue.longitude ?? null);
           if (lat === null || lng === null) return null;
           const imageUrl = venue.photos?.[0] || null;
-          const icon = buildPinIcon('venue', 'SALA', imageUrl);
+          const isActive = activeSelection?.type === 'venue' && activeSelection.id === venue.id;
+          const icon = buildPinIcon('venue', 'SALA', imageUrl, isActive);
           return (
             <Marker
               key={venue.id}
               position={[lat, lng]}
               icon={icon}
+              pane="markerPane"
+              interactive
+              bubblingMouseEvents={false}
+              zIndexOffset={isActive ? 200 : 0}
               eventHandlers={{
                 click: () => onSelectVenue(venue.id),
               }}
-            >
-              <Popup>
-                <strong>{venue.name}</strong>
-                <br />
-                {venue.city}
-                <div className="mt-2">
-                  <button
-                    type="button"
-                    className="app-button app-button--ghost app-button--small"
-                    onClick={() => onSelectVenue(venue.id)}
-                  >
-                    Open venue
-                  </button>
-                </div>
-              </Popup>
-            </Marker>
+            />
           );
         })}
     </>

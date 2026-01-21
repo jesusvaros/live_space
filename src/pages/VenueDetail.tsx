@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { IonPage, IonContent, IonSpinner } from '@ionic/react';
 import { useHistory, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Event, Profile, VenuePlace, PostWithSetlist } from '../lib/types';
+import { Event, Profile, VenuePlace, PostWithSetlist, Artist } from '../lib/types';
 import { socialService } from '../services/social.service';
 import { useAuth } from '../contexts/AuthContext';
 import AppHeader from '../components/AppHeader';
@@ -10,9 +10,8 @@ import EventCard from '../components/EventCard';
 
 type VenueEvent = Event & {
   organizer?: Profile | null;
-  venue?: Profile | null;
   venue_place?: VenuePlace | null;
-  event_artists?: { artist: Profile | null }[];
+  event_artists?: { artist: Artist | null }[];
 };
 
 const VenueDetail: React.FC = () => {
@@ -56,12 +55,6 @@ const VenueDetail: React.FC = () => {
               display_name,
               role
             ),
-            venue:profiles!events_venue_id_fkey (
-              id,
-              username,
-              display_name,
-              role
-            ),
             venue_place:venue_places!events_venue_place_id_fkey (
               id,
               name,
@@ -71,11 +64,10 @@ const VenueDetail: React.FC = () => {
               longitude
             ),
             event_artists (
-              artist:profiles!event_artists_artist_id_fkey (
+              artist:artists!event_artists_artist_entity_fk (
                 id,
-                username,
-                display_name,
-                role
+                name,
+                avatar_url
               )
             )
           `

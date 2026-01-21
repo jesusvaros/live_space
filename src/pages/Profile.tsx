@@ -4,6 +4,7 @@ import { useHistory } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Event, PostWithSetlist, ProfileRole } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
+import { useWorkspace } from '../contexts/WorkspaceContext';
 import AppHeader from '../components/AppHeader';
 import EventCard from '../components/EventCard';
 import { IconCalendar, IconEdit, IconHeart, IconLogout, IconPlay, IconBriefcase } from '../components/icons';
@@ -14,13 +15,17 @@ const Profile: React.FC = () => {
     profile, 
     updateProfile, 
     signOut, 
-    refreshProfile,
-    managedEntities,
-    activeEntity,
-    isManagementMode,
-    setManagementMode,
-    setActiveEntity
+    refreshProfile
   } = useAuth();
+
+  const {
+    managedEntities,
+    activeWorkspace: activeEntity,
+    setActiveWorkspace: setActiveEntity,
+  } = useWorkspace();
+
+  const [isManagementMode, setIsManagementMode] = useState(false);
+  const setManagementMode = (val: boolean) => setIsManagementMode(val);
 
   const history = useHistory();
   const isDev = Boolean((import.meta as any).env?.DEV);
@@ -83,18 +88,6 @@ const Profile: React.FC = () => {
         address,
         starts_at,
         cover_image_url,
-        organizer:profiles!events_organizer_id_fkey (
-          id,
-          username,
-          display_name,
-          role
-        ),
-        venue:profiles!events_venue_id_fkey (
-          id,
-          username,
-          display_name,
-          role
-        ),
         venue_place:venue_places!events_venue_place_id_fkey (
           id,
           name,
@@ -102,11 +95,10 @@ const Profile: React.FC = () => {
           address
         ),
         event_artists (
-          artist:profiles!event_artists_artist_id_fkey (
+          artist:artists!event_artists_artist_entity_fk (
             id,
-            username,
-            display_name,
-            role
+            name,
+            avatar_url
           )
         )
       `;
@@ -165,15 +157,15 @@ const Profile: React.FC = () => {
       }
 
       if (activeRole === 'venue') {
-        const venueId = isManagementMode && activeEntity 
+        const venuePlaceId = isManagementMode && activeEntity 
           ? activeEntity.venue?.id 
-          : user.id;
+          : null;
 
-        if (venueId) {
+        if (venuePlaceId) {
           const { data: venueEventData } = await supabase
             .from('events')
             .select(eventCardSelect)
-            .eq('venue_id', venueId)
+            .eq('venue_place_id', venuePlaceId)
             .order('starts_at', { ascending: false });
 
           venueEvents = (venueEventData || []) as unknown as Event[];
@@ -505,6 +497,15 @@ const Profile: React.FC = () => {
                 </p>
               </div>
               <div className="flex flex-col gap-2">
+                {profile?.role === 'admin' && (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-2 rounded-xl border border-app-ink/40 bg-app-ink/10 px-3 py-1.5 text-xs font-semibold text-app-ink transition hover:bg-app-ink/20"
+                    onClick={() => history.push('/admin/grants')}
+                  >
+                    Admin Grants
+                  </button>
+                )}
                 <button
                   type="button"
                   className="inline-flex items-center gap-2 rounded-xl border border-[#ff6b4a]/40 px-3 py-1.5 text-xs font-semibold text-[#ffd1c4] transition hover:bg-[#ff6b4a]/10"
