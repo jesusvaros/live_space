@@ -89,20 +89,30 @@ export const managementService = {
   },
 
   async searchArtists(query: string) {
-    const { data, error } = await supabase.rpc('search_artists', {
-      search_query: query,
-      result_limit: 10
-    });
+    const { data, error } = await supabase
+      .from('artists')
+      .select('id, name, artist_type, city, avatar_url')
+      .ilike('name', `%${query}%`)
+      .order('name', { ascending: true })
+      .limit(10);
     if (error) throw error;
-    return data;
+    return data?.map((a) => ({
+      ...a,
+      image_url: (a as any).avatar_url ?? null
+    }));
   },
 
   async searchVenues(query: string) {
-    const { data, error } = await supabase.rpc('search_venues', {
-      search_query: query,
-      result_limit: 10
-    });
+    const { data, error } = await supabase
+      .from('venue_places')
+      .select('id, name, city, photos, venue_type')
+      .or(`name.ilike.%${query}%,city.ilike.%${query}%`)
+      .order('name', { ascending: true })
+      .limit(10);
     if (error) throw error;
-    return data;
+    return data?.map((v) => ({
+      ...v,
+      image_url: (v as any).photos?.[0] ?? null
+    }));
   }
 };

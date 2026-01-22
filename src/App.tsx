@@ -28,6 +28,9 @@ import ProfileDetail from './pages/ProfileDetail';
 import PostDetail from './pages/PostDetail';
 import VenueDetail from './pages/VenueDetail';
 import AdminGrants from './pages/AdminGrants';
+import AdminCreateArtist from './pages/AdminCreateArtist';
+import AdminCreateVenue from './pages/AdminCreateVenue';
+import AdminAccessList from './pages/AdminAccessList';
 
 const App: React.FC = () => {
   const { user, loading } = useAuth();
@@ -61,6 +64,9 @@ const App: React.FC = () => {
           <Route exact path="/profile/:id" component={ProfileDetail} />
           <Route exact path="/post/:id" component={PostDetail} />
           <Route exact path="/admin/grants" component={AdminGrants} />
+          <Route exact path="/admin/create-artist" component={AdminCreateArtist} />
+          <Route exact path="/admin/create-venue" component={AdminCreateVenue} />
+          <Route exact path="/admin/access-grants" component={AdminAccessList} />
           <Route exact path="/reset" component={ResetPassword} />
           <Route exact path="/create-event" component={CreateEventPage} />
           <Route

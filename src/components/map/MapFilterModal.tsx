@@ -72,25 +72,11 @@ const MapFilterModal: React.FC<MapFilterModalProps> = ({
     }
     try {
       setSearching(true);
-      const { data, error } = await supabase.rpc('search_artists', { search_query: term, result_limit: 6 });
-      if (!error && Array.isArray(data)) {
-        setArtistResults(
-          data.map((item: any) => ({
-            id: item.id,
-            name: item.name,
-            avatar_url: item.avatar_url ?? item.image_url ?? null,
-          }))
-        );
-        return;
-      }
-    } catch {
-      // fall back to direct query below
-    }
-    try {
       const { data } = await supabase
         .from('artists')
         .select('id, name, avatar_url, artist_type')
         .ilike('name', `%${term}%`)
+        .order('name', { ascending: true })
         .limit(6);
       setArtistResults(
         (data || []).map((item: any) => ({

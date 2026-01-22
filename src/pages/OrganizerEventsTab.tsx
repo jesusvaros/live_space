@@ -68,6 +68,11 @@ const OrganizerEventsTab: React.FC = () => {
       let results: EventListItem[] = [];
 
       if (activeWorkspace.type === 'artist') {
+        if (!activeWorkspace.artist?.id) {
+          setEvents([]);
+          setLoading(false);
+          return;
+        }
         const { data: eventArtistLinks, error: linkError } = await supabase
           .from('event_artists')
           .select('event_id')
@@ -84,6 +89,11 @@ const OrganizerEventsTab: React.FC = () => {
           results = (eventData || []) as EventListItem[];
         }
       } else if (activeWorkspace.type === 'venue') {
+        if (!activeWorkspace.venue?.id) {
+          setEvents([]);
+          setLoading(false);
+          return;
+        }
         const { data: eventData, error: eventsError } = await supabase
           .from('events')
           .select(EVENT_SELECT)
