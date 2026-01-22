@@ -3,6 +3,7 @@ import { useHistory, useLocation } from 'react-router-dom';
 import AppBrand from './AppBrand';
 import { IconBell, IconChevronLeft } from './icons';
 import WorkspaceSwitcher from './WorkspaceSwitcher';
+import { useWorkspace } from '../contexts/WorkspaceContext';
 
 type AppHeaderProps = {
   title?: string;
@@ -13,6 +14,7 @@ type AppHeaderProps = {
 const AppHeader: React.FC<AppHeaderProps> = ({ title, rightSlot, showBack }) => {
   const history = useHistory();
   const location = useLocation();
+  const { activeWorkspace } = useWorkspace();
 
   // Determine if we should show back button
   const shouldShowBack = showBack ?? !['/tabs/feed', '/tabs/events', '/tabs/map', '/tabs/upload', '/tabs/profile'].includes(location.pathname);

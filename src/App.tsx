@@ -25,6 +25,7 @@ import QrScannerPage from './pages/QrScanner';
 import ResetPassword from './pages/ResetPassword';
 import EventDetail from './pages/EventDetail';
 import ProfileDetail from './pages/ProfileDetail';
+import ArtistProfile from './pages/ArtistProfile';
 import PostDetail from './pages/PostDetail';
 import VenueDetail from './pages/VenueDetail';
 import AdminGrants from './pages/AdminGrants';
@@ -34,7 +35,19 @@ import AdminAccessList from './pages/AdminAccessList';
 
 const App: React.FC = () => {
   const { user, loading } = useAuth();
-  const { isActingAsEntity } = useWorkspace();
+  const { isActingAsEntity, activeWorkspace, loading: workspaceLoading } = useWorkspace();
+  const activeArtistId = activeWorkspace?.type === 'artist'
+    ? (activeWorkspace.artist as any)?.id || (activeWorkspace.artist as any)?.artist_id || null
+    : null;
+  const activeVenueId = activeWorkspace?.type === 'venue'
+    ? (activeWorkspace.venue as any)?.id || (activeWorkspace.venue as any)?.venue_place_id || null
+    : null;
+  const profileTabHref =
+    activeWorkspace?.type === 'artist' && activeArtistId
+      ? `/tabs/artist/${activeArtistId}`
+      : activeWorkspace?.type === 'venue' && activeVenueId
+        ? `/tabs/venue/${activeVenueId}`
+        : '/tabs/profile';
   const tabBarStyle: { [key: string]: string } = {
     '--background': 'rgba(12, 15, 22, 0.95)',
     '--border': '1px solid rgba(255, 255, 255, 0.08)',
@@ -60,9 +73,18 @@ const App: React.FC = () => {
             render={() => (!loading && !user ? <Welcome /> : <Redirect to="/tabs/events" />)}
           />
           <Route exact path="/event/:id" component={EventDetail} />
-          <Route exact path="/venue/:id" component={VenueDetail} />
           <Route exact path="/profile/:id" component={ProfileDetail} />
           <Route exact path="/post/:id" component={PostDetail} />
+          <Route
+            exact
+            path="/artist/:id"
+            render={({ match }) => <Redirect to={`/tabs/artist/${match.params.id}`} />}
+          />
+          <Route
+            exact
+            path="/venue/:id"
+            render={({ match }) => <Redirect to={`/tabs/venue/${match.params.id}`} />}
+          />
           <Route exact path="/admin/grants" component={AdminGrants} />
           <Route exact path="/admin/create-artist" component={AdminCreateArtist} />
           <Route exact path="/admin/create-venue" component={AdminCreateVenue} />
@@ -87,7 +109,22 @@ const App: React.FC = () => {
                       }
                     />
                     <Route exact path="/tabs/events" component={Events} />
-                    <Route exact path="/tabs/profile" component={Profile} />
+                    <Route
+                      exact
+                      path="/tabs/profile"
+                      render={() => {
+                        console.log('[profile-route] workspace loading:', workspaceLoading, 'workspace:', activeWorkspace);
+                        if (activeWorkspace?.type === 'artist' && activeArtistId) {
+                          return <Redirect to={`/tabs/artist/${activeArtistId}`} />;
+                        }
+                        if (activeWorkspace?.type === 'venue' && activeVenueId) {
+                          return <Redirect to={`/tabs/venue/${activeVenueId}`} />;
+                        }
+                        return <Profile />;
+                      }}
+                    />
+                    <Route exact path="/tabs/artist/:id" component={ArtistProfile} />
+                    <Route exact path="/tabs/venue/:id" component={VenueDetail} />
                     <Route exact path="/tabs" render={() => <Redirect to="/tabs/events" />} />
                   </IonRouterOutlet>
                   <IonTabBar
@@ -116,7 +153,7 @@ const App: React.FC = () => {
                         </>
                       )}
                     </IonTabButton>
-                    <IonTabButton tab="profile" href="/tabs/profile">
+                    <IonTabButton tab="profile" href={profileTabHref}>
                       <IconUser className="h-5 w-5" />
                       <span className="text-[11px] uppercase tracking-[0.12em]">Profile</span>
                     </IonTabButton>

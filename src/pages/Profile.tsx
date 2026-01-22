@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { IonPage, IonContent, IonSpinner } from '@ionic/react';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Event, PostWithSetlist, ProfileRole } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
@@ -28,6 +28,7 @@ const Profile: React.FC = () => {
   const setManagementMode = (val: boolean) => setIsManagementMode(val);
 
   const history = useHistory();
+  const location = useLocation();
   const isDev = Boolean((import.meta as any).env?.DEV);
 
   const [posts, setPosts] = useState<PostWithSetlist[]>([]);
@@ -62,6 +63,26 @@ const Profile: React.FC = () => {
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+
+  useEffect(() => {
+    setIsManagementMode(Boolean(activeEntity));
+  }, [activeEntity]);
+
+  useEffect(() => {
+    if (!activeEntity) return;
+    // Route to entity-specific profile pages when acting as an entity
+    if (activeEntity.type === 'artist' && activeEntity.artist?.id) {
+      const artistPath = `/tabs/artist/${activeEntity.artist.id}`;
+      if (!location.pathname.startsWith(artistPath)) {
+        history.replace(artistPath);
+      }
+    } else if (activeEntity.type === 'venue' && activeEntity.venue?.id) {
+      const venuePath = `/tabs/venue/${activeEntity.venue.id}`;
+      if (!location.pathname.startsWith(venuePath)) {
+        history.replace(venuePath);
+      }
+    }
+  }, [activeEntity, history, location.pathname]);
 
   const activeProfile = isManagementMode && activeEntity 
     ? (activeEntity.type === 'user' ? activeEntity.profile : null)
@@ -497,6 +518,24 @@ const Profile: React.FC = () => {
                 </p>
               </div>
               <div className="flex flex-col gap-2">
+                {activeEntity?.type === 'artist' && activeEntity.artist?.id && (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-100 transition hover:border-white/50"
+                    onClick={() => history.push(`/tabs/artist/${(activeEntity.artist as any).id || (activeEntity.artist as any).artist_id}`)}
+                  >
+                    View artist profile
+                  </button>
+                )}
+                {activeEntity?.type === 'venue' && activeEntity.venue?.id && (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-100 transition hover:border-white/50"
+                    onClick={() => history.push(`/tabs/venue/${(activeEntity.venue as any).id || (activeEntity.venue as any).venue_place_id}`)}
+                  >
+                    View venue profile
+                  </button>
+                )}
                 {profile?.role === 'admin' && (
                   <button
                     type="button"
@@ -514,25 +553,6 @@ const Profile: React.FC = () => {
                   <IconEdit className="h-4 w-4" />
                   Edit
                 </button>
-                {managedEntities.length > 0 && (
-                  <button
-                    type="button"
-                    className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
-                      isManagementMode
-                        ? 'border-[#ff6b4a] bg-[#ff6b4a] text-white'
-                        : 'border-white/10 bg-white/5 text-slate-400 hover:bg-white/10'
-                    }`}
-                    onClick={() => {
-                      if (!isManagementMode && managedEntities.length > 0) {
-                        setActiveEntity(managedEntities[0]);
-                      }
-                      setManagementMode(!isManagementMode);
-                    }}
-                  >
-                    <IconBriefcase className="h-4 w-4" />
-                    {isManagementMode ? 'Exit Mgmt' : 'Mgmt Mode'}
-                  </button>
-                )}
               </div>
             </div>
 

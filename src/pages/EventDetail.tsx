@@ -443,7 +443,7 @@ const EventDetail: React.FC = () => {
           <button
             type="button"
             className="font-semibold text-slate-50"
-            onClick={() => history.push(`/venue/${event.venue_place?.id}`)}
+            onClick={() => history.push(`/tabs/venue/${event.venue_place?.id}`)}
           >
             {venueName}
           </button>
@@ -463,7 +463,7 @@ const EventDetail: React.FC = () => {
 
   const handleSelectEntity = (id: string, role: EventEntity['role']) => {
     if (role === 'artist_entity') {
-      history.push(`/artist/${id}`);
+      history.push(`/tabs/artist/${id}`);
     } else {
       history.push(`/profile/${id}`);
     }

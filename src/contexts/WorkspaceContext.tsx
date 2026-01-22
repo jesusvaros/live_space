@@ -14,12 +14,43 @@ interface WorkspaceContextType {
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
+const STORAGE_KEY_PREFIX = 'live_space.workspace.';
 
 export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { profile } = useAuth();
   const [managedEntities, setManagedEntities] = useState<ManagedEntity[]>([]);
-  const [activeWorkspace, setActiveWorkspace] = useState<ManagedEntity | null>(null);
+  const [activeWorkspace, _setActiveWorkspace] = useState<ManagedEntity | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const storageKey = profile?.id ? `${STORAGE_KEY_PREFIX}${profile.id}` : null;
+
+  const persistWorkspace = (workspace: ManagedEntity | null) => {
+    if (!storageKey || typeof window === 'undefined') return;
+    try {
+      if (workspace?.subject_id) {
+        window.localStorage.setItem(storageKey, workspace.subject_id);
+      } else {
+        window.localStorage.removeItem(storageKey);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  };
+
+  const setActiveWorkspace = (workspace: ManagedEntity | null) => {
+    console.log('[workspace] setActiveWorkspace ->', workspace);
+    _setActiveWorkspace(workspace);
+    persistWorkspace(workspace);
+  };
+
+  const readStoredWorkspaceId = () => {
+    if (!storageKey || typeof window === 'undefined') return null;
+    try {
+      return window.localStorage.getItem(storageKey);
+    } catch {
+      return null;
+    }
+  };
 
   const refreshWorkspaces = async () => {
     if (!profile?.id) {
@@ -32,12 +63,22 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
     try {
       setLoading(true);
       const entities = await managementService.getManagedEntities(profile.id);
+      console.log('[workspace] fetched entities', entities);
       setManagedEntities(entities);
       
       // Keep active workspace if it still exists in the list, otherwise null
       if (activeWorkspace) {
         const stillExists = entities.find(e => e.subject_id === activeWorkspace.subject_id);
         if (!stillExists) setActiveWorkspace(null);
+      } else {
+        const storedId = readStoredWorkspaceId();
+        if (storedId) {
+          const match = entities.find(e => e.subject_id === storedId);
+          if (match) {
+            console.log('[workspace] restoring stored workspace', storedId);
+            _setActiveWorkspace(match);
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching managed entities:', error);

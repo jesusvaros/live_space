@@ -40,14 +40,24 @@ export const managementService = {
             .select('*')
             .eq('subject_id', item.entity_subject_id)
             .maybeSingle();
-          if (artist) entity.artist = artist;
+          if (artist) {
+            entity.artist = {
+              ...artist,
+              id: (artist as any).artist_id ?? (artist as any).id
+            };
+          }
         } else if (type === 'venue') {
           const { data: venue } = await supabase
             .from('v_subject_venues')
             .select('*')
             .eq('subject_id', item.entity_subject_id)
             .maybeSingle();
-          if (venue) entity.venue = venue;
+          if (venue) {
+            entity.venue = {
+              ...venue,
+              id: (venue as any).venue_place_id ?? (venue as any).id
+            };
+          }
         }
         return entity;
       })

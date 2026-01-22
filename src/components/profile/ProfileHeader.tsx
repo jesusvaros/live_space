@@ -63,20 +63,6 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           <IconEdit className="h-4 w-4" />
           Edit
         </button>
-        {managedEntities.length > 0 && (
-          <button
-            type="button"
-            className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
-              isManagementMode
-                ? 'border-[#ff6b4a] bg-[#ff6b4a] text-white'
-                : 'border-white/10 bg-white/5 text-slate-400 hover:bg-white/10'
-            }`}
-            onClick={onToggleManagementMode}
-          >
-            <IconBriefcase className="h-4 w-4" />
-            {isManagementMode ? 'Exit Mgmt' : 'Mgmt Mode'}
-          </button>
-        )}
       </div>
     </div>
   );
