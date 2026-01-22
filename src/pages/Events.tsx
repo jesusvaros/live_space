@@ -187,6 +187,12 @@ const Events: React.FC = () => {
     fetchEvents();
   }, []);
 
+  useEffect(() => {
+    if (!loading && events.length === 0) {
+      fetchEvents(false);
+    }
+  }, [loading, events.length]);
+
   const renderEventCard = (event: EventListItem) => (
     <EventCard
       key={event.id}

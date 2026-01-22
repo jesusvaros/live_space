@@ -45,19 +45,7 @@ const App: React.FC = () => {
     '--background-focused': 'rgba(255, 107, 74, 0.2)',
   };
 
-  if (loading) {
-    return (
-      <IonApp>
-        <IonPage>
-          <IonContent fullscreen>
-            <div className="flex min-h-full flex-col items-center justify-center gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
-              <IonSpinner name="crescent" />
-            </div>
-          </IonContent>
-        </IonPage>
-      </IonApp>
-    );
-  }
+  const showOverlay = loading && !user;
 
   return (
     <IonApp>
@@ -66,7 +54,7 @@ const App: React.FC = () => {
           <Route
             exact
             path="/welcome"
-            render={() => (user ? <Redirect to="/tabs/events" /> : <Welcome />)}
+            render={() => (!loading && !user ? <Welcome /> : <Redirect to="/tabs/events" />)}
           />
           <Route exact path="/event/:id" component={EventDetail} />
           <Route exact path="/venue/:id" component={VenueDetail} />
@@ -77,8 +65,10 @@ const App: React.FC = () => {
           <Route exact path="/create-event" component={CreateEventPage} />
           <Route
             path="/tabs"
-            render={() => (
-              user ? (
+            render={() =>
+              !loading && !user ? (
+                <Redirect to="/welcome" />
+              ) : (
                 <IonTabs>
                   <IonRouterOutlet>
                     <Route exact path="/tabs/feed" component={Feed} />
@@ -130,14 +120,22 @@ const App: React.FC = () => {
                     </IonTabButton>
                   </IonTabBar>
                 </IonTabs>
-              ) : (
-                <Redirect to="/welcome" />
               )
-            )}
+            }
           />
-          <Route exact path="/" render={() => <Redirect to={user ? "/tabs/events" : "/welcome"} />} />
+          <Route
+            exact
+            path="/"
+            render={() => <Redirect to={loading || user ? "/tabs/events" : "/welcome"} />}
+          />
         </IonRouterOutlet>
       </IonReactRouter>
+
+      {showOverlay && (
+        <div className="pointer-events-none fixed inset-0 z-[5000] flex items-center justify-center bg-black/35 backdrop-blur">
+          <IonSpinner name="crescent" />
+        </div>
+      )}
     </IonApp>
   );
 };

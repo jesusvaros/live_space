@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { IonPage, IonContent, useIonViewDidEnter } from '@ionic/react';
 import { MapContainer } from 'react-leaflet';
 import L from 'leaflet';
@@ -130,46 +130,57 @@ const Map: React.FC = () => {
     setInitialViewApplied(true);
   }, []);
 
-  useEffect(() => {
-    const loadEvents = async () => {
-      const { data } = await supabase
-        .from('events')
-        .select(
-          `
-          *,
-          venue_place:venue_places!events_venue_place_id_fkey (
+  const loadEvents = useCallback(async () => {
+    const { data } = await supabase
+      .from('events')
+      .select(
+        `
+        *,
+        venue_place:venue_places!events_venue_place_id_fkey (
+          id,
+          name,
+          city,
+          address,
+          latitude,
+          longitude,
+          photos
+        ),
+        event_artists (
+          artist:artists!event_artists_artist_entity_fk (
             id,
             name,
-            city,
-            address,
-            latitude,
-            longitude,
-            photos
-          ),
-          event_artists (
-            artist:artists!event_artists_artist_entity_fk (
-              id,
-              name,
-              avatar_url,
-              artist_type
-            )
+            avatar_url,
+            artist_type
           )
-          `
-        );
-      setEvents((data || []) as EventWithVenue[]);
-    };
-    loadEvents();
+        )
+        `
+      );
+    setEvents((data || []) as EventWithVenue[]);
+  }, []);
+
+  const loadVenues = useCallback(async () => {
+    const { data } = await supabase
+      .from('venue_places')
+      .select('id, name, city, address, latitude, longitude, photos, venue_type, capacity');
+    setVenues((data || []) as VenuePlace[]);
   }, []);
 
   useEffect(() => {
-    const loadVenues = async () => {
-      const { data } = await supabase
-        .from('venue_places')
-        .select('id, name, city, address, latitude, longitude, photos, venue_type, capacity');
-      setVenues((data || []) as VenuePlace[]);
-    };
+    loadEvents();
     loadVenues();
-  }, []);
+  }, [loadEvents, loadVenues]);
+
+  useEffect(() => {
+    if (events.length === 0) {
+      loadEvents();
+    }
+  }, [events.length, loadEvents]);
+
+  useEffect(() => {
+    if (venues.length === 0) {
+      loadVenues();
+    }
+  }, [venues.length, loadVenues]);
 
   useEffect(() => {
     if (!navigator.geolocation || locationRequested || !initialViewApplied) return;

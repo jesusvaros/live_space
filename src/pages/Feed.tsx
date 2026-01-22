@@ -91,6 +91,18 @@ const Feed: React.FC = () => {
     init();
   }, []);
 
+  useEffect(() => {
+    if (!loading && posts.length === 0) {
+      setError('');
+      setHasMore(true);
+      setPage(0);
+      loadPosts(0, true).catch(() => {
+        setHasMore(false);
+        setError('Could not load the feed. Check your Supabase connection.');
+      });
+    }
+  }, [loading, posts.length]);
+
   const handleLoadMore = async () => {
     if (loadingMore || !hasMore) return;
     const nextPage = page + 1;
