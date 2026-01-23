@@ -1,0 +1,227 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { useHistory, useLocation } from 'react-router-dom';
+import { useIonToast } from '@ionic/react';
+import DiscoverSearchBar from './components/DiscoverSearchBar';
+import DiscoverSegmentedControl from './components/DiscoverSegmentedControl';
+import DiscoverEmptyState from './components/DiscoverEmptyState';
+import DiscoverSkeletonList from './components/DiscoverSkeletonList';
+import SuggestedSectionList from './components/SuggestedSectionList';
+import ArtistRow from './components/ArtistRow';
+import VenueRow from './components/VenueRow';
+import { DiscoverArtist, DiscoverTabKey, DiscoverVenue, SuggestedSection } from './types';
+import { useDebouncedValue } from './hooks/useDebouncedValue';
+import { useStoredLocation } from '../../hooks/useStoredLocation';
+import { discoverService } from './services/discover.service';
+import { useFollowedSubjects } from '../../hooks/useFollowedSubjects';
+
+type RouteState = { initialTab?: DiscoverTabKey } | undefined;
+
+const DiscoverScreen: React.FC = () => {
+  const history = useHistory();
+  const locationState = useLocation<RouteState>().state;
+  const storedLocation = useStoredLocation();
+  const [presentToast] = useIonToast();
+
+  const [tab, setTab] = useState<DiscoverTabKey>('artists');
+  const [query, setQuery] = useState('');
+  const debouncedQuery = useDebouncedValue(query, 350);
+
+  const { canFollow, isFollowing, isToggling, toggleFollowSubject } = useFollowedSubjects();
+
+  const [loading, setLoading] = useState(false);
+  const [artists, setArtists] = useState<DiscoverArtist[]>([]);
+  const [venues, setVenues] = useState<DiscoverVenue[]>([]);
+  const [suggestedArtistSections, setSuggestedArtistSections] = useState<SuggestedSection<DiscoverArtist>[]>([]);
+  const [suggestedVenueSections, setSuggestedVenueSections] = useState<SuggestedSection<DiscoverVenue>[]>([]);
+
+  const isSearching = debouncedQuery.trim().length > 0;
+
+  useEffect(() => {
+    if (locationState?.initialTab) {
+      setTab(locationState.initialTab);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      setLoading(true);
+      try {
+        if (tab === 'artists') {
+          if (isSearching) {
+            const results = await discoverService.searchArtists(debouncedQuery);
+            if (cancelled) return;
+            setArtists(results);
+          } else {
+            const sections = await discoverService.getSuggestedArtists({ location: storedLocation });
+            if (cancelled) return;
+            setSuggestedArtistSections(sections);
+          }
+        } else {
+          if (isSearching) {
+            const results = await discoverService.searchVenues(debouncedQuery);
+            if (cancelled) return;
+            setVenues(results);
+          } else {
+            const sections = await discoverService.getSuggestedVenues({ location: storedLocation });
+            if (cancelled) return;
+            setSuggestedVenueSections(sections);
+          }
+        }
+      } catch {
+        if (cancelled) return;
+        if (tab === 'artists') {
+          setArtists([]);
+          setSuggestedArtistSections([]);
+        } else {
+          setVenues([]);
+          setSuggestedVenueSections([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedQuery, isSearching, storedLocation, tab]);
+
+  const onToggleFollow = async (subjectId: string) => {
+    const result = await toggleFollowSubject(subjectId);
+    if (!result.ok && result.reason === 'network') {
+      presentToast({
+        message: "Couldn't follow. Try again.",
+        duration: 2000,
+        position: 'top',
+      });
+    }
+  };
+
+  const headerSubtitle = useMemo(() => {
+    if (tab === 'artists') return 'Artists to follow';
+    return 'Venues to follow';
+  }, [tab]);
+
+  return (
+    <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
+      <header className="space-y-2">
+        <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Discover</p>
+        <h2 className="font-display text-3xl text-slate-50">Discover</h2>
+        <p className="text-sm text-slate-500">{headerSubtitle}</p>
+      </header>
+
+      <DiscoverSearchBar
+        value={query}
+        placeholder="Search artists or venues"
+        onChange={setQuery}
+        onClear={() => setQuery('')}
+      />
+
+      <DiscoverSegmentedControl value={tab} onChange={setTab} />
+
+      {loading && <DiscoverSkeletonList rows={6} />}
+
+      {!loading && tab === 'artists' && (
+        <>
+          {isSearching ? (
+            artists.length === 0 ? (
+              <DiscoverEmptyState
+                title={`No results for "${debouncedQuery.trim()}"`}
+                description="Try a different spelling or search by city."
+                actionLabel="Clear search"
+                onAction={() => setQuery('')}
+              />
+            ) : (
+              <div className="space-y-3">
+                {artists.map(artist => (
+                  <ArtistRow
+                    key={artist.id}
+                    artist={artist}
+                    canFollow={canFollow}
+                    isFollowing={isFollowing(artist.subject_id)}
+                    followLoading={isToggling(artist.subject_id)}
+                    onToggleFollow={() => onToggleFollow(artist.subject_id)}
+                    onOpenProfile={() => history.push(`/artist/${artist.id}`)}
+                  />
+                ))}
+              </div>
+            )
+          ) : suggestedArtistSections.length === 0 ? (
+            <DiscoverEmptyState
+              title="No artist suggestions yet"
+              description="Search by name to find an artist."
+            />
+          ) : (
+            <SuggestedSectionList
+              sections={suggestedArtistSections}
+              renderItem={artist => (
+                <ArtistRow
+                  key={(artist as DiscoverArtist).id}
+                  artist={artist as DiscoverArtist}
+                  canFollow={canFollow}
+                  isFollowing={isFollowing((artist as DiscoverArtist).subject_id)}
+                  followLoading={isToggling((artist as DiscoverArtist).subject_id)}
+                  onToggleFollow={() => onToggleFollow((artist as DiscoverArtist).subject_id)}
+                  onOpenProfile={() => history.push(`/artist/${(artist as DiscoverArtist).id}`)}
+                />
+              )}
+            />
+          )}
+        </>
+      )}
+
+      {!loading && tab === 'venues' && (
+        <>
+          {isSearching ? (
+            venues.length === 0 ? (
+              <DiscoverEmptyState
+                title={`No results for "${debouncedQuery.trim()}"`}
+                description="Try a different spelling or search by city."
+                actionLabel="Clear search"
+                onAction={() => setQuery('')}
+              />
+            ) : (
+              <div className="space-y-3">
+                {venues.map(venue => (
+                  <VenueRow
+                    key={venue.id}
+                    venue={venue}
+                    canFollow={canFollow}
+                    isFollowing={isFollowing(venue.subject_id)}
+                    followLoading={isToggling(venue.subject_id)}
+                    onToggleFollow={() => onToggleFollow(venue.subject_id)}
+                    onOpenProfile={() => history.push(`/venue/${venue.id}`)}
+                  />
+                ))}
+              </div>
+            )
+          ) : suggestedVenueSections.length === 0 ? (
+            <DiscoverEmptyState
+              title="No venue suggestions yet"
+              description="Search by name to find a venue."
+            />
+          ) : (
+            <SuggestedSectionList
+              sections={suggestedVenueSections}
+              renderItem={venue => (
+                <VenueRow
+                  key={(venue as DiscoverVenue).id}
+                  venue={venue as DiscoverVenue}
+                  canFollow={canFollow}
+                  isFollowing={isFollowing((venue as DiscoverVenue).subject_id)}
+                  followLoading={isToggling((venue as DiscoverVenue).subject_id)}
+                  onToggleFollow={() => onToggleFollow((venue as DiscoverVenue).subject_id)}
+                  onOpenProfile={() => history.push(`/venue/${(venue as DiscoverVenue).id}`)}
+                />
+              )}
+            />
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
+export default DiscoverScreen;

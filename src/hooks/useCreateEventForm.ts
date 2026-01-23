@@ -41,6 +41,23 @@ const toNumber = (value: number | string | null | undefined) => {
 
 const sanitizeFilename = (value: string) => value.replace(/[^a-zA-Z0-9._-]/g, '-');
 
+const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> => {
+  let timeoutId: number | null = null;
+  const timeoutPromise = new Promise<T>((_resolve, reject) => {
+    timeoutId = window.setTimeout(() => {
+      reject(new Error(`${label} timed out. Please try again.`));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId !== null) {
+      window.clearTimeout(timeoutId);
+    }
+  }
+};
+
 export const useCreateEventForm = ({
   userId,
   profileRole,
@@ -447,13 +464,17 @@ export const useCreateEventForm = ({
       if (posterFile) {
         const safeName = sanitizeFilename(posterFile.name || 'poster');
         const posterPath = `event-posters/${userId}/${Date.now()}-${safeName}`;
-        const { error: uploadError } = await supabase.storage
-          .from('media')
-          .upload(posterPath, posterFile, {
-            cacheControl: '3600',
-            upsert: false,
-            contentType: posterFile.type || 'image/*',
-          });
+        const { error: uploadError } = await withTimeout(
+          supabase.storage
+            .from('media')
+            .upload(posterPath, posterFile, {
+              cacheControl: '3600',
+              upsert: false,
+              contentType: posterFile.type || 'image/*',
+            }),
+          45_000,
+          'Poster upload'
+        );
 
         if (uploadError) {
           throw uploadError;
@@ -464,18 +485,22 @@ export const useCreateEventForm = ({
       }
 
       if (venueMode === 'new') {
-        const { data: newVenue, error: venueError } = await supabase
-          .from('venue_places')
-          .insert({
-            name: newVenueName.trim(),
-            city: newVenueCity.trim(),
-            address: newVenueAddress.trim() || null,
-            latitude: venueLat,
-            longitude: venueLng,
-            created_by: userId,
-          })
-          .select('id, name, city, address, latitude, longitude')
-          .single();
+        const { data: newVenue, error: venueError } = await withTimeout(
+          supabase
+            .from('venue_places')
+            .insert({
+              name: newVenueName.trim(),
+              city: newVenueCity.trim(),
+              address: newVenueAddress.trim() || null,
+              latitude: venueLat,
+              longitude: venueLng,
+              created_by: userId,
+            })
+            .select('id, name, city, address, latitude, longitude')
+            .single(),
+          20_000,
+          'Venue create'
+        );
 
         if (venueError) {
           throw venueError;
@@ -492,29 +517,32 @@ export const useCreateEventForm = ({
         .map(item => item.trim())
         .filter(Boolean);
 
-      const { data: eventData, error: eventError } = await supabase
-        .from('events')
-        .insert({
-          organizer_id: userId,
-          venue_id: profileRole === 'venue' ? userId : null,
-          venue_place_id: venuePlaceId,
-          name: eventName.trim(),
-          description: eventDescription.trim() || null,
-          event_url: eventUrl.trim() || null,
-          city: venueCity || (profileCity || ''),
-          address: venueAddress || null,
-          latitude: venueLat,
-          longitude: venueLng,
-          genres,
-          cover_image_url: coverImageUrl,
-          is_free: isFree,
-          price_tiers: isFree ? [] : priceTiers,
-          starts_at: startAt.toISOString(),
-          ends_at: endAtIso,
-          is_public: true,
-        })
-        .select('id')
-        .single();
+      const { data: eventData, error: eventError } = await withTimeout(
+        supabase
+          .from('events')
+          .insert({
+            organizer_id: userId,
+            venue_place_id: venuePlaceId,
+            name: eventName.trim(),
+            description: eventDescription.trim() || null,
+            event_url: eventUrl.trim() || null,
+            city: venueCity || (profileCity || ''),
+            address: venueAddress || null,
+            latitude: venueLat,
+            longitude: venueLng,
+            genres,
+            cover_image_url: coverImageUrl,
+            is_free: isFree,
+            price_tiers: isFree ? [] : priceTiers,
+            starts_at: startAt.toISOString(),
+            ends_at: endAtIso,
+            is_public: true,
+          })
+          .select('id')
+          .single(),
+        20_000,
+        'Event create'
+      );
 
       if (eventError || !eventData) {
         throw eventError || new Error('Event creation failed.');
@@ -522,13 +550,21 @@ export const useCreateEventForm = ({
 
       // Insert artist relationships
       for (const artistId of artistIds) {
-        const { error: artistError } = await supabase.from('event_artists').insert({
-          event_id: eventData.id,
-          artist_id: artistId,
-        });
+        const { error: artistError } = await withTimeout(
+          supabase.from('event_artists').insert({
+            event_id: eventData.id,
+            artist_entity_id: artistId,
+          }),
+          20_000,
+          'Lineup create'
+        );
 
         if (artistError) {
-          await supabase.from('events').delete().eq('id', eventData.id);
+          await withTimeout(
+            supabase.from('events').delete().eq('id', eventData.id),
+            20_000,
+            'Rollback'
+          );
           throw artistError;
         }
       }

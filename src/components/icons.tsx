@@ -145,3 +145,11 @@ export const IconQrCode: React.FC<IconProps> = ({ className, size = 20 }) => (
     <path d="M14 14h3M21 14h-3M14 17h3M14 21h3M21 17v4" />
   </svg>
 );
+
+export const IconCompass: React.FC<IconProps> = ({ className, size = 20 }) => (
+  <svg {...baseProps(size)} className={className}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M14.5 9.5l-1.3 3.7-3.7 1.3 1.3-3.7 3.7-1.3z" />
+    <path d="M12 3v2M21 12h-2M12 21v-2M3 12h2" />
+  </svg>
+);

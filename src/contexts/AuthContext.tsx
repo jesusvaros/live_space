@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useRef } from 'r
 import { AuthError, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { Profile, AuthState } from '../lib/types';
+import { cached, setCached } from '../lib/requestCache';
 
 interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
@@ -54,13 +55,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       try {
         // Load the profile row directly and keep subjects aligned
-        const { data: profileRow, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .maybeSingle();
+        const profileKey = `profiles:${userId}`;
+        const profileRow = await cached(
+          profileKey,
+          async () => {
+            const { data, error } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', userId)
+              .maybeSingle();
+            if (error) throw error;
+            return data as any;
+          },
+          { ttlMs: 30_000 }
+        );
 
-        if (profileError) throw profileError;
         if (!mounted || loadingProfileRef.current !== userId) return;
 
         let finalProfileData = profileRow;
@@ -79,11 +88,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           if (creationError) throw creationError;
           finalProfileData = createdProfile;
+          setCached(profileKey, createdProfile, { ttlMs: 30_000 });
         }
 
-        const { data: subjectId, error: subjectError } = await supabase
-          .rpc('get_or_create_user_subject', { p_profile_id: userId });
-        if (subjectError) throw subjectError;
+        const subjectKey = `subject:user:${userId}`;
+        const subjectId = await cached(
+          subjectKey,
+          async () => {
+            const { data, error } = await supabase
+              .rpc('get_or_create_user_subject', { p_profile_id: userId });
+            if (error) throw error;
+            return data as unknown as string;
+          },
+          { ttlMs: 24 * 60 * 60 * 1000 }
+        );
 
         if (!mounted || loadingProfileRef.current !== userId) return;
 

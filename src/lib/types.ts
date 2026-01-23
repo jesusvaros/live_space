@@ -64,7 +64,7 @@ export interface ProfileVenue {
 
 export interface VenuePlace {
   id: string;
-  subject_id: string | null;
+  subject_id?: string | null;
   name: string;
   city: string;
   address: string | null;
@@ -82,7 +82,6 @@ export interface VenuePlace {
 export interface Event {
   id: string;
   organizer_id: string | null;
-  venue_id: string | null;
   venue_place_id: string | null;
   name: string;
   description: string | null;

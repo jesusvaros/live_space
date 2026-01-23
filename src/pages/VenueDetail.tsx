@@ -6,7 +6,7 @@ import { Event, Profile, VenuePlace, PostWithSetlist, Artist } from '../lib/type
 import { socialService } from '../services/social.service';
 import { useAuth } from '../contexts/AuthContext';
 import AppHeader from '../components/AppHeader';
-import EventCard from '../components/EventCard';
+import EventPosterTile from '../components/EventPosterTile';
 
 type VenueEvent = Event & {
   organizer?: Profile | null;
@@ -44,6 +44,17 @@ const VenueDetail: React.FC = () => {
           throw venueError;
         }
 
+        let venueSubjectId: string | null = null;
+        try {
+          const { data: subjectId, error: subjectError } = await supabase
+            .rpc('get_or_create_venue_subject', { p_venue_place_id: venueData.id });
+          if (!subjectError && typeof subjectId === 'string') {
+            venueSubjectId = subjectId;
+          }
+        } catch {
+          // ignore subject lookup errors
+        }
+
         const { data: eventsData, error: eventsError } = await supabase
           .from('events')
           .select(
@@ -79,14 +90,14 @@ const VenueDetail: React.FC = () => {
           throw eventsError;
         }
 
-        setVenue(venueData as VenuePlace);
+        setVenue({ ...(venueData as VenuePlace), subject_id: venueSubjectId });
         setEvents((eventsData || []) as VenueEvent[]);
 
-        if (venueData.subject_id) {
+        if (venueSubjectId) {
           const [count, following] = await Promise.all([
-            socialService.getFollowersCount(venueData.subject_id),
+            socialService.getFollowersCount(venueSubjectId),
             user && currentUserProfile?.subject_id 
-              ? socialService.isFollowing(currentUserProfile.subject_id, venueData.subject_id)
+              ? socialService.isFollowing(currentUserProfile.subject_id, venueSubjectId)
               : Promise.resolve(false)
           ]);
           setFollowersCount(count);
@@ -238,12 +249,13 @@ const VenueDetail: React.FC = () => {
                       No events yet at this venue.
                     </p>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                       {events.map(event => (
-                        <EventCard
+                        <EventPosterTile
                           key={event.id}
                           event={event}
-                          onSelect={() => history.push(`/event/${event.id}`)}
+                          className="w-full"
+                          onSelect={selected => history.push(`/event/${selected.id}`)}
                         />
                       ))}
                     </div>

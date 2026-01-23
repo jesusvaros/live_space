@@ -6,7 +6,7 @@ import { Event, Profile, VenuePlace, PostWithSetlist, Artist } from '../lib/type
 import { socialService } from '../services/social.service';
 import { useAuth } from '../contexts/AuthContext';
 import AppHeader from '../components/AppHeader';
-import EventCard from '../components/EventCard';
+import EventPosterTile from '../components/EventPosterTile';
 
 type ProfileEvent = Event & {
   organizer?: Profile | null;
@@ -321,12 +321,13 @@ const ProfileDetail: React.FC = () => {
                   {events.length === 0 ? (
                     <p className="text-sm text-slate-500">No events yet.</p>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                       {events.map(event => (
-                        <EventCard
+                        <EventPosterTile
                           key={event.id}
                           event={event}
-                          onSelect={() => history.push(`/event/${event.id}`)}
+                          className="w-full"
+                          onSelect={selected => history.push(`/event/${selected.id}`)}
                         />
                       ))}
                     </div>

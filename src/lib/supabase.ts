@@ -8,7 +8,13 @@ const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
 
 const debugFetch: typeof fetch = async (...args) => {
   if (isDev) {
-    const url = typeof args[0] === 'string' ? args[0] : args[0].url
+    const input = args[0]
+    const url =
+      typeof input === 'string'
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : input.url
     console.info('[supabase] request', url)
   }
   return fetch(...args)
@@ -20,11 +26,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: {
     fetch: isDev ? debugFetch : fetch,
   },
-  auth: isDev
-    ? {
-        lock: noLock,
-      }
-    : undefined,
+  auth: {
+    lock: noLock,
+  },
 })
 
 export const supabaseConfig = {

@@ -8,6 +8,7 @@ import {
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Event, PostWithSetlist, Profile, VenuePlace, EventSetlistEntry, Artist } from '../lib/types';
+import { clearCached } from '../lib/requestCache';
 import { eventService } from '../services/event.service';
 import { useAuth } from '../contexts/AuthContext';
 import { buildMomentItems, parseDatetimeLocalValue, MomentItem } from '../lib/moments';
@@ -24,9 +25,13 @@ type EventDetailData = Event & {
   event_artists?: { artist: Artist | null }[];
 };
 
+type EventDetailLocationState = {
+  openAddMoments?: boolean;
+};
+
 const EventDetail: React.FC = () => {
   const history = useHistory();
-  const location = useLocation();
+  const location = useLocation<EventDetailLocationState>();
   const { id } = useParams<{ id: string }>();
   const { user, profile, isManagementMode, activeEntity } = useAuth();
   const [event, setEvent] = useState<EventDetailData | null>(null);
@@ -55,10 +60,17 @@ const EventDetail: React.FC = () => {
   const [attendanceStatus, setAttendanceStatus] = useState<'going' | 'attended' | null>(null);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [engagementError, setEngagementError] = useState('');
+  const [showReliveBanner, setShowReliveBanner] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const momentItemsRef = useRef<MomentItem[]>([]);
   const bucketCacheRef = useRef<Record<string, PostWithSetlist[]>>({});
   const bucketLoadingRef = useRef<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!location.state?.openAddMoments) return;
+    setShowReliveBanner(true);
+    history.replace({ pathname: location.pathname, search: location.search, hash: location.hash, state: {} });
+  }, [history, location.hash, location.pathname, location.search, location.state?.openAddMoments]);
 
   const arrivedViaQr = useMemo(() => {
     const params = new URLSearchParams(location.search);
@@ -608,6 +620,7 @@ const EventDetail: React.FC = () => {
       }
 
       setUploadSuccess('Moments uploaded!');
+      clearCached(`posts:count:user:${user.id}:event:${event.id}`);
       setMomentItems(prev => {
         prev.forEach(item => URL.revokeObjectURL(item.previewUrl));
         return [];
@@ -772,6 +785,29 @@ const EventDetail: React.FC = () => {
 
             {!loading && event && (
               <>
+                {showReliveBanner && (
+                  <div className="rounded-3xl border border-white/10 bg-[#141824] p-4 shadow-[0_20px_44px_rgba(0,0,0,0.45)]">
+                    <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Relive last night</p>
+                    <p className="mt-2 font-display text-lg text-slate-50">Add your moments</p>
+                    <p className="mt-1 text-xs text-slate-500">Share what you lived before the memory fades.</p>
+                    <div className="mt-4 flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="inline-flex flex-1 items-center justify-center rounded-2xl bg-[#ff6b4a] px-4 py-2 text-sm font-semibold text-white"
+                        onClick={handlePrimaryCtaClick}
+                      >
+                        Add your moments
+                      </button>
+                      <button
+                        type="button"
+                        className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200"
+                        onClick={() => setShowReliveBanner(false)}
+                      >
+                        Not now
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <EventHero
                   title={heroTitle}
                   meta={heroMeta}
@@ -818,7 +854,7 @@ const EventDetail: React.FC = () => {
                     }`}
                     onClick={handlePrimaryCtaClick}
                   >
-                    Add moments
+                    Add your moments
                   </button>
                   {user && !canAddMoments && (
                     <p className="text-xs text-slate-400">

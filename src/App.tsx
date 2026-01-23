@@ -5,13 +5,11 @@ import {
   IonTabs,
   IonTabBar,
   IonTabButton,
-  IonPage,
-  IonContent,
   IonSpinner,
 } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
 import { Redirect, Route } from 'react-router-dom';
-import { IconCalendar, IconMap, IconQrCode, IconUser, IconPlay } from './components/icons';
+import { IconCalendar, IconMap, IconUser, IconCompass } from './components/icons';
 import { useAuth } from './contexts/AuthContext';
 import { useWorkspace } from './contexts/WorkspaceContext';
 import Welcome from './pages/Welcome';
@@ -19,9 +17,8 @@ import Feed from './pages/Feed';
 import Events from './pages/Events';
 import Profile from './pages/Profile';
 import Map from './pages/Map';
-import OrganizerEventsTab from './pages/OrganizerEventsTab';
+import Discover from './pages/Discover';
 import CreateEventPage from './pages/CreateEvent';
-import QrScannerPage from './pages/QrScanner';
 import ResetPassword from './pages/ResetPassword';
 import EventDetail from './pages/EventDetail';
 import ProfileDetail from './pages/ProfileDetail';
@@ -35,7 +32,7 @@ import AdminAccessList from './pages/AdminAccessList';
 
 const App: React.FC = () => {
   const { user, loading } = useAuth();
-  const { isActingAsEntity, activeWorkspace, loading: workspaceLoading } = useWorkspace();
+  const { activeWorkspace, loading: workspaceLoading } = useWorkspace();
   const activeArtistId = activeWorkspace?.type === 'artist'
     ? (activeWorkspace.artist as any)?.id || (activeWorkspace.artist as any)?.artist_id || null
     : null;
@@ -75,6 +72,7 @@ const App: React.FC = () => {
           <Route exact path="/event/:id" component={EventDetail} />
           <Route exact path="/profile/:id" component={ProfileDetail} />
           <Route exact path="/post/:id" component={PostDetail} />
+          <Route exact path="/discover" render={() => <Redirect to="/tabs/discover" />} />
           <Route
             exact
             path="/artist/:id"
@@ -101,13 +99,7 @@ const App: React.FC = () => {
                   <IonRouterOutlet>
                     <Route exact path="/tabs/feed" component={Feed} />
                     <Route exact path="/tabs/map" component={Map} />
-                    <Route
-                      exact
-                      path="/tabs/qr-scanner"
-                      render={() =>
-                        isActingAsEntity ? <OrganizerEventsTab /> : <QrScannerPage />
-                      }
-                    />
+                    <Route exact path="/tabs/discover" component={Discover} />
                     <Route exact path="/tabs/events" component={Events} />
                     <Route
                       exact
@@ -134,32 +126,19 @@ const App: React.FC = () => {
                   >
                     <IonTabButton tab="events" href="/tabs/events">
                       <IconCalendar className="h-5 w-5" />
-                      <span className="text-[11px] uppercase tracking-[0.12em]">Events</span>
+                      <span className="text-[11px] uppercase tracking-[0.12em]">Main</span>
+                    </IonTabButton>
+                    <IonTabButton tab="discover" href="/tabs/discover">
+                      <IconCompass className="h-5 w-5" />
+                      <span className="text-[11px] uppercase tracking-[0.12em]">Discover</span>
                     </IonTabButton>
                     <IonTabButton tab="map" href="/tabs/map">
                       <IconMap className="h-5 w-5" />
                       <span className="text-[11px] uppercase tracking-[0.12em]">Map</span>
                     </IonTabButton>
-                    <IonTabButton tab="qr-scanner" href="/tabs/qr-scanner">
-                      {isActingAsEntity ? (
-                        <>
-                          <IconCalendar className="h-5 w-5" />
-                          <span className="text-[11px] uppercase tracking-[0.12em]">My Space</span>
-                        </>
-                      ) : (
-                        <>
-                          <IconQrCode className="h-5 w-5" />
-                          <span className="text-[11px] uppercase tracking-[0.12em]">Scan</span>
-                        </>
-                      )}
-                    </IonTabButton>
                     <IonTabButton tab="profile" href={profileTabHref}>
                       <IconUser className="h-5 w-5" />
                       <span className="text-[11px] uppercase tracking-[0.12em]">Profile</span>
-                    </IonTabButton>
-                    <IonTabButton tab="feed" href="/tabs/feed">
-                      <IconPlay className="h-5 w-5" />
-                      <span className="text-[11px] uppercase tracking-[0.12em]">Moments</span>
                     </IonTabButton>
                   </IonTabBar>
                 </IonTabs>

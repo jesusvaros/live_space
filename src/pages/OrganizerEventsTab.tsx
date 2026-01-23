@@ -9,7 +9,7 @@ import { Event, Profile, VenuePlace, Artist } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import { useHistory } from 'react-router-dom';
-import EventCard from '../components/EventCard';
+import EventPosterTile from '../components/EventPosterTile';
 import AppHeader from '../components/AppHeader';
 
 type EventListItem = Event & {
@@ -164,12 +164,13 @@ const OrganizerEventsTab: React.FC = () => {
                     No upcoming events yet. Hit create to add your next show.
                   </p>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                     {upcomingEvents.map(event => (
-                      <EventCard
+                      <EventPosterTile
                         key={event.id}
                         event={event}
-                        onSelect={() => history.push(`/event/${event.id}`)}
+                        className="w-full"
+                        onSelect={selected => history.push(`/event/${selected.id}`)}
                       />
                     ))}
                   </div>

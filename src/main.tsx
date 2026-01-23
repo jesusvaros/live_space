@@ -1,4 +1,3 @@
-import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { setupIonicReact } from '@ionic/react'
 import App from './App'
@@ -15,11 +14,9 @@ import './index.css'
 setupIonicReact()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <AuthProvider>
-      <WorkspaceProvider>
-        <App />
-      </WorkspaceProvider>
-    </AuthProvider>
-  </React.StrictMode>,
+  <AuthProvider>
+    <WorkspaceProvider>
+      <App />
+    </WorkspaceProvider>
+  </AuthProvider>,
 )

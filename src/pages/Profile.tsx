@@ -6,7 +6,7 @@ import { Event, PostWithSetlist, ProfileRole } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import AppHeader from '../components/AppHeader';
-import EventCard from '../components/EventCard';
+import EventPosterTile from '../components/EventPosterTile';
 import { IconCalendar, IconEdit, IconHeart, IconLogout, IconPlay, IconBriefcase } from '../components/icons';
 
 const Profile: React.FC = () => {
@@ -157,11 +157,8 @@ const Profile: React.FC = () => {
       const activeRole = isManagementMode && activeEntity ? activeEntity.type : profile?.role;
 
       if (activeRole === 'artist') {
-        const artistId = isManagementMode && activeEntity 
-          ? activeEntity.artist?.id 
-          : user.id;
-
-        if (artistId) {
+        const artistEntityId = isManagementMode && activeEntity ? activeEntity.artist?.id : null;
+        if (artistEntityId) {
           const { data: artistEventData } = await supabase
             .from('event_artists')
             .select(`
@@ -169,7 +166,7 @@ const Profile: React.FC = () => {
                   ${eventCardSelect}
                 )
               `)
-            .eq('artist_id', artistId);
+            .eq('artist_entity_id', artistEntityId);
 
           artistEvents = (artistEventData || [])
             .map((item: any) => item.events)
@@ -410,9 +407,14 @@ const Profile: React.FC = () => {
       return artistEvents.length === 0 ? (
         <p className="text-sm text-slate-500">No concerts yet.</p>
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {artistEvents.map(event => (
-            <EventCard key={event.id} event={event} onSelect={() => history.push(`/event/${event.id}`)} />
+            <EventPosterTile
+              key={event.id}
+              event={event}
+              className="w-full"
+              onSelect={selected => history.push(`/event/${selected.id}`)}
+            />
           ))}
         </div>
       );
@@ -423,9 +425,14 @@ const Profile: React.FC = () => {
       return venueEvents.length === 0 ? (
         <p className="text-sm text-slate-500">No events at this venue yet.</p>
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {venueEvents.map(event => (
-            <EventCard key={event.id} event={event} onSelect={() => history.push(`/event/${event.id}`)} />
+            <EventPosterTile
+              key={event.id}
+              event={event}
+              className="w-full"
+              onSelect={selected => history.push(`/event/${selected.id}`)}
+            />
           ))}
         </div>
       );
@@ -436,9 +443,14 @@ const Profile: React.FC = () => {
       return likedEvents.length === 0 ? (
         <p className="text-sm text-slate-500">No liked events yet.</p>
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {likedEvents.map(event => (
-            <EventCard key={event.id} event={event} onSelect={() => history.push(`/event/${event.id}`)} />
+            <EventPosterTile
+              key={event.id}
+              event={event}
+              className="w-full"
+              onSelect={selected => history.push(`/event/${selected.id}`)}
+            />
           ))}
         </div>
       );
@@ -448,9 +460,14 @@ const Profile: React.FC = () => {
       return attendedEvents.length === 0 ? (
         <p className="text-sm text-slate-500">No attended events yet.</p>
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {attendedEvents.map(event => (
-            <EventCard key={event.id} event={event} onSelect={() => history.push(`/event/${event.id}`)} />
+            <EventPosterTile
+              key={event.id}
+              event={event}
+              className="w-full"
+              onSelect={selected => history.push(`/event/${selected.id}`)}
+            />
           ))}
         </div>
       );

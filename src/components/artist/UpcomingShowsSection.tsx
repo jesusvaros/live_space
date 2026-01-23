@@ -1,5 +1,6 @@
 import React from 'react';
-import { IconMap, IconPlay } from '../icons';
+import { IconMap } from '../icons';
+import EventPosterTile from '../EventPosterTile';
 import { ArtistProfileEvent } from './types';
 
 type UpcomingShowsSectionProps = {
@@ -50,37 +51,22 @@ const UpcomingShowsSection: React.FC<UpcomingShowsSectionProps> = ({
           ) : null}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="flex gap-3 overflow-x-auto pb-1">
           {events.map(event => {
             const startsAt = new Date(event.starts_at);
-            const dateLabel = startsAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-            const weekdayLabel = startsAt.toLocaleDateString(undefined, { weekday: 'short' });
+            const dateLabel = startsAt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
             const venueName = event.venue_place?.name || event.address || 'Venue TBA';
             const city = event.venue_place?.city || event.city || 'City';
             return (
-              <div
+              <EventPosterTile
                 key={event.id}
-                className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/5 p-4 md:flex-row md:items-center md:justify-between"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 flex-col items-center justify-center rounded-xl bg-black/30 text-center text-white">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-200">{weekdayLabel}</span>
-                    <span className="text-sm font-bold uppercase">{dateLabel}</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-white">{venueName}</p>
-                    <p className="text-xs text-slate-400">{city}</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onViewEvent(event.id)}
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-[#ff6b4a] bg-[#ff6b4a]/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#ffb9a6] hover:bg-[#ff6b4a]/20"
-                >
-                  <IconPlay size={14} />
-                  View event
-                </button>
-              </div>
+                event={event}
+                className="w-[220px] shrink-0"
+                kicker={dateLabel}
+                title={venueName}
+                subtitle={city}
+                onSelect={selected => onViewEvent(selected.id)}
+              />
             );
           })}
         </div>

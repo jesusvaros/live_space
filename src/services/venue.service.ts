@@ -14,7 +14,7 @@ export const venueService = {
 
     // 2. Ensure subject exists using RPC
     const { data: subjectId, error: rpcError } = await supabase
-      .rpc('get_or_create_venue_subject', { p_venue_id: data.id });
+      .rpc('get_or_create_venue_subject', { p_venue_place_id: data.id });
 
     if (rpcError) throw rpcError;
 

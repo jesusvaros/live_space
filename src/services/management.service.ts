@@ -1,13 +1,20 @@
 import { supabase } from '../lib/supabase';
 import { ManagedEntity } from '../lib/types';
+import { cached } from '../lib/requestCache';
 
 export const managementService = {
   async getManagedEntities(profileId: string): Promise<ManagedEntity[]> {
     // 1. Get user_subject_id
-    const { data: subjectId, error: subjectError } = await supabase
-      .rpc('get_or_create_user_subject', { p_profile_id: profileId });
-    
-    if (subjectError) throw subjectError;
+    const subjectId = await cached(
+      `subject:user:${profileId}`,
+      async () => {
+        const { data, error } = await supabase
+          .rpc('get_or_create_user_subject', { p_profile_id: profileId });
+        if (error) throw error;
+        return data as unknown as string;
+      },
+      { ttlMs: 24 * 60 * 60 * 1000 }
+    );
 
     // 2. Query entity_members where admin_subject_id = user_subject_id
     const { data, error } = await supabase
@@ -35,11 +42,19 @@ export const managementService = {
         };
 
         if (type === 'artist') {
-          const { data: artist } = await supabase
-            .from('v_subject_artists')
-            .select('*')
-            .eq('subject_id', item.entity_subject_id)
-            .maybeSingle();
+          const artist = await cached(
+            `v_subject_artists:by_subject:${item.entity_subject_id}`,
+            async () => {
+              const { data, error } = await supabase
+                .from('v_subject_artists')
+                .select('*')
+                .eq('subject_id', item.entity_subject_id)
+                .maybeSingle();
+              if (error) throw error;
+              return data;
+            },
+            { ttlMs: 60_000 }
+          );
           if (artist) {
             entity.artist = {
               ...artist,
@@ -47,11 +62,19 @@ export const managementService = {
             };
           }
         } else if (type === 'venue') {
-          const { data: venue } = await supabase
-            .from('v_subject_venues')
-            .select('*')
-            .eq('subject_id', item.entity_subject_id)
-            .maybeSingle();
+          const venue = await cached(
+            `v_subject_venues:by_subject:${item.entity_subject_id}`,
+            async () => {
+              const { data, error } = await supabase
+                .from('v_subject_venues')
+                .select('*')
+                .eq('subject_id', item.entity_subject_id)
+                .maybeSingle();
+              if (error) throw error;
+              return data;
+            },
+            { ttlMs: 60_000 }
+          );
           if (venue) {
             entity.venue = {
               ...venue,
