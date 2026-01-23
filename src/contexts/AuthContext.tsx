@@ -155,6 +155,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  useEffect(() => {
+    const handleResume = () => {
+      if (document.visibilityState !== 'visible') return;
+      refreshProfile().catch(() => undefined);
+    };
+
+    window.addEventListener('focus', handleResume);
+    document.addEventListener('visibilitychange', handleResume);
+
+    return () => {
+      window.removeEventListener('focus', handleResume);
+      document.removeEventListener('visibilitychange', handleResume);
+    };
+  }, [authState.user]);
+
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error };

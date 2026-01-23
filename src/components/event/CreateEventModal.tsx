@@ -14,6 +14,8 @@ type CreateEventModalProps = {
   profileRole?: ProfileRole | null;
   profileCity?: string | null;
   profileName?: string | null;
+  defaultArtistId?: string | null;
+  initialMapCenter?: [number, number] | null;
 };
 
 const steps = ['Sala', 'Artista', 'Entrada', 'Más info'];
@@ -25,10 +27,19 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
   profileRole,
   profileCity,
   profileName,
+  defaultArtistId,
+  initialMapCenter,
 }) => {
   const [stepIndex, setStepIndex] = useState(0);
   const organizerAllowed = Boolean(profileRole && ['artist', 'venue', 'label'].includes(profileRole));
-  const form = useCreateEventForm({ userId, profileRole, profileCity });
+  const form = useCreateEventForm({
+    userId,
+    profileRole,
+    profileCity,
+    defaultArtistId,
+    defaultArtistName: profileName || undefined,
+    initialCenter: initialMapCenter || undefined,
+  });
   const newVenueIcon = useMemo(() => buildPinIcon('venue', 'SALA'), []);
 
   const handleBack = () => setStepIndex(prev => Math.max(prev - 1, 0));
@@ -66,7 +77,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
             selectedVenue={form.selectedVenue}
             onSelectVenue={form.selectVenue}
             onClearVenue={() => form.setSelectedVenue(null)}
-            onBoundsChange={form.setMapBounds}
+            onBoundsChange={form.handleBoundsChange}
             onMapSelect={form.handleMapSelect}
             venueLat={form.venueLat}
             venueLng={form.venueLng}
@@ -90,6 +101,9 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
             artists={form.artists}
             selectedArtistIds={form.selectedArtistIds}
             artistsLoading={form.artistsLoading}
+            artistSearch={form.artistSearch}
+            artistSearchCount={form.artistSearchCount}
+            onArtistSearchChange={form.setArtistSearch}
             onSelectArtists={form.setSelectedArtistIds}
           />
         );

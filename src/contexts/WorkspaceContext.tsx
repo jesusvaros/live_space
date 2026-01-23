@@ -8,6 +8,7 @@ interface WorkspaceContextType {
   activeWorkspace: ManagedEntity | null;
   setActiveWorkspace: (workspace: ManagedEntity | null) => void;
   loading: boolean;
+  ready: boolean;
   refreshWorkspaces: () => Promise<void>;
   isActingAsEntity: boolean;
   canCreateEvent: boolean;
@@ -21,6 +22,7 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [managedEntities, setManagedEntities] = useState<ManagedEntity[]>([]);
   const [activeWorkspace, _setActiveWorkspace] = useState<ManagedEntity | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initializedFor, setInitializedFor] = useState<string | null>(null);
 
   const storageKey = profile?.id ? `${STORAGE_KEY_PREFIX}${profile.id}` : null;
 
@@ -57,6 +59,7 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
       setManagedEntities([]);
       setActiveWorkspace(null);
       setLoading(false);
+      setInitializedFor(null);
       return;
     }
 
@@ -84,6 +87,7 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
       console.error('Error fetching managed entities:', error);
     } finally {
       setLoading(false);
+      setInitializedFor(profile.id);
     }
   };
 
@@ -91,9 +95,26 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
     refreshWorkspaces();
   }, [profile?.id]);
 
+  useEffect(() => {
+    const handleResume = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (!profile?.id) return;
+      refreshWorkspaces().catch(() => undefined);
+    };
+
+    window.addEventListener('focus', handleResume);
+    document.addEventListener('visibilitychange', handleResume);
+
+    return () => {
+      window.removeEventListener('focus', handleResume);
+      document.removeEventListener('visibilitychange', handleResume);
+    };
+  }, [profile?.id]);
+
   const isActingAsEntity = activeWorkspace !== null;
   const canCreateEvent = activeWorkspace !== null && 
     ['owner', 'admin', 'editor'].includes(activeWorkspace.role);
+  const ready = Boolean(profile?.id && initializedFor === profile.id);
 
   return (
     <WorkspaceContext.Provider
@@ -102,6 +123,7 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
         activeWorkspace,
         setActiveWorkspace,
         loading,
+        ready,
         refreshWorkspaces,
         isActingAsEntity,
         canCreateEvent

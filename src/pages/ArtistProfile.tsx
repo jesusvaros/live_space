@@ -16,8 +16,14 @@ import PastShowsSection from '../components/artist/PastShowsSection';
 import MomentsSection from '../components/artist/MomentsSection';
 import AboutSection from '../components/artist/AboutSection';
 
-const ArtistProfile: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+type ArtistProfileProps = {
+  artistId?: string;
+  embedded?: boolean;
+};
+
+const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => {
+  const { id: routeId } = useParams<{ id: string }>();
+  const id = artistId || routeId;
   const history = useHistory();
   const { managedEntities, activeWorkspace } = useWorkspace();
   const { user } = useAuth();
@@ -237,43 +243,53 @@ const ArtistProfile: React.FC = () => {
     }
   };
 
+  const content = (
+    <>
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <IonSpinner name="crescent" />
+        </div>
+      )}
+
+      {!loading && error && (
+        <p className="text-sm text-rose-400">{error}</p>
+      )}
+
+      {!loading && artist && (
+        <div className="space-y-8">
+          <ArtistHero
+            artist={artist}
+            isManager={isManager}
+            playedCount={playedCount}
+            externalLinks={externalLinks}
+            heroStyle={heroBackground}
+            onEdit={() => history.push('/tabs/profile')}
+          />
+
+          <div className="sticky top-[72px] z-10 -mx-4 bg-[#0b0e14]/90 px-4 pb-3 pt-2 backdrop-blur">
+            <ArtistTabs
+              activeTab={activeTab}
+              onSelect={key => setActiveTab(key)}
+            />
+          </div>
+
+          <div>{renderTabContent()}</div>
+        </div>
+      )}
+    </>
+  );
+
+  if (embedded) {
+    return <div className="app-screen p-4">{content}</div>;
+  }
+
   return (
     <IonPage>
       <IonContent fullscreen>
         <div className="app-layout">
           <AppHeader />
           <div className="app-screen p-4">
-            {loading && (
-              <div className="flex items-center justify-center py-12">
-                <IonSpinner name="crescent" />
-              </div>
-            )}
-
-            {!loading && error && (
-              <p className="text-sm text-rose-400">{error}</p>
-            )}
-
-            {!loading && artist && (
-              <div className="space-y-8">
-                <ArtistHero
-                  artist={artist}
-                  isManager={isManager}
-                  playedCount={playedCount}
-                  externalLinks={externalLinks}
-                  heroStyle={heroBackground}
-                  onEdit={() => history.push('/tabs/profile')}
-                />
-
-                <div className="sticky top-[72px] z-10 -mx-4 bg-[#0b0e14]/90 px-4 pb-3 pt-2 backdrop-blur">
-                  <ArtistTabs
-                    activeTab={activeTab}
-                    onSelect={key => setActiveTab(key)}
-                  />
-                </div>
-
-                <div>{renderTabContent()}</div>
-              </div>
-            )}
+            {content}
           </div>
         </div>
       </IonContent>

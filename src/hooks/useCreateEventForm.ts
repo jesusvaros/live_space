@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import L from 'leaflet';
 import { supabase } from '../lib/supabase';
 import { ProfileRole, VenuePlace } from '../lib/types';
@@ -9,6 +9,7 @@ export type ArtistOption = {
   display_name: string | null;
   username: string | null;
   role: ProfileRole;
+  avatar_url?: string | null;
 };
 
 export type PriceTier = { label: string; price: number };
@@ -17,9 +18,13 @@ type UseCreateEventFormOptions = {
   userId?: string | null;
   profileRole?: ProfileRole | null;
   profileCity?: string | null;
+  defaultArtistId?: string | null;
+  defaultArtistName?: string | null;
+  initialCenter?: [number, number] | null;
 };
 
 const defaultCenter: [number, number] = [41.3874, 2.1686];
+const lastCenterKey = 'createEvent:lastMapCenter';
 
 const formatLocalDateTime = (value: Date) => {
   const offset = value.getTimezoneOffset();
@@ -36,7 +41,14 @@ const toNumber = (value: number | string | null | undefined) => {
 
 const sanitizeFilename = (value: string) => value.replace(/[^a-zA-Z0-9._-]/g, '-');
 
-export const useCreateEventForm = ({ userId, profileRole, profileCity }: UseCreateEventFormOptions) => {
+export const useCreateEventForm = ({
+  userId,
+  profileRole,
+  profileCity,
+  defaultArtistId = null,
+  defaultArtistName = null,
+  initialCenter = null,
+}: UseCreateEventFormOptions) => {
   const [venues, setVenues] = useState<VenuePlace[]>([]);
   const [artists, setArtists] = useState<ArtistOption[]>([]);
   const [venuesLoading, setVenuesLoading] = useState(false);
@@ -67,11 +79,36 @@ export const useCreateEventForm = ({ userId, profileRole, profileCity }: UseCrea
   const [tierLabel, setTierLabel] = useState('');
   const [tierPrice, setTierPrice] = useState('');
 
-  const [selectedArtistIds, setSelectedArtistIds] = useState<string[]>([]);
+  const [selectedArtistIds, setSelectedArtistIds] = useState<string[]>(defaultArtistId ? [defaultArtistId] : []);
   const [artistMode, setArtistMode] = useState<'existing' | 'new'>('existing');
   const [newArtistName, setNewArtistName] = useState('');
   const [newArtistUsername, setNewArtistUsername] = useState('');
-  const [mapCenter, setMapCenter] = useState<[number, number]>(defaultCenter);
+  const [artistSearch, setArtistSearch] = useState('');
+  const [artistSearchCount, setArtistSearchCount] = useState<number | null>(null);
+  const loadStoredCenter = (): [number, number] | null => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = window.localStorage.getItem(lastCenterKey);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (
+        Array.isArray(parsed) &&
+        parsed.length === 2 &&
+        Number.isFinite(Number(parsed[0])) &&
+        Number.isFinite(Number(parsed[1]))
+      ) {
+        return [Number(parsed[0]), Number(parsed[1])];
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  };
+
+  const storedCenter = useMemo(() => loadStoredCenter(), [initialCenter]);
+  const preferredCenter = storedCenter || initialCenter || null;
+
+  const [mapCenter, setMapCenter] = useState<[number, number]>(preferredCenter || defaultCenter);
   const [mapBounds, setMapBounds] = useState<L.LatLngBounds | null>(null);
 
   useEffect(() => {
@@ -97,9 +134,15 @@ export const useCreateEventForm = ({ userId, profileRole, profileCity }: UseCrea
     setPriceTiers([]);
     setTierLabel('');
     setTierPrice('');
-    setSelectedArtistIds([]);
-    setMapCenter(defaultCenter);
-  }, [profileCity]);
+    setSelectedArtistIds(defaultArtistId ? [defaultArtistId] : []);
+    setArtistSearch('');
+    setArtistSearchCount(null);
+    if (preferredCenter) {
+      setMapCenter(preferredCenter);
+    } else {
+      setMapCenter(defaultCenter);
+    }
+  }, [profileCity, defaultArtistId, preferredCenter]);
 
   useEffect(() => {
     const loadVenues = async () => {
@@ -117,37 +160,117 @@ export const useCreateEventForm = ({ userId, profileRole, profileCity }: UseCrea
       setVenuesLoading(false);
     };
 
-    const loadArtists = async () => {
-      if (profileRole === 'artist') return;
+    loadVenues();
+  }, []);
+
+  useEffect(() => {
+    const query = artistSearch.trim();
+    setArtistSearchCount(null);
+    if (!query) {
+      const baseList = defaultArtistId
+        ? [
+            {
+              id: defaultArtistId,
+              display_name: defaultArtistName || 'Your artist profile',
+              username: null,
+              role: 'artist' as ProfileRole,
+            },
+          ]
+        : [];
+      setArtists(baseList);
+      setArtistsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const handle = window.setTimeout(async () => {
       setArtistsLoading(true);
-      const { data, error: artistError } = await supabase
-        .from('profiles')
-        .select('id, display_name, username, role')
-        .eq('role', 'artist')
-        .order('display_name', { ascending: true });
+      const artistQuery = supabase
+        .from('artists')
+        .select('id, name, avatar_url')
+        .order('name', { ascending: true });
+
+      const { data, error: artistError } = await artistQuery.ilike('name', `%${query}%`);
+
+      if (cancelled) {
+        return;
+      }
+
       if (artistError) {
         setError('Unable to load artists.');
         setArtists([]);
+        setArtistSearchCount(0);
       } else {
-        setArtists((data || []) as ArtistOption[]);
+        const artistOptions = (data || []).map(row => ({
+          id: row.id,
+          display_name: row.name,
+          username: null,
+          role: 'artist' as ProfileRole,
+          avatar_url: row.avatar_url ?? null,
+        })) as ArtistOption[];
+        setArtistSearchCount(artistOptions.length);
+        const hasDefault = defaultArtistId
+          ? artistOptions.some(artist => artist.id === defaultArtistId)
+          : false;
+        const withDefault =
+          defaultArtistId && !hasDefault
+            ? [
+                {
+                  id: defaultArtistId,
+                  display_name: defaultArtistName || 'Your artist profile',
+                  username: null,
+                  role: 'artist' as ProfileRole,
+                },
+                ...artistOptions,
+              ]
+            : artistOptions;
+        setArtists(withDefault);
       }
       setArtistsLoading(false);
-    };
+    }, 700);
 
-    loadVenues();
-    loadArtists();
-  }, [profileRole]);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
+  }, [artistSearch, defaultArtistId, defaultArtistName]);
 
   useEffect(() => {
+    if (defaultArtistId && selectedArtistIds.length === 0) {
+      setSelectedArtistIds([defaultArtistId]);
+    }
+  }, [defaultArtistId, selectedArtistIds.length]);
+
+  const persistCenter = useCallback((center: [number, number]) => {
+    setMapCenter(center);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(lastCenterKey, JSON.stringify(center));
+    }
+  }, []);
+
+  const persistCenterOnly = useCallback((center: [number, number]) => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(lastCenterKey, JSON.stringify(center));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (initialCenter && !storedCenter) {
+      persistCenter(initialCenter);
+    }
+  }, [initialCenter, storedCenter, persistCenter]);
+
+  useEffect(() => {
+    if (preferredCenter) return;
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       position => {
-        setMapCenter([position.coords.latitude, position.coords.longitude]);
+        persistCenter([position.coords.latitude, position.coords.longitude]);
       },
       () => undefined,
       { enableHighAccuracy: true, timeout: 5000 }
     );
-  }, []);
+  }, [preferredCenter, persistCenter]);
 
   useEffect(() => {
     if (!posterFile) {
@@ -196,23 +319,31 @@ export const useCreateEventForm = ({ userId, profileRole, profileCity }: UseCrea
       .filter(Boolean) as { venue: VenuePlace; position: [number, number]; icon: L.DivIcon }[];
   }, [visibleVenues]);
 
-  const selectVenue = (venue: VenuePlace) => {
+  const handleBoundsChange = useCallback((bounds: L.LatLngBounds) => {
+    setMapBounds(bounds);
+    const center = bounds.getCenter();
+    if (center && Number.isFinite(center.lat) && Number.isFinite(center.lng)) {
+      persistCenterOnly([center.lat, center.lng]);
+    }
+  }, [persistCenterOnly]);
+
+  const selectVenue = useCallback((venue: VenuePlace) => {
     setSelectedVenue(venue);
     setVenueMode('existing');
     const lat = toNumber(venue.latitude);
     const lng = toNumber(venue.longitude);
     if (lat !== null && lng !== null) {
-      setMapCenter([lat, lng]);
+      persistCenter([lat, lng]);
     }
-  };
+  }, [persistCenter]);
 
-  const handleMapSelect = (lat: number, lng: number) => {
+  const handleMapSelect = useCallback((lat: number, lng: number) => {
     setVenueMode('new');
     setSelectedVenue(null);
     setNewVenueLat(lat.toFixed(6));
     setNewVenueLng(lng.toFixed(6));
-    setMapCenter([lat, lng]);
-  };
+    persistCenter([lat, lng]);
+  }, [persistCenter]);
 
   const venueCity = venueMode === 'existing' ? selectedVenue?.city || '' : newVenueCity.trim();
   const venueAddress = venueMode === 'existing' ? selectedVenue?.address || '' : newVenueAddress.trim();
@@ -275,7 +406,12 @@ export const useCreateEventForm = ({ userId, profileRole, profileCity }: UseCrea
         return null;
       }
     }
-    const artistIds = selectedArtistIds.length > 0 ? selectedArtistIds : (profileRole === 'artist' && userId ? [userId] : []);
+    const fallbackArtistIds =
+      defaultArtistId && profileRole === 'artist' ? [defaultArtistId] : [];
+    const artistIds =
+      selectedArtistIds.length > 0
+        ? selectedArtistIds
+        : fallbackArtistIds;
     if (artistIds.length === 0) {
       setError('Select at least one artist.');
       return null;
@@ -439,6 +575,8 @@ export const useCreateEventForm = ({ userId, profileRole, profileCity }: UseCrea
     artistMode,
     newArtistName,
     newArtistUsername,
+    artistSearch,
+    artistSearchCount,
     mapCenter,
     mapBounds,
     visibleVenues,
@@ -468,8 +606,9 @@ export const useCreateEventForm = ({ userId, profileRole, profileCity }: UseCrea
     setArtistMode,
     setNewArtistName,
     setNewArtistUsername,
-    setMapBounds,
+    setArtistSearch,
     setError,
+    handleBoundsChange,
     addPriceTier,
     removePriceTier,
     selectVenue,
