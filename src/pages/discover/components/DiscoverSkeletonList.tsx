@@ -6,7 +6,7 @@ const DiscoverSkeletonList: React.FC<{ rows?: number }> = ({ rows = 6 }) => {
       {Array.from({ length: rows }).map((_, idx) => (
         <div
           key={idx}
-          className="h-[74px] animate-pulse rounded-3xl border border-white/10 bg-white/5"
+          className="h-[74px] animate-pulse bg-white/5"
         />
       ))}
     </div>
@@ -14,4 +14,3 @@ const DiscoverSkeletonList: React.FC<{ rows?: number }> = ({ rows = 6 }) => {
 };
 
 export default DiscoverSkeletonList;
-

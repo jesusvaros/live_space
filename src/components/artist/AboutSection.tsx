@@ -19,27 +19,27 @@ const AboutSection: React.FC<AboutSectionProps> = ({
 }) => (
   <section className="space-y-3">
     <div>
-      <p className="text-[11px] uppercase tracking-[0.35em] text-slate-500">About</p>
-      <h2 className="font-display text-xl text-white">Artist info</h2>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-white/60">About</p>
+      <h2 className="font-display text-xl font-bold text-white">Details</h2>
     </div>
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-4">
+    <div className="space-y-4 rounded-2xl bg-white/5 p-5">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">City</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/60">City</p>
           <p className="text-sm font-semibold text-white">{artist.city || '—'}</p>
         </div>
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Type</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/60">Type</p>
           <p className="text-sm font-semibold text-white">{artist.artist_type === 'band' ? 'Band' : 'Solo artist'}</p>
         </div>
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Genres</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/60">Genres</p>
           <p className="text-sm font-semibold text-white">
             {artist.genres && artist.genres.length > 0 ? artist.genres.join(', ') : '—'}
           </p>
         </div>
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Shows</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/60">Shows</p>
           <p className="text-sm font-semibold text-white">
             {playedCount > 0 ? `Played ${playedCount}` : 'Coming soon'}
           </p>
@@ -50,14 +50,14 @@ const AboutSection: React.FC<AboutSectionProps> = ({
           <button
             type="button"
             onClick={onCreateShow}
-            className="inline-flex items-center gap-2 rounded-full border border-[#ff6b4a] bg-[#ff6b4a]/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#ffb9a6] hover:bg-[#ff6b4a]/20"
+            className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white transition hover:bg-white/15"
           >
             Create show
           </button>
           <button
             type="button"
             onClick={onOpenMap}
-            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white hover:border-white/40"
+            className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white transition hover:bg-white/15"
           >
             <IconMap size={14} />
             View on map

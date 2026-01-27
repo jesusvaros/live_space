@@ -23,14 +23,6 @@ const Feed: React.FC = () => {
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const history = useHistory();
 
-  const stories = [
-    { id: 1, name: 'Rooftop Set', seed: 'rooftop' },
-    { id: 2, name: 'Indie Night', seed: 'indie' },
-    { id: 3, name: 'Jazz Jam', seed: 'jazz' },
-    { id: 4, name: 'Synth Club', seed: 'synth' },
-    { id: 5, name: 'Street Session', seed: 'street' },
-  ];
-
   const loadPosts = async (nextPage: number, replace = false) => {
     const from = nextPage * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
@@ -137,41 +129,16 @@ const Feed: React.FC = () => {
   return (
     <IonPage>
       <IonContent fullscreen>
-        <div className="app-layout">
+        <div className="min-h-full">
           <AppHeader />
-          <div className="app-screen">
-            <div className="app-hero fade-up">
-              <div className="relative z-10 flex items-start justify-between">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.35em] text-slate-500">
-                    Now nearby
-                  </p>
-                  <h2 className="mt-3 font-display text-3xl text-slate-50">
-                    {profile?.primary_city || 'Your city'}
-                  </h2>
-                  <p className="mt-2 text-sm text-slate-400">See what is trending tonight</p>
-                </div>
-                <span className="app-pill">Live</span>
-              </div>
-
-              <div className="scroll-row relative z-10 mt-5 flex gap-3 overflow-x-auto pb-1">
-                {stories.map(story => (
-                  <div
-                    key={story.id}
-                    className="w-24 shrink-0 text-center fade-up fade-up-delay-1"
-                  >
-                    <div className="story-ring mx-auto h-16 w-16">
-                      <img
-                        src={`https://picsum.photos/seed/${story.seed}/80/80`}
-                        alt={story.name}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                    <p className="mt-2 text-[11px] font-medium text-slate-400">{story.name}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <div className="flex flex-col gap-6 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
+            <header className="space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Moments</p>
+              <h2 className="font-display text-3xl font-bold text-white">
+                {profile?.primary_city ? `Tonight in ${profile.primary_city}` : 'Tonight'}
+              </h2>
+              <p className="text-sm text-white/55">Relive what people lived.</p>
+            </header>
 
             {loading ? (
               <div className="flex items-center justify-center py-12">
@@ -180,53 +147,42 @@ const Feed: React.FC = () => {
             ) : (
               <div className="space-y-4">
                 {error && <p className="text-sm text-rose-400">{error}</p>}
-                {posts.map(post => (
-                  <button
-                    key={post.id}
-                    type="button"
-                    className="app-card w-full space-y-3 p-4 text-left fade-up fade-up-delay-2"
-                    onClick={() => history.push(`/post/${post.id}`)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-11 w-11 overflow-hidden rounded-full bg-slate-800">
-                        <img
-                          src={post.profiles?.avatar_url || `https://picsum.photos/seed/${post.user_id}/80/80`}
-                          alt={post.profiles?.display_name || post.profiles?.username || 'User'}
-                          className="h-full w-full object-cover"
-                        />
+                {posts.map(post => {
+                  const username =
+                    (post.profiles as any)?.username
+                      ? `@${(post.profiles as any).username}`
+                      : (post.profiles as any)?.display_name || 'Anonymous';
+                  const title = post.caption || post.events?.name || 'Relive the moment';
+                  const subtitle = `${post.events?.city || 'Unknown'} · ${new Date(post.created_at).toLocaleDateString()}`;
+                  const poster = post.thumbnail_url || post.events?.cover_image_url || null;
+                  return (
+                    <button
+                      key={post.id}
+                      type="button"
+                      className="-mx-4 block w-[calc(100%+2rem)] text-left"
+                      onClick={() => history.push(`/post/${post.id}`)}
+                    >
+                      <div className="relative aspect-[4/5] w-full overflow-hidden bg-black">
+                        {post.media_type === 'image' ? (
+                          <img src={post.media_url} alt={title} className="absolute inset-0 h-full w-full object-cover" />
+                        ) : poster ? (
+                          <img src={poster} alt={title} className="absolute inset-0 h-full w-full object-cover" />
+                        ) : (
+                          <video muted playsInline preload="metadata" className="absolute inset-0 h-full w-full object-cover">
+                            <source src={post.media_url} />
+                          </video>
+                        )}
+                        <div className="absolute inset-x-0 bottom-0 bg-black/70 p-5">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">
+                            {username}
+                          </p>
+                          <h3 className="mt-2 font-display text-2xl font-bold text-white line-clamp-2">{title}</h3>
+                          <p className="mt-2 text-sm text-white/70">{subtitle}</p>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-slate-50">
-                          {post.profiles?.display_name || post.profiles?.username || 'Anonymous'}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {post.events?.city || 'Unknown'} ·{' '}
-                          {post.events?.starts_at
-                            ? new Date(post.events.starts_at).toLocaleDateString()
-                            : 'Soon'}
-                        </p>
-                      </div>
-                      {post.events?.name && <span className="app-chip">{post.events.name}</span>}
-                    </div>
-                    <div className="card-media">
-                      {post.media_type === 'video' ? (
-                        <video
-                          controls
-                          playsInline
-                          className="h-48 w-full object-cover"
-                          poster={post.thumbnail_url || post.events?.cover_image_url || undefined}
-                        >
-                          <source src={post.media_url} />
-                        </video>
-                      ) : (
-                        <img src={post.media_url} alt={post.caption || 'Post'} className="h-48 w-full object-cover" />
-                      )}
-                    </div>
-                    <h3 className="font-display text-lg text-slate-50">
-                      {post.caption || post.events?.name || 'Live moment'}
-                    </h3>
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
             )}
 

@@ -41,22 +41,9 @@ const MapPreviewSection: React.FC<MapPreviewSectionProps> = ({ center, pins, onO
       <button
         type="button"
         onClick={onOpenMap}
-        className="relative w-full overflow-hidden rounded-3xl border border-white/10 bg-[#0f1320] p-4 text-left shadow-[0_20px_44px_rgba(0,0,0,0.45)]"
+        className="relative w-full overflow-hidden text-left"
       >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(255,107,74,0.25),transparent_40%),radial-gradient(circle_at_75%_80%,rgba(122,167,255,0.22),transparent_45%)]" />
-        <div className="relative z-10 flex items-center justify-between gap-4">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Map preview</p>
-            <p className="mt-1 text-sm text-slate-200">
-              {pins.length > 0 ? `${pins.length} nearby` : 'Open map to explore'}
-            </p>
-          </div>
-          <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-[#ffd1c4]">
-            Open map
-          </span>
-        </div>
-
-        <div className="relative z-10 mt-4 h-32 w-full overflow-hidden rounded-2xl border border-white/10 bg-black/20">
+        <div className="relative h-44 w-full overflow-hidden bg-black">
           <div className="pointer-events-none absolute inset-0">
             <MapContainer
               center={mapCenter}
@@ -90,11 +77,12 @@ const MapPreviewSection: React.FC<MapPreviewSectionProps> = ({ center, pins, onO
               ))}
             </MapContainer>
           </div>
-          {pins.length === 0 && (
-            <div className="relative z-10 flex h-full items-center justify-center px-4 text-center">
-              <p className="text-xs text-slate-200">No nearby pins yet.</p>
-            </div>
-          )}
+          <div className="absolute inset-x-0 bottom-0 bg-black/70 p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Map</p>
+            <p className="mt-1 text-sm font-semibold text-white/90">
+              {pins.length > 0 ? `${pins.length} nearby` : 'Open the map to explore'}
+            </p>
+          </div>
         </div>
       </button>
     </section>

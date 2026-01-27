@@ -75,7 +75,7 @@ const QrScanner: React.FC<QrScannerProps> = ({ onDetected }) => {
 
   return (
     <div className="space-y-4">
-      <div className="overflow-hidden rounded-2xl bg-slate-900">
+      <div className="overflow-hidden bg-black">
         <video ref={videoRef} className="w-full" muted playsInline />
       </div>
 
@@ -83,10 +83,10 @@ const QrScanner: React.FC<QrScannerProps> = ({ onDetected }) => {
         <p className="text-sm text-amber-400">{error}</p>
       )}
 
-      <label className="app-field">
-        <span className="app-label">Paste event link</span>
+      <label className="flex flex-col gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">Paste event link</span>
         <input
-          className="app-input"
+          className="bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none"
           value={manualValue}
           onChange={e => setManualValue(e.target.value)}
           placeholder="https://..."
@@ -94,7 +94,7 @@ const QrScanner: React.FC<QrScannerProps> = ({ onDetected }) => {
       </label>
       <button
         type="button"
-        className="app-button app-button--block"
+        className="inline-flex w-full items-center justify-center bg-white/10 px-4 py-3 text-sm font-semibold text-white"
         onClick={() => manualValue && onDetected(manualValue)}
       >
         Use link

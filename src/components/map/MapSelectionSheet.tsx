@@ -33,11 +33,11 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({
       const artists = (ev.event_artists || []).map(a => a.artist?.name).filter(Boolean).join(', ');
       return (
         <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Evento</p>
-          <h3 className="font-display text-xl text-slate-50">{ev.name}</h3>
-          <p className="text-sm text-slate-300">{ev.venue_place?.city || ev.city}</p>
-          {artists && <p className="text-sm text-slate-400 mt-1">{artists}</p>}
-          <p className="text-sm text-slate-400 mt-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Event</p>
+          <h3 className="mt-2 font-display text-xl font-bold text-white">{ev.name}</h3>
+          <p className="text-sm text-white/70">{ev.venue_place?.city || ev.city}</p>
+          {artists && <p className="mt-1 text-sm text-white/55">{artists}</p>}
+          <p className="mt-2 text-sm text-white/55">
             {new Date(ev.starts_at).toLocaleString(undefined, {
               weekday: 'short',
               month: 'short',
@@ -53,16 +53,16 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({
     if (!venue) return null;
     return (
       <div>
-        <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Sala</p>
-        <h3 className="font-display text-xl text-slate-50">{venue.name}</h3>
-        <p className="text-sm text-slate-300">{venue.city}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Venue</p>
+        <h3 className="mt-2 font-display text-xl font-bold text-white">{venue.name}</h3>
+        <p className="text-sm text-white/70">{venue.city}</p>
       </div>
     );
   };
 
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-[1100] max-h-[60vh] rounded-t-3xl border border-white/10 bg-[#0b0f1a]/95 p-4 shadow-[0_-12px_40px_rgba(0,0,0,0.45)] backdrop-blur"
+      className="fixed inset-x-0 bottom-0 z-[1100] max-h-[60vh] bg-black/92 p-4"
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
@@ -70,27 +70,27 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({
         <div className="h-1 w-12 rounded-full bg-white/20" />
         <button
           type="button"
-          className="text-xs text-slate-300"
+          className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
           onClick={onClose}
         >
-          Cerrar
+          Close
         </button>
       </div>
       {renderDetails()}
       <div className="mt-4 flex items-center justify-between">
         <button
           type="button"
-          className="rounded-full border border-white/15 px-3 py-1 text-xs text-slate-100"
+          className="bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white"
           onClick={onPrev}
         >
-          ← Anterior
+          Prev
         </button>
         <button
           type="button"
-          className="rounded-full border border-white/15 px-3 py-1 text-xs text-slate-100"
+          className="bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white"
           onClick={onNext}
         >
-          Siguiente →
+          Next
         </button>
       </div>
     </div>

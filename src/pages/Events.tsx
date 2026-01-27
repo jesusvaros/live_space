@@ -120,67 +120,67 @@ const Events: React.FC = () => {
       <IonContent fullscreen>
         <div className="min-h-full">
           <AppHeader />
-          <div className="flex flex-col gap-8 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
-            <TimelineHeroSection
-              state={hero}
-              onDismissPendingMoments={hero.kind === 'just_attended' ? dismissPendingMoments : undefined}
-            />
+          <TimelineHeroSection
+            state={hero}
+            onDismissPendingMoments={hero.kind === 'just_attended' ? dismissPendingMoments : undefined}
+          />
 
-            {hero.kind !== 'cold_start' && nextUpcoming && (
-              <section className="space-y-3">
-                <div className="flex items-center justify-between gap-4">
+          {hero.kind !== 'just_attended' && (
+            <div className="flex flex-col gap-8 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
+              {hero.kind !== 'cold_start' && nextUpcoming && (
+                <section className="space-y-3">
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Next</p>
-                    <h3 className="mt-2 font-display text-xl text-slate-50">Coming up</h3>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Next</p>
+                    <h3 className="mt-2 font-display text-xl font-bold text-white">Coming up</h3>
                   </div>
-                </div>
-                <div className="flex gap-3 overflow-x-auto pb-1">
-                  <EventPosterTile
-                    event={{ ...nextUpcoming, cover_image_url: getEventCoverImage(nextUpcoming) }}
-                    className="w-[220px] shrink-0"
-                    kicker={formatDate(nextUpcoming.starts_at)}
-                    title={getPrimaryArtistName(nextUpcoming)}
-                    subtitle={nextUpcoming.venue_place?.name || nextUpcoming.city}
-                    onSelect={selected => history.push(`/event/${selected.id}`)}
-                  />
-                </div>
-              </section>
-            )}
+                  <div className="flex gap-3 overflow-x-auto pb-1">
+                    <EventPosterTile
+                      event={{ ...nextUpcoming, cover_image_url: getEventCoverImage(nextUpcoming) }}
+                      className="w-[220px] shrink-0"
+                      kicker={formatDate(nextUpcoming.starts_at)}
+                      title={getPrimaryArtistName(nextUpcoming)}
+                      subtitle={nextUpcoming.venue_place?.name || nextUpcoming.city}
+                      onSelect={selected => history.push(`/event/${selected.id}`)}
+                    />
+                  </div>
+                </section>
+              )}
 
-            {hero.kind === 'cold_start' && (
-              <NearbyHeroSection
-                canCreateEvent={canCreateEvent}
-                loading={loading}
-                loadError={loadError}
-                location={location}
-                locationLoading={locationLoading}
-                locationError={locationError}
-                onRequestLocation={requestLocation}
-                nearbyUpcoming={nearbyUpcoming}
+              {hero.kind === 'cold_start' && (
+                <NearbyHeroSection
+                  canCreateEvent={canCreateEvent}
+                  loading={loading}
+                  loadError={loadError}
+                  location={location}
+                  locationLoading={locationLoading}
+                  locationError={locationError}
+                  onRequestLocation={requestLocation}
+                  nearbyUpcoming={nearbyUpcoming}
+                />
+              )}
+
+              <MapPreviewSection
+                center={location}
+                pins={mapPins}
+                onOpenMap={() => history.push('/tabs/map')}
               />
-            )}
 
-            <MapPreviewSection
-              center={location}
-              pins={mapPins}
-              onOpenMap={() => history.push('/tabs/map')}
-            />
+              <TrendingSection loading={trendingLoading} trending={trending} meta={trendingMeta} />
 
-            <TrendingSection loading={trendingLoading} trending={trending} meta={trendingMeta} />
+              <DiscoverSection
+                loading={suggestionsLoading}
+                canFollow={canFollow}
+                followedSubjectIds={followedSubjectIds}
+                suggestedArtists={suggestedArtists}
+                suggestedVenues={suggestedVenues}
+                onToggleFollowSubject={(subjectId) => {
+                  void toggleFollowSubject(subjectId);
+                }}
+              />
 
-            <DiscoverSection
-              loading={suggestionsLoading}
-              canFollow={canFollow}
-              followedSubjectIds={followedSubjectIds}
-              suggestedArtists={suggestedArtists}
-              suggestedVenues={suggestedVenues}
-              onToggleFollowSubject={(subjectId) => {
-                void toggleFollowSubject(subjectId);
-              }}
-            />
-
-            <FollowedFromArtistsSection visible={followedArtistIds.size > 0} events={followedUpcoming} />
-          </div>
+              <FollowedFromArtistsSection visible={followedArtistIds.size > 0} events={followedUpcoming} />
+            </div>
+          )}
         </div>
       </IonContent>
     </IonPage>

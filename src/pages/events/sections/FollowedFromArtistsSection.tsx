@@ -17,12 +17,12 @@ const FollowedFromArtistsSection: React.FC<FollowedFromArtistsSectionProps> = ({
     <section className="space-y-4">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Following</p>
-          <h3 className="mt-2 font-display text-xl text-slate-50">From artists you follow</h3>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Following</p>
+          <h3 className="mt-2 font-display text-xl font-bold text-white">From artists you follow</h3>
         </div>
         <button
           type="button"
-          className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
+          className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/70 hover:text-white"
           onClick={() => history.push('/tabs/map')}
         >
           Explore
@@ -30,9 +30,9 @@ const FollowedFromArtistsSection: React.FC<FollowedFromArtistsSectionProps> = ({
       </div>
 
       {events.length === 0 ? (
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-          <p className="text-sm text-slate-200">No upcoming concerts from artists you follow</p>
-          <p className="mt-1 text-xs text-slate-500">Explore the map to find something new.</p>
+        <div className="bg-white/5 p-5">
+          <p className="text-sm font-semibold text-white/90">No upcoming shows from artists you follow</p>
+          <p className="mt-1 text-xs text-white/55">Open the map to find something new.</p>
         </div>
       ) : (
         <div className="flex gap-3 overflow-x-auto pb-1">

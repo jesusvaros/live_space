@@ -18,12 +18,12 @@ const TrendingSection: React.FC<TrendingSectionProps> = ({ loading, trending, me
     <section className="space-y-4">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Trending</p>
-          <h3 className="mt-2 font-display text-xl text-slate-50">Trending this week</h3>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Trending</p>
+          <h3 className="mt-2 font-display text-xl font-bold text-white">Trending this week</h3>
         </div>
         <button
           type="button"
-          className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
+          className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/70 hover:text-white"
           onClick={() => history.push('/tabs/map')}
         >
           Explore
@@ -35,9 +35,9 @@ const TrendingSection: React.FC<TrendingSectionProps> = ({ loading, trending, me
           <IonSpinner name="crescent" />
         </div>
       ) : trending.length === 0 ? (
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-          <p className="text-sm text-slate-200">No trending events yet</p>
-          <p className="mt-1 text-xs text-slate-500">Check the map to discover what people are going to.</p>
+        <div className="bg-white/5 p-5">
+          <p className="text-sm font-semibold text-white/90">No trending nights yet</p>
+          <p className="mt-1 text-xs text-white/55">Open the map to see what people are going to.</p>
         </div>
       ) : (
         <div className="flex gap-3 overflow-x-auto pb-1">

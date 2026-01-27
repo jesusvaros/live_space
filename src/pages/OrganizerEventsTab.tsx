@@ -128,23 +128,23 @@ const OrganizerEventsTab: React.FC = () => {
           <AppHeader />
           <div className="flex flex-col gap-6 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
             <div className="animate-fade-up motion-reduce:animate-none">
-              <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Events</p>
-              <h2 className="mt-2 font-display text-2xl text-slate-50">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-white/60">Events</p>
+              <h2 className="mt-2 font-display text-2xl font-bold text-white">
                 Next events for {organizerLabel}
               </h2>
-              <p className="mt-2 text-sm text-slate-500">
-                Tap an event to review it or share new moments in its timeline.
+              <p className="mt-2 text-sm text-white/70">
+                Open a show to keep its timeline alive.
               </p>
             </div>
 
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-white/60">
                 {activeWorkspace?.type === 'venue' ? 'Shows at your venue' : 'Upcoming gigs you are booked on'}
               </p>
               {canCreateEvent && (
                 <button
                   type="button"
-                  className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
+                  className="inline-flex items-center justify-center rounded-xl bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/15"
                   onClick={() => history.push('/create-event')}
                 >
                   Create event
@@ -160,7 +160,7 @@ const OrganizerEventsTab: React.FC = () => {
               <div className="space-y-4">
                 {error && <p className="text-sm text-rose-400">{error}</p>}
                 {upcomingEvents.length === 0 ? (
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-white/70">
                     No upcoming events yet. Hit create to add your next show.
                   </p>
                 ) : (

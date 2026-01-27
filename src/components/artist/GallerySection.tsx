@@ -14,32 +14,31 @@ const GallerySection: React.FC<GallerySectionProps> = ({ gallery, onSelect, onVi
     <section className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Media</p>
-          <h2 className="font-display text-xl text-white">Gallery</h2>
-          <p className="text-sm text-slate-400">Live photos, posters, backstage.</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Media</p>
+          <h2 className="font-display text-xl font-bold text-white">Gallery</h2>
+          <p className="text-sm text-white/55">Live photos, posters, backstage.</p>
         </div>
         <button
           type="button"
           onClick={onViewGallery}
-          className="text-xs font-semibold uppercase tracking-[0.14em] text-[#ffb9a6] underline decoration-[#ff6b4a]/60 underline-offset-4"
+          className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70 hover:text-white"
         >
           View gallery
         </button>
       </div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="-mx-4 grid grid-cols-3 gap-1">
         {gallery.map(item => (
           <button
             key={item.id}
             type="button"
             onClick={() => onSelect(item.id)}
-            className="group relative aspect-square overflow-hidden rounded-2xl border border-white/10 bg-[#0f1320]"
+            className="group relative aspect-square overflow-hidden bg-white/5 transition-opacity hover:opacity-90"
           >
             <img
               src={item.media_url}
               alt={item.caption || 'Gallery item'}
-              className="h-full w-full object-cover transition duration-300 group-hover:scale-105 group-hover:opacity-90"
+              className="h-full w-full object-cover"
             />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-black/10 to-transparent opacity-0 transition group-hover:opacity-100" />
           </button>
         ))}
       </div>

@@ -102,47 +102,43 @@ const MapFilterModal: React.FC<MapFilterModalProps> = ({
   return (
     <IonModal isOpen={isOpen} onDidDismiss={onDismiss}>
       <IonContent fullscreen>
-        <div className="flex flex-col gap-4 rounded-3xl bg-[#141824] p-5 shadow-[0_24px_50px_rgba(0,0,0,0.45)]">
+        <div className="min-h-full bg-app-bg p-5">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="font-display text-lg font-semibold text-slate-50">Filtros</h2>
+            <h2 className="font-display text-lg font-bold text-white">Filters</h2>
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
+              className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
               onClick={onDismiss}
             >
-              Cerrar
+              Close
             </button>
           </div>
 
-          <div className="space-y-6">
-            <div className="space-y-3 rounded-2xl border border-white/5 bg-white/5 p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Cuándo</p>
+          <div className="mt-6 space-y-6">
+            <div className="space-y-3 bg-white/5 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/65">When</p>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  className={`rounded-xl border px-3 py-2 text-sm font-semibold ${
-                    filterDayPart === 'day'
-                      ? 'border-[#ff6b4a] bg-[#ff6b4a]/80 text-white'
-                      : 'border-white/10 bg-[#0b0f1a] text-slate-100'
+                  className={`bg-white/10 px-3 py-2 text-sm font-semibold ${
+                    filterDayPart === 'day' ? 'text-app-accent' : 'text-white/75'
                   }`}
                   onClick={() => onDayPartChange(filterDayPart === 'day' ? '' : 'day')}
                 >
-                  ☀️ Día
+                  Day
                 </button>
                 <button
                   type="button"
-                  className={`rounded-xl border px-3 py-2 text-sm font-semibold ${
-                    filterDayPart === 'night'
-                      ? 'border-[#ff6b4a] bg-[#ff6b4a]/80 text-white'
-                      : 'border-white/10 bg-[#0b0f1a] text-slate-100'
+                  className={`bg-white/10 px-3 py-2 text-sm font-semibold ${
+                    filterDayPart === 'night' ? 'text-app-accent' : 'text-white/75'
                   }`}
                   onClick={() => onDayPartChange(filterDayPart === 'night' ? '' : 'night')}
                 >
-                  🌙 Noche
+                  Night
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <label className="flex items-center gap-2 text-sm text-slate-200">
+                <label className="flex items-center gap-2 text-sm text-white/80">
                   <input
                     type="checkbox"
                     checked={filterGoing}
@@ -150,9 +146,9 @@ const MapFilterModal: React.FC<MapFilterModalProps> = ({
                     disabled={disableAttendance}
                     className="accent-[#ff6b4a]"
                   />
-                  <span>Voy</span>
+                  <span>Going</span>
                 </label>
-                <label className="flex items-center gap-2 text-sm text-slate-200">
+                <label className="flex items-center gap-2 text-sm text-white/80">
                   <input
                     type="checkbox"
                     checked={filterAttended}
@@ -160,26 +156,26 @@ const MapFilterModal: React.FC<MapFilterModalProps> = ({
                     disabled={disableAttendance}
                     className="accent-[#ff6b4a]"
                   />
-                  <span>He ido</span>
+                  <span>Attended</span>
                 </label>
               </div>
             </div>
 
-            <div className="space-y-4 rounded-2xl border border-white/5 bg-white/5 p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Estilo y lineup</p>
+            <div className="space-y-4 bg-white/5 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/65">Lineup</p>
               <label className="flex flex-col gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                  Tipo de música (coma)
+                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
+                  Genres (comma)
                 </span>
                 <input
-                  className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
+                  className="w-full bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none"
                   value={filterGenres}
                   onChange={e => onGenresChange(e.target.value)}
                   placeholder="Jazz, Rock"
                 />
               </label>
-              <label className="flex items-center justify-between gap-3 text-sm text-slate-200">
-                <span className="flex items-center gap-2">🎸 Solo bandas</span>
+              <label className="flex items-center justify-between gap-3 text-sm text-white/80">
+                <span className="flex items-center gap-2">Band only</span>
                 <span className="relative inline-flex h-6 w-11 items-center">
                   <input
                     type="checkbox"
@@ -194,11 +190,11 @@ const MapFilterModal: React.FC<MapFilterModalProps> = ({
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <input
-                    className="flex-1 rounded-2xl border border-white/10 bg-[#141824] px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
+                    className="flex-1 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none"
                     value={artistQuery}
                     onChange={e => setArtistQuery(e.target.value)}
                     ref={artistInputRef}
-                    placeholder="Buscar artista"
+                    placeholder="Search artist"
                     onKeyDown={e => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -208,22 +204,22 @@ const MapFilterModal: React.FC<MapFilterModalProps> = ({
                   />
                   <button
                     type="button"
-                    className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-100"
+                    className="bg-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-white"
                     onClick={handleArtistSearch}
                     disabled={searching}
                   >
-                    {searching ? 'Buscando…' : 'Buscar'}
+                    {searching ? 'Searching…' : 'Search'}
                   </button>
                 </div>
                 {artistResults.length > 0 && (
-                  <div className="rounded-2xl border border-white/10 bg-[#0b0f1a] p-2 text-sm text-slate-100">
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Resultados</p>
+                  <div className="bg-white/5 p-3 text-sm text-white">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/65">Results</p>
                     <div className="mt-2 space-y-2">
                       {artistResults.map(artist => (
                         <button
                           key={artist.id}
                           type="button"
-                          className="flex w-full items-center gap-3 rounded-xl bg-white/5 px-3 py-2 text-left hover:bg-white/10"
+                          className="flex w-full items-center gap-3 bg-white/5 px-3 py-2 text-left hover:bg-white/10"
                           onClick={() => {
                             onAddArtist(artist);
                             setArtistQuery('');
@@ -234,7 +230,7 @@ const MapFilterModal: React.FC<MapFilterModalProps> = ({
                             {artist.avatar_url ? (
                               <img src={artist.avatar_url} alt={artist.name} className="h-full w-full object-cover" />
                             ) : (
-                              <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-400">🎤</div>
+                              <div className="flex h-full w-full items-center justify-center text-[10px] text-white/60">A</div>
                             )}
                           </div>
                           <span>{artist.name}</span>
@@ -244,18 +240,18 @@ const MapFilterModal: React.FC<MapFilterModalProps> = ({
                   </div>
                 )}
                 {selectedArtists.length > 0 && (
-                  <div className="rounded-2xl border border-white/10 bg-[#0b0f1a] p-2 text-sm text-slate-100">
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Artistas activos</p>
+                  <div className="bg-white/5 p-3 text-sm text-white">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/65">Active</p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {selectedArtists.map(artist => (
                         <span
                           key={artist.id}
-                          className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs"
+                          className="inline-flex items-center gap-2 bg-white/10 px-3 py-1 text-xs"
                         >
                           {artist.name}
                           <button
                             type="button"
-                            className="text-slate-300 hover:text-white"
+                            className="text-white/70 hover:text-white"
                             onClick={() => onRemoveArtist(artist.id)}
                           >
                             ×
@@ -268,26 +264,26 @@ const MapFilterModal: React.FC<MapFilterModalProps> = ({
               </div>
             </div>
 
-            <div className="space-y-3 rounded-2xl border border-white/5 bg-white/5 p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Precio</p>
+            <div className="space-y-3 bg-white/5 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/65">Price</p>
               <div className="grid grid-cols-2 gap-3">
                 <label className="flex flex-col gap-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                    Mínimo
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
+                    Min
                   </span>
                   <input
-                    className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
+                    className="w-full bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none"
                     value={priceMin}
                     onChange={e => onPriceMinChange(e.target.value)}
                     placeholder="0"
                   />
                 </label>
                 <label className="flex flex-col gap-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                    Máximo
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
+                    Max
                   </span>
                   <input
-                    className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
+                    className="w-full bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none"
                     value={priceMax}
                     onChange={e => onPriceMaxChange(e.target.value)}
                     placeholder="50"
@@ -298,10 +294,10 @@ const MapFilterModal: React.FC<MapFilterModalProps> = ({
 
             <button
               type="button"
-              className="inline-flex w-full items-center justify-center rounded-2xl border border-transparent px-4 py-3 text-sm font-semibold text-[#ffd1c4]"
+              className="inline-flex w-full items-center justify-center bg-white/10 px-4 py-3 text-sm font-semibold text-white"
               onClick={onClear}
             >
-              Limpiar filtros
+              Clear filters
             </button>
           </div>
         </div>

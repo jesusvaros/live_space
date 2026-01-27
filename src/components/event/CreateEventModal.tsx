@@ -151,14 +151,19 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
   })();
 
   return (
-    <div className="flex flex-col rounded-3xl bg-[#141824] overflow-hidden max-h-[100vh] h-full overflow-hidden">
+    <div className="flex h-full max-h-[100vh] flex-col overflow-hidden rounded-3xl bg-app-bg">
       {/* Header - Title + Close in same row */}
-      <div className="flex items-center justify-between gap-4 p-4 py-4 bg-gradient-to-r from-[#1a1f2e] to-[#151922] border-b border-white/10 flex-shrink-0">
-        <h2 className="font-display text-lg font-semibold text-slate-50 ">Create event</h2>
-        <div className="flex-1 flex justify-end">
+      <div className="flex flex-shrink-0 items-center justify-between gap-4 p-4">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/60">
+            Create
+          </p>
+          <h2 className="mt-1 font-display text-lg font-bold text-white">Event</h2>
+        </div>
+        <div className="flex flex-1 justify-end">
           <button
             type="button"
-            className="inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold text-[#ffd1c4]"
+            className="inline-flex items-center justify-center rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15"
             onClick={onDismiss}
           >
             Close
@@ -167,49 +172,46 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
       </div>
 
       {/* Progress Steps */}
-      <div className="px-4 pt-4 flex-shrink-0">
-        <div className="relative">
-          <div className="absolute left-0 right-0 top-4 h-px bg-white/10" />
-          <div className="flex items-start justify-between">
-            {steps.map((label, index) => (
-              <div key={label} className="flex w-full flex-col items-center">
-                <div
-                  className={`flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold ${
-                    index === stepIndex
-                      ? 'border-orange-400/70 bg-orange-500/20 text-orange-100'
-                      : 'border-white/20 bg-slate-900 text-slate-300'
+      <div className="flex-shrink-0 px-4">
+        <div className="flex items-center gap-3 overflow-x-auto pb-2">
+          {steps.map((label, index) => {
+            const isActive = index === stepIndex;
+            const isDone = index < stepIndex;
+            return (
+              <div key={label} className="flex shrink-0 items-center gap-2">
+                <span
+                  className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${
+                    isActive ? 'text-app-accent' : isDone ? 'text-white/70' : 'text-white/45'
                   }`}
                 >
-                  {index + 1}
-                </div>
-                <span className="mt-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                   {label}
                 </span>
+                {index < steps.length - 1 && <span className="text-white/20">•</span>}
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       </div>
 
       {/* Error Message */}
       {form.error && (
-        <div className="px-4 pt-4 flex-shrink-0">
+        <div className="flex-shrink-0 px-4 pt-3">
           <p className="text-sm text-rose-400">{form.error}</p>
         </div>
       )}
 
       {/* Content - Scrollable */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 min-h-0">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
         {content}
       </div>
 
       {/* Footer - Always visible */}
-      <div className="p-4 pt-0 flex-shrink-0">
-        <div className="flex flex-col gap-2 sm:flex-row tw">
+      <div className="flex-shrink-0 p-4 pt-0">
+        <div className="tw flex flex-col gap-2 sm:flex-row">
           {stepIndex > 0 && (
             <button
               type="button"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#ff6b4a]/40 bg-transparent px-6 py-3 text-sm font-semibold text-[#ffd1c4] transition sm:w-auto"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/15 sm:w-auto"
               onClick={handleBack}
             >
               Back
@@ -217,7 +219,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
           )}
           <button
             type="button"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#ff6b4a] px-6 py-3 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
             onClick={handlePrimary}
             disabled={form.saving || (stepIndex === steps.length - 1 && !organizerAllowed)}
           >

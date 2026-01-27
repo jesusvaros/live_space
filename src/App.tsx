@@ -46,16 +46,16 @@ const App: React.FC = () => {
         ? `/tabs/venue/${activeVenueId}`
         : '/tabs/profile';
   const tabBarStyle: { [key: string]: string } = {
-    '--background': 'rgba(12, 15, 22, 0.95)',
-    '--border': '1px solid rgba(255, 255, 255, 0.08)',
-    '--color': '#7c8798',
-    '--color-selected': 'var(--app-ink)',
+    '--background': 'rgba(11, 11, 13, 0.92)',
+    '--border': 'none',
+    '--color': 'rgba(255, 255, 255, 0.62)',
+    '--color-selected': '#ffffff',
     '--padding-top': '6px',
     '--padding-bottom': '6px',
     '--padding-start': '10px',
     '--padding-end': '10px',
-    '--border-radius': '16px',
-    '--background-focused': 'rgba(255, 107, 74, 0.2)',
+    '--border-radius': '0px',
+    '--background-focused': 'rgba(255, 107, 74, 0.16)',
   };
 
   const showOverlay = loading && !user;
@@ -121,7 +121,7 @@ const App: React.FC = () => {
                   </IonRouterOutlet>
                   <IonTabBar
                     slot="bottom"
-                    className="mx-4 mb-[calc(10px+var(--ion-safe-area-bottom,0px))] mt-2 h-16 rounded-3xl px-2 py-2 shadow-[0_16px_30px_rgba(0,0,0,0.4)]"
+                    className="h-16 px-2 py-2"
                     style={tabBarStyle}
                   >
                     <IonTabButton tab="events" href="/tabs/events">

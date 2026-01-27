@@ -9,21 +9,21 @@ type DiscoverSearchBarProps = {
 
 const DiscoverSearchBar: React.FC<DiscoverSearchBarProps> = ({ value, placeholder, onChange, onClear }) => {
   return (
-    <div className="sticky top-0 z-20 -mx-4 px-4 pb-3 pt-2 backdrop-blur">
-      <div className="rounded-2xl border border-white/10 bg-[#141824]/90 shadow-[0_16px_32px_rgba(0,0,0,0.35)]">
+    <div className="sticky top-0 z-20 -mx-4 bg-app-bg px-4 pb-3 pt-2">
+      <div className="bg-white/5">
         <div className="flex items-center gap-3 px-4 py-3">
           <input
             type="search"
             value={value}
             placeholder={placeholder || 'Search artists or venues'}
             onChange={e => onChange(e.target.value)}
-            className="w-full bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
+            className="w-full bg-transparent text-sm text-white placeholder:text-white/40 focus:outline-none"
           />
           {value.trim().length > 0 && (
             <button
               type="button"
               onClick={onClear}
-              className="shrink-0 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-slate-100"
+              className="shrink-0 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
             >
               Clear
             </button>
@@ -35,4 +35,3 @@ const DiscoverSearchBar: React.FC<DiscoverSearchBarProps> = ({ value, placeholde
 };
 
 export default DiscoverSearchBar;
-

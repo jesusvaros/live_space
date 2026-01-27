@@ -28,13 +28,13 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, rightSlot, showBack }) => 
   };
 
   return (
-    <header className="sticky top-0 z-20 border-b border-white/10 bg-[#0b0e14]/85 px-4 py-3 pt-[calc(12px+env(safe-area-inset-top,0px))] backdrop-blur-xl">
+    <header className="sticky top-0 z-20 bg-app-bg px-4 py-3 pt-[calc(12px+env(safe-area-inset-top,0px))]">
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-1 items-center gap-2">
           {shouldShowBack ? (
             <button
               type="button"
-              className="inline-flex items-center justify-center rounded-full px-3 py-2 text-sm font-semibold text-[#ffd1c4] disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center px-3 py-2 text-sm font-semibold text-white/80 disabled:cursor-not-allowed disabled:opacity-60"
               onClick={handleBackClick}
               aria-label="Go back"
             >
@@ -58,7 +58,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, rightSlot, showBack }) => 
           <WorkspaceSwitcher />
           <button
             type="button"
-            className="inline-flex items-center justify-center rounded-full px-3 py-2 text-sm font-semibold text-[#ffd1c4] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center justify-center px-3 py-2 text-sm font-semibold text-white/80 disabled:cursor-not-allowed disabled:opacity-60"
             aria-label="Notifications"
             disabled
           >

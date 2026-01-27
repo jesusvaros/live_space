@@ -167,7 +167,7 @@ const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
               type="button"
               className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full ${sizeClass} ${
                 index === selectedIndex
-                  ? 'bg-[#ff6b4a] shadow-[0_0_12px_rgba(255,107,74,0.6)]'
+                  ? 'bg-[#ff6b4a]'
                   : 'bg-white/40'
               }`}
               style={{ left: `${ratio * 100}%` }}
@@ -178,11 +178,11 @@ const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
           );
         })}
         <div
-          className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#ff6b4a] bg-[#ff6b4a]/20 shadow-[0_0_14px_rgba(255,107,74,0.35)]"
+          className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#ff6b4a] bg-[#ff6b4a]/20"
           style={{ left: `${selectedRatio * 100}%` }}
         />
       </div>
-      <div className="flex justify-between text-[11px] text-slate-400">
+      <div className="flex justify-between text-[11px] text-white/55">
         <span>{formatRelative(0)}</span>
         <span>{formatRelative(maxOffset)}</span>
       </div>

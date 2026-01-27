@@ -20,27 +20,27 @@ const PastShowsSection: React.FC<PastShowsSectionProps> = ({
   <section className="space-y-3">
     <div className="flex items-center justify-between">
       <div>
-        <p className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Archive</p>
-        <h2 className="font-display text-xl text-white">Past shows</h2>
-        <p className="text-sm text-slate-400">Last {events.length || 3} performances.</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Archive</p>
+        <h2 className="font-display text-xl font-bold text-white">Past shows</h2>
+        <p className="text-sm text-white/55">Last {events.length || 3} performances.</p>
       </div>
       {playedCount > 0 && (
-        <span className="rounded-full bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[#ff6b4a]">
+        <span className="bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white/80">
           Played {playedCount}
         </span>
       )}
     </div>
     {events.length === 0 ? (
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-slate-300">
+      <div className="bg-white/5 p-5">
         <p className="font-semibold text-white">No past shows yet</p>
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-1 text-sm text-white/55">
           We will start showing the archive as soon as the first show finishes.
         </p>
         {isManager ? (
           <button
             type="button"
             onClick={onCreateShow}
-            className="mt-3 inline-flex items-center gap-2 rounded-xl border border-white/15 bg-black/30 px-4 py-2 text-sm font-semibold text-white hover:border-[#ff6b4a]/60 hover:text-[#ffb9a6]"
+            className="mt-3 bg-white/10 px-4 py-2 text-sm font-semibold text-white"
           >
             Create show
           </button>

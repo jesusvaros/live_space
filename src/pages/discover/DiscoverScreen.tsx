@@ -100,16 +100,16 @@ const DiscoverScreen: React.FC = () => {
   };
 
   const headerSubtitle = useMemo(() => {
-    if (tab === 'artists') return 'Artists to follow';
-    return 'Venues to follow';
+    if (tab === 'artists') return 'Follow the ones you’ve seen live.';
+    return 'Follow the rooms you return to.';
   }, [tab]);
 
   return (
     <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
       <header className="space-y-2">
-        <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Discover</p>
-        <h2 className="font-display text-3xl text-slate-50">Discover</h2>
-        <p className="text-sm text-slate-500">{headerSubtitle}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Discover</p>
+        <h2 className="font-display text-3xl font-bold text-white">{tab === 'artists' ? 'Artists' : 'Venues'}</h2>
+        <p className="text-sm text-white/55">{headerSubtitle}</p>
       </header>
 
       <DiscoverSearchBar

@@ -190,97 +190,82 @@ const ProfileDetail: React.FC = () => {
       <IonContent fullscreen>
         <div className="min-h-full">
           <AppHeader />
-          <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
-            {loading && (
-              <div className="flex items-center justify-center py-12">
-                <IonSpinner name="crescent" />
-              </div>
-            )}
 
-            {!loading && error && (
-              <p className="text-sm text-rose-400">{error}</p>
-            )}
+          {loading && (
+            <div className="flex items-center justify-center py-12">
+              <IonSpinner name="crescent" />
+            </div>
+          )}
 
-            {!loading && profile && (
-              <>
-                <div className="space-y-4 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-5 shadow-[0_24px_50px_rgba(0,0,0,0.35)]">
-                  <div className="flex items-center gap-4">
-                    <div className="h-16 w-16 overflow-hidden rounded-full bg-slate-800">
-                      {profile.avatar_url ? (
-                        <img
-                          src={profile.avatar_url}
-                          alt={profile.display_name || 'Profile'}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="h-full w-full bg-gradient-to-br from-[#1b2232] to-[#0b0e14]" />
-                      )}
-                    </div>
-                    <div>
-                      <h2 className="font-display text-xl text-slate-50">
-                        {profile.display_name || profile.username || 'Unknown'}
-                      </h2>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <p className="text-xs text-slate-400">
-                          {profile.role.toUpperCase()} · {profile.primary_city || 'City TBD'}
-                        </p>
-                        <span className="text-slate-600">|</span>
-                        <p className="text-xs font-semibold text-slate-300">
-                          {followersCount} followers
-                        </p>
-                      </div>
-                    </div>
+          {!loading && error && <div className="p-4"><p className="text-sm text-rose-400">{error}</p></div>}
+
+          {!loading && profile && (
+            <>
+              <section className="relative h-[340px] w-full overflow-hidden bg-black">
+                {profile.avatar_url ? (
+                  <img src={profile.avatar_url} alt={profile.display_name || 'Profile'} className="absolute inset-0 h-full w-full object-cover" />
+                ) : null}
+                <div className="absolute inset-x-0 bottom-0 bg-black/70 p-5">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">
+                    {profile.role.toUpperCase()}
+                  </p>
+                  <h2 className="mt-2 font-display text-3xl font-bold text-white">
+                    {profile.display_name || profile.username || 'Unknown'}
+                  </h2>
+                  {profile.primary_city && <p className="mt-2 text-sm text-white/70">{profile.primary_city}</p>}
+                  <div className="mt-3 flex items-center gap-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
+                      {followersCount} followers
+                    </p>
+                    {user && profile.id !== user.id && (
+                      <button
+                        type="button"
+                        disabled={followLoading}
+                        onClick={handleFollowToggle}
+                        className={`px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] disabled:opacity-60 ${
+                          isFollowing ? 'bg-white/10 text-white/80' : 'bg-[#ff6b4a] text-white'
+                        }`}
+                      >
+                        {followLoading ? <IonSpinner name="crescent" /> : (isFollowing ? 'Following' : 'Follow')}
+                      </button>
+                    )}
                   </div>
-                  {profile.bio && <p className="text-sm text-slate-300">{profile.bio}</p>}
-                  
-                  {user && profile.id !== user.id && (
-                    <button
-                      type="button"
-                      disabled={followLoading}
-                      onClick={handleFollowToggle}
-                      className={`w-full rounded-xl py-2 text-sm font-semibold transition ${
-                        isFollowing
-                          ? 'bg-white/10 text-white border border-white/10'
-                          : 'bg-[#ff6b4a] text-white'
-                      }`}
-                    >
-                      {followLoading ? <IonSpinner name="crescent" /> : (isFollowing ? 'Following' : 'Follow')}
-                    </button>
-                  )}
                 </div>
+              </section>
+
+              <div className="flex flex-col gap-8 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
+                {profile.bio && <p className="text-sm text-white/70">{profile.bio}</p>}
 
                 {externalLinks.length > 0 && (
-                  <div className="space-y-3 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 shadow-[0_24px_50px_rgba(0,0,0,0.35)]">
-                    <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">Links</p>
-                    <div className="space-y-2 text-sm text-slate-300">
+                  <section className="space-y-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Links</p>
+                    <div className="space-y-2 text-sm">
                       {externalLinks.map(link => (
                         <a
                           key={link.key}
                           href={link.value}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-slate-200 hover:text-slate-50"
+                          className="block text-white/70 hover:text-white"
                         >
                           {link.value.replace(/^https?:\/\//, '')}
                         </a>
                       ))}
                     </div>
-                  </div>
+                  </section>
                 )}
 
                 {profile.role === 'venue' && venuePlaces.length > 0 && (
-                  <div className="space-y-4 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 shadow-[0_24px_50px_rgba(0,0,0,0.35)]">
-                    <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">Venues</p>
-                    <div className="space-y-4">
+                  <section className="space-y-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Venues</p>
+                    <div className="space-y-6">
                       {venuePlaces.map(venue => (
                         <div key={venue.id} className="space-y-2">
                           <div>
-                            <p className="text-sm text-slate-50">{venue.name}</p>
-                            <p className="text-xs text-slate-400">
-                              {venue.address || venue.city}
-                            </p>
+                            <p className="font-display text-lg font-bold text-white">{venue.name}</p>
+                            <p className="text-sm text-white/70">{venue.address || venue.city}</p>
                             {(venue.venue_type || venue.capacity) && (
-                              <p className="text-xs text-slate-500">
+                              <p className="text-xs text-white/55">
                                 {venue.venue_type || 'Venue'}{venue.capacity ? ` · ${venue.capacity} cap` : ''}
                               </p>
                             )}
@@ -290,18 +275,15 @@ const ProfileDetail: React.FC = () => {
                               href={venue.website_url}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-slate-200 hover:text-slate-50"
+                              className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70 hover:text-white"
                             >
                               {venue.website_url.replace(/^https?:\/\//, '')}
                             </a>
                           )}
                           {(venue.photos || []).length > 0 && (
-                            <div className="flex gap-3 overflow-x-auto pb-1">
-                              {venue.photos.map((url, index) => (
-                                <div
-                                  key={`${url}-${index}`}
-                                  className="h-24 w-40 flex-shrink-0 overflow-hidden rounded-2xl bg-[#0f1320]"
-                                >
+                            <div className="-mx-4 flex gap-2 overflow-x-auto pb-1">
+                              {venue.photos.slice(0, 8).map((url, index) => (
+                                <div key={`${url}-${index}`} className="h-28 w-44 flex-shrink-0 overflow-hidden bg-white/5">
                                   <img src={url} alt="Venue" className="h-full w-full object-cover" />
                                 </div>
                               ))}
@@ -310,16 +292,16 @@ const ProfileDetail: React.FC = () => {
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </section>
                 )}
 
                 <section className="space-y-3">
                   <div>
-                    <h3 className="font-display text-lg text-slate-50">Events</h3>
-                    <p className="text-xs text-slate-500">Shows connected to this profile.</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Events</p>
+                    <p className="mt-1 text-sm text-white/55">Shows connected to this profile.</p>
                   </div>
                   {events.length === 0 ? (
-                    <p className="text-sm text-slate-500">No events yet.</p>
+                    <p className="text-sm text-white/55">No events yet.</p>
                   ) : (
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                       {events.map(event => (
@@ -336,19 +318,19 @@ const ProfileDetail: React.FC = () => {
 
                 <section className="space-y-3">
                   <div>
-                    <h3 className="font-display text-lg text-slate-50">Recent moments</h3>
-                    <p className="text-xs text-slate-500">Latest media from connected events.</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Moments</p>
+                    <p className="mt-1 text-sm text-white/55">Latest media from connected events.</p>
                   </div>
                   {moments.length === 0 ? (
-                    <p className="text-sm text-slate-500">No moments yet.</p>
+                    <p className="text-sm text-white/55">No moments yet.</p>
                   ) : (
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="-mx-4 grid grid-cols-3 gap-1">
                       {moments.map(moment => (
                         <button
                           key={moment.id}
                           type="button"
                           onClick={() => history.push(`/post/${moment.id}`)}
-                          className="overflow-hidden rounded-2xl bg-[#0f1320] aspect-square"
+                          className="aspect-square overflow-hidden bg-white/5 transition-opacity hover:opacity-90"
                         >
                           {moment.media_type === 'video' ? (
                             <video className="h-full w-full object-cover" muted>
@@ -366,17 +348,17 @@ const ProfileDetail: React.FC = () => {
                     </div>
                   )}
                 </section>
-              </>
-            )}
 
-            <button
-              type="button"
-              className="inline-flex w-full items-center justify-center rounded-2xl border border-transparent px-4 py-2 text-sm font-semibold text-[#ffd1c4]"
-              onClick={() => history.goBack()}
-            >
-              Back
-            </button>
-          </div>
+                <button
+                  type="button"
+                  className="bg-white/10 px-4 py-3 text-sm font-semibold text-white"
+                  onClick={() => history.goBack()}
+                >
+                  Back
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </IonContent>
     </IonPage>

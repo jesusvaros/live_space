@@ -11,21 +11,21 @@ const MomentsSection: React.FC<MomentsSectionProps> = ({ moments, isManager, onS
   <section className="space-y-3">
     <div className="flex items-center justify-between">
       <div>
-        <p className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Moments</p>
-        <h2 className="font-display text-xl text-white">Live moments</h2>
-        <p className="text-sm text-slate-400">Clips and recaps from shows.</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-white/60">Moments</p>
+        <h2 className="font-display text-xl font-bold text-white">Relive it</h2>
+        <p className="text-sm text-white/70">Clips and snapshots from the crowd.</p>
       </div>
       {isManager && moments.length === 0 && (
-        <span className="rounded-full border border-dashed border-white/20 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-200">
-          Empty · add first live moment
+        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">
+          Empty · add the first one
         </span>
       )}
     </div>
     {moments.length === 0 ? (
       isManager ? (
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-slate-300">
+        <div className="rounded-2xl bg-white/5 p-5 text-white/80">
           <p className="font-semibold text-white">No moments yet — share your first live moment</p>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-white/70">
             Upload a clip or photo from a recent performance.
           </p>
         </div>
@@ -37,7 +37,7 @@ const MomentsSection: React.FC<MomentsSectionProps> = ({ moments, isManager, onS
             key={moment.id}
             type="button"
             onClick={() => onSelect(moment.id)}
-            className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#0f1320] aspect-square"
+            className="relative aspect-square overflow-hidden bg-black/30"
           >
             {moment.media_type === 'video' ? (
               <video className="h-full w-full object-cover" muted>
@@ -46,7 +46,6 @@ const MomentsSection: React.FC<MomentsSectionProps> = ({ moments, isManager, onS
             ) : (
               <img src={moment.media_url} alt={moment.caption || 'Moment'} className="h-full w-full object-cover" />
             )}
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
           </button>
         ))}
       </div>

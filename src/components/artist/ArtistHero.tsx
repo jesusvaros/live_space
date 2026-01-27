@@ -45,7 +45,7 @@ const SocialIcon: React.FC<{ name: SocialKey }> = ({ name }) => {
     return (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
         <path d="M21 8.5s0-2-2-2.1C17.2 6.2 12 6.2 12 6.2s-5.2 0-7 .2C3 6.4 3 8.5 3 8.5S3 10.6 3 12v1.5s0 2 2 2.2c1.8.2 7 .2 7 .2s5.2 0 7-.2c2-.2 2-2.2 2-2.2V12s0-1.5 0-3.5z" />
-        <path d="M10 15l4-3-4-3v6z" fill="#0b0e14" />
+        <path d="M10 15l4-3-4-3v6z" fill="#0b0b0d" />
       </svg>
     );
   }
@@ -63,61 +63,50 @@ const ArtistHero: React.FC<ArtistHeroProps> = ({ artist, isManager, playedCount,
   const verifiedBadge = (artist as any)?.is_verified;
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-white/10 shadow-[0_24px_50px_rgba(0,0,0,0.45)]" style={heroStyle}>
-      <div className="relative z-10 flex flex-col gap-4 bg-gradient-to-b from-black/40 via-black/20 to-black/60 p-6">
-        <div className="flex items-start justify-between">
-          <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white">
-            Artist Profile
+    <section className="relative min-h-[420px] overflow-hidden bg-black" style={heroStyle}>
+      {isManager && (
+        <button
+          type="button"
+          onClick={onEdit}
+          className="absolute right-4 top-4 z-10 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
+        >
+          <span className="inline-flex items-center gap-2">
+            <IconEdit size={14} />
+            Edit
           </span>
-          {isManager && (
-            <button
-              type="button"
-              onClick={onEdit}
-              className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/20 px-3 py-1 text-xs font-semibold text-white backdrop-blur hover:border-white/40 transition-colors"
-            >
-              <IconEdit size={14} />
-              Edit profile
-            </button>
-          )}
-        </div>
-        <div className="flex flex-col items-center gap-3 text-center">
-          <div className="h-24 w-24 overflow-hidden rounded-full border border-white/10 bg-white/10 shadow-lg">
+        </button>
+      )}
+
+      <div className="absolute inset-x-0 bottom-0 bg-black/70 p-6">
+        <div className="flex items-center gap-4">
+          <div className="h-16 w-16 overflow-hidden bg-white/10">
             {artist.avatar_url ? (
               <img src={artist.avatar_url} alt={artist.name} className="h-full w-full object-cover" />
             ) : (
-              <div className="h-full w-full bg-gradient-to-br from-[#1c2435] via-[#111827] to-[#0b0e14]" />
+              <div className="h-full w-full bg-white/10" />
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-display text-2xl text-white">{artist.name}</h1>
-            {verifiedBadge && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white">
-                <IconCheckCircle size={14} />
-                Verified
-              </span>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center justify-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-200">
-            {artist.city && <span className="rounded-full bg-black/25 px-3 py-1">{artist.city}</span>}
-            <span className="rounded-full bg-black/25 px-3 py-1">{artist.artist_type === 'band' ? 'Band' : 'Solo'}</span>
-            {playedCount > 0 && (
-              <span className="rounded-full bg-black/25 px-3 py-1">
-                Played {playedCount} {playedCount === 1 ? 'show' : 'shows'}
-              </span>
-            )}
+          <div className="min-w-0 flex-1">
+            <h1 className="font-display text-2xl font-bold text-white line-clamp-1">{artist.name}</h1>
+            <p className="mt-1 text-sm text-white/55 line-clamp-1">
+              {artist.city ? artist.city : artist.artist_type === 'band' ? 'Band' : 'Solo'}
+              {verifiedBadge ? ' · Verified' : ''}
+              {playedCount > 0 ? ` · ${playedCount} shows` : ''}
+            </p>
           </div>
         </div>
+
         {artist.bio && (
           <p
-            className="mx-auto max-w-3xl text-sm text-slate-100/90 opacity-90"
-            style={{ display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+            className="mt-4 text-sm text-white/80"
+            style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
           >
             {artist.bio}
           </p>
         )}
 
         {externalLinks.length > 0 && (
-          <div className="mx-auto flex max-w-3xl flex-wrap justify-center gap-3 pt-2">
+          <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
             {externalLinks.map(link => {
               const key = link.key as SocialKey;
               const labelMap: Record<SocialKey, string> = {
@@ -133,7 +122,7 @@ const ArtistHero: React.FC<ArtistHeroProps> = ({ artist, isManager, playedCount,
                   href={link.value}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white transition hover:border-[#ff6b4a]/60 hover:text-[#ffb9a6]"
+                  className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70 hover:text-white"
                 >
                   <SocialIcon name={key} />
                   {labelMap[key]}

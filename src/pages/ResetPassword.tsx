@@ -59,15 +59,15 @@ const ResetPassword: React.FC = () => {
           <AppHeader />
           <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
             {!ready && (
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-white/70">
                 Open the reset link from your email to continue.
               </p>
             )}
 
             {ready && (
-              <div className="space-y-4 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 shadow-[0_24px_50px_rgba(0,0,0,0.35)]">
+              <div className="space-y-4 rounded-2xl bg-white/5 p-4">
                 <label className="flex flex-col gap-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
                     New password
                   </span>
                   <input
@@ -75,11 +75,11 @@ const ResetPassword: React.FC = () => {
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
+                    className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
                   />
                 </label>
                 <label className="flex flex-col gap-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
                     Confirm password
                   </span>
                   <input
@@ -87,12 +87,12 @@ const ResetPassword: React.FC = () => {
                     value={confirm}
                     onChange={e => setConfirm(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
+                    className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
                   />
                 </label>
                 <button
                   type="button"
-                  className="inline-flex w-full items-center justify-center rounded-2xl bg-[#ff6b4a] px-4 py-2 text-sm font-semibold text-white"
+                  className="inline-flex w-full items-center justify-center rounded-2xl bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15"
                   onClick={handleUpdate}
                 >
                   Update password
@@ -105,7 +105,7 @@ const ResetPassword: React.FC = () => {
 
             <button
               type="button"
-              className="inline-flex w-full items-center justify-center rounded-2xl border border-transparent px-4 py-2 text-sm font-semibold text-[#ffd1c4]"
+              className="inline-flex w-full items-center justify-center px-4 py-2 text-sm font-semibold text-white/70 transition hover:text-white"
               onClick={() => history.replace('/welcome')}
             >
               Back to sign in

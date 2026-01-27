@@ -105,22 +105,20 @@ const TimelinePlayer: React.FC<TimelinePlayerProps> = ({
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">Timeline</p>
-          <p className="mt-1.5 font-display text-lg font-semibold text-slate-50">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Timeline</p>
+          <p className="mt-1.5 font-display text-lg font-bold text-white">
             {selectedBucketLabel || '+00:00'}
           </p>
         </div>
         <div className="inline-flex items-center gap-3">
-          {totalMoments > 0 && <span className="text-xs text-slate-400">{totalMoments} moments</span>}
-          <div className="inline-flex gap-1 rounded-full border border-white/10 bg-white/5 p-1">
+          {totalMoments > 0 && <span className="text-xs text-white/55">{totalMoments} moments</span>}
+          <div className="inline-flex gap-4 bg-white/10 px-3 py-2">
             {(['all', 'video', 'image'] as MediaFilter[]).map(filter => (
               <button
                 key={filter}
                 type="button"
-                className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] transition ${
-                  mediaFilter === filter
-                    ? 'bg-[#ff6b4a]/25 text-[#ffd1c4]'
-                    : 'text-slate-400'
+                className={`text-[10px] font-semibold uppercase tracking-[0.22em] transition-colors ${
+                  mediaFilter === filter ? 'text-app-accent' : 'text-white/55 hover:text-white/80'
                 }`}
                 onClick={() => onFilterChange(filter)}
               >
@@ -131,13 +129,8 @@ const TimelinePlayer: React.FC<TimelinePlayerProps> = ({
         </div>
       </div>
 
-      <div
-        className={`relative aspect-video overflow-hidden rounded-[26px] shadow-[0_24px_50px_rgba(0,0,0,0.45)] ${
-          loading
-            ? 'bg-[#0f1420]'
-            : 'bg-[radial-gradient(circle_at_30%_20%,rgba(255,107,74,0.18),rgba(13,17,27,0.95))]'
-        }`}
-      >
+      <div className="-mx-4">
+        <div className={`relative aspect-video overflow-hidden bg-black ${loading ? 'opacity-90' : ''}`}>
         {loading ? (
           <div className="flex h-full items-center justify-center">
             <IonSpinner name="crescent" />
@@ -162,6 +155,7 @@ const TimelinePlayer: React.FC<TimelinePlayerProps> = ({
                 playsInline
                 muted
                 autoPlay
+                className="h-full w-full object-cover"
                 onEnded={() => {
                   if (autoAdvance && onRequestNext) {
                     onRequestNext();
@@ -174,16 +168,16 @@ const TimelinePlayer: React.FC<TimelinePlayerProps> = ({
             ) : (
               <img src={selectedMoment.media_url} alt={selectedMoment.caption || 'Moment'} className="h-full w-full object-cover" />
             )}
-            <div className="absolute inset-0 flex flex-col justify-end bg-[linear-gradient(180deg,rgba(0,0,0,0.05)_45%,rgba(0,0,0,0.75)_100%)] p-4">
+            <div className="absolute inset-x-0 bottom-0 bg-black/70 p-4">
               {selectedMoment.resolved_song_title && (
-                <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[#ff6b4a]/20 px-2.5 py-1 backdrop-blur-sm">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#ffd1c4]">
+                <div className="mb-2 inline-flex items-center gap-1.5 bg-black/60 px-2.5 py-1">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/80">
                     {selectedMoment.resolved_song_title}
                   </span>
                 </div>
               )}
-              <p className="text-xs text-white/70">{selectedMomentLabel}</p>
-              <h4 className="mt-1.5 text-lg font-semibold text-slate-50">
+              <p className="text-xs text-white/65">{selectedMomentLabel}</p>
+              <h4 className="mt-1.5 font-display text-lg font-bold text-white">
                 {selectedMoment.actor_name ||
                   selectedMoment.profiles?.display_name ||
                   selectedMoment.profiles?.username ||
@@ -193,12 +187,12 @@ const TimelinePlayer: React.FC<TimelinePlayerProps> = ({
           </div>
         ) : (
           <div className="flex min-h-full flex-col items-center justify-center gap-2 px-6 text-center">
-            <p className="text-lg text-slate-50">No moments yet.</p>
-            <span className="text-xs text-slate-400">Relive the show by adding the first clip.</span>
+            <p className="text-lg font-semibold text-white">No moments yet.</p>
+            <span className="text-xs text-white/55">Relive the show by adding the first clip.</span>
             {onAddMoments && (
               <button
                 type="button"
-                className="mt-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-[#ffd1c4]"
+                className="mt-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-app-accent"
                 onClick={onAddMoments}
               >
                 Add the first moment
@@ -206,6 +200,7 @@ const TimelinePlayer: React.FC<TimelinePlayerProps> = ({
             )}
           </div>
         )}
+      </div>
       </div>
 
       <TimelineScrubber

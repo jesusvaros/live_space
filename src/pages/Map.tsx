@@ -350,7 +350,7 @@ const Map: React.FC = () => {
                 placeholder="Search events"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full rounded-2xl border border-white/20 bg-slate-900/95 px-4 py-3 text-sm text-slate-100 shadow-[0_16px_32px_rgba(0,0,0,0.4)] backdrop-blur placeholder:text-slate-500"
+                className="w-full bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none"
               />
               <MapFilterBar
                 filterToday={filterToday}
@@ -379,32 +379,32 @@ const Map: React.FC = () => {
                 onOpenFilters={() => setShowFilters(true)}
               />
               {selectedArtists.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/15 bg-black/70 px-3 py-2 text-xs text-white shadow-lg">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300">Artist filter</span>
+                <div className="flex flex-wrap items-center gap-2 bg-white/5 px-3 py-2 text-xs text-white">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/55">Artist</span>
                   {selectedArtists.map(artist => (
                     <button
                       key={artist.id}
                       type="button"
                       onClick={() => removeArtist(artist.id)}
-                      className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold hover:bg-white/20"
+                      className="inline-flex items-center gap-2 bg-white/10 px-3 py-1 text-xs font-semibold hover:bg-white/15"
                     >
                       <span className="h-6 w-6 overflow-hidden rounded-full bg-white/10">
                         {artist.avatar_url ? (
                           <img src={artist.avatar_url} alt={artist.name} className="h-full w-full object-cover" />
                         ) : (
-                          <span className="flex h-full w-full items-center justify-center text-[10px] text-slate-200">
+                          <span className="flex h-full w-full items-center justify-center text-[10px] text-white/70">
                             {artist.name.charAt(0).toUpperCase()}
                           </span>
                         )}
                       </span>
                       {artist.name}
-                      <span className="text-slate-300">×</span>
+                      <span className="text-white/60">×</span>
                     </button>
                   ))}
                   <button
                     type="button"
                     onClick={clearArtistFilters}
-                    className="ml-auto rounded-full border border-white/20 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-100 hover:border-white/40"
+                    className="ml-auto text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70 hover:text-white"
                   >
                     Clear
                   </button>
@@ -413,14 +413,14 @@ const Map: React.FC = () => {
             </div>
           <div className="relative">
             {selectedArtistIds.length > 0 && filteredEvents.length === 0 && (
-              <div className="pointer-events-auto absolute left-4 right-4 top-24 z-[1100] rounded-2xl border border-white/20 bg-black/80 px-4 py-3 text-center text-white">
+              <div className="pointer-events-auto absolute left-4 right-4 top-24 z-[1100] bg-black/80 px-4 py-3 text-center text-white">
                 <p className="text-sm font-semibold">No shows to display for this artist</p>
-                <p className="text-xs text-slate-300">Remove the artist filter to see all events on the map.</p>
+                <p className="text-xs text-white/60">Remove the artist filter to see all events on the map.</p>
                 <div className="mt-2 flex justify-center">
                   <button
                     type="button"
                     onClick={clearArtistFilters}
-                    className="rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-white hover:bg-white/20"
+                    className="bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white"
                   >
                     Clear artist filter
                   </button>

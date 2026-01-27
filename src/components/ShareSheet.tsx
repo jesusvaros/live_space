@@ -52,31 +52,40 @@ const ShareSheet: React.FC<ShareSheetProps> = ({ isOpen, onClose, link }) => {
       className="share-sheet"
     >
       <IonContent fullscreen>
-        <div className="app-modal">
-          <div className="app-modal-header">
-            <h2 className="app-modal-title">Share</h2>
-            <button type="button" className="app-button app-button--ghost app-button--small" onClick={onClose}>
+        <div className="min-h-full bg-app-bg p-5">
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="font-display text-lg font-bold text-white">Share</h2>
+            <button
+              type="button"
+              className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
+              onClick={onClose}
+            >
               Close
             </button>
           </div>
-          <div className="share-qr">
+
+          <div className="mt-6 flex items-center justify-center bg-white/5 p-5">
             {link && (
               <img
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(link)}`}
                 alt="Event QR"
-                className="h-40 w-40"
+                className="h-40 w-40 bg-white"
               />
             )}
           </div>
-          <button type="button" className="app-button app-button--block" onClick={handleCopy}>
-            <IconCopy className="app-icon" />
-            Copy link
-          </button>
-          <button type="button" className="app-button app-button--outline app-button--block" onClick={handleShare}>
-            <IconShare className="app-icon" />
-            Share
-          </button>
-          {message && <p className="text-sm text-slate-400">{message}</p>}
+
+          <div className="mt-6 space-y-2">
+            <button type="button" className="inline-flex w-full items-center justify-center gap-2 bg-white/10 px-4 py-3 text-sm font-semibold text-white" onClick={handleCopy}>
+              <IconCopy className="h-4 w-4" />
+              Copy link
+            </button>
+            <button type="button" className="inline-flex w-full items-center justify-center gap-2 bg-white/10 px-4 py-3 text-sm font-semibold text-white" onClick={handleShare}>
+              <IconShare className="h-4 w-4" />
+              Share
+            </button>
+          </div>
+
+          {message && <p className="mt-4 text-sm text-white/55">{message}</p>}
         </div>
       </IonContent>
     </IonModal>

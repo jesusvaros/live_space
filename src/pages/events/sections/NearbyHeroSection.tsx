@@ -32,15 +32,14 @@ const NearbyHeroSection: React.FC<NearbyHeroSectionProps> = ({
     <section className="animate-fade-up motion-reduce:animate-none space-y-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Near you</p>
-          <h2 className="mt-2 font-display text-3xl text-slate-50">Concerts Near You</h2>
-          <p className="mt-2 text-sm text-slate-500">Today + the next two weeks.</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Concerts near you</p>
+          <p className="mt-2 text-sm text-white/55">Today + the next two weeks.</p>
         </div>
         {canCreateEvent && (
           <div className="flex flex-col items-end gap-2">
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
+              className="inline-flex items-center gap-2 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white"
               onClick={() => history.push('/create-event')}
             >
               Create event
@@ -60,13 +59,13 @@ const NearbyHeroSection: React.FC<NearbyHeroSectionProps> = ({
           {loadError && <p className="text-sm text-rose-400">{loadError}</p>}
 
           {!location ? (
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-              <p className="text-sm text-slate-200">See concerts near you</p>
-              <p className="mt-1 text-xs text-slate-500">Use your location to get nearby events and distances.</p>
+            <div className="bg-white/5 p-5">
+              <p className="text-sm font-semibold text-white/90">See concerts near you</p>
+              <p className="mt-1 text-xs text-white/55">Use your location to get nearby events and distances.</p>
               <div className="mt-4 flex items-center gap-3">
                 <button
                   type="button"
-                  className="rounded-2xl bg-[#ff6b4a] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                  className="bg-white/10 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
                   onClick={onRequestLocation}
                   disabled={locationLoading}
                 >
@@ -74,7 +73,7 @@ const NearbyHeroSection: React.FC<NearbyHeroSectionProps> = ({
                 </button>
                 <button
                   type="button"
-                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100"
+                  className="bg-white/10 px-4 py-2 text-sm font-semibold text-white/90"
                   onClick={() => history.push('/tabs/map')}
                 >
                   Explore map
@@ -82,13 +81,13 @@ const NearbyHeroSection: React.FC<NearbyHeroSectionProps> = ({
               </div>
             </div>
           ) : nearbyUpcoming.length === 0 ? (
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-              <p className="text-sm text-slate-200">No concerts nearby today</p>
-              <p className="mt-1 text-xs text-slate-500">Try the map to explore what’s happening around you.</p>
+            <div className="bg-white/5 p-5">
+              <p className="text-sm font-semibold text-white/90">No concerts nearby today</p>
+              <p className="mt-1 text-xs text-white/55">Try the map to explore what’s happening around you.</p>
               <div className="mt-4 flex items-center gap-3">
                 <button
                   type="button"
-                  className="rounded-2xl bg-[#ff6b4a] px-4 py-2 text-sm font-semibold text-white"
+                  className="bg-white/10 px-4 py-2 text-sm font-semibold text-white"
                   onClick={() => history.push('/tabs/map')}
                 >
                   Explore map

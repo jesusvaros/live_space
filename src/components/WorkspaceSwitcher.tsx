@@ -40,21 +40,21 @@ const WorkspaceSwitcher: React.FC = () => {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 transition-colors hover:bg-white/10"
+        className="flex items-center gap-2 px-2 py-1 text-white/80 transition-colors hover:text-white"
       >
-        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-app-ink/20 text-app-ink">
+        <div className="flex h-5 w-5 items-center justify-center text-white/70">
           {activeWorkspace ? (
             <IconBriefcase size={12} />
           ) : (
             <IconUser size={12} />
           )}
         </div>
-        <span className="max-w-[120px] truncate text-xs font-medium text-app-light">
+        <span className="max-w-[120px] truncate text-xs font-medium text-white/80">
           {activeWorkspace 
             ? (activeWorkspace.artist?.name || activeWorkspace.venue?.name || 'Workspace')
             : 'Personal Profile'}
         </span>
-        {isOpen ? <IconChevronUp size={14} className="text-app-light/50" /> : <IconChevronDown size={14} className="text-app-light/50" />}
+        {isOpen ? <IconChevronUp size={14} className="text-white/50" /> : <IconChevronDown size={14} className="text-white/50" />}
       </button>
 
       {isOpen && (
@@ -63,24 +63,24 @@ const WorkspaceSwitcher: React.FC = () => {
             className="fixed inset-0 z-30" 
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute right-0 top-full z-40 mt-2 w-64 overflow-hidden rounded-2xl border border-white/10 bg-[#1A1D25] shadow-2xl">
-            <div className="p-2 text-[10px] font-bold uppercase tracking-wider text-app-light/30 px-4 pt-4 pb-2">
+          <div className="absolute right-0 top-full z-40 mt-2 w-64 overflow-hidden rounded-xl bg-black/95">
+            <div className="px-4 pb-2 pt-4 text-[10px] font-semibold uppercase tracking-[0.24em] text-white/40">
               Personal
             </div>
             <button
               onClick={() => handleSelect(null)}
-              className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5 ${!activeWorkspace ? 'bg-app-ink/10 text-app-ink' : 'text-app-light'}`}
+              className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5 ${!activeWorkspace ? 'text-white' : 'text-white/80'}`}
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-app-ink/20 text-app-ink">
+              <div className="flex h-8 w-8 items-center justify-center bg-white/10 text-white/80">
                 <IconUser size={16} />
               </div>
               <div className="flex-1 overflow-hidden">
                 <div className="truncate text-sm font-medium">Personal Profile</div>
-                <div className="text-[10px] opacity-50">Viewing as yourself</div>
+                <div className="text-[10px] text-white/50">Viewing as yourself</div>
               </div>
             </button>
 
-            <div className="p-2 text-[10px] font-bold uppercase tracking-wider text-app-light/30 px-4 pt-4 pb-2">
+            <div className="px-4 pb-2 pt-4 text-[10px] font-semibold uppercase tracking-[0.24em] text-white/40">
               Workspaces
             </div>
             <div className="max-h-64 overflow-y-auto">
@@ -88,35 +88,32 @@ const WorkspaceSwitcher: React.FC = () => {
                 <button
                   key={entity.subject_id}
                   onClick={() => handleSelect(entity)}
-                  className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5 ${activeWorkspace?.subject_id === entity.subject_id ? 'bg-app-ink/10 text-app-ink' : 'text-app-light'}`}
+                  className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5 ${activeWorkspace?.subject_id === entity.subject_id ? 'text-white' : 'text-white/80'}`}
                 >
                   <div className="relative">
                     {entity.type === 'artist' ? (
                       entity.artist?.avatar_url ? (
                         <img src={entity.artist.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover" />
                       ) : (
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/20 text-blue-400">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/70">
                           <IconUser size={16} />
                         </div>
                       )
                     ) : (
                       entity.venue?.photos?.[0] ? (
-                        <img src={entity.venue.photos[0]} alt="" className="h-8 w-8 rounded-lg object-cover" />
+                        <img src={entity.venue.photos[0]} alt="" className="h-8 w-8 rounded object-cover" />
                       ) : (
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/20 text-purple-400">
+                        <div className="flex h-8 w-8 items-center justify-center rounded bg-white/10 text-white/70">
                           <IconBriefcase size={16} />
                         </div>
                       )
                     )}
-                    <div className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#1A1D25] p-0.5 text-[8px] font-bold uppercase ring-1 ring-white/10">
-                      {entity.type === 'artist' ? 'A' : 'V'}
-                    </div>
                   </div>
                   <div className="flex-1 overflow-hidden">
                     <div className="truncate text-sm font-medium">
                       {entity.type === 'artist' ? entity.artist?.name : entity.venue?.name}
                     </div>
-                    <div className="text-[10px] opacity-50 uppercase tracking-tight">{entity.role}</div>
+                    <div className="text-[10px] uppercase tracking-[0.22em] text-white/45">{entity.role}</div>
                   </div>
                 </button>
               ))}

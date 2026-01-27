@@ -441,7 +441,6 @@ const EventDetail: React.FC = () => {
       event.venue?.username ||
       event.address ||
       'Venue TBA';
-    const venueCity = event.venue_place?.city || event.city;
     const timeLabel = new Date(event.starts_at).toLocaleString(undefined, {
       weekday: 'short',
       month: 'short',
@@ -450,22 +449,16 @@ const EventDetail: React.FC = () => {
       minute: '2-digit',
     });
     return (
-      <span className="flex flex-wrap items-center gap-2 text-sm text-slate-400">
+      <span className="flex flex-wrap items-center gap-2">
         {event.venue_place ? (
-          <button
-            type="button"
-            className="font-semibold text-slate-50"
-            onClick={() => history.push(`/tabs/venue/${event.venue_place?.id}`)}
-          >
+          <button type="button" className="font-semibold text-white" onClick={() => history.push(`/tabs/venue/${event.venue_place?.id}`)}>
             {venueName}
           </button>
         ) : (
-          <span className="font-semibold text-slate-50">{venueName}</span>
+          <span className="font-semibold text-white">{venueName}</span>
         )}
-        <span className="text-slate-500">•</span>
-        <span>{venueCity}</span>
-        <span className="text-slate-500">•</span>
-        <span>{timeLabel}</span>
+        <span className="text-white/50">·</span>
+        <span className="text-white/80">{timeLabel}</span>
       </span>
     );
   }, [event, history]);
@@ -772,115 +765,103 @@ const EventDetail: React.FC = () => {
       <IonContent fullscreen>
         <div className="min-h-full">
           <AppHeader />
-          <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
-            {loading && (
-              <div className="flex items-center justify-center py-12">
-                <IonSpinner name="crescent" />
-              </div>
-            )}
+          {loading && (
+            <div className="flex items-center justify-center py-12">
+              <IonSpinner name="crescent" />
+            </div>
+          )}
 
-            {!loading && error && (
-              <p className="text-sm text-rose-400">{error}</p>
-            )}
+          {!loading && error && <div className="p-4"><p className="text-sm text-rose-400">{error}</p></div>}
 
-            {!loading && event && (
-              <>
-                {showReliveBanner && (
-                  <div className="rounded-3xl border border-white/10 bg-[#141824] p-4 shadow-[0_20px_44px_rgba(0,0,0,0.45)]">
-                    <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Relive last night</p>
-                    <p className="mt-2 font-display text-lg text-slate-50">Add your moments</p>
-                    <p className="mt-1 text-xs text-slate-500">Share what you lived before the memory fades.</p>
+          {!loading && event && (
+            <>
+              {showReliveBanner && (
+                <div className="px-4 pt-4">
+                  <div className="bg-black/70 p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Relive last night</p>
+                    <p className="mt-2 font-display text-lg font-bold text-white">Add your moments</p>
+                    <p className="mt-1 text-xs text-white/55">Share what you lived before the memory fades.</p>
                     <div className="mt-4 flex items-center gap-2">
                       <button
                         type="button"
-                        className="inline-flex flex-1 items-center justify-center rounded-2xl bg-[#ff6b4a] px-4 py-2 text-sm font-semibold text-white"
+                        className="inline-flex flex-1 items-center justify-center bg-[#ff6b4a] px-4 py-2 text-sm font-semibold text-white"
                         onClick={handlePrimaryCtaClick}
                       >
                         Add your moments
                       </button>
                       <button
                         type="button"
-                        className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200"
+                        className="inline-flex items-center justify-center bg-white/10 px-4 py-2 text-sm font-semibold text-white"
                         onClick={() => setShowReliveBanner(false)}
                       >
                         Not now
                       </button>
                     </div>
                   </div>
-                )}
-                <EventHero
-                  title={heroTitle}
-                  meta={heroMeta}
-                  entities={entities}
-                  onSelectEntity={handleSelectEntity}
-                  coverImageUrl={event.cover_image_url ?? undefined}
-                  actions={
-                    <>
-                      <button
-                        type="button"
-                        className={`flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold text-white transition ${
-                          followed ? 'bg-white/20' : 'bg-white/10'
-                        }`}
-                        onClick={handleFollowClick}
-                        disabled={followLoading}
-                        aria-pressed={followed}
-                      >
-                        {followed ? <IconHeartFilled className="h-4 w-4" /> : <IconHeart className="h-4 w-4" />}
-                        <span>Like</span>
-                      </button>
-                      <button
-                        type="button"
-                        className={`flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold text-white transition ${
-                          attendanceActive ? 'bg-white/20' : 'bg-white/10'
-                        }`}
-                        onClick={handleAttendanceClick}
-                        disabled={attendanceLoading}
-                        aria-pressed={attendanceActive}
-                      >
-                        <IconCheckCircle className="h-4 w-4" />
-                        <span>{attendanceLabel}</span>
-                      </button>
-                    </>
-                  }
-                />
+                </div>
+              )}
 
+              <EventHero
+                title={heroTitle}
+                meta={heroMeta}
+                entities={entities}
+                onSelectEntity={handleSelectEntity}
+                coverImageUrl={event.cover_image_url ?? undefined}
+                actions={
+                  <>
+                    <button
+                      type="button"
+                      className={`inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] transition-colors ${
+                        followed ? 'text-app-accent' : 'text-white/70 hover:text-white'
+                      }`}
+                      onClick={handleFollowClick}
+                      disabled={followLoading}
+                      aria-pressed={followed}
+                    >
+                      {followed ? <IconHeartFilled className="h-4 w-4" /> : <IconHeart className="h-4 w-4" />}
+                      <span>Like</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] transition-colors ${
+                        attendanceActive ? 'text-app-accent' : 'text-white/70 hover:text-white'
+                      }`}
+                      onClick={handleAttendanceClick}
+                      disabled={attendanceLoading}
+                      aria-pressed={attendanceActive}
+                    >
+                      <IconCheckCircle className="h-4 w-4" />
+                      <span>{attendanceLabel}</span>
+                    </button>
+                  </>
+                }
+              />
+
+              <div className="flex flex-col gap-6 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
                 <div className="flex flex-col gap-2">
                   <button
                     type="button"
-                    className={`inline-flex w-full items-center justify-center rounded-2xl px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                      canAddMoments
-                        ? 'bg-[#ff6b4a] text-white'
-                        : 'border border-[#ff6b4a]/40 text-[#ffd1c4]'
-                    }`}
+                    className="inline-flex w-full items-center justify-center bg-[#ff6b4a] px-4 py-3 text-sm font-semibold text-white"
                     onClick={handlePrimaryCtaClick}
                   >
                     Add your moments
                   </button>
                   {user && !canAddMoments && (
-                    <p className="text-xs text-slate-400">
-                      Mark "I went" to unlock uploads.
-                    </p>
+                    <p className="text-xs text-white/55">Mark “I went” to unlock uploads.</p>
                   )}
                 </div>
 
-                {engagementError && (
-                  <p className="text-sm text-rose-400">{engagementError}</p>
-                )}
-
-                {bucketsError && (
-                  <p className="text-sm text-rose-400">{bucketsError}</p>
-                )}
+                {engagementError && <p className="text-sm text-rose-400">{engagementError}</p>}
+                {bucketsError && <p className="text-sm text-rose-400">{bucketsError}</p>}
 
                 {setlist.length > 0 && (
-                  <div className="flex flex-col gap-2 rounded-2xl border border-white/5 bg-white/5 p-4">
-                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                      Official Setlist
-                    </h3>
-                    <div className="flex flex-col gap-2 mt-1">
+                  <div className="bg-white/5 p-4">
+                    <h3 className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Official setlist</h3>
+                    <div className="mt-3 flex flex-col gap-2">
                       {setlist.map((entry) => (
                         <div key={entry.ordinal} className="flex items-center justify-between text-xs">
-                          <span className="text-slate-300">
-                            <span className="text-slate-500 mr-2">{entry.ordinal}.</span>
+                          <span className="text-white/80">
+                            <span className="mr-2 text-white/45">{entry.ordinal}.</span>
                             {entry.song_title || 'Unknown Song'}
                           </span>
                         </div>
@@ -908,19 +889,19 @@ const EventDetail: React.FC = () => {
                   autoAdvance={mediaFilter === 'video'}
                   onRequestNext={handleAdvanceToNext}
                 />
-              </>
-            )}
-          </div>
+              </div>
+            </>
+          )}
         </div>
 
         <IonModal isOpen={showAddMoments} onDidDismiss={() => setShowAddMoments(false)}>
           <IonContent fullscreen>
-            <div className="flex flex-col gap-4 rounded-3xl bg-[#141824] p-5 shadow-[0_24px_50px_rgba(0,0,0,0.45)]">
+            <div className="min-h-full bg-app-bg p-5">
               <div className="flex items-center justify-between gap-4">
-                <h2 className="font-display text-lg font-semibold text-slate-50">Add moments</h2>
+                <h2 className="font-display text-lg font-bold text-white">Add moments</h2>
                 <button
                   type="button"
-                  className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
+                  className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
                   onClick={() => setShowAddMoments(false)}
                   disabled={uploading}
                 >
@@ -928,16 +909,16 @@ const EventDetail: React.FC = () => {
                 </button>
               </div>
               {momentItems.length === 0 && (
-                <p className="text-sm text-slate-400">Select photos or videos to add moments.</p>
+                <p className="text-sm text-white/55">Select photos or videos to add moments.</p>
               )}
 
               {momentItems.map(item => (
                 <div
                   key={item.id}
-                  className="space-y-3 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 shadow-[0_24px_50px_rgba(0,0,0,0.35)]"
+                  className="mt-4 space-y-3 bg-white/5 p-4"
                 >
                   <div className="flex items-start gap-3">
-                    <div className="h-20 w-20 overflow-hidden rounded-2xl bg-slate-900">
+                    <div className="h-20 w-20 overflow-hidden bg-black">
                       {item.mediaType === 'video' ? (
                         <video className="h-full w-full object-cover" muted>
                           <source src={item.previewUrl} />
@@ -947,8 +928,8 @@ const EventDetail: React.FC = () => {
                       )}
                     </div>
                     <div className="flex-1 space-y-1">
-                      <p className="text-sm font-semibold text-slate-50">{item.file.name}</p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-sm font-semibold text-white">{item.file.name}</p>
+                      <p className="text-xs text-white/55">
                         {item.captureAt
                           ? item.captureAt.toLocaleString(undefined, {
                               month: 'short',
@@ -961,26 +942,26 @@ const EventDetail: React.FC = () => {
                     </div>
                     <button
                       type="button"
-                      className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
+                      className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
                       onClick={() => handleRemoveMoment(item.id)}
                     >
                       Remove
                     </button>
                   </div>
                   <label className="flex flex-col gap-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
                       Captured time
                     </span>
                     <input
                       type="datetime-local"
-                      className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
+                      className="w-full bg-white/10 px-4 py-3 text-sm text-white/85 focus:outline-none"
                       value={item.manualValue}
                       onChange={e => handleMomentTimeChange(item.id, e.target.value)}
                     />
                   </label>
                   <button
                     type="button"
-                    className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
+                    className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
                     onClick={() => handleUseUploadTime(item.id)}
                   >
                     Use upload time
@@ -996,14 +977,14 @@ const EventDetail: React.FC = () => {
               )}
 
               {uploading && (
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-white/55">
                   Uploading {uploadProgress.current}/{uploadProgress.total}
                 </p>
               )}
 
               <button
                 type="button"
-                className="inline-flex w-full items-center justify-center rounded-2xl bg-[#ff6b4a] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-4 inline-flex w-full items-center justify-center bg-[#ff6b4a] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={handleUploadMoments}
                 disabled={uploading || momentItems.length === 0}
               >
@@ -1011,7 +992,7 @@ const EventDetail: React.FC = () => {
               </button>
               <button
                 type="button"
-                className="inline-flex w-full items-center justify-center rounded-2xl border border-[#ff6b4a]/40 px-4 py-2 text-sm font-semibold text-[#ffd1c4] disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex w-full items-center justify-center bg-white/10 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={openFilePicker}
                 disabled={uploading}
               >
@@ -1029,24 +1010,24 @@ const EventDetail: React.FC = () => {
           className="gate-sheet"
         >
           <IonContent fullscreen>
-            <div className="flex flex-col gap-4 rounded-3xl bg-[#141824] p-5 shadow-[0_24px_50px_rgba(0,0,0,0.45)]">
+            <div className="min-h-full bg-app-bg p-5">
               <div className="flex items-center justify-between gap-4">
-                <h2 className="font-display text-lg font-semibold text-slate-50">Unlock moments</h2>
+                <h2 className="font-display text-lg font-bold text-white">Unlock moments</h2>
                 <button
                   type="button"
-                  className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
+                  className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
                   onClick={() => setShowGatePrompt(false)}
                   disabled={attendanceLoading}
                 >
                   Close
                 </button>
               </div>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-white/55">
                 Mark "I went" to add moments for this event.
               </p>
               <button
                 type="button"
-                className="inline-flex w-full items-center justify-center rounded-2xl bg-[#ff6b4a] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex w-full items-center justify-center bg-white/10 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={handleGateConfirm}
                 disabled={attendanceLoading}
               >
@@ -1054,7 +1035,7 @@ const EventDetail: React.FC = () => {
               </button>
               <button
                 type="button"
-                className="inline-flex w-full items-center justify-center rounded-2xl border border-transparent px-4 py-2 text-sm font-semibold text-[#ffd1c4] disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex w-full items-center justify-center px-4 py-3 text-sm font-semibold text-white/70 disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={() => setShowGatePrompt(false)}
                 disabled={attendanceLoading}
               >

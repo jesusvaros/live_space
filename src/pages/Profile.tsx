@@ -38,7 +38,7 @@ const Profile: React.FC = () => {
   const [venueEvents, setVenueEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedTab, setSelectedTab] = useState<'liked' | 'attended' | 'moments'>('liked');
+  const [selectedTab, setSelectedTab] = useState<'liked' | 'attended' | 'moments'>('moments');
   const [showEdit, setShowEdit] = useState(false);
   const [displayName, setDisplayName] = useState(profile?.display_name || '');
   const [username, setUsername] = useState(profile?.username || '');
@@ -405,7 +405,16 @@ const Profile: React.FC = () => {
     // For artists, show their concerts in the "attended" tab
     if (profile?.role === 'artist' && selectedTab === 'attended') {
       return artistEvents.length === 0 ? (
-        <p className="text-sm text-slate-500">No concerts yet.</p>
+        <div className="space-y-3">
+          <p className="text-sm text-white/55">No shows here yet.</p>
+          <button
+            type="button"
+            className="bg-white/10 px-4 py-2 text-sm font-semibold text-white"
+            onClick={() => history.push('/tabs/map')}
+          >
+            Find a show
+          </button>
+        </div>
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {artistEvents.map(event => (
@@ -423,7 +432,16 @@ const Profile: React.FC = () => {
     // For venues, show all their events in the "attended" tab
     if (profile?.role === 'venue' && selectedTab === 'attended') {
       return venueEvents.length === 0 ? (
-        <p className="text-sm text-slate-500">No events at this venue yet.</p>
+        <div className="space-y-3">
+          <p className="text-sm text-white/55">No nights here yet.</p>
+          <button
+            type="button"
+            className="bg-white/10 px-4 py-2 text-sm font-semibold text-white"
+            onClick={() => history.push('/tabs/map')}
+          >
+            Explore nearby
+          </button>
+        </div>
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {venueEvents.map(event => (
@@ -441,7 +459,16 @@ const Profile: React.FC = () => {
     // For regular users or other roles
     if (selectedTab === 'liked') {
       return likedEvents.length === 0 ? (
-        <p className="text-sm text-slate-500">No liked events yet.</p>
+        <div className="space-y-3">
+          <p className="text-sm text-white/55">Nothing saved yet.</p>
+          <button
+            type="button"
+            className="bg-white/10 px-4 py-2 text-sm font-semibold text-white"
+            onClick={() => history.push('/tabs/discover')}
+          >
+            Discover concerts
+          </button>
+        </div>
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {likedEvents.map(event => (
@@ -458,7 +485,16 @@ const Profile: React.FC = () => {
 
     if (selectedTab === 'attended') {
       return attendedEvents.length === 0 ? (
-        <p className="text-sm text-slate-500">No attended events yet.</p>
+        <div className="space-y-3">
+          <p className="text-sm text-white/55">No nights here yet.</p>
+          <button
+            type="button"
+            className="bg-white/10 px-4 py-2 text-sm font-semibold text-white"
+            onClick={() => history.push('/tabs/map')}
+          >
+            Find a show
+          </button>
+        </div>
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {attendedEvents.map(event => (
@@ -475,7 +511,16 @@ const Profile: React.FC = () => {
 
     // Moments tab - show all moments from events they participated in
     return posts.length === 0 ? (
-      <p className="text-sm text-slate-500">No moments shared yet.</p>
+      <div className="space-y-3">
+        <p className="text-sm text-white/55">Your concert memories start after the show.</p>
+        <button
+          type="button"
+          className="bg-white/10 px-4 py-2 text-sm font-semibold text-white"
+          onClick={() => history.push('/tabs/events')}
+        >
+          Go to Main
+        </button>
+      </div>
     ) : (
       <div className="grid grid-cols-3 gap-2">
         {posts.map(post => (
@@ -483,7 +528,7 @@ const Profile: React.FC = () => {
             key={post.id}
             type="button"
             onClick={() => history.push(`/post/${post.id}`)}
-            className="overflow-hidden rounded-2xl bg-slate-900 hover:ring-2 hover:ring-slate-600 transition-all"
+            className="overflow-hidden bg-white/5 transition-opacity hover:opacity-90"
           >
             {post.media_type === 'video' ? (
               <video className="h-full w-full object-cover" muted>
@@ -504,74 +549,100 @@ const Profile: React.FC = () => {
         <div className="min-h-full">
           <AppHeader />
           <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
-            <div className="flex items-center gap-4 animate-fade-up motion-reduce:animate-none">
-              <div className="h-16 w-16 overflow-hidden rounded-full bg-slate-800 ring-2 ring-white/5">
-                <img
-                  src={
-                    isManagementMode && activeEntity
-                      ? activeEntity.type === 'artist'
-                        ? activeEntity.artist?.avatar_url || `https://picsum.photos/seed/artist-${activeEntity.subject_id}/120/120`
-                        : activeEntity.venue?.photos?.[0] || `https://picsum.photos/seed/venue-${activeEntity.subject_id}/120/120`
-                      : profile?.avatar_url || `https://picsum.photos/seed/${profile?.id}/120/120`
-                  }
-                  alt="Profile avatar"
-                  className="h-full w-full object-cover"
-                />
-              </div>
-              <div className="flex-1">
-                <h2 className="font-display text-xl text-slate-50">
-                  {isManagementMode && activeEntity
-                    ? activeEntity.type === 'artist'
-                      ? activeEntity.artist?.name
-                      : activeEntity.venue?.name
-                    : profile?.display_name || profile?.username || 'Your profile'}
-                </h2>
-                <p className="text-sm text-slate-400">
-                  {isManagementMode && activeEntity
-                    ? activeEntity.type === 'artist'
-                      ? 'Managed Artist'
-                      : 'Managed Venue'
-                    : (profile?.primary_city || 'City') + ' · @' + (profile?.username || 'user')}
-                </p>
-              </div>
-              <div className="flex flex-col gap-2">
-                {activeEntity?.type === 'artist' && activeEntity.artist?.id && (
+            {!isManagementMode && (
+              <div className="space-y-4 animate-fade-up motion-reduce:animate-none">
+                <div className="flex items-center gap-4">
+                  <div className="h-16 w-16 overflow-hidden bg-white/10">
+                    <img
+                      src={profile?.avatar_url || `https://picsum.photos/seed/${profile?.id}/120/120`}
+                      alt="Profile avatar"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Profile</p>
+                    <h2 className="mt-2 font-display text-2xl font-bold text-white line-clamp-1">
+                      {profile?.username ? `@${profile.username}` : profile?.display_name || 'You'}
+                    </h2>
+                    <p className="mt-1 text-sm text-white/55">{profile?.primary_city || ''}</p>
+                  </div>
                   <button
                     type="button"
-                    className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-100 transition hover:border-white/50"
-                    onClick={() => history.push(`/tabs/artist/${(activeEntity.artist as any).id || (activeEntity.artist as any).artist_id}`)}
+                    className="px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
+                    onClick={() => setShowEdit(prev => !prev)}
                   >
-                    View artist profile
+                    Edit
                   </button>
-                )}
-                {activeEntity?.type === 'venue' && activeEntity.venue?.id && (
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-100 transition hover:border-white/50"
-                    onClick={() => history.push(`/tabs/venue/${(activeEntity.venue as any).id || (activeEntity.venue as any).venue_place_id}`)}
-                  >
-                    View venue profile
-                  </button>
-                )}
-                {profile?.role === 'admin' && (
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-2 rounded-xl border border-app-ink/40 bg-app-ink/10 px-3 py-1.5 text-xs font-semibold text-app-ink transition hover:bg-app-ink/20"
-                    onClick={() => history.push('/admin/grants')}
-                  >
-                    Admin Grants
-                  </button>
-                )}
+                </div>
+
+                <p className="text-sm text-white/70">Your concert memories live here.</p>
+
                 <button
                   type="button"
-                  className="inline-flex items-center gap-2 rounded-xl border border-[#ff6b4a]/40 px-3 py-1.5 text-xs font-semibold text-[#ffd1c4] transition hover:bg-[#ff6b4a]/10"
-                  onClick={() => setShowEdit(prev => !prev)}
+                  className="bg-white/10 px-4 py-3 text-sm font-semibold text-white"
+                  onClick={() => history.push('/tabs/discover')}
                 >
-                  <IconEdit className="h-4 w-4" />
-                  Edit
+                  Discover concerts
                 </button>
               </div>
-            </div>
+            )}
+
+            {isManagementMode && (
+              <div className="flex items-center gap-4 animate-fade-up motion-reduce:animate-none">
+                <div className="h-16 w-16 overflow-hidden bg-white/10">
+                  <img
+                    src={
+                      activeEntity
+                        ? activeEntity.type === 'artist'
+                          ? activeEntity.artist?.avatar_url || `https://picsum.photos/seed/artist-${activeEntity.subject_id}/120/120`
+                          : activeEntity.venue?.photos?.[0] || `https://picsum.photos/seed/venue-${activeEntity.subject_id}/120/120`
+                        : profile?.avatar_url || `https://picsum.photos/seed/${profile?.id}/120/120`
+                    }
+                    alt="Profile avatar"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <div className="flex-1">
+                  <h2 className="font-display text-xl font-bold text-white">
+                    {activeEntity
+                      ? activeEntity.type === 'artist'
+                        ? activeEntity.artist?.name
+                        : activeEntity.venue?.name
+                      : profile?.display_name || profile?.username || 'Your profile'}
+                  </h2>
+                  <p className="text-sm text-white/55">
+                    {activeEntity ? (activeEntity.type === 'artist' ? 'Managed artist' : 'Managed venue') : ''}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {activeEntity?.type === 'artist' && activeEntity.artist?.id && (
+                    <button
+                      type="button"
+                      className="bg-white/10 px-3 py-1.5 text-xs font-semibold text-white"
+                      onClick={() => history.push(`/tabs/artist/${(activeEntity.artist as any).id || (activeEntity.artist as any).artist_id}`)}
+                    >
+                      View profile
+                    </button>
+                  )}
+                  {activeEntity?.type === 'venue' && activeEntity.venue?.id && (
+                    <button
+                      type="button"
+                      className="bg-white/10 px-3 py-1.5 text-xs font-semibold text-white"
+                      onClick={() => history.push(`/tabs/venue/${(activeEntity.venue as any).id || (activeEntity.venue as any).venue_place_id}`)}
+                    >
+                      View profile
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
+                    onClick={() => setShowEdit(prev => !prev)}
+                  >
+                    Edit
+                  </button>
+                </div>
+              </div>
+            )}
 
             {isManagementMode && managedEntities.length > 1 && (
               <div className="flex gap-2 overflow-x-auto pb-1 animate-fade-in">
@@ -579,10 +650,10 @@ const Profile: React.FC = () => {
                   <button
                     key={ent.subject_id}
                     type="button"
-                    className={`flex-shrink-0 rounded-full px-4 py-1.5 text-xs font-medium transition ${
+                    className={`flex-shrink-0 rounded-xl px-4 py-1.5 text-xs font-semibold transition ${
                       activeEntity?.subject_id === ent.subject_id
-                        ? 'bg-white text-[#141824]'
-                        : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                        ? 'bg-white/10 text-app-accent'
+                        : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/80'
                     }`}
                     onClick={() => setActiveEntity(ent)}
                   >
@@ -592,48 +663,21 @@ const Profile: React.FC = () => {
               </div>
             )}
 
-            <div
-              className="grid grid-cols-3 gap-3 text-center animate-fade-up motion-reduce:animate-none"
-              style={{ animationDelay: '0.08s' }}
-            >
-              {[
-                { label: 'Posts', value: posts.length.toString() },
-                { 
-                  label: 'Role', 
-                  value: isManagementMode && activeEntity 
-                    ? activeEntity.type.charAt(0).toUpperCase() + activeEntity.type.slice(1)
-                    : profile?.role || 'user' 
-                },
-                { 
-                  label: 'Verified', 
-                  value: isManagementMode && activeEntity 
-                    ? (activeEntity.type === 'artist' ? 'Yes' : 'No') // Artists are usually verified in this context
-                    : profile?.is_verified ? 'Yes' : 'No' 
-                },
-              ].map(stat => (
-                <div
-                  key={stat.label}
-                  className="rounded-2xl bg-slate-900/70 px-2 py-3 text-sm shadow-sm"
-                >
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{stat.label}</p>
-                  <p className="mt-2 font-display text-lg text-slate-50">{stat.value}</p>
-                </div>
-              ))}
-            </div>
+            
 
             {profile?.role === 'artist' && (linkWebsite || linkInstagram || linkSpotify) && (
               <div
-                className="space-y-3 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 shadow-[0_24px_50px_rgba(0,0,0,0.35)]"
+                className="space-y-3 rounded-2xl bg-white/5 p-4"
                 style={{ animationDelay: '0.16s' }}
               >
-                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">Artist links</p>
-                <div className="space-y-2 text-sm text-slate-300">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Artist links</p>
+                <div className="space-y-2 text-sm text-white/80">
                   {linkWebsite && (
                     <a
                       href={linkWebsite}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-slate-200 hover:text-slate-50"
+                      className="text-white/80 hover:text-white"
                     >
                       {linkWebsite.replace(/^https?:\/\//, '')}
                     </a>
@@ -643,7 +687,7 @@ const Profile: React.FC = () => {
                       href={linkInstagram}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-slate-200 hover:text-slate-50"
+                      className="text-white/80 hover:text-white"
                     >
                       {linkInstagram.replace(/^https?:\/\//, '')}
                     </a>
@@ -653,7 +697,7 @@ const Profile: React.FC = () => {
                       href={linkSpotify}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-slate-200 hover:text-slate-50"
+                      className="text-white/80 hover:text-white"
                     >
                       {linkSpotify.replace(/^https?:\/\//, '')}
                     </a>
@@ -664,11 +708,11 @@ const Profile: React.FC = () => {
 
             {profile?.role === 'venue' && displayVenue && (
               <div
-                className="space-y-3 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 shadow-[0_24px_50px_rgba(0,0,0,0.35)]"
+                className="space-y-3 rounded-2xl bg-white/5 p-4"
                 style={{ animationDelay: '0.16s' }}
               >
-                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">Venue details</p>
-                <div className="space-y-2 text-sm text-slate-300">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Venue details</p>
+                <div className="space-y-2 text-sm text-white/80">
                   {(displayVenue.address || profile.primary_city) && (
                     <p>{displayVenue.address || profile.primary_city}</p>
                   )}
@@ -677,7 +721,7 @@ const Profile: React.FC = () => {
                       href={displayVenue.website_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-slate-200 hover:text-slate-50"
+                      className="text-white/80 hover:text-white"
                     >
                       {displayVenue.website_url.replace(/^https?:\/\//, '')}
                     </a>
@@ -688,7 +732,7 @@ const Profile: React.FC = () => {
                     {(displayVenue.photos ?? []).map((url: string, index: number) => (
                       <div
                         key={`${url}-${index}`}
-                        className="h-24 w-40 flex-shrink-0 overflow-hidden rounded-2xl bg-[#0f1320]"
+                        className="h-24 w-40 flex-shrink-0 overflow-hidden rounded-2xl bg-black/30"
                       >
                         <img src={url} alt="Venue" className="h-full w-full object-cover" />
                       </div>
@@ -700,102 +744,102 @@ const Profile: React.FC = () => {
 
             {showEdit && (
               <div
-                className="space-y-4 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 shadow-[0_24px_50px_rgba(0,0,0,0.35)]"
+                className="space-y-4 rounded-2xl bg-white/5 p-4"
                 style={{ animationDelay: '0.16s' }}
               >
                 <label className="flex flex-col gap-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
                     Display name
                   </span>
                   <input
                     value={displayName}
                     onChange={e => setDisplayName(e.target.value)}
-                    className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
+                    className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
                   />
                 </label>
                 <label className="flex flex-col gap-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
                     Username
                   </span>
                   <input
                     value={username}
                     onChange={e => setUsername(e.target.value)}
-                    className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
+                    className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
                   />
                 </label>
                 <label className="flex flex-col gap-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
                     Primary city
                   </span>
                   <input
                     value={primaryCity}
                     onChange={e => setPrimaryCity(e.target.value)}
-                    className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
+                    className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
                   />
                 </label>
                 <label className="flex flex-col gap-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
                     Bio
                   </span>
                   <textarea
                     value={bio}
                     onChange={e => setBio(e.target.value)}
-                    className="min-h-[96px] w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
+                    className="min-h-[96px] w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
                   />
                 </label>
                 {isDev && (
                   <label className="flex flex-col gap-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
                       Role (dev)
                     </span>
                     <select
                       value={role}
                       onChange={e => setRole(e.target.value as ProfileRole)}
-                      className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100"
+                      className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/15"
                     >
                       <option value="user">User</option>
                       <option value="artist">Artist</option>
                       <option value="venue">Venue</option>
                       <option value="label">Label</option>
                     </select>
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-white/60">
                       Solo para testing. En prod queda bloqueado.
                     </span>
                   </label>
                 )}
                 {profile?.role === 'artist' && (
                   <div className="space-y-3">
-                    <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">Artist links</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Artist links</p>
                     <label className="flex flex-col gap-2">
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
                         Website
                       </span>
                       <input
                         value={linkWebsite}
                         onChange={e => setLinkWebsite(e.target.value)}
-                        className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
+                        className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
                         placeholder="https://your-site.com"
                       />
                     </label>
                     <label className="flex flex-col gap-2">
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
                         Instagram
                       </span>
                       <input
                         value={linkInstagram}
                         onChange={e => setLinkInstagram(e.target.value)}
-                        className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
+                        className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
                         placeholder="https://instagram.com/you"
                       />
                     </label>
                     <label className="flex flex-col gap-2">
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
                         Spotify
                       </span>
                       <input
                         value={linkSpotify}
                         onChange={e => setLinkSpotify(e.target.value)}
-                        className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
+                        className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
                         placeholder="https://open.spotify.com/artist/..."
                       />
                     </label>
@@ -804,22 +848,22 @@ const Profile: React.FC = () => {
 
                 {profile?.role === 'venue' && (
                   <div className="space-y-3">
-                    <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">Venue management</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Venue management</p>
                     {managedEntities.filter(e => e.type === 'venue').length === 0 ? (
-                      <p className="text-sm text-slate-500">
+                      <p className="text-sm text-white/60">
                         No managed venue place yet. Create or claim a venue to edit its details.
                       </p>
                     ) : (
                       <>
                         {managedEntities.filter(e => e.type === 'venue').length > 1 && (
                           <label className="flex flex-col gap-2">
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
                               Managed venue
                             </span>
                             <select
                               value={selectedVenuePlaceId || ''}
                               onChange={e => setSelectedVenuePlaceId(e.target.value || null)}
-                              className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100"
+                              className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/15"
                             >
                               {managedEntities
                                 .filter(e => e.type === 'venue')
@@ -832,101 +876,101 @@ const Profile: React.FC = () => {
                           </label>
                         )}
                         <label className="flex flex-col gap-2">
-                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
                             Venue name
                           </span>
                           <input
                             value={venueName}
                             onChange={e => setVenueName(e.target.value)}
-                            className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
+                            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
                             placeholder="Venue name"
                           />
                         </label>
                         <label className="flex flex-col gap-2">
-                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
                             City
                           </span>
                           <input
                             value={venueCity}
                             onChange={e => setVenueCity(e.target.value)}
-                            className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
+                            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
                             placeholder="City"
                           />
                         </label>
                         <label className="flex flex-col gap-2">
-                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
                             Venue type
                           </span>
                           <input
                             value={venueType}
                             onChange={e => setVenueType(e.target.value)}
-                            className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
+                            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
                             placeholder="Club, hall, theatre..."
                           />
                         </label>
                         <label className="flex flex-col gap-2">
-                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
                             Capacity
                           </span>
                           <input
                             value={venueCapacity}
                             onChange={e => setVenueCapacity(e.target.value)}
-                            className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
+                            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
                             placeholder="450"
                           />
                         </label>
                         <label className="flex flex-col gap-2">
-                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
                             Address
                           </span>
                           <input
                             value={venueAddress}
                             onChange={e => setVenueAddress(e.target.value)}
-                            className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
+                            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
                             placeholder="Street address"
                           />
                         </label>
                         <label className="flex flex-col gap-2">
-                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
                             Website
                           </span>
                           <input
                             value={venueWebsite}
                             onChange={e => setVenueWebsite(e.target.value)}
-                            className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
+                            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
                             placeholder="https://venue-site.com"
                           />
                         </label>
                         <div className="grid grid-cols-2 gap-3">
                           <label className="flex flex-col gap-2">
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
                               Latitude
                             </span>
                             <input
                               value={venueLatitude}
                               onChange={e => setVenueLatitude(e.target.value)}
-                              className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100"
+                              className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/15"
                             />
                           </label>
                           <label className="flex flex-col gap-2">
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
                               Longitude
                             </span>
                             <input
                               value={venueLongitude}
                               onChange={e => setVenueLongitude(e.target.value)}
-                              className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100"
+                              className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/15"
                             />
                           </label>
                         </div>
                         <label className="flex flex-col gap-2">
-                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
                             Venue photos (URLs)
                           </span>
                           <textarea
                             value={venuePhotos}
                             onChange={e => setVenuePhotos(e.target.value)}
-                            className="min-h-[96px] w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
+                            className="min-h-[96px] w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
                             placeholder="One URL per line"
                           />
                         </label>
@@ -940,7 +984,7 @@ const Profile: React.FC = () => {
 
                 <button
                   type="button"
-                  className="inline-flex w-full items-center justify-center rounded-2xl bg-[#ff6b4a] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex w-full items-center justify-center bg-white/10 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                   onClick={handleSave}
                   disabled={saving}
                 >
@@ -948,7 +992,7 @@ const Profile: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  className="inline-flex w-full items-center justify-center rounded-2xl border border-transparent px-4 py-2 text-sm font-semibold text-[#ffd1c4]"
+                  className="inline-flex w-full items-center justify-center px-4 py-2 text-sm font-semibold text-white/70 transition hover:text-white"
                   onClick={() => setShowEdit(false)}
                 >
                   Cancel
@@ -962,22 +1006,18 @@ const Profile: React.FC = () => {
             >
               <button
                 type="button"
-                className={`flex flex-1 items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-xs font-semibold transition ${
-                  selectedTab === 'liked'
-                    ? 'border-[#ff6b4a]/40 bg-[#ff6b4a]/20 text-[#ffd1c4]'
-                    : 'border-white/10 bg-white/5 text-slate-300'
+                className={`flex flex-1 items-center justify-center gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-[0.22em] transition-colors ${
+                  selectedTab === 'moments' ? 'text-app-accent' : 'text-white/55 hover:text-white/80'
                 }`}
-                onClick={() => setSelectedTab('liked')}
+                onClick={() => setSelectedTab('moments')}
               >
-                <IconHeart className="h-4 w-4" />
-                Liked
+                <IconPlay className="h-4 w-4" />
+                Moments
               </button>
               <button
                 type="button"
-                className={`flex flex-1 items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-xs font-semibold transition ${
-                  selectedTab === 'attended'
-                    ? 'border-[#ff6b4a]/40 bg-[#ff6b4a]/20 text-[#ffd1c4]'
-                    : 'border-white/10 bg-white/5 text-slate-300'
+                className={`flex flex-1 items-center justify-center gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-[0.22em] transition-colors ${
+                  selectedTab === 'attended' ? 'text-app-accent' : 'text-white/55 hover:text-white/80'
                 }`}
                 onClick={() => setSelectedTab('attended')}
               >
@@ -986,15 +1026,13 @@ const Profile: React.FC = () => {
               </button>
               <button
                 type="button"
-                className={`flex flex-1 items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-xs font-semibold transition ${
-                  selectedTab === 'moments'
-                    ? 'border-[#ff6b4a]/40 bg-[#ff6b4a]/20 text-[#ffd1c4]'
-                    : 'border-white/10 bg-white/5 text-slate-300'
+                className={`flex flex-1 items-center justify-center gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-[0.22em] transition-colors ${
+                  selectedTab === 'liked' ? 'text-app-accent' : 'text-white/55 hover:text-white/80'
                 }`}
-                onClick={() => setSelectedTab('moments')}
+                onClick={() => setSelectedTab('liked')}
               >
-                <IconPlay className="h-4 w-4" />
-                Moments
+                <IconHeart className="h-4 w-4" />
+                Liked
               </button>
             </div>
 
@@ -1010,7 +1048,7 @@ const Profile: React.FC = () => {
 
             <button
               type="button"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#ff6b4a]/40 px-4 py-2 text-sm font-semibold text-[#ffd1c4] disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex w-full items-center justify-center gap-2 bg-white/10 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
               onClick={handleSignOut}
               disabled={signingOut}
             >

@@ -164,90 +164,82 @@ const VenueDetail: React.FC = () => {
   return (
     <IonPage>
       <IonContent fullscreen>
-        <div className="app-layout">
+        <div className="min-h-full">
           <AppHeader />
-          <div className="app-screen p-4">
-            {loading && (
-              <div className="flex items-center justify-center py-12">
-                <IonSpinner name="crescent" />
-              </div>
-            )}
 
-            {!loading && error && (
-              <p className="text-sm text-rose-400">{error}</p>
-            )}
+          {loading && (
+            <div className="flex items-center justify-center py-12">
+              <IonSpinner name="crescent" />
+            </div>
+          )}
 
-            {!loading && venue && (
-              <>
-                <section className="venue-hero space-y-4 mb-6">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">
-                      Venue
+          {!loading && error && <div className="p-4"><p className="text-sm text-rose-400">{error}</p></div>}
+
+          {!loading && venue && (
+            <>
+              <section className="relative h-[340px] w-full overflow-hidden bg-black">
+                {(venue.photos || [])[0] ? (
+                  <img src={(venue.photos || [])[0]} alt={venue.name} className="absolute inset-0 h-full w-full object-cover" />
+                ) : null}
+                <div className="absolute inset-x-0 bottom-0 bg-black/70 p-5">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Venue</p>
+                  <h1 className="mt-2 font-display text-3xl font-bold text-white">{venue.name}</h1>
+                  {addressLine && <p className="mt-2 text-sm text-white/70">{addressLine}</p>}
+                  <div className="mt-3 flex items-center gap-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
+                      {followersCount} followers
                     </p>
-                    <h1 className="mt-2 font-display text-2xl text-slate-50">
-                      {venue.name}
-                    </h1>
-                    <div className="flex items-center gap-3 mt-1 text-xs">
-                      <p className="text-slate-400 font-semibold uppercase tracking-wider">
-                        {followersCount} followers
-                      </p>
-                      {user && (
-                        <button
-                          type="button"
-                          disabled={followLoading}
-                          onClick={handleFollowToggle}
-                          className={`rounded-full px-4 py-1 text-[10px] font-bold uppercase tracking-widest transition ${
-                            isFollowing
-                              ? 'bg-white/10 text-white border border-white/10'
-                              : 'bg-[#ff6b4a] text-white'
-                          }`}
-                        >
-                          {followLoading ? <IonSpinner name="crescent" /> : (isFollowing ? 'Following' : 'Follow')}
-                        </button>
-                      )}
-                    </div>
+                    {user && (
+                      <button
+                        type="button"
+                        disabled={followLoading}
+                        onClick={handleFollowToggle}
+                        className={`px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] disabled:opacity-60 ${
+                          isFollowing ? 'bg-white/10 text-white/80' : 'bg-[#ff6b4a] text-white'
+                        }`}
+                      >
+                        {followLoading ? <IonSpinner name="crescent" /> : (isFollowing ? 'Following' : 'Follow')}
+                      </button>
+                    )}
                   </div>
-                  {addressLine && (
-                    <p className="text-sm text-slate-400">{addressLine}</p>
-                  )}
-                  {(venue.venue_type || venue.capacity) && (
-                    <p className="text-xs text-slate-500">
-                      {venue.venue_type || 'Venue'}{venue.capacity ? ` · ${venue.capacity} cap` : ''}
-                    </p>
-                  )}
-                  {venue.website_url && (
-                    <a
-                      className="text-xs text-[#ffd1c4] hover:text-[#ff6b4a] transition-colors"
-                      href={venue.website_url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {venue.website_url.replace(/^https?:\/\//, '')}
-                    </a>
-                  )}
-                </section>
+                </div>
+              </section>
 
-                {(venue.photos || []).length > 0 && (
-                  <section className="flex gap-3 overflow-x-auto pb-4 mb-6 scrollbar-hide">
-                    {(venue.photos || []).map((url, index) => (
-                      <div key={`${url}-${index}`} className="h-32 w-48 flex-shrink-0 overflow-hidden rounded-2xl bg-[#0f1320] border border-white/5 shadow-lg">
+              <div className="flex flex-col gap-8 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
+                {(venue.photos || []).length > 1 && (
+                  <section className="-mx-4 flex gap-2 overflow-x-auto pb-1">
+                    {(venue.photos || []).slice(1, 8).map((url, index) => (
+                      <div key={`${url}-${index}`} className="h-36 w-52 flex-shrink-0 overflow-hidden bg-white/5">
                         <img src={url} alt={`Venue ${venue.name}`} className="h-full w-full object-cover" />
                       </div>
                     ))}
                   </section>
                 )}
 
-                <section className="space-y-3 mb-8">
+                {(venue.venue_type || venue.capacity) && (
+                  <p className="text-xs text-white/55">
+                    {venue.venue_type || 'Venue'}{venue.capacity ? ` · ${venue.capacity} cap` : ''}
+                  </p>
+                )}
+
+                {venue.website_url && (
+                  <a
+                    className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70 hover:text-white"
+                    href={venue.website_url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {venue.website_url.replace(/^https?:\/\//, '')}
+                  </a>
+                )}
+
+                <section className="space-y-3">
                   <div>
-                    <h2 className="font-display text-lg text-slate-50">Events</h2>
-                    <p className="text-xs text-slate-500">
-                      All shows hosted here.
-                    </p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Events</p>
+                    <p className="mt-1 text-sm text-white/55">All shows hosted here.</p>
                   </div>
                   {events.length === 0 ? (
-                    <p className="text-sm text-slate-500">
-                      No events yet at this venue.
-                    </p>
+                    <p className="text-sm text-white/55">No events here yet.</p>
                   ) : (
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                       {events.map(event => (
@@ -262,23 +254,21 @@ const VenueDetail: React.FC = () => {
                   )}
                 </section>
 
-                <section className="space-y-3 mb-8">
+                <section className="space-y-3">
                   <div>
-                    <h2 className="font-display text-lg text-slate-50">Recent moments</h2>
-                    <p className="text-xs text-slate-500">Latest media from this space.</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Moments</p>
+                    <p className="mt-1 text-sm text-white/55">Latest media from this room.</p>
                   </div>
                   {moments.length === 0 ? (
-                    <p className="text-sm text-slate-500">
-                      No moments shared here yet.
-                    </p>
+                    <p className="text-sm text-white/55">No memories here yet.</p>
                   ) : (
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="-mx-4 grid grid-cols-3 gap-1">
                       {moments.map(moment => (
                         <button
                           key={moment.id}
                           type="button"
                           onClick={() => history.push(`/post/${moment.id}`)}
-                          className="overflow-hidden rounded-2xl bg-[#0f1320] aspect-square border border-white/5 hover:ring-2 hover:ring-slate-600 transition-all"
+                          className="aspect-square overflow-hidden bg-white/5 transition-opacity hover:opacity-90"
                         >
                           {moment.media_type === 'video' ? (
                             <video className="h-full w-full object-cover" muted>
@@ -296,17 +286,17 @@ const VenueDetail: React.FC = () => {
                     </div>
                   )}
                 </section>
-              </>
-            )}
 
-            <button
-              type="button"
-              className="inline-flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/5 py-3 text-sm font-semibold text-slate-300 hover:bg-white/10 transition-colors"
-              onClick={() => history.goBack()}
-            >
-              Back
-            </button>
-          </div>
+                <button
+                  type="button"
+                  className="bg-white/10 px-4 py-3 text-sm font-semibold text-white"
+                  onClick={() => history.goBack()}
+                >
+                  Back
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </IonContent>
     </IonPage>

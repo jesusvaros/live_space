@@ -167,8 +167,13 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
   const limitedPast = pastShows.slice(0, 5);
 
   const heroBackground = artist?.avatar_url
-    ? { backgroundImage: `linear-gradient(180deg, rgba(12,14,20,0.35) 0%, #0b0e14 80%), url(${artist.avatar_url})` }
-    : { backgroundImage: 'linear-gradient(145deg, #151b2e 0%, #0c101d 50%, #0b0e14 100%)' };
+    ? {
+        backgroundColor: '#0b0b0d',
+        backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.68) 70%, #0b0b0d 100%), url(${artist.avatar_url})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }
+    : { backgroundColor: '#0b0b0d' };
 
   const handleOpenMap = () => {
     if (!artist) return;
@@ -266,7 +271,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
             onEdit={() => history.push('/tabs/profile')}
           />
 
-          <div className="sticky top-[72px] z-10 -mx-4 bg-[#0b0e14]/90 px-4 pb-3 pt-2 backdrop-blur">
+          <div className="sticky top-[72px] z-10 -mx-4 bg-app-bg px-4 py-3">
             <ArtistTabs
               activeTab={activeTab}
               onSelect={key => setActiveTab(key)}
@@ -280,15 +285,15 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
   );
 
   if (embedded) {
-    return <div className="app-screen p-4">{content}</div>;
+    return <div className="p-4">{content}</div>;
   }
 
   return (
     <IonPage>
       <IonContent fullscreen>
-        <div className="app-layout">
+        <div className="min-h-full">
           <AppHeader />
-          <div className="app-screen p-4">
+          <div className="p-4">
             {content}
           </div>
         </div>

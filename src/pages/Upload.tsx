@@ -12,6 +12,7 @@ import { useAuth } from '../contexts/AuthContext';
 import QrScanner from '../components/QrScanner';
 import { buildMomentItems, parseDatetimeLocalValue, MomentItem } from '../lib/moments';
 import AppHeader from '../components/AppHeader';
+import EventPosterTile from '../components/EventPosterTile';
 
 type NearbyEvent = {
   event: EventWithVenue;
@@ -405,25 +406,17 @@ const Upload: React.FC = () => {
     }
   };
 
-  const renderEventOption = (event: EventWithVenue, meta?: string) => (
-    <button
+  const renderEventTile = (event: EventWithVenue, opts?: { badge?: string; className?: string }) => (
+    <EventPosterTile
       key={event.id}
-      type="button"
-      onClick={() => handleSelectEvent(event)}
-      className="w-full space-y-2 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 text-left shadow-[0_24px_50px_rgba(0,0,0,0.35)]"
-    >
-      <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">
-        {event.venue_place?.city || event.city}
-      </p>
-      <h3 className="font-display text-lg text-slate-50">{event.name}</h3>
-      <p className="text-sm text-slate-400">
-        {event.venue_place?.name || event.address || 'Venue TBD'}
-      </p>
-      <div className="flex items-center justify-between text-xs text-slate-500">
-        <span>{formatEventDate(event)}</span>
-        {meta && <span>{meta}</span>}
-      </div>
-    </button>
+      event={event}
+      className={opts?.className}
+      title={event.name}
+      subtitle={event.venue_place?.name || event.address || 'Venue'}
+      kicker={formatEventDate(event)}
+      badge={opts?.badge}
+      onSelect={selected => handleSelectEvent(selected)}
+    />
   );
 
   return (
@@ -433,11 +426,9 @@ const Upload: React.FC = () => {
           <AppHeader />
           <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
             <div className="animate-fade-up motion-reduce:animate-none">
-              <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Upload</p>
-              <h2 className="mt-2 font-display text-2xl text-slate-50">Add moments</h2>
-              <p className="mt-2 text-sm text-slate-500">
-                Choose the event first, then drop your clips.
-              </p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-white/60">Add moments</p>
+              <h2 className="mt-2 font-display text-2xl font-bold text-white">What did it feel like?</h2>
+              <p className="mt-2 text-sm text-white/70">Pick the show, then drop your photos and clips.</p>
             </div>
 
           {loadingEvents && (
@@ -458,11 +449,11 @@ const Upload: React.FC = () => {
                   placeholder="Search events"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 shadow-[0_16px_32px_rgba(0,0,0,0.4)] placeholder:text-slate-500"
+                  className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
                 />
                 <button
                   type="button"
-                  className="inline-flex w-full items-center justify-center rounded-2xl border border-[#ff6b4a]/40 px-4 py-2 text-sm font-semibold text-[#ffd1c4]"
+                  className="inline-flex w-full items-center justify-center rounded-2xl bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15"
                   onClick={() => setShowScanner(true)}
                 >
                   Scan event QR
@@ -471,12 +462,12 @@ const Upload: React.FC = () => {
 
               {search.trim() ? (
                 <section className="space-y-3">
-                  <h3 className="font-display text-lg text-slate-50">Search results</h3>
+                  <h3 className="font-display text-lg font-bold text-white">Search results</h3>
                   {filteredEvents.length === 0 ? (
-                    <p className="text-sm text-slate-500">No events match that search.</p>
+                    <p className="text-sm text-white/60">No events match that search.</p>
                   ) : (
-                    <div className="space-y-3">
-                      {filteredEvents.map(event => renderEventOption(event))}
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {filteredEvents.map(event => renderEventTile(event, { className: 'w-full' }))}
                     </div>
                   )}
                 </section>
@@ -484,22 +475,21 @@ const Upload: React.FC = () => {
                 <>
                   <section className="space-y-3">
                     <div>
-                      <h3 className="font-display text-lg text-slate-50">Nearby</h3>
-                      <p className="text-xs text-slate-500">
+                      <h3 className="font-display text-lg font-bold text-white">Nearby</h3>
+                      <p className="text-xs text-white/60">
                         {userLocation ? 'Closest to you.' : locationError || 'Based on your profile city.'}
                       </p>
                     </div>
                     {nearbyEvents.length === 0 ? (
-                      <p className="text-sm text-slate-500">
+                      <p className="text-sm text-white/60">
                         No nearby events yet. Try searching or scanning a QR.
                       </p>
                     ) : (
-                      <div className="space-y-3">
+                      <div className="flex gap-3 overflow-x-auto pb-1">
                         {nearbyEvents.map(item =>
-                          renderEventOption(
-                            item.event,
-                            item.distanceKm ? `${item.distanceKm.toFixed(1)} km` : undefined
-                          )
+                          renderEventTile(item.event, {
+                            badge: item.distanceKm ? `${item.distanceKm.toFixed(1)} km` : undefined,
+                          })
                         )}
                       </div>
                     )}
@@ -507,14 +497,14 @@ const Upload: React.FC = () => {
 
                   <section className="space-y-3">
                     <div>
-                      <h3 className="font-display text-lg text-slate-50">Recent</h3>
-                      <p className="text-xs text-slate-500">Upcoming events worth sharing.</p>
+                      <h3 className="font-display text-lg font-bold text-white">Upcoming</h3>
+                      <p className="text-xs text-white/60">Shows worth remembering.</p>
                     </div>
                     {recentEvents.length === 0 ? (
-                      <p className="text-sm text-slate-500">No upcoming events yet.</p>
+                      <p className="text-sm text-white/60">No upcoming events yet.</p>
                     ) : (
-                      <div className="space-y-3">
-                        {recentEvents.map(event => renderEventOption(event))}
+                      <div className="flex gap-3 overflow-x-auto pb-1">
+                        {recentEvents.map(event => renderEventTile(event))}
                       </div>
                     )}
                   </section>
@@ -525,18 +515,21 @@ const Upload: React.FC = () => {
 
           {selectedEvent && (
             <div className="mt-4 space-y-4">
-              <div className="space-y-3 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 shadow-[0_24px_50px_rgba(0,0,0,0.35)]">
-                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">
-                  {selectedEvent.venue_place?.city || selectedEvent.city}
-                </p>
-                <h3 className="font-display text-xl text-slate-50">{selectedEvent.name}</h3>
-                <p className="text-sm text-slate-400">
-                  {selectedEvent.venue_place?.name || selectedEvent.address || 'Venue TBD'} ·{' '}
-                  {formatEventDate(selectedEvent)}
-                </p>
-                <p className="text-sm text-slate-400">
-                  Add moments to <span className="text-slate-50">{selectedEvent.name}</span>
-                </p>
+              <div className="relative -mx-4 aspect-[16/9] overflow-hidden bg-black">
+                {selectedEvent.cover_image_url ? (
+                  <img src={selectedEvent.cover_image_url} alt={selectedEvent.name} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="absolute inset-0 bg-black" />
+                )}
+                <div className="absolute inset-x-0 bottom-0 bg-black/70 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">
+                    {selectedEvent.venue_place?.city || selectedEvent.city}
+                  </p>
+                  <h3 className="mt-2 font-display text-xl font-bold text-white">{selectedEvent.name}</h3>
+                  <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-white/75">
+                    {selectedEvent.venue_place?.name || selectedEvent.address || 'Venue'} · {formatEventDate(selectedEvent)}
+                  </p>
+                </div>
               </div>
 
               {user ? (
@@ -560,7 +553,7 @@ const Upload: React.FC = () => {
               ) : (
                 <button
                   type="button"
-                  className="inline-flex w-full items-center justify-center rounded-2xl bg-[#ff6b4a] px-4 py-2 text-sm font-semibold text-white"
+                  className="inline-flex w-full items-center justify-center rounded-2xl bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15"
                   onClick={() => history.push('/welcome')}
                 >
                   Sign in to upload
@@ -569,7 +562,7 @@ const Upload: React.FC = () => {
 
               <button
                 type="button"
-                className="inline-flex w-full items-center justify-center rounded-2xl border border-transparent px-4 py-2 text-sm font-semibold text-[#ffd1c4]"
+                className="inline-flex w-full items-center justify-center px-4 py-2 text-sm font-semibold text-white/70 transition hover:text-white"
                 onClick={() => setSelectedEvent(null)}
               >
                 Choose another event
@@ -588,12 +581,12 @@ const Upload: React.FC = () => {
 
         <IonModal isOpen={showScanner} onDidDismiss={() => setShowScanner(false)}>
           <IonContent fullscreen>
-            <div className="flex flex-col gap-4 rounded-3xl bg-[#141824] p-5 shadow-[0_24px_50px_rgba(0,0,0,0.45)]">
+            <div className="flex flex-col gap-4 rounded-3xl bg-app-bg p-5">
               <div className="flex items-center justify-between gap-4">
-                <h2 className="font-display text-lg font-semibold text-slate-50">Scan QR</h2>
+                <h2 className="font-display text-lg font-bold text-white">Scan QR</h2>
                 <button
                   type="button"
-                  className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
+                  className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/15"
                   onClick={() => setShowScanner(false)}
                 >
                   Close
@@ -606,12 +599,12 @@ const Upload: React.FC = () => {
 
         <IonModal isOpen={showAddMoments} onDidDismiss={() => setShowAddMoments(false)}>
           <IonContent fullscreen>
-            <div className="flex flex-col gap-4 rounded-3xl bg-[#141824] p-5 shadow-[0_24px_50px_rgba(0,0,0,0.45)]">
+            <div className="flex flex-col gap-4 rounded-3xl bg-app-bg p-5">
               <div className="flex items-center justify-between gap-4">
-                <h2 className="font-display text-lg font-semibold text-slate-50">Add moments</h2>
+                <h2 className="font-display text-lg font-bold text-white">Add moments</h2>
                 <button
                   type="button"
-                  className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
+                  className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/15"
                   onClick={() => setShowAddMoments(false)}
                   disabled={uploading}
                 >
@@ -619,7 +612,7 @@ const Upload: React.FC = () => {
                 </button>
               </div>
               {momentItems.length === 0 && (
-                <p className="text-sm text-slate-400">Select photos or videos to add moments.</p>
+                <p className="text-sm text-white/70">Select photos or videos to add moments.</p>
               )}
 
               {momentItems.map(item => {
@@ -627,10 +620,10 @@ const Upload: React.FC = () => {
                 return (
                   <div
                     key={item.id}
-                    className="space-y-3 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 shadow-[0_24px_50px_rgba(0,0,0,0.35)]"
+                    className="space-y-3 rounded-2xl bg-white/5 p-4"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="h-20 w-20 overflow-hidden rounded-2xl bg-slate-900">
+                      <div className="h-20 w-20 overflow-hidden rounded-2xl bg-black/30">
                         {item.mediaType === 'video' ? (
                           <video className="h-full w-full object-cover" muted>
                             <source src={item.previewUrl} />
@@ -640,33 +633,33 @@ const Upload: React.FC = () => {
                         )}
                       </div>
                       <div className="flex-1 space-y-1">
-                        <p className="text-sm font-semibold text-slate-50">{item.file.name}</p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-sm font-semibold text-white">{item.file.name}</p>
+                        <p className="text-xs text-white/60">
                           {captureTimeLabel} · {getCaptureLabel(item.captureSource, item.captureAt)}
                         </p>
                       </div>
                       <button
                         type="button"
-                        className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
+                        className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/80 transition hover:bg-white/15 hover:text-white"
                         onClick={() => handleRemoveMoment(item.id)}
                       >
                         Remove
                       </button>
                     </div>
                     <label className="flex flex-col gap-2">
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
                         Captured time
                       </span>
                       <input
                         type="datetime-local"
                         value={item.manualValue}
                         onChange={e => handleMomentTimeChange(item.id, e.target.value)}
-                        className="w-full rounded-2xl border border-white/10 bg-[#141824] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500"
+                        className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/15"
                       />
                     </label>
                     <button
                       type="button"
-                      className="inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 text-xs font-semibold text-[#ffd1c4]"
+                      className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/80 transition hover:bg-white/15 hover:text-white"
                       onClick={() => handleUseUploadTime(item.id)}
                     >
                       Use upload time
@@ -683,7 +676,7 @@ const Upload: React.FC = () => {
               )}
 
               {uploading && (
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-white/60">
                   Uploading {uploadProgress.current}/{uploadProgress.total}
                 </p>
               )}
@@ -698,7 +691,7 @@ const Upload: React.FC = () => {
               </button>
               <button
                 type="button"
-                className="inline-flex w-full items-center justify-center rounded-2xl border border-[#ff6b4a]/40 px-4 py-2 text-sm font-semibold text-[#ffd1c4] disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex w-full items-center justify-center rounded-2xl bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={handleAddMomentsClick}
                 disabled={uploading}
               >

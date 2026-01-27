@@ -15,13 +15,10 @@ const SecondStack: React.FC<SecondStackProps> = ({ moments, selectedIndex, onSel
         <button
           key={moment.id}
           type="button"
-          className={`h-14 w-14 flex-shrink-0 overflow-hidden rounded-[14px] border transition ${
-            index === selectedIndex
-              ? 'border-[#ff6b4a]/55 shadow-[0_12px_24px_rgba(255,107,74,0.25)]'
-              : 'border-white/10 bg-white/5'
-          }`}
+          className="relative h-14 w-14 flex-shrink-0 overflow-hidden bg-white/5 transition-opacity hover:opacity-90"
           onClick={() => onSelect(index)}
         >
+          {index === selectedIndex && <span className="absolute left-2 top-2 h-2 w-2 bg-[#ff6b4a]" />}
           {moment.media_type === 'video' ? (
             moment.thumbnail_url ? (
               <img src={moment.thumbnail_url} alt={moment.caption || 'Moment'} className="h-full w-full object-cover" />
