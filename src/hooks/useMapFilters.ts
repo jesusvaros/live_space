@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Event, VenuePlace } from '../lib/types';
+import { Artist, Event, VenuePlace } from '../lib/types';
 
 type EventWithVenue = Event & { venue_place?: VenuePlace | null };
 type AttendanceStatus = 'going' | 'attended';
 
 type UseMapFiltersParams = {
   events: (EventWithVenue & {
-    event_artists?: { artist?: { artist_type?: string | null } | null }[];
+    event_artists?: { artist: Artist | null }[];
   })[];
   venues: VenuePlace[];
   userId?: string | null;
@@ -16,7 +16,9 @@ type UseMapFiltersParams = {
 export const useMapFilters = ({ events, venues, userId }: UseMapFiltersParams) => {
   const [search, setSearch] = useState('');
   const [showEvents, setShowEvents] = useState(true);
-  const [showVenues, setShowVenues] = useState(true);
+  const [showVenues, setShowVenues] = useState(false);
+  const [showUpcoming, setShowUpcoming] = useState(true);
+  const [showPast, setShowPast] = useState(true);
   const [filterToday, setFilterToday] = useState(false);
   const [filterTomorrow, setFilterTomorrow] = useState(false);
   const [filterDate, setFilterDate] = useState('');
@@ -91,6 +93,16 @@ export const useMapFilters = ({ events, venues, userId }: UseMapFiltersParams) =
 
       const startsAt = new Date(event.starts_at);
       const endsAt = event.ends_at ? new Date(event.ends_at) : null;
+      const endForScope = endsAt ?? startsAt;
+      const isPastEvent = endForScope < now;
+
+      if (!showUpcoming && !showPast) {
+        return false;
+      }
+      if (showUpcoming !== showPast) {
+        if (showPast && !isPastEvent) return false;
+        if (showUpcoming && isPastEvent) return false;
+      }
 
       if (filterToday && (startsAt < startOfToday || startsAt > endOfToday)) {
         return false;
@@ -165,6 +177,8 @@ export const useMapFilters = ({ events, venues, userId }: UseMapFiltersParams) =
   }, [
     events,
     search,
+    showUpcoming,
+    showPast,
     filterToday,
     filterTomorrow,
     filterDate,
@@ -240,6 +254,10 @@ export const useMapFilters = ({ events, venues, userId }: UseMapFiltersParams) =
     setShowEvents,
     showVenues,
     setShowVenues,
+    showUpcoming,
+    setShowUpcoming,
+    showPast,
+    setShowPast,
     filterToday,
     filterTomorrow,
     filterDate,

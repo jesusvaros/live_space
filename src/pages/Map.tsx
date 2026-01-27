@@ -4,8 +4,8 @@ import { MapContainer } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { supabase } from '../lib/supabase';
-import { Event, VenuePlace } from '../lib/types';
-import { useHistory, useLocation } from 'react-router-dom';
+import { Artist, Event, VenuePlace } from '../lib/types';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import AppHeader from '../components/AppHeader';
 import MapLibreLayer from '../components/MapLibreLayer';
@@ -46,11 +46,10 @@ const persistView = (center: [number, number], zoom: number) => {
 
 type EventWithVenue = Event & {
   venue_place?: VenuePlace | null;
-  event_artists?: { artist?: { id: string; name: string; avatar_url: string | null; artist_type?: string | null } | null }[];
+  event_artists?: { artist: Artist | null }[];
 };
 
 const Map: React.FC = () => {
-  const history = useHistory();
   const location = useLocation<{ artistFilter?: { id: string; name: string; avatar_url: string | null } }>();
   const { user } = useAuth();
   const [events, setEvents] = useState<EventWithVenue[]>([]);
@@ -76,6 +75,10 @@ const Map: React.FC = () => {
     setShowEvents,
     showVenues,
     setShowVenues,
+    showUpcoming,
+    setShowUpcoming,
+    showPast,
+    setShowPast,
     filterToday,
     filterTomorrow,
     filterDate,
@@ -344,72 +347,78 @@ const Map: React.FC = () => {
         <div className="min-h-full">
           <AppHeader />
           <div className="relative flex min-h-full flex-col p-0">
-            <div className="pointer-events-auto absolute left-4 right-4 top-4 z-[1000] flex flex-col gap-2">
-              <input
-                type="search"
-                placeholder="Search events"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="w-full bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none"
-              />
-              <MapFilterBar
-                filterToday={filterToday}
-                filterTomorrow={filterTomorrow}
-                filterDate={filterDate}
-                filterNow={filterNow}
-                filterFree={filterFree}
-                showEvents={showEvents}
-                showVenues={showVenues}
-                onToggleToday={toggleToday}
-                onToggleTomorrow={toggleTomorrow}
-                onDateChange={value => {
-                  setFilterDate(value);
-                  if (value) {
-                    setFilterNow(false);
-                  }
-                }}
-                onToggleNow={() => setFilterNow(prev => !prev)}
-                onToggleFree={() => setFilterFree(prev => !prev)}
-                onToggleEvents={() => setShowEvents(prev => !prev)}
-                onToggleVenues={() => setShowVenues(prev => !prev)}
-                onOpenArtistSearch={() => {
-                  setFocusArtistSearch(true);
-                  setShowFilters(true);
-                }}
-                onOpenFilters={() => setShowFilters(true)}
-              />
-              {selectedArtists.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2 bg-white/5 px-3 py-2 text-xs text-white">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/55">Artist</span>
-                  {selectedArtists.map(artist => (
+            <div className="pointer-events-auto absolute left-4 right-4 top-4 z-[1000]">
+              <div className="flex flex-col gap-2 rounded-2xl bg-black/85 p-3">
+                <input
+                  type="search"
+                  placeholder="Search shows"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="w-full rounded-xl bg-white/15 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                />
+                <MapFilterBar
+                  showUpcoming={showUpcoming}
+                  showPast={showPast}
+                  filterToday={filterToday}
+                  filterTomorrow={filterTomorrow}
+                  filterDate={filterDate}
+                  filterNow={filterNow}
+                  filterFree={filterFree}
+                  showEvents={showEvents}
+                  showVenues={showVenues}
+                  onToggleUpcoming={() => setShowUpcoming(prev => !prev)}
+                  onTogglePast={() => setShowPast(prev => !prev)}
+                  onToggleToday={toggleToday}
+                  onToggleTomorrow={toggleTomorrow}
+                  onDateChange={value => {
+                    setFilterDate(value);
+                    if (value) {
+                      setFilterNow(false);
+                    }
+                  }}
+                  onToggleNow={() => setFilterNow(prev => !prev)}
+                  onToggleFree={() => setFilterFree(prev => !prev)}
+                  onToggleEvents={() => setShowEvents(prev => !prev)}
+                  onToggleVenues={() => setShowVenues(prev => !prev)}
+                  onOpenArtistSearch={() => {
+                    setFocusArtistSearch(true);
+                    setShowFilters(true);
+                  }}
+                  onOpenFilters={() => setShowFilters(true)}
+                />
+                {selectedArtists.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-xs text-white">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/60">Artist</span>
+                    {selectedArtists.map(artist => (
+                      <button
+                        key={artist.id}
+                        type="button"
+                        onClick={() => removeArtist(artist.id)}
+                        className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1 text-xs font-semibold transition hover:bg-white/15"
+                      >
+                        <span className="h-6 w-6 overflow-hidden rounded-full bg-white/10">
+                          {artist.avatar_url ? (
+                            <img src={artist.avatar_url} alt={artist.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="flex h-full w-full items-center justify-center text-[10px] text-white/70">
+                              {artist.name.charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                        </span>
+                        {artist.name}
+                        <span className="text-white/60">×</span>
+                      </button>
+                    ))}
                     <button
-                      key={artist.id}
                       type="button"
-                      onClick={() => removeArtist(artist.id)}
-                      className="inline-flex items-center gap-2 bg-white/10 px-3 py-1 text-xs font-semibold hover:bg-white/15"
+                      onClick={clearArtistFilters}
+                      className="ml-auto text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70 transition hover:text-white"
                     >
-                      <span className="h-6 w-6 overflow-hidden rounded-full bg-white/10">
-                        {artist.avatar_url ? (
-                          <img src={artist.avatar_url} alt={artist.name} className="h-full w-full object-cover" />
-                        ) : (
-                          <span className="flex h-full w-full items-center justify-center text-[10px] text-white/70">
-                            {artist.name.charAt(0).toUpperCase()}
-                          </span>
-                        )}
-                      </span>
-                      {artist.name}
-                      <span className="text-white/60">×</span>
+                      Clear
                     </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={clearArtistFilters}
-                    className="ml-auto text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70 hover:text-white"
-                  >
-                    Clear
-                  </button>
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
             </div>
           <div className="relative">
             {selectedArtistIds.length > 0 && filteredEvents.length === 0 && (
@@ -434,7 +443,7 @@ const Map: React.FC = () => {
               className="rounded-none [&_.leaflet-container]:rounded-none [&_.leaflet-pane]:z-0 [&_.leaflet-marker-pane]:z-[500] [&_.leaflet-overlay-pane]:z-[400] [&_.leaflet-popup-pane]:z-[600]"
               zoomControl={false}
               ref={mapRef}
-              whenReady={e => setMapInstance(e.target)}
+              whenReady={() => setMapInstance(mapRef.current)}
               preferCanvas={false}
             >
               <MapLibreLayer />
@@ -502,6 +511,10 @@ const Map: React.FC = () => {
             setShowVenues(true);
           }}
           disableAttendance={!user}
+          filterDate={filterDate}
+          onDateChange={setFilterDate}
+          showVenues={showVenues}
+          onToggleVenues={setShowVenues}
         />
       </IonContent>
     </IonPage>

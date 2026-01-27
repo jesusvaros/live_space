@@ -25,6 +25,10 @@ type MapFilterModalProps = {
   onToggleAttended: (value: boolean) => void;
   onClear: () => void;
   disableAttendance: boolean;
+  filterDate: string;
+  onDateChange: (value: string) => void;
+  showVenues: boolean;
+  onToggleVenues: (value: boolean) => void;
 };
 
 const MapFilterModal: React.FC<MapFilterModalProps> = ({
@@ -50,6 +54,10 @@ const MapFilterModal: React.FC<MapFilterModalProps> = ({
   onToggleAttended,
   onClear,
   disableAttendance,
+  filterDate,
+  onDateChange,
+  showVenues,
+  onToggleVenues,
 }) => {
   const [artistQuery, setArtistQuery] = React.useState('');
   const [artistResults, setArtistResults] = React.useState<
@@ -116,6 +124,22 @@ const MapFilterModal: React.FC<MapFilterModalProps> = ({
 
           <div className="mt-6 space-y-6">
             <div className="space-y-3 bg-white/5 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/65">Show</p>
+              <label className="flex items-center justify-between gap-3 text-sm text-white/80">
+                <span className="flex items-center gap-2">Venues</span>
+                <span className="relative inline-flex h-6 w-11 items-center">
+                  <input
+                    type="checkbox"
+                    className="peer sr-only"
+                    checked={showVenues}
+                    onChange={e => onToggleVenues(e.target.checked)}
+                  />
+                  <span className="h-full w-full rounded-full bg-white/10 transition peer-checked:bg-[#ff6b4a]/80" />
+                  <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5" />
+                </span>
+              </label>
+            </div>
+            <div className="space-y-3 bg-white/5 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/65">When</p>
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -159,6 +183,17 @@ const MapFilterModal: React.FC<MapFilterModalProps> = ({
                   <span>Attended</span>
                 </label>
               </div>
+              <label className="flex flex-col gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
+                  Specific date
+                </span>
+                <input
+                  type="date"
+                  value={filterDate}
+                  onChange={e => onDateChange(e.target.value)}
+                  className="w-full bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none"
+                />
+              </label>
             </div>
 
             <div className="space-y-4 bg-white/5 p-4">
