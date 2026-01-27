@@ -10,14 +10,14 @@ import { useAuth } from '../contexts/AuthContext';
 import AppHeader from '../components/AppHeader';
 import MapLibreLayer from '../components/MapLibreLayer';
 import MapResizeObserver from '../components/MapResizeObserver';
+import MapMarkers from '../components/map/MapMarkers';
 import MapFilterBar from '../components/map/MapFilterBar';
 import MapFilterModal from '../components/map/MapFilterModal';
-import MapMarkers from '../components/map/MapMarkers';
 import MapSelectionSheet from '../components/map/MapSelectionSheet';
 import { useMapFilters } from '../hooks/useMapFilters';
 
 const defaultCenter: [number, number] = [37.3891, -5.9845];
-const defaultZoom = 12;
+const defaultZoom = 15;
 const mapViewKey = 'live_space.map.view';
 
 const readStoredView = () => {
@@ -38,8 +38,8 @@ const readStoredView = () => {
 const persistView = (center: [number, number], zoom: number) => {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(mapViewKey, JSON.stringify({ center, zoom }));
-  } catch {
+    window.localStorage.setItem(mapViewKey, JSON.stringify({ center: `${center[0]},${center[1]}`, zoom }));
+  } catch (e) {
     // ignore storage failures
   }
 };
@@ -65,6 +65,28 @@ const Map: React.FC = () => {
   const [locationRequested, setLocationRequested] = useState(false);
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
   const mapRef = useRef<L.Map | null>(null);
+  
+  // Monitor ref changes - this is the fix!
+  useEffect(() => {
+    const checkRef = () => {
+      if (mapRef.current && !mapInstance) {
+        console.log('[Map] mapRef.current is now available, setting mapInstance');
+        setMapInstance(mapRef.current);
+      }
+    };
+
+    // Check immediately
+    checkRef();
+    
+    // Check periodically
+    const interval = setInterval(checkRef, 100);
+    
+    // Stop checking after 5 seconds
+    setTimeout(() => clearInterval(interval), 5000);
+
+    return () => clearInterval(interval);
+  }, [mapInstance]);
+
   const [showFilters, setShowFilters] = useState(false);
   const [initialArtistFilterApplied, setInitialArtistFilterApplied] = useState<string | null>(null);
 
@@ -82,30 +104,28 @@ const Map: React.FC = () => {
     filterToday,
     filterTomorrow,
     filterDate,
+    setFilterDate,
     filterNow,
+    setFilterNow,
     filterFree,
+    setFilterFree,
     filterGenres,
+    setFilterGenres,
     priceMin,
+    setPriceMin,
     priceMax,
+    setPriceMax,
     filterDayPart,
     setFilterDayPart,
     filterBandOnly,
     setFilterBandOnly,
-    selectedArtistIds,
-    setSelectedArtistIds,
     filterGoing,
-    filterAttended,
-    toggleToday,
-    toggleTomorrow,
-    setFilterDate,
-    setFilterNow,
-    setFilterFree,
-    setFilterGenres,
-    setPriceMin,
-    setPriceMax,
     setFilterGoing,
+    filterAttended,
     setFilterAttended,
     clearExtraFilters,
+    selectedArtistIds,
+    setSelectedArtistIds,
     filteredEvents,
     filteredVenues,
   } = useMapFilters({
@@ -122,44 +142,14 @@ const Map: React.FC = () => {
     });
   }, []);
 
-  useEffect(() => {
-    const stored = readStoredView();
-    if (stored) {
-      setCenter(stored.center);
-      setZoom(stored.zoom);
-      setInitialViewApplied(true);
-      return;
-    }
-    setCenter(defaultCenter);
-    setZoom(defaultZoom);
-    setInitialViewApplied(true);
-  }, []);
-
   const loadEvents = useCallback(async () => {
     const { data } = await supabase
       .from('events')
-      .select(
-        `
+      .select(`
         *,
-        venue_place:venue_places!events_venue_place_id_fkey (
-          id,
-          name,
-          city,
-          address,
-          latitude,
-          longitude,
-          photos
-        ),
-        event_artists (
-          artist:artists!event_artists_artist_entity_fk (
-            id,
-            name,
-            avatar_url,
-            artist_type
-          )
-        )
-        `
-      );
+        venue_place:venue_places(*),
+        event_artists(artist:artists(*))
+      `);
     setEvents((data || []) as EventWithVenue[]);
   }, []);
 
@@ -173,7 +163,7 @@ const Map: React.FC = () => {
   useEffect(() => {
     loadEvents();
     loadVenues();
-  }, [loadEvents, loadVenues]);
+  }, []);
 
   useEffect(() => {
     if (events.length === 0) {
@@ -188,6 +178,15 @@ const Map: React.FC = () => {
   }, [venues.length, loadVenues]);
 
   useEffect(() => {
+    const stored = readStoredView();
+    if (stored && !initialViewApplied) {
+      setCenter(stored.center);
+      setZoom(stored.zoom);
+      setInitialViewApplied(true);
+    }
+  }, [initialViewApplied]);
+
+  useEffect(() => {
     if (!navigator.geolocation || locationRequested || !initialViewApplied) return;
     setLocationRequested(true);
     navigator.geolocation.getCurrentPosition(
@@ -198,34 +197,6 @@ const Map: React.FC = () => {
       { enableHighAccuracy: true, timeout: 5000 }
     );
   }, [initialViewApplied, locationRequested]);
-
-  useEffect(() => {
-    const artistFilter = location.state?.artistFilter;
-    if (artistFilter?.id && initialArtistFilterApplied !== artistFilter.id) {
-      setSelectedArtists([artistFilter]);
-      setSelectedArtistIds([artistFilter.id]);
-      setShowEvents(true);
-      setShowVenues(false);
-      setInitialArtistFilterApplied(artistFilter.id);
-    }
-  }, [location.state, initialArtistFilterApplied, setSelectedArtistIds, setShowEvents, setShowVenues]);
-
-  const getItemLatLng = (item: { type: 'event' | 'venue'; id: string }) => {
-    if (item.type === 'event') {
-      const ev = filteredEvents.find(e => e.id === item.id);
-      if (!ev) return null;
-      const lat = Number(ev.latitude ?? ev.venue_place?.latitude ?? null);
-      const lng = Number(ev.longitude ?? ev.venue_place?.longitude ?? null);
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-      return [lat, lng] as [number, number];
-    }
-    const venue = filteredVenues.find(v => v.id === item.id);
-    if (!venue) return null;
-    const lat = Number(venue.latitude ?? null);
-    const lng = Number(venue.longitude ?? null);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-    return [lat, lng] as [number, number];
-  };
 
   useEffect(() => {
     if (!mapInstance) return;
@@ -264,35 +235,64 @@ const Map: React.FC = () => {
     }, 150);
   });
 
-  const centerOnItem = (item: { type: 'event' | 'venue'; id: string }) => {
-    if (!mapInstance) return;
-    const coords = getItemLatLng(item);
-    if (!coords) return;
-    mapInstance.setView(coords, mapInstance.getZoom(), { animate: true });
+  // Center map when activeSelection changes
+  useEffect(() => {
+    if (activeSelection && mapInstance) {
+      const coords = getItemLatLng(activeSelection);
+      if (coords) {
+        // Calculate offset to place marker above modal
+        const mapHeight = mapInstance.getSize().y;
+        const offsetPercentage = -0.15; // Move marker 25% up from center
+        const offsetY = mapHeight * offsetPercentage;
+        
+        // Get the current zoom and calculate the pixel offset
+        const zoom = mapInstance.getZoom();
+        const point = mapInstance.latLngToContainerPoint(coords);
+        const offsetPoint = L.point(point.x, point.y - offsetY);
+        const centerCoords = mapInstance.containerPointToLatLng(offsetPoint);
+        
+        mapInstance.setView(centerCoords, zoom, { animate: true });
+      }
+    }
+  }, [activeSelection, mapInstance]);
+
+  const getItemLatLng = (item: { type: 'event' | 'venue'; id: string }): [number, number] | null => {
+    if (item.type === 'event') {
+      const ev = filteredEvents.find(e => e.id === item.id);
+      if (!ev) return null;
+      const lat = Number(ev.latitude ?? ev.venue_place?.latitude ?? null);
+      const lng = Number(ev.longitude ?? ev.venue_place?.longitude ?? null);
+      if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
+      return [lat, lng];
+    } else {
+      const venue = filteredVenues.find(v => v.id === item.id);
+      if (!venue) return null;
+      const lat = Number(venue.latitude ?? null);
+      const lng = Number(venue.longitude ?? null);
+      if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
+      return [lat, lng];
+    }
   };
 
   const handleSelect = (item: { type: 'event' | 'venue'; id: string }) => {
-    if (!mapInstance) return;
     const coords = getItemLatLng(item);
     if (!coords) return;
-    const bounds = mapInstance.getBounds();
-    if (!bounds.contains(coords)) return;
 
     const visibleList: { type: 'event' | 'venue'; id: string }[] = [];
     if (showEvents) {
       filteredEvents.forEach(ev => {
         const ll = getItemLatLng({ type: 'event', id: ev.id });
-        if (ll && bounds.contains(ll)) visibleList.push({ type: 'event', id: ev.id });
+        if (ll) visibleList.push({ type: 'event', id: ev.id });
       });
     }
     if (showVenues) {
       filteredVenues.forEach(v => {
         const ll = getItemLatLng({ type: 'venue', id: v.id });
-        if (ll && bounds.contains(ll)) visibleList.push({ type: 'venue', id: v.id });
+        if (ll) visibleList.push({ type: 'venue', id: v.id });
       });
     }
 
-    // Ensure clicked item is present if visible
+    // Ensure clicked item is present
     const existingIdx = visibleList.findIndex(i => i.type === item.type && i.id === item.id);
     const nextList =
       existingIdx === -1 ? [...visibleList, item] : visibleList;
@@ -301,7 +301,6 @@ const Map: React.FC = () => {
 
     setVisibleItems(nextList);
     setActiveIndex(nextIndex);
-    centerOnItem(item);
   };
 
   const goNext = (direction: 1 | -1) => {
@@ -310,35 +309,12 @@ const Map: React.FC = () => {
     if (next < 0) next = visibleItems.length - 1;
     if (next >= visibleItems.length) next = 0;
     setActiveIndex(next);
-    centerOnItem(visibleItems[next]);
-  };
-
-  const [touchStartX, setTouchStartX] = useState<number | null>(null);
-  const handleTouchStart = (e: React.TouchEvent) => setTouchStartX(e.touches[0].clientX);
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX === null) return;
-    const dx = e.changedTouches[0].clientX - touchStartX;
-    if (Math.abs(dx) > 50) {
-      goNext(dx < 0 ? 1 : -1);
-    }
-    setTouchStartX(null);
   };
 
   const clearArtistFilters = () => {
     setSelectedArtists([]);
     setSelectedArtistIds([]);
     setShowVenues(true);
-  };
-
-  const removeArtist = (id: string) => {
-    setSelectedArtists(prev => prev.filter(artist => artist.id !== id));
-    setSelectedArtistIds(prev => {
-      const next = prev.filter(item => item !== id);
-      if (next.length === 0) {
-        setShowVenues(true);
-      }
-      return next;
-    });
   };
 
   return (
@@ -366,20 +342,20 @@ const Map: React.FC = () => {
                   filterFree={filterFree}
                   showEvents={showEvents}
                   showVenues={showVenues}
-                  onToggleUpcoming={() => setShowUpcoming(prev => !prev)}
-                  onTogglePast={() => setShowPast(prev => !prev)}
-                  onToggleToday={toggleToday}
-                  onToggleTomorrow={toggleTomorrow}
+                  onToggleUpcoming={() => setShowUpcoming((prev: boolean) => !prev)}
+                  onTogglePast={() => setShowPast((prev: boolean) => !prev)}
+                  onToggleToday={() => {}}
+                  onToggleTomorrow={() => {}}
                   onDateChange={value => {
                     setFilterDate(value);
                     if (value) {
                       setFilterNow(false);
                     }
                   }}
-                  onToggleNow={() => setFilterNow(prev => !prev)}
-                  onToggleFree={() => setFilterFree(prev => !prev)}
-                  onToggleEvents={() => setShowEvents(prev => !prev)}
-                  onToggleVenues={() => setShowVenues(prev => !prev)}
+                  onToggleNow={() => setFilterNow((prev: boolean) => !prev)}
+                  onToggleFree={() => setFilterFree((prev: boolean) => !prev)}
+                  onToggleEvents={() => setShowEvents((prev: boolean) => !prev)}
+                  onToggleVenues={() => setShowVenues((prev: boolean) => !prev)}
                   onOpenArtistSearch={() => {
                     setFocusArtistSearch(true);
                     setShowFilters(true);
@@ -390,52 +366,48 @@ const Map: React.FC = () => {
                   <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-xs text-white">
                     <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/60">Artist</span>
                     {selectedArtists.map(artist => (
-                      <button
+                      <div
                         key={artist.id}
-                        type="button"
-                        onClick={() => removeArtist(artist.id)}
-                        className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1 text-xs font-semibold transition hover:bg-white/15"
+                        className="flex items-center gap-1 rounded-lg bg-white/15 px-2 py-1 text-xs font-medium text-white"
                       >
-                        <span className="h-6 w-6 overflow-hidden rounded-full bg-white/10">
-                          {artist.avatar_url ? (
-                            <img src={artist.avatar_url} alt={artist.name} className="h-full w-full object-cover" />
-                          ) : (
-                            <span className="flex h-full w-full items-center justify-center text-[10px] text-white/70">
-                              {artist.name.charAt(0).toUpperCase()}
-                            </span>
-                          )}
-                        </span>
-                        {artist.name}
-                        <span className="text-white/60">×</span>
-                      </button>
+                        {artist.avatar_url && (
+                          <img
+                            src={artist.avatar_url}
+                            alt={artist.name}
+                            className="h-4 w-4 rounded-full object-cover"
+                          />
+                        )}
+                        <span>{artist.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedArtists(prev => prev.filter(a => a.id !== artist.id));
+                            setSelectedArtistIds(prev => {
+                              const next = prev.filter(item => item !== artist.id);
+                              if (next.length === 0) {
+                                setShowVenues(true);
+                              }
+                              return next;
+                            });
+                          }}
+                          className="ml-auto text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70 transition hover:text-white"
+                        >
+                          Clear
+                        </button>
+                      </div>
                     ))}
                     <button
                       type="button"
                       onClick={clearArtistFilters}
-                      className="ml-auto text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70 transition hover:text-white"
+                      className="bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white"
                     >
-                      Clear
+                      Clear artist filter
                     </button>
                   </div>
                 )}
-              </div>
             </div>
+          </div>
           <div className="relative">
-            {selectedArtistIds.length > 0 && filteredEvents.length === 0 && (
-              <div className="pointer-events-auto absolute left-4 right-4 top-24 z-[1100] bg-black/80 px-4 py-3 text-center text-white">
-                <p className="text-sm font-semibold">No shows to display for this artist</p>
-                <p className="text-xs text-white/60">Remove the artist filter to see all events on the map.</p>
-                <div className="mt-2 flex justify-center">
-                  <button
-                    type="button"
-                    onClick={clearArtistFilters}
-                    className="bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white"
-                  >
-                    Clear artist filter
-                  </button>
-                </div>
-              </div>
-            )}
             <MapContainer
               center={center}
               zoom={zoom}
@@ -443,7 +415,9 @@ const Map: React.FC = () => {
               className="rounded-none [&_.leaflet-container]:rounded-none [&_.leaflet-pane]:z-0 [&_.leaflet-marker-pane]:z-[500] [&_.leaflet-overlay-pane]:z-[400] [&_.leaflet-popup-pane]:z-[600]"
               zoomControl={false}
               ref={mapRef}
-              whenReady={() => setMapInstance(mapRef.current)}
+              whenReady={() => {
+                console.log('[Map] MapContainer whenReady triggered');
+              }}
               preferCanvas={false}
             >
               <MapLibreLayer />
@@ -468,8 +442,8 @@ const Map: React.FC = () => {
           onClose={() => setActiveIndex(null)}
           onPrev={() => goNext(-1)}
           onNext={() => goNext(1)}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
+          onTouchStart={() => {}}
+          onTouchEnd={() => {}}
         />
 
         <MapFilterModal
@@ -480,41 +454,52 @@ const Map: React.FC = () => {
           }}
           filterGenres={filterGenres}
           onGenresChange={setFilterGenres}
-          priceMin={priceMin}
-          priceMax={priceMax}
-          onPriceMinChange={setPriceMin}
-          onPriceMaxChange={setPriceMax}
-          filterDayPart={filterDayPart}
+          priceMin={priceMin.toString()}
+          onPriceMinChange={(value) => setPriceMin(Number(value) || 0)}
+          priceMax={priceMax.toString()}
+          onPriceMaxChange={(value) => setPriceMax(Number(value) || 100)}
+          filterDayPart={filterDayPart || ''}
           onDayPartChange={setFilterDayPart}
           filterBandOnly={filterBandOnly}
           onToggleBand={setFilterBandOnly}
+          filterGoing={filterGoing}
+          onToggleGoing={setFilterGoing}
+          filterAttended={filterAttended}
+          onToggleAttended={setFilterAttended}
+          disableAttendance={false}
           selectedArtists={selectedArtists}
           onAddArtist={artist => {
-            if (selectedArtistIds.includes(artist.id)) return;
             setSelectedArtists(prev => [...prev, artist]);
             setSelectedArtistIds(prev => [...prev, artist.id]);
-            setFilterBandOnly(false);
+            setShowVenues(false);
           }}
           onRemoveArtist={id => {
-            setSelectedArtists(prev => prev.filter(item => item.id !== id));
-            setSelectedArtistIds(prev => prev.filter(item => item !== id));
+            setSelectedArtists(prev => prev.filter(a => a.id !== id));
+            setSelectedArtistIds(prev => {
+              const next = prev.filter(item => item !== id);
+              if (next.length === 0) {
+                setShowVenues(true);
+              }
+              return next;
+            });
           }}
-          autoFocusArtist={focusArtistSearch}
-          filterGoing={filterGoing}
-          filterAttended={filterAttended}
-          onToggleGoing={setFilterGoing}
-          onToggleAttended={setFilterAttended}
-          onClear={() => {
-            clearExtraFilters();
-            setSelectedArtists([]);
-            setSelectedArtistIds([]);
-            setShowVenues(true);
-          }}
-          disableAttendance={!user}
           filterDate={filterDate}
           onDateChange={setFilterDate}
           showVenues={showVenues}
           onToggleVenues={setShowVenues}
+          onClear={() => {
+            clearExtraFilters();
+            setFilterDate('');
+            setFilterNow(false);
+            setFilterFree(false);
+            setFilterGenres('');
+            setPriceMin(0);
+            setPriceMax(100);
+            setFilterDayPart('');
+            setFilterBandOnly(false);
+            setFilterGoing(false);
+            setFilterAttended(false);
+          }}
         />
       </IonContent>
     </IonPage>

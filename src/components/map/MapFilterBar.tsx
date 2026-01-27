@@ -47,15 +47,15 @@ const MapFilterBar: React.FC<MapFilterBarProps> = ({
       <button type="button" className={`${baseChip} ${filterToday ? activeChip : inactiveChip}`} onClick={onToggleToday}>
         Today
       </button>
-       <button type="button" className={`${baseChip} ${filterFree ? activeChip : inactiveChip}`} onClick={onToggleFree}>
-        Free
-      </button>
       <button
         type="button"
         className={`${baseChip} ${filterTomorrow ? activeChip : inactiveChip}`}
         onClick={onToggleTomorrow}
       >
         Tomorrow
+      </button>
+      <button type="button" className={`${baseChip} ${filterFree ? activeChip : inactiveChip}`} onClick={onToggleFree}>
+        Free
       </button>
       <button type="button" className={`${baseChip} ${inactiveChip}`} onClick={onOpenFilters}>
         Filters

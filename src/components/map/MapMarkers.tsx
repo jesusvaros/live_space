@@ -42,7 +42,6 @@ const buildPinIcon = (variant: 'free' | 'paid' | 'venue', label: string, imageUr
     iconSize: isActive ? [56, 64] : [52, 60],
     iconAnchor: [26, 60],
     popupAnchor: [0, -54],
-    interactive: true,
   });
 };
 
