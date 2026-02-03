@@ -7,9 +7,6 @@ type MapSelectionSheetProps = {
   activeItem: SelectionItem | null;
   events: (Event & { venue_place?: VenuePlace | null; event_artists?: { artist?: { name?: string | null } | null }[] })[];
   venues: VenuePlace[];
-  onClose: () => void;
-  onPrev: () => void;
-  onNext: () => void;
   onTouchStart: (e: React.TouchEvent) => void;
   onTouchEnd: (e: React.TouchEvent) => void;
 };
@@ -18,9 +15,6 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({
   activeItem,
   events,
   venues,
-  onClose,
-  onPrev,
-  onNext,
   onTouchStart,
   onTouchEnd,
 }) => {
@@ -103,37 +97,14 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({
 
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-[1100] max-h-[60vh] bg-black/92 p-4"
+      className="fixed inset-x-0 bottom-0 z-[1100] max-h-[60vh] rounded-t-3xl bg-black/92 p-4"
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-center">
         <div className="h-1 w-12 rounded-full bg-white/20" />
-        <button
-          type="button"
-          className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
-          onClick={onClose}
-        >
-          Close
-        </button>
       </div>
       {renderDetails()}
-      <div className="mt-4 flex items-center justify-between">
-        <button
-          type="button"
-          className="bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white"
-          onClick={onPrev}
-        >
-          Prev
-        </button>
-        <button
-          type="button"
-          className="bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white"
-          onClick={onNext}
-        >
-          Next
-        </button>
-      </div>
     </div>
   );
 };

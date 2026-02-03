@@ -311,6 +311,9 @@ const Map: React.FC = () => {
     setActiveIndex(next);
   };
 
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchStartY, setTouchStartY] = useState<number | null>(null);
+
   const clearArtistFilters = () => {
     setSelectedArtists([]);
     setSelectedArtistIds([]);
@@ -439,11 +442,28 @@ const Map: React.FC = () => {
           activeItem={activeSelection}
           events={filteredEvents}
           venues={filteredVenues}
-          onClose={() => setActiveIndex(null)}
-          onPrev={() => goNext(-1)}
-          onNext={() => goNext(1)}
-          onTouchStart={() => {}}
-          onTouchEnd={() => {}}
+          onTouchStart={(e) => {
+            setTouchStartX(e.touches[0].clientX);
+            setTouchStartY(e.touches[0].clientY);
+          }}
+          onTouchEnd={(e) => {
+            if (touchStartX === null || touchStartY === null) return;
+            
+            const dx = e.changedTouches[0].clientX - touchStartX;
+            const dy = e.changedTouches[0].clientY - touchStartY;
+            
+            // Check for swipe down (vertical swipe)
+            if (dy > 100 && Math.abs(dx) < 50) {
+              setActiveIndex(null); // Close modal on swipe down
+            }
+            // Check for horizontal swipe (navigation)
+            else if (Math.abs(dx) > 50 && Math.abs(dy) < 50) {
+              goNext(dx < 0 ? 1 : -1);
+            }
+            
+            setTouchStartX(null);
+            setTouchStartY(null);
+          }}
         />
 
         <MapFilterModal
