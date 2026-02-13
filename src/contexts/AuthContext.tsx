@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { AuthError, User } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../api';
 import { Profile, AuthState } from '../lib/types';
 import { cached, setCached } from '../lib/requestCache';
 

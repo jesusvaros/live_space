@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase } from '../api';
 import { ManagedEntity } from '../lib/types';
 import { cached } from '../lib/requestCache';
 

@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase } from '../api';
 
 export const socialService = {
   async follow(followerSubjectId: string, targetSubjectId: string): Promise<void> {

@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase } from '../api';
 import { PostWithSetlist, EventSetlistEntry } from '../lib/types';
 
 export const eventService = {

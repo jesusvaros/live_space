@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase } from '../api';
 import { VenuePlace } from '../lib/types';
 
 export const venueService = {

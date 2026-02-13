@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase } from '../api';
 import { Artist } from '../lib/types';
 
 export const artistService = {
