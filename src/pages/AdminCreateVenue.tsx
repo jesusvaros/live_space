@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { IonContent, IonPage, IonSpinner } from '@ionic/react';
 import { venueService } from '../services/venue.service';
 import { useAuth } from '../contexts/AuthContext';
-import AppHeader from '../components/AppHeader';
+import AppShell from '../components/AppShell';
 import AdminActionsNav from '../components/admin/AdminActionsNav';
 
 const AdminCreateVenue: React.FC = () => {
@@ -65,11 +65,15 @@ const AdminCreateVenue: React.FC = () => {
   }
 
   return (
-    <IonPage>
-      <AppHeader title="Create Venue" showBack />
-      <IonContent className="ion-padding">
-        <div className="mx-auto max-w-2xl space-y-6 py-6">
-          <AdminActionsNav active="venue" />
+    <AppShell
+      headerProps={{ title: 'Create Venue', showBack: true }}
+      headerPlacement="outside"
+      contentClassName="ion-padding"
+      contentFullscreen={false}
+      contentWrapperClassName={false}
+    >
+      <div className="mx-auto max-w-2xl space-y-6 py-6">
+        <AdminActionsNav active="venue" />
 
           <p className="text-sm text-app-light/70">Create a venue entity to manage events and content.</p>
 
@@ -132,9 +136,8 @@ const AdminCreateVenue: React.FC = () => {
               {venueLoading ? <IonSpinner name="crescent" color="light" /> : 'Create Venue'}
             </button>
           </div>
-        </div>
-      </IonContent>
-    </IonPage>
+      </div>
+    </AppShell>
   );
 };
 

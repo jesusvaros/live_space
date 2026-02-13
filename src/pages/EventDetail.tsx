@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  IonPage,
   IonContent,
   IonSpinner,
   IonModal,
@@ -12,7 +11,7 @@ import { clearCached } from '../lib/requestCache';
 import { eventService } from '../services/event.service';
 import { useAuth } from '../contexts/AuthContext';
 import { buildMomentItems, parseDatetimeLocalValue, MomentItem } from '../lib/moments';
-import AppHeader from '../components/AppHeader';
+import AppShell from '../components/AppShell';
 import EventHero, { EventEntity } from '../components/event/EventHero';
 import TimelinePlayer, { MediaFilter } from '../components/event/TimelinePlayer';
 import { TimelineBucket } from '../components/event/TimelineScrubber';
@@ -761,10 +760,7 @@ const EventDetail: React.FC = () => {
   };
 
   return (
-    <IonPage>
-      <IonContent fullscreen>
-        <div className="min-h-full">
-          <AppHeader />
+    <AppShell>
           {loading && (
             <div className="flex items-center justify-center py-12">
               <IonSpinner name="crescent" />
@@ -892,8 +888,6 @@ const EventDetail: React.FC = () => {
               </div>
             </>
           )}
-        </div>
-
         <IonModal isOpen={showAddMoments} onDidDismiss={() => setShowAddMoments(false)}>
           <IonContent fullscreen>
             <div className="min-h-full bg-app-bg p-5">
@@ -1055,8 +1049,7 @@ const EventDetail: React.FC = () => {
           onChange={handleMomentFilesSelected}
           className="hidden"
         />
-      </IonContent>
-    </IonPage>
+    </AppShell>
   );
 };
 

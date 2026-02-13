@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { IonPage, IonContent, IonSpinner } from '@ionic/react';
+import { IonSpinner } from '@ionic/react';
 import { useHistory, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Event, Profile, VenuePlace, PostWithSetlist, Artist } from '../lib/types';
 import { socialService } from '../services/social.service';
 import { useAuth } from '../contexts/AuthContext';
-import AppHeader from '../components/AppHeader';
+import AppShell from '../components/AppShell';
 import EventPosterTile from '../components/EventPosterTile';
 
 type VenueEvent = Event & {
@@ -162,62 +162,58 @@ const VenueDetail: React.FC = () => {
   }, [venue]);
 
   return (
-    <IonPage>
-      <IonContent fullscreen>
-        <div className="min-h-full">
-          <AppHeader />
+    <AppShell>
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <IonSpinner name="crescent" />
+        </div>
+      )}
 
-          {loading && (
-            <div className="flex items-center justify-center py-12">
-              <IonSpinner name="crescent" />
-            </div>
-          )}
+      {!loading && error && <div className="p-4"><p className="text-sm text-rose-400">{error}</p></div>}
 
-          {!loading && error && <div className="p-4"><p className="text-sm text-rose-400">{error}</p></div>}
-
-          {!loading && venue && (
-            <>
-              <section className="relative h-[340px] w-full overflow-hidden bg-black">
-                {(venue.photos || [])[0] ? (
-                  <img src={(venue.photos || [])[0]} alt={venue.name} className="absolute inset-0 h-full w-full object-cover" />
-                ) : null}
-                <div className="absolute inset-x-0 bottom-0 bg-black/70 p-5">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Venue</p>
-                  <h1 className="mt-2 font-display text-3xl font-bold text-white">{venue.name}</h1>
-                  {addressLine && <p className="mt-2 text-sm text-white/70">{addressLine}</p>}
-                  <div className="mt-3 flex items-center gap-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
-                      {followersCount} followers
-                    </p>
-                    {user && (
-                      <button
-                        type="button"
-                        disabled={followLoading}
-                        onClick={handleFollowToggle}
-                        className={`px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] disabled:opacity-60 ${
-                          isFollowing ? 'bg-white/10 text-white/80' : 'bg-[#ff6b4a] text-white'
-                        }`}
-                      >
-                        {followLoading ? <IonSpinner name="crescent" /> : (isFollowing ? 'Following' : 'Follow')}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </section>
-
-              <div className="flex flex-col gap-8 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
-                {(venue.photos || []).length > 1 && (
-                  <section className="-mx-4 flex gap-2 overflow-x-auto pb-1">
-                    {(venue.photos || []).slice(1, 8).map((url, index) => (
-                      <div key={`${url}-${index}`} className="h-36 w-52 flex-shrink-0 overflow-hidden bg-white/5">
-                        <img src={url} alt={`Venue ${venue.name}`} className="h-full w-full object-cover" />
-                      </div>
-                    ))}
-                  </section>
+      {!loading && venue && (
+        <>
+          <section className="relative h-[340px] w-full overflow-hidden bg-black">
+            {(venue.photos || [])[0] ? (
+              <img src={(venue.photos || [])[0]} alt={venue.name} className="absolute inset-0 h-full w-full object-cover" />
+            ) : null}
+            <div className="absolute inset-x-0 bottom-0 bg-black/70 p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Venue</p>
+              <h1 className="mt-2 font-display text-3xl font-bold text-white">{venue.name}</h1>
+              {addressLine && <p className="mt-2 text-sm text-white/70">{addressLine}</p>}
+              <div className="mt-3 flex items-center gap-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
+                  {followersCount} followers
+                </p>
+                {user && (
+                  <button
+                    type="button"
+                    disabled={followLoading}
+                    onClick={handleFollowToggle}
+                    className={`px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] disabled:opacity-60 ${
+                      isFollowing ? 'bg-white/10 text-white/80' : 'bg-[#ff6b4a] text-white'
+                    }`}
+                  >
+                    {followLoading ? <IonSpinner name="crescent" /> : (isFollowing ? 'Following' : 'Follow')}
+                  </button>
                 )}
+              </div>
+            </div>
+          </section>
 
-                {(venue.venue_type || venue.capacity) && (
-                  <p className="text-xs text-white/55">
+          <div className="flex flex-col gap-8 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
+            {(venue.photos || []).length > 1 && (
+              <section className="-mx-4 flex gap-2 overflow-x-auto pb-1">
+                {(venue.photos || []).slice(1, 8).map((url, index) => (
+                  <div key={`${url}-${index}`} className="h-36 w-52 flex-shrink-0 overflow-hidden bg-white/5">
+                    <img src={url} alt={`Venue ${venue.name}`} className="h-full w-full object-cover" />
+                  </div>
+                ))}
+              </section>
+            )}
+
+            {(venue.venue_type || venue.capacity) && (
+              <p className="text-xs text-white/55">
                     {venue.venue_type || 'Venue'}{venue.capacity ? ` · ${venue.capacity} cap` : ''}
                   </p>
                 )}
@@ -297,9 +293,7 @@ const VenueDetail: React.FC = () => {
               </div>
             </>
           )}
-        </div>
-      </IonContent>
-    </IonPage>
+    </AppShell>
   );
 };
 

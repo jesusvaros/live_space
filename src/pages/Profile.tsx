@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { IonPage, IonContent, IonSpinner } from '@ionic/react';
+import { IonSpinner } from '@ionic/react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Event, PostWithSetlist, ProfileRole } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
 import { useWorkspace } from '../contexts/WorkspaceContext';
-import AppHeader from '../components/AppHeader';
+import AppShell from '../components/AppShell';
 import EventPosterTile from '../components/EventPosterTile';
 import { IconCalendar, IconEdit, IconHeart, IconLogout, IconPlay, IconBriefcase } from '../components/icons';
 
@@ -544,11 +544,8 @@ const Profile: React.FC = () => {
   };
 
   return (
-    <IonPage>
-      <IonContent fullscreen>
-        <div className="min-h-full">
-          <AppHeader />
-          <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
+    <AppShell>
+      <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
             {!isManagementMode && (
               <div className="space-y-4 animate-fade-up motion-reduce:animate-none">
                 <div className="flex items-center gap-4">
@@ -1055,10 +1052,8 @@ const Profile: React.FC = () => {
               <IconLogout className="h-4 w-4" />
               {signingOut ? 'Signing out...' : 'Log out'}
             </button>
-          </div>
-        </div>
-      </IonContent>
-    </IonPage>
+      </div>
+    </AppShell>
   );
 };
 

@@ -1,9 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { IonPage, IonContent } from '@ionic/react';
+import AppShell from '../components/AppShell';
 import { MapContainer } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import AppHeader from '../components/AppHeader';
 
 const MapTest: React.FC = () => {
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
@@ -38,28 +37,23 @@ const MapTest: React.FC = () => {
   }, []);
 
   return (
-    <IonPage>
-      <IonContent fullscreen>
-        <div className="min-h-full">
-          <AppHeader />
-          <div className="p-4">
-            <h1 className="text-white mb-4">Map Test</h1>
-            <MapContainer
-              center={[37.3891, -5.9845]}
-              zoom={15}
-              style={{ height: '400px', width: '100%' }}
-              zoomControl={false}
-              ref={mapRef}
-              whenReady={() => {
-                console.log('[Map] MapContainer whenReady triggered');
-              }}
-            >
-              <div>Simple test</div>
-            </MapContainer>
-          </div>
-        </div>
-      </IonContent>
-    </IonPage>
+    <AppShell>
+      <div className="p-4">
+        <h1 className="text-white mb-4">Map Test</h1>
+        <MapContainer
+          center={[37.3891, -5.9845]}
+          zoom={15}
+          style={{ height: '400px', width: '100%' }}
+          zoomControl={false}
+          ref={mapRef}
+          whenReady={() => {
+            console.log('[Map] MapContainer whenReady triggered');
+          }}
+        >
+          <div>Simple test</div>
+        </MapContainer>
+      </div>
+    </AppShell>
   );
 };
 

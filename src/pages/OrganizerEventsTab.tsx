@@ -1,16 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  IonPage,
-  IonContent,
-  IonSpinner,
-} from '@ionic/react';
+import { IonSpinner } from '@ionic/react';
 import { supabase } from '../lib/supabase';
 import { Event, Profile, VenuePlace, Artist } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import { useHistory } from 'react-router-dom';
 import EventPosterTile from '../components/EventPosterTile';
-import AppHeader from '../components/AppHeader';
+import AppShell from '../components/AppShell';
 
 type EventListItem = Event & {
   organizer?: Profile | null;
@@ -122,11 +118,8 @@ const OrganizerEventsTab: React.FC = () => {
   const organizerLabel = activeWorkspace?.artist?.name || activeWorkspace?.venue?.name || 'your workspace';
 
   return (
-    <IonPage>
-      <IonContent fullscreen>
-        <div className="min-h-full">
-          <AppHeader />
-          <div className="flex flex-col gap-6 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
+    <AppShell>
+      <div className="flex flex-col gap-6 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
             <div className="animate-fade-up motion-reduce:animate-none">
               <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-white/60">Events</p>
               <h2 className="mt-2 font-display text-2xl font-bold text-white">
@@ -177,11 +170,8 @@ const OrganizerEventsTab: React.FC = () => {
                 )}
               </div>
             )}
-          </div>
-        </div>
-
-      </IonContent>
-    </IonPage>
+      </div>
+    </AppShell>
   );
 };
 

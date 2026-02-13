@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { IonPage, IonContent, IonSpinner } from '@ionic/react';
 import { managementService } from '../services/management.service';
 import { useAuth } from '../contexts/AuthContext';
-import AppHeader from '../components/AppHeader';
+import AppShell from '../components/AppShell';
 import AdminActionsNav from '../components/admin/AdminActionsNav';
 
 const AdminGrants: React.FC = () => {
@@ -77,11 +77,15 @@ const AdminGrants: React.FC = () => {
   }
 
   return (
-    <IonPage>
-      <AppHeader title="Admin Grants" showBack />
-      <IonContent className="ion-padding">
-        <div className="mx-auto max-w-2xl space-y-10 py-6">
-          <AdminActionsNav active="grant" />
+    <AppShell
+      headerProps={{ title: 'Admin Grants', showBack: true }}
+      headerPlacement="outside"
+      contentClassName="ion-padding"
+      contentFullscreen={false}
+      contentWrapperClassName={false}
+    >
+      <div className="mx-auto max-w-2xl space-y-10 py-6">
+        <AdminActionsNav active="grant" />
 
           <section className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
             <div className="flex items-center justify-between">
@@ -202,9 +206,8 @@ const AdminGrants: React.FC = () => {
               </button>
             </div>
           </section>
-        </div>
-      </IonContent>
-    </IonPage>
+      </div>
+    </AppShell>
   );
 };
 

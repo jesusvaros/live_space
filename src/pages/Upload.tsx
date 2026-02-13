@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  IonPage,
   IonContent,
   IonSpinner,
   IonModal,
@@ -11,7 +10,7 @@ import { Event, VenuePlace } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
 import QrScanner from '../components/QrScanner';
 import { buildMomentItems, parseDatetimeLocalValue, MomentItem } from '../lib/moments';
-import AppHeader from '../components/AppHeader';
+import AppShell from '../components/AppShell';
 import EventPosterTile from '../components/EventPosterTile';
 
 type NearbyEvent = {
@@ -420,11 +419,8 @@ const Upload: React.FC = () => {
   );
 
   return (
-    <IonPage>
-      <IonContent fullscreen>
-        <div className="min-h-full">
-          <AppHeader />
-          <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
+    <AppShell>
+      <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
             <div className="animate-fade-up motion-reduce:animate-none">
               <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-white/60">Add moments</p>
               <h2 className="mt-2 font-display text-2xl font-bold text-white">What did it feel like?</h2>
@@ -576,10 +572,9 @@ const Upload: React.FC = () => {
               )}
             </div>
           )}
-          </div>
-        </div>
+      </div>
 
-        <IonModal isOpen={showScanner} onDidDismiss={() => setShowScanner(false)}>
+      <IonModal isOpen={showScanner} onDidDismiss={() => setShowScanner(false)}>
           <IonContent fullscreen>
             <div className="flex flex-col gap-4 rounded-3xl bg-app-bg p-5">
               <div className="flex items-center justify-between gap-4">
@@ -700,8 +695,7 @@ const Upload: React.FC = () => {
             </div>
           </IonContent>
         </IonModal>
-      </IonContent>
-    </IonPage>
+    </AppShell>
   );
 };
 

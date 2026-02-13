@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { IonContent, IonPage, IonSpinner } from '@ionic/react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import AppHeader from '../components/AppHeader';
+import AppShell from '../components/AppShell';
 import AdminActionsNav from '../components/admin/AdminActionsNav';
 
 type AccessRow = {
@@ -110,11 +110,15 @@ const AdminAccessList: React.FC = () => {
   };
 
   return (
-    <IonPage>
-      <AppHeader title="Access Grants" showBack />
-      <IonContent className="ion-padding">
-        <div className="mx-auto max-w-3xl space-y-8 py-6">
-          <AdminActionsNav active="list" />
+    <AppShell
+      headerProps={{ title: 'Access Grants', showBack: true }}
+      headerPlacement="outside"
+      contentClassName="ion-padding"
+      contentFullscreen={false}
+      contentWrapperClassName={false}
+    >
+      <div className="mx-auto max-w-3xl space-y-8 py-6">
+        <AdminActionsNav active="list" />
 
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
             <div className="flex items-center justify-between">
@@ -165,9 +169,8 @@ const AdminAccessList: React.FC = () => {
               ))}
             </div>
           </div>
-        </div>
-      </IonContent>
-    </IonPage>
+      </div>
+    </AppShell>
   );
 };
 

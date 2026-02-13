@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { IonContent, IonPage, IonSpinner } from '@ionic/react';
+import { IonSpinner } from '@ionic/react';
 import { useHistory, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { PostWithSetlist } from '../lib/types';
-import AppHeader from '../components/AppHeader';
+import AppShell from '../components/AppShell';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import { useAuth } from '../contexts/AuthContext';
 import { ArtistProfileArtist, ArtistProfileEvent } from '../components/artist/types';
@@ -289,16 +289,11 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
   }
 
   return (
-    <IonPage>
-      <IonContent fullscreen>
-        <div className="min-h-full">
-          <AppHeader />
-          <div className="p-4">
-            {content}
-          </div>
-        </div>
-      </IonContent>
-    </IonPage>
+    <AppShell>
+      <div className="p-4">
+        {content}
+      </div>
+    </AppShell>
   );
 };
 

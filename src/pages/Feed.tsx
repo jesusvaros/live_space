@@ -1,14 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { 
-  IonPage, 
-  IonContent,
-  IonSpinner
-} from '@ionic/react';
+import { IonSpinner } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { PostWithRelations } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
-import AppHeader from '../components/AppHeader';
+import AppShell from '../components/AppShell';
 
 const PAGE_SIZE = 6;
 
@@ -127,74 +123,69 @@ const Feed: React.FC = () => {
   }, [hasMore, loading, loadingMore, page]);
 
   return (
-    <IonPage>
-      <IonContent fullscreen>
-        <div className="min-h-full">
-          <AppHeader />
-          <div className="flex flex-col gap-6 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
-            <header className="space-y-2">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Moments</p>
-              <h2 className="font-display text-3xl font-bold text-white">
-                {profile?.primary_city ? `Tonight in ${profile.primary_city}` : 'Tonight'}
-              </h2>
-              <p className="text-sm text-white/55">Relive what people lived.</p>
-            </header>
+    <AppShell>
+      <div className="flex flex-col gap-6 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
+        <header className="space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Moments</p>
+          <h2 className="font-display text-3xl font-bold text-white">
+            {profile?.primary_city ? `Tonight in ${profile.primary_city}` : 'Tonight'}
+          </h2>
+          <p className="text-sm text-white/55">Relive what people lived.</p>
+        </header>
 
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <IonSpinner name="crescent" />
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {error && <p className="text-sm text-rose-400">{error}</p>}
-                {posts.map(post => {
-                  const username =
-                    (post.profiles as any)?.username
-                      ? `@${(post.profiles as any).username}`
-                      : (post.profiles as any)?.display_name || 'Anonymous';
-                  const title = post.caption || post.events?.name || 'Relive the moment';
-                  const subtitle = `${post.events?.city || 'Unknown'} · ${new Date(post.created_at).toLocaleDateString()}`;
-                  const poster = post.thumbnail_url || post.events?.cover_image_url || null;
-                  return (
-                    <button
-                      key={post.id}
-                      type="button"
-                      className="-mx-4 block w-[calc(100%+2rem)] text-left"
-                      onClick={() => history.push(`/post/${post.id}`)}
-                    >
-                      <div className="relative aspect-[4/5] w-full overflow-hidden bg-black">
-                        {post.media_type === 'image' ? (
-                          <img src={post.media_url} alt={title} className="absolute inset-0 h-full w-full object-cover" />
-                        ) : poster ? (
-                          <img src={poster} alt={title} className="absolute inset-0 h-full w-full object-cover" />
-                        ) : (
-                          <video muted playsInline preload="metadata" className="absolute inset-0 h-full w-full object-cover">
-                            <source src={post.media_url} />
-                          </video>
-                        )}
-                        <div className="absolute inset-x-0 bottom-0 bg-black/70 p-5">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">
-                            {username}
-                          </p>
-                          <h3 className="mt-2 font-display text-2xl font-bold text-white line-clamp-2">{title}</h3>
-                          <p className="mt-2 text-sm text-white/70">{subtitle}</p>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {hasMore && (
-              <div ref={loadMoreRef} className="flex items-center justify-center py-6">
-                {loadingMore && <IonSpinner name="crescent" />}
-              </div>
-            )}
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <IonSpinner name="crescent" />
           </div>
-        </div>
-      </IonContent>
-    </IonPage>
+        ) : (
+          <div className="space-y-4">
+            {error && <p className="text-sm text-rose-400">{error}</p>}
+            {posts.map(post => {
+              const username =
+                (post.profiles as any)?.username
+                  ? `@${(post.profiles as any).username}`
+                  : (post.profiles as any)?.display_name || 'Anonymous';
+              const title = post.caption || post.events?.name || 'Relive the moment';
+              const subtitle = `${post.events?.city || 'Unknown'} · ${new Date(post.created_at).toLocaleDateString()}`;
+              const poster = post.thumbnail_url || post.events?.cover_image_url || null;
+              return (
+                <button
+                  key={post.id}
+                  type="button"
+                  className="-mx-4 block w-[calc(100%+2rem)] text-left"
+                  onClick={() => history.push(`/post/${post.id}`)}
+                >
+                  <div className="relative aspect-[4/5] w-full overflow-hidden bg-black">
+                    {post.media_type === 'image' ? (
+                      <img src={post.media_url} alt={title} className="absolute inset-0 h-full w-full object-cover" />
+                    ) : poster ? (
+                      <img src={poster} alt={title} className="absolute inset-0 h-full w-full object-cover" />
+                    ) : (
+                      <video muted playsInline preload="metadata" className="absolute inset-0 h-full w-full object-cover">
+                        <source src={post.media_url} />
+                      </video>
+                    )}
+                    <div className="absolute inset-x-0 bottom-0 bg-black/70 p-5">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">
+                        {username}
+                      </p>
+                      <h3 className="mt-2 font-display text-2xl font-bold text-white line-clamp-2">{title}</h3>
+                      <p className="mt-2 text-sm text-white/70">{subtitle}</p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {hasMore && (
+          <div ref={loadMoreRef} className="flex items-center justify-center py-6">
+            {loadingMore && <IonSpinner name="crescent" />}
+          </div>
+        )}
+      </div>
+    </AppShell>
   );
 };
 

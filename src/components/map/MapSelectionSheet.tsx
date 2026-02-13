@@ -1,5 +1,6 @@
 import React from 'react';
 import { Event, VenuePlace } from '../../lib/types';
+import { useIonRouter } from '@ionic/react';
 
 type SelectionItem = { type: 'event' | 'venue'; id: string };
 
@@ -18,6 +19,8 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({
   onTouchStart,
   onTouchEnd,
 }) => {
+  const router = useIonRouter();
+  
   if (!activeItem) return null;
 
   const renderDetails = () => {
@@ -63,7 +66,10 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({
           </div>
 
           {/* Right: Info */}
-          <div className="flex min-w-0 flex-1 flex-col justify-center">
+          <div 
+            className="flex min-w-0 flex-1 flex-col justify-center cursor-pointer transition-opacity hover:opacity-80"
+            onClick={() => router.push(`/event/${ev.id}`, 'forward')}
+          >
             <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Event</p>
             <h3 className="mt-2 font-display text-2xl font-bold text-white leading-tight">{ev.name}</h3>
             {ev.venue_place?.name && (
@@ -80,6 +86,7 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({
                 minute: '2-digit',
               })}
             </p>
+            <p className="mt-2 text-xs font-medium text-white/40">Tap to view event details</p>
           </div>
         </div>
       );
@@ -87,10 +94,14 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({
     const venue = venues.find(v => v.id === activeItem.id);
     if (!venue) return null;
     return (
-      <div>
+      <div 
+        className="cursor-pointer transition-opacity hover:opacity-80"
+        onClick={() => router.push(`/venue/${venue.id}`, 'forward')}
+      >
         <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Venue</p>
         <h3 className="mt-2 font-display text-xl font-bold text-white">{venue.name}</h3>
         <p className="text-sm text-white/70">{venue.city}</p>
+        <p className="mt-2 text-xs font-medium text-white/40">Tap to view venue details</p>
       </div>
     );
   };

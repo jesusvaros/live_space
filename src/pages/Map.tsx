@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { IonPage, IonContent, useIonViewDidEnter } from '@ionic/react';
+import { useIonViewDidEnter } from '@ionic/react';
 import { MapContainer } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase';
 import { Artist, Event, VenuePlace } from '../lib/types';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import AppHeader from '../components/AppHeader';
+import AppShell from '../components/AppShell';
 import MapLibreLayer from '../components/MapLibreLayer';
 import MapResizeObserver from '../components/MapResizeObserver';
 import MapMarkers from '../components/map/MapMarkers';
@@ -321,208 +321,203 @@ const Map: React.FC = () => {
   };
 
   return (
-    <IonPage>
-      <IonContent fullscreen>
-        <div className="min-h-full">
-          <AppHeader />
-          <div className="relative flex min-h-full flex-col p-0">
-            <div className="pointer-events-auto absolute left-4 right-4 top-4 z-[1000]">
-              <div className="flex flex-col gap-2 rounded-2xl bg-black/85 p-3">
-                <input
-                  type="search"
-                  placeholder="Search shows"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className="w-full rounded-xl bg-white/15 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                />
-                <MapFilterBar
-                  showUpcoming={showUpcoming}
-                  showPast={showPast}
-                  filterToday={filterToday}
-                  filterTomorrow={filterTomorrow}
-                  filterDate={filterDate}
-                  filterNow={filterNow}
-                  filterFree={filterFree}
-                  showEvents={showEvents}
-                  showVenues={showVenues}
-                  onToggleUpcoming={() => setShowUpcoming((prev: boolean) => !prev)}
-                  onTogglePast={() => setShowPast((prev: boolean) => !prev)}
-                  onToggleToday={() => {}}
-                  onToggleTomorrow={() => {}}
-                  onDateChange={value => {
-                    setFilterDate(value);
-                    if (value) {
-                      setFilterNow(false);
-                    }
-                  }}
-                  onToggleNow={() => setFilterNow((prev: boolean) => !prev)}
-                  onToggleFree={() => setFilterFree((prev: boolean) => !prev)}
-                  onToggleEvents={() => setShowEvents((prev: boolean) => !prev)}
-                  onToggleVenues={() => setShowVenues((prev: boolean) => !prev)}
-                  onOpenArtistSearch={() => {
-                    setFocusArtistSearch(true);
-                    setShowFilters(true);
-                  }}
-                  onOpenFilters={() => setShowFilters(true)}
-                />
-                {selectedArtists.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-xs text-white">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/60">Artist</span>
-                    {selectedArtists.map(artist => (
-                      <div
-                        key={artist.id}
-                        className="flex items-center gap-1 rounded-lg bg-white/15 px-2 py-1 text-xs font-medium text-white"
-                      >
-                        {artist.avatar_url && (
-                          <img
-                            src={artist.avatar_url}
-                            alt={artist.name}
-                            className="h-4 w-4 rounded-full object-cover"
-                          />
-                        )}
-                        <span>{artist.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedArtists(prev => prev.filter(a => a.id !== artist.id));
-                            setSelectedArtistIds(prev => {
-                              const next = prev.filter(item => item !== artist.id);
-                              if (next.length === 0) {
-                                setShowVenues(true);
-                              }
-                              return next;
-                            });
-                          }}
-                          className="ml-auto text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70 transition hover:text-white"
-                        >
-                          Clear
-                        </button>
-                      </div>
-                    ))}
+    <AppShell>
+      <div className="relative flex min-h-full flex-col p-0">
+        <div className="pointer-events-auto absolute left-4 right-4 top-4 z-[1000]">
+          <div className="flex flex-col gap-2 rounded-2xl bg-black/85 p-3">
+            <input
+              type="search"
+              placeholder="Search shows"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full rounded-xl bg-white/15 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+            />
+            <MapFilterBar
+              showUpcoming={showUpcoming}
+              showPast={showPast}
+              filterToday={filterToday}
+              filterTomorrow={filterTomorrow}
+              filterDate={filterDate}
+              filterNow={filterNow}
+              filterFree={filterFree}
+              showEvents={showEvents}
+              showVenues={showVenues}
+              onToggleUpcoming={() => setShowUpcoming((prev: boolean) => !prev)}
+              onTogglePast={() => setShowPast((prev: boolean) => !prev)}
+              onToggleToday={() => {}}
+              onToggleTomorrow={() => {}}
+              onDateChange={value => {
+                setFilterDate(value);
+                if (value) {
+                  setFilterNow(false);
+                }
+              }}
+              onToggleNow={() => setFilterNow((prev: boolean) => !prev)}
+              onToggleFree={() => setFilterFree((prev: boolean) => !prev)}
+              onToggleEvents={() => setShowEvents((prev: boolean) => !prev)}
+              onToggleVenues={() => setShowVenues((prev: boolean) => !prev)}
+              onOpenArtistSearch={() => {
+                setFocusArtistSearch(true);
+                setShowFilters(true);
+              }}
+              onOpenFilters={() => setShowFilters(true)}
+            />
+            {selectedArtists.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-xs text-white">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/60">Artist</span>
+                {selectedArtists.map(artist => (
+                  <div
+                    key={artist.id}
+                    className="flex items-center gap-1 rounded-lg bg-white/15 px-2 py-1 text-xs font-medium text-white"
+                  >
+                    {artist.avatar_url && (
+                      <img
+                        src={artist.avatar_url}
+                        alt={artist.name}
+                        className="h-4 w-4 rounded-full object-cover"
+                      />
+                    )}
+                    <span>{artist.name}</span>
                     <button
                       type="button"
-                      onClick={clearArtistFilters}
-                      className="bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white"
+                      onClick={() => {
+                        setSelectedArtists(prev => prev.filter(a => a.id !== artist.id));
+                        setSelectedArtistIds(prev => {
+                          const next = prev.filter(item => item !== artist.id);
+                          if (next.length === 0) {
+                            setShowVenues(true);
+                          }
+                          return next;
+                        });
+                      }}
+                      className="ml-auto text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70 transition hover:text-white"
                     >
-                      Clear artist filter
+                      Clear
                     </button>
                   </div>
-                )}
-            </div>
-          </div>
-          <div className="relative">
-            <MapContainer
-              center={center}
-              zoom={zoom}
-              style={{ height: 'calc(100vh - 60px)', width: '100%' }}
-              className="rounded-none [&_.leaflet-container]:rounded-none [&_.leaflet-pane]:z-0 [&_.leaflet-marker-pane]:z-[500] [&_.leaflet-overlay-pane]:z-[400] [&_.leaflet-popup-pane]:z-[600]"
-              zoomControl={false}
-              ref={mapRef}
-              whenReady={() => {
-                console.log('[Map] MapContainer whenReady triggered');
-              }}
-              preferCanvas={false}
-            >
-              <MapLibreLayer />
-              <MapResizeObserver />
-              <MapMarkers
-                events={showEvents ? filteredEvents : []}
-                venues={filteredVenues}
-                showVenues={showVenues}
-                onSelectEvent={eventId => handleSelect({ type: 'event', id: eventId })}
-                onSelectVenue={venueId => handleSelect({ type: 'venue', id: venueId })}
-                activeSelection={activeIndex !== null ? visibleItems[activeIndex] : null}
-              />
-            </MapContainer>
-          </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={clearArtistFilters}
+                  className="bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white"
+                >
+                  Clear artist filter
+                </button>
+              </div>
+            )}
           </div>
         </div>
+        <div className="relative">
+          <MapContainer
+            center={center}
+            zoom={zoom}
+            style={{ height: 'calc(100vh - 60px)', width: '100%' }}
+            className="rounded-none [&_.leaflet-container]:rounded-none [&_.leaflet-pane]:z-0 [&_.leaflet-marker-pane]:z-[500] [&_.leaflet-overlay-pane]:z-[400] [&_.leaflet-popup-pane]:z-[600]"
+            zoomControl={false}
+            ref={mapRef}
+            whenReady={() => {
+              console.log('[Map] MapContainer whenReady triggered');
+            }}
+            preferCanvas={false}
+          >
+            <MapLibreLayer />
+            <MapResizeObserver />
+            <MapMarkers
+              events={showEvents ? filteredEvents : []}
+              venues={filteredVenues}
+              showVenues={showVenues}
+              onSelectEvent={eventId => handleSelect({ type: 'event', id: eventId })}
+              onSelectVenue={venueId => handleSelect({ type: 'venue', id: venueId })}
+              activeSelection={activeIndex !== null ? visibleItems[activeIndex] : null}
+            />
+          </MapContainer>
+        </div>
+      </div>
 
-        <MapSelectionSheet
-          activeItem={activeSelection}
-          events={filteredEvents}
-          venues={filteredVenues}
-          onTouchStart={(e) => {
-            setTouchStartX(e.touches[0].clientX);
-            setTouchStartY(e.touches[0].clientY);
-          }}
-          onTouchEnd={(e) => {
-            if (touchStartX === null || touchStartY === null) return;
-            
-            const dx = e.changedTouches[0].clientX - touchStartX;
-            const dy = e.changedTouches[0].clientY - touchStartY;
-            
-            // Check for swipe down (vertical swipe)
-            if (dy > 100 && Math.abs(dx) < 50) {
-              setActiveIndex(null); // Close modal on swipe down
-            }
-            // Check for horizontal swipe (navigation)
-            else if (Math.abs(dx) > 50 && Math.abs(dy) < 50) {
-              goNext(dx < 0 ? 1 : -1);
-            }
-            
-            setTouchStartX(null);
-            setTouchStartY(null);
-          }}
-        />
+      <MapSelectionSheet
+        activeItem={activeSelection}
+        events={filteredEvents}
+        venues={filteredVenues}
+        onTouchStart={(e) => {
+          setTouchStartX(e.touches[0].clientX);
+          setTouchStartY(e.touches[0].clientY);
+        }}
+        onTouchEnd={(e) => {
+          if (touchStartX === null || touchStartY === null) return;
 
-        <MapFilterModal
-          isOpen={showFilters}
-          onDismiss={() => {
-            setShowFilters(false);
-            setFocusArtistSearch(false);
-          }}
-          filterGenres={filterGenres}
-          onGenresChange={setFilterGenres}
-          priceMin={priceMin.toString()}
-          onPriceMinChange={(value) => setPriceMin(Number(value) || 0)}
-          priceMax={priceMax.toString()}
-          onPriceMaxChange={(value) => setPriceMax(Number(value) || 100)}
-          filterDayPart={filterDayPart || ''}
-          onDayPartChange={setFilterDayPart}
-          filterBandOnly={filterBandOnly}
-          onToggleBand={setFilterBandOnly}
-          filterGoing={filterGoing}
-          onToggleGoing={setFilterGoing}
-          filterAttended={filterAttended}
-          onToggleAttended={setFilterAttended}
-          disableAttendance={false}
-          selectedArtists={selectedArtists}
-          onAddArtist={artist => {
-            setSelectedArtists(prev => [...prev, artist]);
-            setSelectedArtistIds(prev => [...prev, artist.id]);
-            setShowVenues(false);
-          }}
-          onRemoveArtist={id => {
-            setSelectedArtists(prev => prev.filter(a => a.id !== id));
-            setSelectedArtistIds(prev => {
-              const next = prev.filter(item => item !== id);
-              if (next.length === 0) {
-                setShowVenues(true);
-              }
-              return next;
-            });
-          }}
-          filterDate={filterDate}
-          onDateChange={setFilterDate}
-          showVenues={showVenues}
-          onToggleVenues={setShowVenues}
-          onClear={() => {
-            clearExtraFilters();
-            setFilterDate('');
-            setFilterNow(false);
-            setFilterFree(false);
-            setFilterGenres('');
-            setPriceMin(0);
-            setPriceMax(100);
-            setFilterDayPart('');
-            setFilterBandOnly(false);
-            setFilterGoing(false);
-            setFilterAttended(false);
-          }}
-        />
-      </IonContent>
-    </IonPage>
+          const dx = e.changedTouches[0].clientX - touchStartX;
+          const dy = e.changedTouches[0].clientY - touchStartY;
+
+          // Check for swipe down (vertical swipe)
+          if (dy > 100 && Math.abs(dx) < 50) {
+            setActiveIndex(null); // Close modal on swipe down
+          }
+          // Check for horizontal swipe (navigation)
+          else if (Math.abs(dx) > 50 && Math.abs(dy) < 50) {
+            goNext(dx < 0 ? 1 : -1);
+          }
+
+          setTouchStartX(null);
+          setTouchStartY(null);
+        }}
+      />
+
+      <MapFilterModal
+        isOpen={showFilters}
+        onDismiss={() => {
+          setShowFilters(false);
+          setFocusArtistSearch(false);
+        }}
+        filterGenres={filterGenres}
+        onGenresChange={setFilterGenres}
+        priceMin={priceMin.toString()}
+        onPriceMinChange={(value) => setPriceMin(Number(value) || 0)}
+        priceMax={priceMax.toString()}
+        onPriceMaxChange={(value) => setPriceMax(Number(value) || 100)}
+        filterDayPart={filterDayPart || ''}
+        onDayPartChange={setFilterDayPart}
+        filterBandOnly={filterBandOnly}
+        onToggleBand={setFilterBandOnly}
+        filterGoing={filterGoing}
+        onToggleGoing={setFilterGoing}
+        filterAttended={filterAttended}
+        onToggleAttended={setFilterAttended}
+        disableAttendance={false}
+        selectedArtists={selectedArtists}
+        onAddArtist={artist => {
+          setSelectedArtists(prev => [...prev, artist]);
+          setSelectedArtistIds(prev => [...prev, artist.id]);
+          setShowVenues(false);
+        }}
+        onRemoveArtist={id => {
+          setSelectedArtists(prev => prev.filter(a => a.id !== id));
+          setSelectedArtistIds(prev => {
+            const next = prev.filter(item => item !== id);
+            if (next.length === 0) {
+              setShowVenues(true);
+            }
+            return next;
+          });
+        }}
+        filterDate={filterDate}
+        onDateChange={setFilterDate}
+        showVenues={showVenues}
+        onToggleVenues={setShowVenues}
+        onClear={() => {
+          clearExtraFilters();
+          setFilterDate('');
+          setFilterNow(false);
+          setFilterFree(false);
+          setFilterGenres('');
+          setPriceMin(0);
+          setPriceMax(100);
+          setFilterDayPart('');
+          setFilterBandOnly(false);
+          setFilterGoing(false);
+          setFilterAttended(false);
+        }}
+      />
+    </AppShell>
   );
 };
 

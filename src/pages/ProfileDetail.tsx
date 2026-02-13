@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { IonPage, IonContent, IonSpinner } from '@ionic/react';
+import { IonSpinner } from '@ionic/react';
 import { useHistory, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Event, Profile, VenuePlace, PostWithSetlist, Artist } from '../lib/types';
 import { socialService } from '../services/social.service';
 import { useAuth } from '../contexts/AuthContext';
-import AppHeader from '../components/AppHeader';
+import AppShell from '../components/AppShell';
 import EventPosterTile from '../components/EventPosterTile';
 
 type ProfileEvent = Event & {
@@ -186,38 +186,34 @@ const ProfileDetail: React.FC = () => {
   }, [profile]);
 
   return (
-    <IonPage>
-      <IonContent fullscreen>
-        <div className="min-h-full">
-          <AppHeader />
+    <AppShell>
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <IonSpinner name="crescent" />
+        </div>
+      )}
 
-          {loading && (
-            <div className="flex items-center justify-center py-12">
-              <IonSpinner name="crescent" />
-            </div>
-          )}
+      {!loading && error && <div className="p-4"><p className="text-sm text-rose-400">{error}</p></div>}
 
-          {!loading && error && <div className="p-4"><p className="text-sm text-rose-400">{error}</p></div>}
-
-          {!loading && profile && (
-            <>
-              <section className="relative h-[340px] w-full overflow-hidden bg-black">
-                {profile.avatar_url ? (
-                  <img src={profile.avatar_url} alt={profile.display_name || 'Profile'} className="absolute inset-0 h-full w-full object-cover" />
-                ) : null}
-                <div className="absolute inset-x-0 bottom-0 bg-black/70 p-5">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">
-                    {profile.role.toUpperCase()}
-                  </p>
-                  <h2 className="mt-2 font-display text-3xl font-bold text-white">
-                    {profile.display_name || profile.username || 'Unknown'}
-                  </h2>
-                  {profile.primary_city && <p className="mt-2 text-sm text-white/70">{profile.primary_city}</p>}
-                  <div className="mt-3 flex items-center gap-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
-                      {followersCount} followers
-                    </p>
-                    {user && profile.id !== user.id && (
+      {!loading && profile && (
+        <>
+          <section className="relative h-[340px] w-full overflow-hidden bg-black">
+            {profile.avatar_url ? (
+              <img src={profile.avatar_url} alt={profile.display_name || 'Profile'} className="absolute inset-0 h-full w-full object-cover" />
+            ) : null}
+            <div className="absolute inset-x-0 bottom-0 bg-black/70 p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">
+                {profile.role.toUpperCase()}
+              </p>
+              <h2 className="mt-2 font-display text-3xl font-bold text-white">
+                {profile.display_name || profile.username || 'Unknown'}
+              </h2>
+              {profile.primary_city && <p className="mt-2 text-sm text-white/70">{profile.primary_city}</p>}
+              <div className="mt-3 flex items-center gap-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
+                  {followersCount} followers
+                </p>
+                {user && profile.id !== user.id && (
                       <button
                         type="button"
                         disabled={followLoading}
@@ -359,9 +355,7 @@ const ProfileDetail: React.FC = () => {
               </div>
             </>
           )}
-        </div>
-      </IonContent>
-    </IonPage>
+    </AppShell>
   );
 };
 

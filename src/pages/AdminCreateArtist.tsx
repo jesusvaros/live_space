@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { IonContent, IonPage, IonSpinner } from '@ionic/react';
 import { artistService } from '../services/artist.service';
 import { useAuth } from '../contexts/AuthContext';
-import AppHeader from '../components/AppHeader';
+import AppShell from '../components/AppShell';
 import AdminActionsNav from '../components/admin/AdminActionsNav';
 
 const AdminCreateArtist: React.FC = () => {
@@ -63,11 +63,15 @@ const AdminCreateArtist: React.FC = () => {
   }
 
   return (
-    <IonPage>
-      <AppHeader title="Create Artist" showBack />
-      <IonContent className="ion-padding">
-        <div className="mx-auto max-w-2xl space-y-6 py-6">
-          <AdminActionsNav active="artist" />
+    <AppShell
+      headerProps={{ title: 'Create Artist', showBack: true }}
+      headerPlacement="outside"
+      contentClassName="ion-padding"
+      contentFullscreen={false}
+      contentWrapperClassName={false}
+    >
+      <div className="mx-auto max-w-2xl space-y-6 py-6">
+        <AdminActionsNav active="artist" />
 
           <p className="text-sm text-app-light/70">Create an artist entity so you can publish and assign access.</p>
 
@@ -124,9 +128,8 @@ const AdminCreateArtist: React.FC = () => {
               {artistLoading ? <IonSpinner name="crescent" color="light" /> : 'Create Artist'}
             </button>
           </div>
-        </div>
-      </IonContent>
-    </IonPage>
+      </div>
+    </AppShell>
   );
 };
 

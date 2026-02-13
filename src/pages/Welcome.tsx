@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { IonPage, IonContent, IonSpinner } from '@ionic/react';
+import { IonSpinner } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import AppHeader from '../components/AppHeader';
+import AppShell from '../components/AppShell';
 
 const Welcome: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -83,81 +83,78 @@ const Welcome: React.FC = () => {
   };
 
   return (
-    <IonPage>
-      <IonContent fullscreen>
-        <div className="min-h-full">
-          <AppHeader />
-          <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
-            <div className="relative min-h-full">
-              <div className="mx-auto max-w-md text-center">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-white/60">
-                  Your concert archive
-                </p>
-                <h1 className="mt-4 font-display text-4xl font-bold leading-tight text-white">
-                  Live Space
-                </h1>
-                <p className="mt-3 text-sm text-white/70">
-                  Keep what happened last night — and relive it when you want.
-                </p>
-              </div>
+    <AppShell>
+      <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
+        <div className="relative min-h-full">
+          <div className="mx-auto max-w-md text-center">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-white/60">
+              Your concert archive
+            </p>
+            <h1 className="mt-4 font-display text-4xl font-bold leading-tight text-white">
+              Live Space
+            </h1>
+            <p className="mt-3 text-sm text-white/70">
+              Keep what happened last night — and relive it when you want.
+            </p>
+          </div>
 
-              <div className="mt-8 space-y-4 rounded-2xl bg-white/5 p-5">
-                <h2 className="font-display text-base font-semibold text-white">
-                  {isSignUp ? 'Create Account' : 'Sign In'}
-                </h2>
-                <div className="space-y-3">
-                  {isSignUp && (
-                    <>
-                      <label className="flex flex-col gap-2">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                          Username
-                        </span>
-                        <input
-                          value={username}
-                          onChange={e => setUsername(e.target.value)}
-                          placeholder="Choose a username"
-                          className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                        />
-                      </label>
-                      <label className="flex flex-col gap-2">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                          Display name
-                        </span>
-                        <input
-                          value={displayName}
-                          onChange={e => setDisplayName(e.target.value)}
-                          placeholder="How should we call you?"
-                          className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                        />
-                      </label>
-                      <label className="flex flex-col gap-2">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                          Primary city
-                        </span>
-                        <input
-                          value={primaryCity}
-                          onChange={e => setPrimaryCity(e.target.value)}
-                          placeholder="Barcelona"
-                          className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                        />
-                      </label>
-                    </>
-                  )}
-
+          <div className="mt-8 space-y-4 rounded-2xl bg-white/5 p-5">
+            <h2 className="font-display text-base font-semibold text-white">
+              {isSignUp ? 'Create Account' : 'Sign In'}
+            </h2>
+            <div className="space-y-3">
+              {isSignUp && (
+                <>
                   <label className="flex flex-col gap-2">
                     <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                      Email
+                      Username
                     </span>
                     <input
-                      type="email"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      placeholder="your@email.com"
+                      value={username}
+                      onChange={e => setUsername(e.target.value)}
+                      placeholder="Choose a username"
                       className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
                     />
                   </label>
                   <label className="flex flex-col gap-2">
                     <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                      Display name
+                    </span>
+                    <input
+                      value={displayName}
+                      onChange={e => setDisplayName(e.target.value)}
+                      placeholder="How should we call you?"
+                      className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                      Primary city
+                    </span>
+                    <input
+                      value={primaryCity}
+                      onChange={e => setPrimaryCity(e.target.value)}
+                      placeholder="Barcelona"
+                      className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                    />
+                  </label>
+                </>
+              )}
+
+              <label className="flex flex-col gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                  Email
+                </span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                />
+              </label>
+              <label className="flex flex-col gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
                       Password
                     </span>
                     <input
@@ -237,10 +234,8 @@ const Welcome: React.FC = () => {
                 )}
               </div>
             </div>
-          </div>
         </div>
-      </IonContent>
-    </IonPage>
+    </AppShell>
   );
 };
 
