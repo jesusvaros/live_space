@@ -11,7 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 import QrScanner from '../components/QrScanner';
 import { buildMomentItems, parseDatetimeLocalValue, MomentItem } from '../lib/moments';
 import AppShell from '../components/AppShell';
-import EventPosterTile from '../components/EventPosterTile';
+import EventPosterTile from '../features/events/components/EventPosterTile';
 
 type NearbyEvent = {
   event: EventWithVenue;

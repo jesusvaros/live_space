@@ -3,6 +3,7 @@ import { AuthError, User } from '@supabase/supabase-js';
 import { supabase } from '../api';
 import { Profile, AuthState } from '../lib/types';
 import { cached, setCached } from '../lib/requestCache';
+import { useAuthStore, useWorkspaceStore } from '../store/appStore';
 
 interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
@@ -33,6 +34,8 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { setUserId } = useAuthStore();
+  const { resetWorkspace } = useWorkspaceStore();
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     profile: null,
@@ -51,6 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (loadingProfileRef.current === userId) return;
       
       loadingProfileRef.current = userId;
+      setUserId(userId);
       setAuthState(prev => ({ ...prev, user: userRecord, loading: true }));
 
       try {
@@ -136,6 +140,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (session?.user) {
           await loadProfile(session.user.id, session.user, mounted);
         } else {
+          setUserId(null);
+          resetWorkspace();
           setAuthState({
             user: null,
             profile: null,
@@ -154,6 +160,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           } else if (event === 'SIGNED_OUT') {
             profileUserIdRef.current = null;
+            setUserId(null);
+            resetWorkspace();
             setAuthState({
               user: null,
               profile: null,
@@ -236,6 +244,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } finally {
       profileUserIdRef.current = null;
+      setUserId(null);
+      resetWorkspace();
       setAuthState({
         user: null,
         profile: null,

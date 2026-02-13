@@ -3,7 +3,7 @@ import { IonSpinner } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import { NearbyEventListItem } from '../types';
 import { formatDate, formatDistance, getEventCoverImage, getPrimaryArtistName } from '../utils';
-import EventPosterTile from '../../../components/EventPosterTile';
+import EventPosterTile from '../components/EventPosterTile';
 
 type NearbyHeroSectionProps = {
   canCreateEvent: boolean;

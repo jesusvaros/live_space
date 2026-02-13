@@ -3,7 +3,7 @@ import { IonSpinner } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import { EventListItem } from '../types';
 import { formatDate, getEventCoverImage, getPrimaryArtistName } from '../utils';
-import EventPosterTile from '../../../components/EventPosterTile';
+import EventPosterTile from '../components/EventPosterTile';
 
 type TrendingSectionProps = {
   loading: boolean;

@@ -11,7 +11,7 @@ import VenueRow from './components/VenueRow';
 import { DiscoverArtist, DiscoverTabKey, DiscoverVenue } from './types';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useDiscoverResults } from './hooks/useDiscoverResults';
-import { useStoredLocation } from '../../hooks/useStoredLocation';
+import { useStoredLocation } from '../../shared/hooks/useStoredLocation';
 import { useFollowedSubjects } from '../../hooks/useFollowedSubjects';
 
 type RouteState = { initialTab?: DiscoverTabKey } | undefined;

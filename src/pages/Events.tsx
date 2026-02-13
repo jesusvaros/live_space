@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import AppShell from '../components/AppShell';
 import { useHistory } from 'react-router-dom';
 import { useWorkspace } from '../contexts/WorkspaceContext';
-import { useLastKnownLocation } from '../hooks/useLastKnownLocation';
+import { useLastKnownLocation } from '../shared/hooks/useLastKnownLocation';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { calculateDistanceKm, getEventCoverImage, formatDate, getPrimaryArtistName, toNumber } from '../features/events/utils';
 import { NearbyEventListItem } from '../features/events/types';
@@ -17,7 +17,7 @@ import { useHomeSuggestions } from '../features/events/hooks/useHomeSuggestions'
 import { useFollowedArtistIds } from '../features/events/hooks/useFollowedArtistIds';
 import { useUserConcertHero } from '../features/events/hooks/useUserConcertHero';
 import TimelineHeroSection from '../features/events/sections/TimelineHeroSection';
-import EventPosterTile from '../components/EventPosterTile';
+import EventPosterTile from '../features/events/components/EventPosterTile';
 
 const NEARBY_RADIUS_KM = 50;
 const EVENTS_LOOKBACK_DAYS = 4;

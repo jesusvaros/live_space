@@ -6,7 +6,7 @@ import { Event, Profile, VenuePlace, PostWithSetlist, Artist } from '../lib/type
 import { socialService } from '../services/social.service';
 import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
-import EventPosterTile from '../components/EventPosterTile';
+import EventPosterTile from '../features/events/components/EventPosterTile';
 
 type ProfileEvent = Event & {
   organizer?: Profile | null;

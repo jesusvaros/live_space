@@ -1,7 +1,7 @@
 import React from 'react';
 import { useHistory } from 'react-router-dom';
 import { EventListItem } from '../types';
-import EventPosterTile from '../../../components/EventPosterTile';
+import EventPosterTile from '../components/EventPosterTile';
 import { formatDate, getEventCoverImage, getPrimaryArtistName } from '../utils';
 
 type FollowedFromArtistsSectionProps = {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { DiscoverArtist, DiscoverTabKey, DiscoverVenue, SuggestedSection } from '../types';
 import { discoverService } from '../services/discover.service';
-import { StoredLocation } from '../../../hooks/useStoredLocation';
+import { StoredLocation } from '../../../shared/hooks/useStoredLocation';
 
 type UseDiscoverResultsOptions = {
   tab: DiscoverTabKey;

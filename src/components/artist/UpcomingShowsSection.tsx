@@ -1,6 +1,6 @@
 import React from 'react';
 import { IconMap } from '../icons';
-import EventPosterTile from '../EventPosterTile';
+import EventPosterTile from '../../features/events/components/EventPosterTile';
 import { ArtistProfileEvent } from './types';
 
 type UpcomingShowsSectionProps = {

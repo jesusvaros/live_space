@@ -5,7 +5,7 @@ import { Event, Profile, VenuePlace, Artist } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import { useHistory } from 'react-router-dom';
-import EventPosterTile from '../components/EventPosterTile';
+import EventPosterTile from '../features/events/components/EventPosterTile';
 import AppShell from '../components/AppShell';
 
 type EventListItem = Event & {

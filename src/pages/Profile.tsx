@@ -6,7 +6,7 @@ import { Event, PostWithSetlist, ProfileRole } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import AppShell from '../components/AppShell';
-import EventPosterTile from '../components/EventPosterTile';
+import EventPosterTile from '../features/events/components/EventPosterTile';
 import { IconCalendar, IconEdit, IconHeart, IconLogout, IconPlay, IconBriefcase } from '../components/icons';
 
 const Profile: React.FC = () => {

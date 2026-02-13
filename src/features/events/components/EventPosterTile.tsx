@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Artist, Event, Profile, VenuePlace } from '../lib/types';
+import { Artist, Event, Profile, VenuePlace } from '../../../lib/types';
 
 type EventPosterTileEvent = Event & {
   organizer?: Profile | null;

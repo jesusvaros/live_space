@@ -1,5 +1,5 @@
 import React from 'react';
-import EventPosterTile from '../EventPosterTile';
+import EventPosterTile from '../../features/events/components/EventPosterTile';
 import { ArtistProfileEvent } from './types';
 
 type PastShowsSectionProps = {

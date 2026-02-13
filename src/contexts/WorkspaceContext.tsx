@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { ManagedEntity } from '../lib/types';
 import { managementService } from '../services/management.service';
 import { useAuth } from './AuthContext';
+import { useWorkspaceStore } from '../store/appStore';
 
 interface WorkspaceContextType {
   managedEntities: ManagedEntity[];
@@ -19,18 +20,18 @@ const STORAGE_KEY_PREFIX = 'live_space.workspace.';
 
 export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { profile } = useAuth();
+  const { activeWorkspaceId, setActiveWorkspaceId } = useWorkspaceStore();
   const [managedEntities, setManagedEntities] = useState<ManagedEntity[]>([]);
-  const [activeWorkspace, _setActiveWorkspace] = useState<ManagedEntity | null>(null);
   const [loading, setLoading] = useState(true);
   const [initializedFor, setInitializedFor] = useState<string | null>(null);
 
   const storageKey = profile?.id ? `${STORAGE_KEY_PREFIX}${profile.id}` : null;
 
-  const persistWorkspace = (workspace: ManagedEntity | null) => {
+  const persistWorkspaceId = (subjectId: string | null) => {
     if (!storageKey || typeof window === 'undefined') return;
     try {
-      if (workspace?.subject_id) {
-        window.localStorage.setItem(storageKey, workspace.subject_id);
+      if (subjectId) {
+        window.localStorage.setItem(storageKey, subjectId);
       } else {
         window.localStorage.removeItem(storageKey);
       }
@@ -41,8 +42,9 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   const setActiveWorkspace = (workspace: ManagedEntity | null) => {
     console.log('[workspace] setActiveWorkspace ->', workspace);
-    _setActiveWorkspace(workspace);
-    persistWorkspace(workspace);
+    const nextId = workspace?.subject_id ?? null;
+    setActiveWorkspaceId(nextId);
+    persistWorkspaceId(nextId);
   };
 
   const readStoredWorkspaceId = () => {
@@ -57,7 +59,8 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
   const refreshWorkspaces = async () => {
     if (!profile?.id) {
       setManagedEntities([]);
-      setActiveWorkspace(null);
+      setActiveWorkspaceId(null);
+      persistWorkspaceId(null);
       setLoading(false);
       setInitializedFor(null);
       return;
@@ -70,16 +73,19 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
       setManagedEntities(entities);
       
       // Keep active workspace if it still exists in the list, otherwise null
-      if (activeWorkspace) {
-        const stillExists = entities.find(e => e.subject_id === activeWorkspace.subject_id);
-        if (!stillExists) setActiveWorkspace(null);
+      if (activeWorkspaceId) {
+        const stillExists = entities.find(e => e.subject_id === activeWorkspaceId);
+        if (!stillExists) {
+          setActiveWorkspaceId(null);
+          persistWorkspaceId(null);
+        }
       } else {
         const storedId = readStoredWorkspaceId();
         if (storedId) {
           const match = entities.find(e => e.subject_id === storedId);
           if (match) {
             console.log('[workspace] restoring stored workspace', storedId);
-            _setActiveWorkspace(match);
+            setActiveWorkspaceId(match.subject_id);
           }
         }
       }
@@ -110,6 +116,11 @@ export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children 
       document.removeEventListener('visibilitychange', handleResume);
     };
   }, [profile?.id]);
+
+  const activeWorkspace = useMemo(() => {
+    if (!activeWorkspaceId) return null;
+    return managedEntities.find(entity => entity.subject_id === activeWorkspaceId) ?? null;
+  }, [activeWorkspaceId, managedEntities]);
 
   const isActingAsEntity = activeWorkspace !== null;
   const canCreateEvent = activeWorkspace !== null && 
