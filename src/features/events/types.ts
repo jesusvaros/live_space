@@ -1,4 +1,4 @@
-import { Artist, Event, Profile, VenuePlace } from '../../lib/types';
+import { Artist, Event, Profile, VenuePlace } from '../../../lib/types';
 
 export type EventListItem = Event & {
   organizer?: Profile | null;

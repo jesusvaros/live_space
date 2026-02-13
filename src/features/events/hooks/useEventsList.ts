@@ -73,4 +73,3 @@ export const useEventsList = (options: { startIso: string; endIso: string }) => 
 
   return { events, loading, error };
 };
-

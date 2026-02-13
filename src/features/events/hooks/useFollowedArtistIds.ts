@@ -43,4 +43,3 @@ export const useFollowedArtistIds = (followedSubjectIds: Set<string>) => {
 
   return artistIds;
 };
-

@@ -99,4 +99,3 @@ export const useTrendingEvents = (events: EventListItem[], startOfToday: Date) =
 
   return { trending, meta, loading };
 };
-

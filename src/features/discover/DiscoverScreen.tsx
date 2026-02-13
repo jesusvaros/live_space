@@ -8,10 +8,10 @@ import DiscoverSkeletonList from './components/DiscoverSkeletonList';
 import SuggestedSectionList from './components/SuggestedSectionList';
 import ArtistRow from './components/ArtistRow';
 import VenueRow from './components/VenueRow';
-import { DiscoverArtist, DiscoverTabKey, DiscoverVenue, SuggestedSection } from './types';
+import { DiscoverArtist, DiscoverTabKey, DiscoverVenue } from './types';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
+import { useDiscoverResults } from './hooks/useDiscoverResults';
 import { useStoredLocation } from '../../hooks/useStoredLocation';
-import { discoverService } from './services/discover.service';
 import { useFollowedSubjects } from '../../hooks/useFollowedSubjects';
 
 type RouteState = { initialTab?: DiscoverTabKey } | undefined;
@@ -28,13 +28,14 @@ const DiscoverScreen: React.FC = () => {
 
   const { canFollow, isFollowing, isToggling, toggleFollowSubject } = useFollowedSubjects();
 
-  const [loading, setLoading] = useState(false);
-  const [artists, setArtists] = useState<DiscoverArtist[]>([]);
-  const [venues, setVenues] = useState<DiscoverVenue[]>([]);
-  const [suggestedArtistSections, setSuggestedArtistSections] = useState<SuggestedSection<DiscoverArtist>[]>([]);
-  const [suggestedVenueSections, setSuggestedVenueSections] = useState<SuggestedSection<DiscoverVenue>[]>([]);
-
-  const isSearching = debouncedQuery.trim().length > 0;
+  const {
+    loading,
+    artists,
+    venues,
+    suggestedArtistSections,
+    suggestedVenueSections,
+    isSearching,
+  } = useDiscoverResults({ tab, query: debouncedQuery, location: storedLocation });
 
   useEffect(() => {
     if (locationState?.initialTab) {
@@ -42,51 +43,6 @@ const DiscoverScreen: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
-      setLoading(true);
-      try {
-        if (tab === 'artists') {
-          if (isSearching) {
-            const results = await discoverService.searchArtists(debouncedQuery);
-            if (cancelled) return;
-            setArtists(results);
-          } else {
-            const sections = await discoverService.getSuggestedArtists({ location: storedLocation });
-            if (cancelled) return;
-            setSuggestedArtistSections(sections);
-          }
-        } else {
-          if (isSearching) {
-            const results = await discoverService.searchVenues(debouncedQuery);
-            if (cancelled) return;
-            setVenues(results);
-          } else {
-            const sections = await discoverService.getSuggestedVenues({ location: storedLocation });
-            if (cancelled) return;
-            setSuggestedVenueSections(sections);
-          }
-        }
-      } catch {
-        if (cancelled) return;
-        if (tab === 'artists') {
-          setArtists([]);
-          setSuggestedArtistSections([]);
-        } else {
-          setVenues([]);
-          setSuggestedVenueSections([]);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [debouncedQuery, isSearching, storedLocation, tab]);
 
   const onToggleFollow = async (subjectId: string) => {
     const result = await toggleFollowSubject(subjectId);
