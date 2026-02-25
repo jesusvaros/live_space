@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { DiscoverArtist, DiscoverTabKey, DiscoverVenue, SuggestedSection } from '../types';
 import { discoverService } from '../services/discover.service';
 import { StoredLocation } from '../../../shared/hooks/useStoredLocation';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useAppResume } from '../../../shared/hooks/useAppResume';
 
 type UseDiscoverResultsOptions = {
   tab: DiscoverTabKey;
@@ -10,6 +12,8 @@ type UseDiscoverResultsOptions = {
 };
 
 export const useDiscoverResults = ({ tab, query, location }: UseDiscoverResultsOptions) => {
+  const { loading: authLoading } = useAuth();
+  const resumeTick = useAppResume();
   const [loading, setLoading] = useState(false);
   const [artists, setArtists] = useState<DiscoverArtist[]>([]);
   const [venues, setVenues] = useState<DiscoverVenue[]>([]);
@@ -23,6 +27,7 @@ export const useDiscoverResults = ({ tab, query, location }: UseDiscoverResultsO
   const isSearching = query.trim().length > 0;
 
   useEffect(() => {
+    if (authLoading) return;
     let cancelled = false;
     const run = async () => {
       setLoading(true);
@@ -65,7 +70,7 @@ export const useDiscoverResults = ({ tab, query, location }: UseDiscoverResultsO
     return () => {
       cancelled = true;
     };
-  }, [isSearching, location, query, tab]);
+  }, [authLoading, isSearching, location, query, resumeTick, tab]);
 
   return {
     loading,

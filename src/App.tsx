@@ -12,6 +12,7 @@ import { Redirect, Route } from 'react-router-dom';
 import { IconCalendar, IconMap, IconUser, IconCompass } from './components/icons';
 import { useAuth } from './contexts/AuthContext';
 import { useWorkspace } from './contexts/WorkspaceContext';
+import AppBackHandler from './app/AppBackHandler';
 import Welcome from './pages/Welcome';
 import Feed from './pages/Feed';
 import Events from './pages/Events';
@@ -63,6 +64,7 @@ const App: React.FC = () => {
   return (
     <IonApp>
       <IonReactRouter>
+        <AppBackHandler />
         <IonRouterOutlet>
           <Route
             exact

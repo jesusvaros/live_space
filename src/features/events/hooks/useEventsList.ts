@@ -2,13 +2,18 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { cached } from '../../../lib/requestCache';
 import { EventListItem } from '../types';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useAppResume } from '../../../shared/hooks/useAppResume';
 
 export const useEventsList = (options: { startIso: string; endIso: string }) => {
+  const { loading: authLoading } = useAuth();
+  const resumeTick = useAppResume();
   const [events, setEvents] = useState<EventListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (authLoading) return;
     let cancelled = false;
     setLoading(true);
     setError('');
@@ -69,7 +74,7 @@ export const useEventsList = (options: { startIso: string; endIso: string }) => 
     return () => {
       cancelled = true;
     };
-  }, [options.endIso, options.startIso]);
+  }, [authLoading, options.endIso, options.startIso, resumeTick]);
 
   return { events, loading, error };
 };
