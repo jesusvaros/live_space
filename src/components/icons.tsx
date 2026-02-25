@@ -178,3 +178,9 @@ export const IconCompass: React.FC<IconProps> = ({ className, size = 20 }) => (
     <path d="M12 3v2M21 12h-2M12 21v-2M3 12h2" />
   </svg>
 );
+
+export const IconExpand: React.FC<IconProps> = ({ className, size = 20 }) => (
+  <svg {...baseProps(size)} className={className}>
+    <path d="M15 4h5v5M9 20H4v-5M20 9V4h-5M4 15v5h5" />
+  </svg>
+);

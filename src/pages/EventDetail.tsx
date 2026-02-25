@@ -16,7 +16,7 @@ import EventHero, { EventEntity } from '../components/event/EventHero';
 import TimelinePlayer, { MediaFilter } from '../components/event/TimelinePlayer';
 import { TimelineBucket } from '../components/event/TimelineScrubber';
 import ShareSheet from '../components/ShareSheet';
-import { IconBookmark, IconBookmarkFilled, IconTicket } from '../components/icons';
+import { IconBookmark, IconBookmarkFilled, IconPlus, IconTicket } from '../components/icons';
 
 type EventDetailData = Event & {
   organizer?: Profile | null;
@@ -51,7 +51,6 @@ const EventDetail: React.FC = () => {
   const [uploadError, setUploadError] = useState('');
   const [uploadSuccess, setUploadSuccess] = useState('');
   const [showShare, setShowShare] = useState(false);
-  const [showGatePrompt, setShowGatePrompt] = useState(false);
   const [followed, setFollowed] = useState(false);
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>('video');
   const [mediaCounts, setMediaCounts] = useState({ all: 0, video: 0, image: 0 });
@@ -74,11 +73,6 @@ const EventDetail: React.FC = () => {
     setShowReliveBanner(true);
     history.replace({ pathname: location.pathname, search: location.search, hash: location.hash, state: {} });
   }, [history, location.hash, location.pathname, location.search, location.state?.openAddMoments]);
-
-  const arrivedViaQr = useMemo(() => {
-    const params = new URLSearchParams(location.search);
-    return Boolean(params.get('token'));
-  }, [location.search]);
 
   useEffect(() => {
     momentItemsRef.current = momentItems;
@@ -321,7 +315,6 @@ const EventDetail: React.FC = () => {
     setSelectedMomentIndex(0);
     setMomentItems([]);
     setShowAddMoments(false);
-    setShowGatePrompt(false);
     loadEvent();
     loadCounts();
   }, [id]);
@@ -452,7 +445,7 @@ const EventDetail: React.FC = () => {
     return (
       <span className="flex flex-wrap items-center gap-2">
         {event.venue_place ? (
-          <button type="button" className="font-semibold text-white" onClick={() => history.push(`/tabs/venue/${event.venue_place?.id}`)}>
+          <button type="button" className="font-semibold text-white transition-colors hover:text-app-accent" onClick={() => history.push(`/tabs/venue/${event.venue_place?.id}`)}>
             {venueName}
           </button>
         ) : (
@@ -475,7 +468,12 @@ const EventDetail: React.FC = () => {
     }
   };
 
-  const canAddMoments = Boolean(user && (arrivedViaQr || attendanceStatus));
+  const formatEntityRole = (role: EventEntity['role']) => {
+    if (role === 'artist' || role === 'artist_entity') return 'Artist';
+    if (role === 'venue') return 'Venue';
+    if (role === 'label') return 'Label';
+    return 'User';
+  };
 
   const openFilePicker = () => {
     fileInputRef.current?.click();
@@ -492,11 +490,6 @@ const EventDetail: React.FC = () => {
 
     if (!event) {
       setUploadError('Event not found.');
-      return;
-    }
-
-    if (!canAddMoments) {
-      setShowGatePrompt(true);
       return;
     }
 
@@ -613,6 +606,7 @@ const EventDetail: React.FC = () => {
         }
       }
 
+      await updateAttendance('attended', { force: true });
       setUploadSuccess('Moments uploaded!');
       clearCached(`posts:count:user:${user.id}:event:${event.id}`);
       setMomentItems(prev => {
@@ -699,18 +693,6 @@ const EventDetail: React.FC = () => {
     }
   };
 
-  const handleGateConfirm = async () => {
-    if (!user) {
-      history.push('/welcome');
-      return;
-    }
-    const success = await updateAttendance('attended', { force: true });
-    if (success) {
-      setShowGatePrompt(false);
-      openFilePicker();
-    }
-  };
-
   const shareUrl = event
     ? `${window.location.origin}/event/${event.id}${event.qr_token ? `?token=${event.qr_token}` : ''}`
     : '';
@@ -725,9 +707,9 @@ const EventDetail: React.FC = () => {
   const attendanceActive = attendanceStatus === attendanceTarget;
   const baseHeroChipClass = 'relative inline-flex items-center gap-2 overflow-hidden rounded-full border px-3 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-white/90 backdrop-blur-md transition-all duration-200 hover:border-white/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none';
   const neutralHeroChipClass = 'border-white/25 bg-[linear-gradient(145deg,rgba(3,6,12,0.72),rgba(12,18,30,0.82))]';
-  const followActiveHeroChipClass = 'border-[#ff6b4a]/80 bg-[linear-gradient(140deg,rgba(255,107,74,0.3),rgba(255,107,74,0.16)_65%,rgba(13,18,30,0.88))] text-white shadow-[0_0_0_1px_rgba(255,107,74,0.24),0_10px_22px_rgba(0,0,0,0.28)]';
-  const attendanceActiveHeroChipClass = 'border-[#25d47b]/80 bg-[linear-gradient(140deg,rgba(37,212,123,0.28),rgba(37,212,123,0.14)_65%,rgba(13,18,30,0.88))] text-white shadow-[0_0_0_1px_rgba(37,212,123,0.24),0_10px_22px_rgba(0,0,0,0.28)]';
-  const attendancePastActiveHeroChipClass = 'border-[#f3bf4a]/80 bg-[linear-gradient(140deg,rgba(243,191,74,0.26),rgba(243,191,74,0.13)_65%,rgba(13,18,30,0.88))] text-white shadow-[0_0_0_1px_rgba(243,191,74,0.25),0_10px_22px_rgba(0,0,0,0.28)]';
+  const followActiveHeroChipClass = 'border-[#ff6b4a]/80 bg-[linear-gradient(140deg,rgba(255,107,74,0.3),rgba(255,107,74,0.16)_65%,rgba(13,18,30,0.88))] text-white shadow-[0_0_0_1px_rgba(255,107,74,0.2),0_4px_12px_rgba(0,0,0,0.18)]';
+  const attendanceActiveHeroChipClass = 'border-[#25d47b]/80 bg-[linear-gradient(140deg,rgba(37,212,123,0.28),rgba(37,212,123,0.14)_65%,rgba(13,18,30,0.88))] text-white shadow-[0_0_0_1px_rgba(37,212,123,0.2),0_4px_12px_rgba(0,0,0,0.18)]';
+  const attendancePastActiveHeroChipClass = 'border-[#f3bf4a]/80 bg-[linear-gradient(140deg,rgba(243,191,74,0.26),rgba(243,191,74,0.13)_65%,rgba(13,18,30,0.88))] text-white shadow-[0_0_0_1px_rgba(243,191,74,0.2),0_4px_12px_rgba(0,0,0,0.18)]';
 
   const triggerEngagementFx = (action: 'follow' | 'attendance') => {
     if (action === 'follow') {
@@ -778,7 +760,7 @@ const EventDetail: React.FC = () => {
   };
 
   return (
-    <AppShell>
+    <AppShell contentWrapperClassName={false}>
           {loading && (
             <div className="flex items-center justify-center py-12">
               <IonSpinner name="crescent" />
@@ -789,37 +771,7 @@ const EventDetail: React.FC = () => {
 
           {!loading && event && (
             <>
-              {showReliveBanner && (
-                <div className="px-4 pt-4">
-                  <div className="bg-black/70 p-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Relive last night</p>
-                    <p className="mt-2 font-display text-lg font-bold text-white">Add your moments</p>
-                    <p className="mt-1 text-xs text-white/55">Share what you lived before the memory fades.</p>
-                    <div className="mt-4 flex items-center gap-2">
-                      <button
-                        type="button"
-                        className="inline-flex flex-1 items-center justify-center bg-[#ff6b4a] px-4 py-2 text-sm font-semibold text-white"
-                        onClick={handlePrimaryCtaClick}
-                      >
-                        Add your moments
-                      </button>
-                      <button
-                        type="button"
-                        className="inline-flex items-center justify-center bg-white/10 px-4 py-2 text-sm font-semibold text-white"
-                        onClick={() => setShowReliveBanner(false)}
-                      >
-                        Not now
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               <EventHero
-                title={heroTitle}
-                meta={heroMeta}
-                entities={entities}
-                onSelectEntity={handleSelectEntity}
                 coverImageUrl={event.cover_image_url ?? undefined}
                 actions={
                   <>
@@ -873,29 +825,61 @@ const EventDetail: React.FC = () => {
                 }
               />
 
-              <div className="flex flex-col gap-6 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
-                <div className="flex flex-col gap-2">
-                  <button
-                    type="button"
-                    className="inline-flex w-full items-center justify-center bg-[#ff6b4a] px-4 py-3 text-sm font-semibold text-white"
-                    onClick={handlePrimaryCtaClick}
-                  >
-                    Add your moments
-                  </button>
-                  {user && !canAddMoments && (
-                    <p className="text-xs text-white/55">Mark “I went” to unlock uploads.</p>
+              <div className="relative z-10 -mt-16 rounded-t-[28px] border-t border-white/10 bg-app-bg/95 backdrop-blur-xl sm:-mt-20">
+                <div className="flex flex-col gap-6 p-4 pb-[calc(110px+env(safe-area-inset-bottom,0px))]">
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/65">Event</p>
+                    <h1 className="font-display text-3xl font-bold leading-tight text-white sm:text-4xl">{heroTitle}</h1>
+                    {heroMeta ? <div className="text-sm text-white/80">{heroMeta}</div> : null}
+                    {entities.length > 0 && (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {entities.map(entity => (
+                          <button
+                            key={entity.id}
+                            type="button"
+                            className="inline-flex items-center rounded-full border border-white/20 bg-black/25 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/80 transition-colors hover:border-white/40 hover:text-white"
+                            onClick={() => handleSelectEntity(entity.id, entity.role)}
+                          >
+                            {entity.name} · {formatEntityRole(entity.role)}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {showReliveBanner && (
+                    <div className="rounded-2xl border border-app-accent/30 bg-[linear-gradient(135deg,rgba(255,107,74,0.18),rgba(255,107,74,0.06)_60%,rgba(255,255,255,0.02))] p-4 shadow-[0_8px_18px_rgba(0,0,0,0.18)]">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-app-accent">Relive</p>
+                      <p className="mt-2 font-display text-lg font-bold text-white">Add your moments</p>
+                      <p className="mt-1 text-xs text-white/70">Share what you lived before the memory fades.</p>
+                      <div className="mt-4 flex items-center gap-2">
+                        <button
+                          type="button"
+                          className="inline-flex flex-1 items-center justify-center rounded-full bg-app-accent px-4 py-2 text-sm font-semibold text-white"
+                          onClick={handlePrimaryCtaClick}
+                        >
+                          Add your moments
+                        </button>
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white"
+                          onClick={() => setShowReliveBanner(false)}
+                        >
+                          Not now
+                        </button>
+                      </div>
+                    </div>
                   )}
-                </div>
 
                 {engagementError && <p className="text-sm text-rose-400">{engagementError}</p>}
                 {bucketsError && <p className="text-sm text-rose-400">{bucketsError}</p>}
 
                 {setlist.length > 0 && (
-                  <div className="bg-white/5 p-4">
-                    <h3 className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Official setlist</h3>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                    <h3 className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">Official setlist</h3>
                     <div className="mt-3 flex flex-col gap-2">
                       {setlist.map((entry) => (
-                        <div key={entry.ordinal} className="flex items-center justify-between text-xs">
+                        <div key={entry.ordinal} className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.03] px-3 py-2 text-xs">
                           <span className="text-white/80">
                             <span className="mr-2 text-white/45">{entry.ordinal}.</span>
                             {entry.song_title || 'Unknown Song'}
@@ -925,7 +909,21 @@ const EventDetail: React.FC = () => {
                   autoAdvance={mediaFilter === 'video'}
                   onRequestNext={handleAdvanceToNext}
                 />
+                </div>
               </div>
+
+              {!showAddMoments && (
+                <button
+                  type="button"
+                  onClick={handlePrimaryCtaClick}
+                  className="fixed bottom-[calc(18px+env(safe-area-inset-bottom,0px))] right-4 z-[1400] inline-flex items-center gap-2 rounded-full border border-app-accent/45 bg-[linear-gradient(135deg,rgba(255,107,74,0.95),rgba(255,138,110,0.92))] px-4 py-3 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(255,107,74,0.3)] transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98] motion-reduce:transition-none"
+                >
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/20">
+                    <IconPlus className="h-4 w-4" />
+                  </span>
+                  <span>Add moment</span>
+                </button>
+              )}
             </>
           )}
         <IonModal isOpen={showAddMoments} onDidDismiss={() => setShowAddMoments(false)}>
@@ -1031,49 +1029,6 @@ const EventDetail: React.FC = () => {
                 disabled={uploading}
               >
                 Add more
-              </button>
-            </div>
-          </IonContent>
-        </IonModal>
-
-        <IonModal
-          isOpen={showGatePrompt}
-          onDidDismiss={() => setShowGatePrompt(false)}
-          initialBreakpoint={0.45}
-          breakpoints={[0, 0.45, 0.7]}
-          className="gate-sheet"
-        >
-          <IonContent fullscreen>
-            <div className="min-h-full bg-app-bg p-5">
-              <div className="flex items-center justify-between gap-4">
-                <h2 className="font-display text-lg font-bold text-white">Unlock moments</h2>
-                <button
-                  type="button"
-                  className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
-                  onClick={() => setShowGatePrompt(false)}
-                  disabled={attendanceLoading}
-                >
-                  Close
-                </button>
-              </div>
-              <p className="text-sm text-white/55">
-                Mark "I went" to add moments for this event.
-              </p>
-              <button
-                type="button"
-                className="inline-flex w-full items-center justify-center bg-white/10 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-                onClick={handleGateConfirm}
-                disabled={attendanceLoading}
-              >
-                {attendanceLoading ? 'Marking...' : 'Mark I went'}
-              </button>
-              <button
-                type="button"
-                className="inline-flex w-full items-center justify-center px-4 py-3 text-sm font-semibold text-white/70 disabled:cursor-not-allowed disabled:opacity-60"
-                onClick={() => setShowGatePrompt(false)}
-                disabled={attendanceLoading}
-              >
-                Not now
               </button>
             </div>
           </IonContent>

@@ -134,7 +134,7 @@ const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
   const selectedRatio = maxOffset ? selectedOffset / maxOffset : 0;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
       <div
         className="relative h-8 cursor-pointer touch-none"
         ref={trackRef}
@@ -144,7 +144,7 @@ const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
         onPointerCancel={handlePointerUp}
         onPointerLeave={handlePointerUp}
       >
-        <div className="absolute inset-x-0 top-1/2 h-0.5 -translate-y-1/2 bg-white/10" />
+        <div className="absolute inset-x-0 top-1/2 h-0.5 -translate-y-1/2 rounded-full bg-white/10" />
         {segments.map(segment => (
           <div
             key={segment.key}
@@ -167,7 +167,7 @@ const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
               type="button"
               className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full ${sizeClass} ${
                 index === selectedIndex
-                  ? 'bg-[#ff6b4a]'
+                  ? 'bg-app-accent'
                   : 'bg-white/40'
               }`}
               style={{ left: `${ratio * 100}%` }}
@@ -178,7 +178,7 @@ const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
           );
         })}
         <div
-          className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#ff6b4a] bg-[#ff6b4a]/20"
+          className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-app-accent bg-app-accent/20 shadow-[0_0_0_4px_rgba(255,107,74,0.1)]"
           style={{ left: `${selectedRatio * 100}%` }}
         />
       </div>

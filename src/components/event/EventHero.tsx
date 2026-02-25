@@ -8,62 +8,30 @@ export type EventEntity = {
 };
 
 type EventHeroProps = {
-  title: string;
-  meta: React.ReactNode;
-  entities: EventEntity[];
-  onSelectEntity: (id: string, role: EventEntity['role']) => void;
   coverImageUrl?: string | null;
   actions?: React.ReactNode;
 };
 
-const formatRole = (role: EventEntity['role']) => {
-  if (role === 'artist' || role === 'artist_entity') return 'Artist';
-  if (role === 'venue') return 'Venue';
-  if (role === 'label') return 'Label';
-  return 'User';
-};
-
 const EventHero: React.FC<EventHeroProps> = ({
-  title,
-  meta,
-  entities,
-  onSelectEntity,
   coverImageUrl,
   actions,
 }) => {
   return (
-    <section>
-      <div className="relative aspect-[4/5] w-full overflow-hidden bg-black">
+    <section className="relative h-[70vh] sm:h-[76vh]">
+      <div className="fixed inset-x-0 top-[calc(56px+env(safe-area-inset-top,0px))] z-0 h-[70vh] overflow-hidden sm:h-[76vh]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_6%,rgba(255,107,74,0.24),transparent_52%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_12%,rgba(122,167,255,0.18),transparent_54%)]" />
         {coverImageUrl ? (
-          <img src={coverImageUrl} alt={title} className="absolute inset-0 h-full w-full object-cover" />
+          <img src={coverImageUrl} alt="Event cover" className="absolute inset-0 h-full w-full object-cover" />
         ) : null}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/62 to-black/24" />
 
         {actions ? (
-          <div className="absolute right-4 top-4 z-10 flex items-center gap-3">
+          <div className="absolute right-3 top-3 z-10 flex items-center gap-2 sm:right-4 sm:top-4 sm:gap-3">
             {actions}
           </div>
         ) : null}
-
-        <div className="absolute inset-x-0 bottom-0 bg-black/70 p-5">
-          <h1 className="font-display text-3xl font-bold text-white">{title}</h1>
-          {meta ? <div className="mt-2 text-sm text-white/75">{meta}</div> : null}
-        </div>
       </div>
-
-      {entities.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 px-4">
-          {entities.map(entity => (
-            <button
-              key={entity.id}
-              type="button"
-              className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/65 hover:text-white"
-              onClick={() => onSelectEntity(entity.id, entity.role)}
-            >
-              {entity.name} · {formatRole(entity.role)}
-            </button>
-          ))}
-        </div>
-      )}
     </section>
   );
 };
