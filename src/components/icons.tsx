@@ -67,6 +67,31 @@ export const IconHeartFilled: React.FC<IconProps> = ({ className, size = 20 }) =
   </svg>
 );
 
+export const IconBookmark: React.FC<IconProps> = ({ className, size = 20 }) => (
+  <svg {...baseProps(size)} className={className}>
+    <path d="M7 4h10a1 1 0 0 1 1 1v15l-6-3.8L6 20V5a1 1 0 0 1 1-1z" />
+  </svg>
+);
+
+export const IconBookmarkFilled: React.FC<IconProps> = ({ className, size = 20 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    className={className}
+    fill="currentColor"
+  >
+    <path d="M7 4h10a1 1 0 0 1 1 1v15l-6-3.8L6 20V5a1 1 0 0 1 1-1z" />
+  </svg>
+);
+
+export const IconTicket: React.FC<IconProps> = ({ className, size = 20 }) => (
+  <svg {...baseProps(size)} className={className}>
+    <path d="M3 9.5a2.5 2.5 0 0 0 0 5v3a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-3a2.5 2.5 0 0 1 0-5v-3a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v3z" />
+    <path d="M9 7v10" />
+  </svg>
+);
+
 export const IconCheckCircle: React.FC<IconProps> = ({ className, size = 20 }) => (
   <svg {...baseProps(size)} className={className}>
     <circle cx="12" cy="12" r="9" />

@@ -16,7 +16,7 @@ import EventHero, { EventEntity } from '../components/event/EventHero';
 import TimelinePlayer, { MediaFilter } from '../components/event/TimelinePlayer';
 import { TimelineBucket } from '../components/event/TimelineScrubber';
 import ShareSheet from '../components/ShareSheet';
-import { IconCheckCircle, IconHeart, IconHeartFilled } from '../components/icons';
+import { IconBookmark, IconBookmarkFilled, IconTicket } from '../components/icons';
 
 type EventDetailData = Event & {
   organizer?: Profile | null;
@@ -58,10 +58,14 @@ const EventDetail: React.FC = () => {
   const [followLoading, setFollowLoading] = useState(false);
   const [attendanceStatus, setAttendanceStatus] = useState<'going' | 'attended' | null>(null);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [followAnimating, setFollowAnimating] = useState(false);
+  const [attendanceAnimating, setAttendanceAnimating] = useState(false);
   const [engagementError, setEngagementError] = useState('');
   const [showReliveBanner, setShowReliveBanner] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const momentItemsRef = useRef<MomentItem[]>([]);
+  const followFxTimerRef = useRef<number | null>(null);
+  const attendanceFxTimerRef = useRef<number | null>(null);
   const bucketCacheRef = useRef<Record<string, PostWithSetlist[]>>({});
   const bucketLoadingRef = useRef<Record<string, boolean>>({});
 
@@ -83,6 +87,8 @@ const EventDetail: React.FC = () => {
   useEffect(() => {
     return () => {
       momentItemsRef.current.forEach(item => URL.revokeObjectURL(item.previewUrl));
+      if (followFxTimerRef.current) window.clearTimeout(followFxTimerRef.current);
+      if (attendanceFxTimerRef.current) window.clearTimeout(attendanceFxTimerRef.current);
     };
   }, []);
 
@@ -361,22 +367,18 @@ const EventDetail: React.FC = () => {
       }
 
       try {
-        const targetSubjectId = isManagementMode && activeEntity 
-          ? activeEntity.subject_id 
-          : profile?.subject_id;
-
         const [{ data: saveData }, { data: attendanceData }] = await Promise.all([
           supabase
             .from('event_saves')
             .select('event_id')
             .eq('event_id', id)
-            .eq(targetSubjectId ? 'subject_id' : 'user_id', targetSubjectId || user.id)
+            .eq('user_id', user.id)
             .limit(1),
           supabase
             .from('event_attendance')
             .select('status')
             .eq('event_id', id)
-            .eq(targetSubjectId ? 'subject_id' : 'user_id', targetSubjectId || user.id)
+            .eq('user_id', user.id)
             .limit(1),
         ]);
 
@@ -632,25 +634,20 @@ const EventDetail: React.FC = () => {
     setEngagementError('');
     setFollowLoading(true);
     try {
-      const targetSubjectId = isManagementMode && activeEntity 
-        ? activeEntity.subject_id 
-        : profile?.subject_id;
-
       if (followed) {
         const { error: deleteError } = await supabase
           .from('event_saves')
           .delete()
           .eq('event_id', event.id)
-          .eq(targetSubjectId ? 'subject_id' : 'user_id', targetSubjectId || user.id);
+          .eq('user_id', user.id);
         if (deleteError) throw deleteError;
         setFollowed(false);
       } else {
         const { error: insertError } = await supabase
           .from('event_saves')
-          .insert({ 
-            event_id: event.id, 
-            user_id: user.id, // Keep user_id for legacy/auth tracking
-            subject_id: targetSubjectId || null 
+          .insert({
+            event_id: event.id,
+            user_id: user.id,
           });
         if (insertError) throw insertError;
         setFollowed(true);
@@ -670,16 +667,12 @@ const EventDetail: React.FC = () => {
     setEngagementError('');
     setAttendanceLoading(true);
     try {
-      const targetSubjectId = isManagementMode && activeEntity 
-        ? activeEntity.subject_id 
-        : profile?.subject_id;
-
       if (!options?.force && attendanceStatus === status) {
         const { error: deleteError } = await supabase
           .from('event_attendance')
           .delete()
           .eq('event_id', event.id)
-          .eq(targetSubjectId ? 'subject_id' : 'user_id', targetSubjectId || user.id);
+          .eq('user_id', user.id);
         if (deleteError) throw deleteError;
         setAttendanceStatus(null);
         return true;
@@ -688,10 +681,9 @@ const EventDetail: React.FC = () => {
       const { error: upsertError } = await supabase
         .from('event_attendance')
         .upsert(
-          { 
-            event_id: event.id, 
-            user_id: user.id, 
-            subject_id: targetSubjectId || null,
+          {
+            event_id: event.id,
+            user_id: user.id,
             status 
           },
           { onConflict: 'event_id,user_id' }
@@ -729,10 +721,30 @@ const EventDetail: React.FC = () => {
       : now.getTime() > eventStart.getTime() + 6 * 60 * 60 * 1000
     : false;
   const attendanceTarget: 'going' | 'attended' = isPastEvent ? 'attended' : 'going';
-  const attendanceLabel = isPastEvent ? 'I went' : "I'm here";
+  const attendanceLabel = isPastEvent ? 'Went' : 'Going';
   const attendanceActive = attendanceStatus === attendanceTarget;
 
+  const triggerEngagementFx = (action: 'follow' | 'attendance') => {
+    if (action === 'follow') {
+      setFollowAnimating(false);
+      if (followFxTimerRef.current) window.clearTimeout(followFxTimerRef.current);
+      window.requestAnimationFrame(() => {
+        setFollowAnimating(true);
+        followFxTimerRef.current = window.setTimeout(() => setFollowAnimating(false), 420);
+      });
+      return;
+    }
+
+    setAttendanceAnimating(false);
+    if (attendanceFxTimerRef.current) window.clearTimeout(attendanceFxTimerRef.current);
+    window.requestAnimationFrame(() => {
+      setAttendanceAnimating(true);
+      attendanceFxTimerRef.current = window.setTimeout(() => setAttendanceAnimating(false), 420);
+    });
+  };
+
   const handleFollowClick = () => {
+    triggerEngagementFx('follow');
     if (!user) {
       history.push('/welcome');
       return;
@@ -741,6 +753,7 @@ const EventDetail: React.FC = () => {
   };
 
   const handleAttendanceClick = () => {
+    triggerEngagementFx('attendance');
     if (!user) {
       history.push('/welcome');
       return;
@@ -807,26 +820,34 @@ const EventDetail: React.FC = () => {
                   <>
                     <button
                       type="button"
-                      className={`inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] transition-colors ${
-                        followed ? 'text-app-accent' : 'text-white/70 hover:text-white'
-                      }`}
+                      className={`event-engagement-chip ${
+                        followed ? 'is-active' : ''
+                      } ${followAnimating ? 'is-animating' : ''}`}
                       onClick={handleFollowClick}
                       disabled={followLoading}
                       aria-pressed={followed}
                     >
-                      {followed ? <IconHeartFilled className="h-4 w-4" /> : <IconHeart className="h-4 w-4" />}
-                      <span>Like</span>
+                      <span className="event-engagement-icon-wrap">
+                        {followed ? (
+                          <IconBookmarkFilled className="event-engagement-icon" />
+                        ) : (
+                          <IconBookmark className="event-engagement-icon" />
+                        )}
+                      </span>
+                      <span>Follow</span>
                     </button>
                     <button
                       type="button"
-                      className={`inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] transition-colors ${
-                        attendanceActive ? 'text-app-accent' : 'text-white/70 hover:text-white'
-                      }`}
+                      className={`event-engagement-chip is-attendance ${
+                        attendanceActive ? 'is-active' : ''
+                      } ${isPastEvent ? 'is-past' : ''} ${attendanceAnimating ? 'is-animating' : ''}`}
                       onClick={handleAttendanceClick}
                       disabled={attendanceLoading}
                       aria-pressed={attendanceActive}
                     >
-                      <IconCheckCircle className="h-4 w-4" />
+                      <span className="event-engagement-icon-wrap">
+                        <IconTicket className="event-engagement-icon" />
+                      </span>
                       <span>{attendanceLabel}</span>
                     </button>
                   </>

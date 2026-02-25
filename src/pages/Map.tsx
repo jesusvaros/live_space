@@ -5,7 +5,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { supabase } from '../lib/supabase';
 import { Artist, Event, VenuePlace } from '../lib/types';
-import { useLocation } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
 import MapLibreLayer from '../components/MapLibreLayer';
@@ -50,10 +50,15 @@ type EventWithVenue = Event & {
 };
 
 const Map: React.FC = () => {
+  const history = useHistory();
   const location = useLocation<{ artistFilter?: { id: string; name: string; avatar_url: string | null } }>();
   const { user } = useAuth();
   const [events, setEvents] = useState<EventWithVenue[]>([]);
   const [venues, setVenues] = useState<VenuePlace[]>([]);
+  const [followedEventIds, setFollowedEventIds] = useState<Set<string>>(new Set());
+  const [attendanceStatusByEventId, setAttendanceStatusByEventId] = useState<Record<string, 'going' | 'attended'>>({});
+  const [followPendingEventIds, setFollowPendingEventIds] = useState<Set<string>>(new Set());
+  const [attendancePendingEventIds, setAttendancePendingEventIds] = useState<Set<string>>(new Set());
   const [selectedArtists, setSelectedArtists] = useState<{ id: string; name: string; avatar_url: string | null }[]>([]);
   const [focusArtistSearch, setFocusArtistSearch] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -160,10 +165,47 @@ const Map: React.FC = () => {
     setVenues((data || []) as VenuePlace[]);
   }, []);
 
+  const loadUserEngagement = useCallback(async () => {
+    if (!user?.id) {
+      setFollowedEventIds(new Set());
+      setAttendanceStatusByEventId({});
+      return;
+    }
+
+    const [savesRes, attendanceRes] = await Promise.all([
+      supabase
+        .from('event_saves')
+        .select('event_id')
+        .eq('user_id', user.id),
+      supabase
+        .from('event_attendance')
+        .select('event_id,status')
+        .eq('user_id', user.id),
+    ]);
+
+    const nextFollowed = new Set<string>();
+    (savesRes.data || []).forEach((row: any) => {
+      if (row?.event_id) nextFollowed.add(row.event_id);
+    });
+    setFollowedEventIds(nextFollowed);
+
+    const nextAttendance: Record<string, 'going' | 'attended'> = {};
+    (attendanceRes.data || []).forEach((row: any) => {
+      if (row?.event_id && (row?.status === 'going' || row?.status === 'attended')) {
+        nextAttendance[row.event_id] = row.status;
+      }
+    });
+    setAttendanceStatusByEventId(nextAttendance);
+  }, [user?.id]);
+
   useEffect(() => {
     loadEvents();
     loadVenues();
   }, []);
+
+  useEffect(() => {
+    void loadUserEngagement();
+  }, [loadUserEngagement]);
 
   useEffect(() => {
     if (events.length === 0) {
@@ -320,6 +362,125 @@ const Map: React.FC = () => {
     setShowVenues(true);
   };
 
+  const handleFollowEvent = useCallback(
+    async (eventId: string) => {
+      if (!user?.id) {
+        history.push('/welcome');
+        return;
+      }
+      if (followPendingEventIds.has(eventId)) return;
+
+      const wasFollowed = followedEventIds.has(eventId);
+
+      setFollowPendingEventIds(prev => {
+        const next = new Set(prev);
+        next.add(eventId);
+        return next;
+      });
+      setFollowedEventIds(prev => {
+        const next = new Set(prev);
+        if (wasFollowed) next.delete(eventId);
+        else next.add(eventId);
+        return next;
+      });
+
+      try {
+        if (wasFollowed) {
+          const { error } = await supabase
+            .from('event_saves')
+            .delete()
+            .eq('event_id', eventId)
+            .eq('user_id', user.id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from('event_saves')
+            .insert({
+              event_id: eventId,
+              user_id: user.id,
+            });
+          if (error) throw error;
+        }
+      } catch (error) {
+        setFollowedEventIds(prev => {
+          const next = new Set(prev);
+          if (wasFollowed) next.add(eventId);
+          else next.delete(eventId);
+          return next;
+        });
+      } finally {
+        setFollowPendingEventIds(prev => {
+          const next = new Set(prev);
+          next.delete(eventId);
+          return next;
+        });
+      }
+    },
+    [followPendingEventIds, followedEventIds, history, user?.id]
+  );
+
+  const handleAttendanceEvent = useCallback(
+    async (eventId: string, nextStatus: 'going' | 'attended') => {
+      if (!user?.id) {
+        history.push('/welcome');
+        return;
+      }
+      if (attendancePendingEventIds.has(eventId)) return;
+
+      const current = attendanceStatusByEventId[eventId] || null;
+      const shouldClear = current === nextStatus;
+
+      setAttendancePendingEventIds(prev => {
+        const next = new Set(prev);
+        next.add(eventId);
+        return next;
+      });
+      setAttendanceStatusByEventId(prev => {
+        const next = { ...prev };
+        if (shouldClear) delete next[eventId];
+        else next[eventId] = nextStatus;
+        return next;
+      });
+
+      try {
+        if (shouldClear) {
+          const { error } = await supabase
+            .from('event_attendance')
+            .delete()
+            .eq('event_id', eventId)
+            .eq('user_id', user.id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from('event_attendance')
+            .upsert(
+              {
+                event_id: eventId,
+                user_id: user.id,
+                status: nextStatus,
+              },
+              { onConflict: 'event_id,user_id' }
+            );
+          if (error) throw error;
+        }
+      } catch (error) {
+        setAttendanceStatusByEventId(prev => {
+          const next = { ...prev };
+          if (current) next[eventId] = current;
+          else delete next[eventId];
+          return next;
+        });
+      } finally {
+        setAttendancePendingEventIds(prev => {
+          const next = new Set(prev);
+          next.delete(eventId);
+          return next;
+        });
+      }
+    },
+    [attendancePendingEventIds, attendanceStatusByEventId, history, user?.id]
+  );
+
   return (
     <AppShell>
       <div className="relative flex min-h-full flex-col p-0">
@@ -438,6 +599,16 @@ const Map: React.FC = () => {
         activeItem={activeSelection}
         events={filteredEvents}
         venues={filteredVenues}
+        onFollowEvent={(eventId) => {
+          void handleFollowEvent(eventId);
+        }}
+        onSetAttendance={(eventId, status) => {
+          void handleAttendanceEvent(eventId, status);
+        }}
+        followedEventIds={followedEventIds}
+        attendanceStatusByEventId={attendanceStatusByEventId}
+        followPendingEventIds={followPendingEventIds}
+        attendancePendingEventIds={attendancePendingEventIds}
         onTouchStart={(e) => {
           setTouchStartX(e.touches[0].clientX);
           setTouchStartY(e.touches[0].clientY);
