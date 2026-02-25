@@ -64,6 +64,12 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({
     });
   };
 
+  const baseSheetChipClass = 'relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-full border px-3 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-white/90 backdrop-blur-md transition-all duration-200 hover:border-white/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none';
+  const neutralSheetChipClass = 'border-white/25 bg-[linear-gradient(145deg,rgba(3,6,12,0.78),rgba(9,15,26,0.86))]';
+  const followActiveSheetChipClass = 'border-[#ff6b4a]/80 bg-[linear-gradient(140deg,rgba(255,107,74,0.3),rgba(255,107,74,0.16)_65%,rgba(13,18,30,0.88))] text-white shadow-[0_0_0_1px_rgba(255,107,74,0.24),0_10px_22px_rgba(0,0,0,0.28)]';
+  const attendanceActiveSheetChipClass = 'border-[#25d47b]/80 bg-[linear-gradient(140deg,rgba(37,212,123,0.28),rgba(37,212,123,0.14)_65%,rgba(13,18,30,0.88))] text-white shadow-[0_0_0_1px_rgba(37,212,123,0.24),0_10px_22px_rgba(0,0,0,0.28)]';
+  const attendancePastActiveSheetChipClass = 'border-[#f3bf4a]/80 bg-[linear-gradient(140deg,rgba(243,191,74,0.26),rgba(243,191,74,0.13)_65%,rgba(13,18,30,0.88))] text-white shadow-[0_0_0_1px_rgba(243,191,74,0.25),0_10px_22px_rgba(0,0,0,0.28)]';
+
   if (!activeItem) return null;
 
   const renderDetails = () => {
@@ -120,9 +126,9 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({
             <div className="mt-4 flex flex-col gap-2">
               <button
                 type="button"
-                className={`event-engagement-chip event-engagement-chip--sheet ${
-                  isFollowed ? 'is-active' : ''
-                } ${followAnimating ? 'is-animating' : ''}`}
+                className={`${baseSheetChipClass} ${isFollowed ? followActiveSheetChipClass : neutralSheetChipClass} ${
+                  followAnimating ? 'scale-[1.02]' : ''
+                }`}
                 aria-label="Follow event"
                 disabled={followLoading}
                 onClick={(e) => {
@@ -131,16 +137,25 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({
                   onFollowEvent?.(ev.id);
                 }}
               >
-                <span className="event-engagement-icon-wrap">
-                  <IconBookmark className="event-engagement-icon" />
+                <span
+                  className={`pointer-events-none absolute inset-0 rounded-full border border-current ${
+                    followAnimating ? 'animate-ping opacity-40 motion-reduce:animate-none' : 'opacity-0'
+                  }`}
+                />
+                <span className={`inline-flex items-center justify-center ${followAnimating ? 'animate-pulse motion-reduce:animate-none' : ''}`}>
+                  <IconBookmark className="h-[19px] w-[19px]" />
                 </span>
                 <span>Follow</span>
               </button>
               <button
                 type="button"
-                className={`event-engagement-chip event-engagement-chip--sheet is-attendance ${
-                  isAttendanceActive ? 'is-active' : ''
-                } ${isPastEvent ? 'is-past' : ''} ${attendanceAnimating ? 'is-animating' : ''}`}
+                className={`${baseSheetChipClass} ${
+                  isAttendanceActive
+                    ? isPastEvent
+                      ? attendancePastActiveSheetChipClass
+                      : attendanceActiveSheetChipClass
+                    : neutralSheetChipClass
+                } ${attendanceAnimating ? 'scale-[1.02]' : ''}`}
                 aria-label={attendanceLabel}
                 disabled={attendanceLoading}
                 onClick={(e) => {
@@ -149,8 +164,13 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({
                   onSetAttendance?.(ev.id, attendanceStatus);
                 }}
               >
-                <span className="event-engagement-icon-wrap">
-                  <IconTicket className="event-engagement-icon" />
+                <span
+                  className={`pointer-events-none absolute inset-0 rounded-full border border-current ${
+                    attendanceAnimating ? 'animate-ping opacity-40 motion-reduce:animate-none' : 'opacity-0'
+                  }`}
+                />
+                <span className={`inline-flex items-center justify-center ${attendanceAnimating ? 'animate-pulse motion-reduce:animate-none' : ''}`}>
+                  <IconTicket className="h-[19px] w-[19px]" />
                 </span>
                 <span>{attendanceLabel}</span>
               </button>
