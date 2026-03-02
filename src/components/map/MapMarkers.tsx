@@ -16,6 +16,8 @@ type MapMarkersProps = {
   activeSelection?: { type: 'event' | 'venue'; id: string } | null;
 };
 
+type PinVariant = 'free' | 'paid' | 'venue';
+
 const toNumber = (value: number | string | null) => {
   if (typeof value === 'string') {
     const parsed = Number(value);
@@ -24,10 +26,10 @@ const toNumber = (value: number | string | null) => {
   return value;
 };
 
-const buildPinGlyph = (variant: 'free' | 'paid' | 'venue') => {
+const buildPinGlyph = (variant: PinVariant) => {
   if (variant === 'venue') {
     return `
-      <svg viewBox="0 0 28 28" aria-hidden="true">
+      <svg viewBox="0 0 28 28" aria-hidden="true" class="h-full w-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M2.8 12L14 4.8 25.2 12" />
         <rect x="4.5" y="12" width="19" height="10" rx="1.5" />
         <path d="M9.5 22v-4.6h9V22" />
@@ -37,7 +39,7 @@ const buildPinGlyph = (variant: 'free' | 'paid' | 'venue') => {
   }
 
   return `
-    <svg viewBox="0 0 28 28" aria-hidden="true">
+    <svg viewBox="0 0 28 28" aria-hidden="true" class="h-full w-full" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="14" cy="16.5" r="5.7" />
       <path d="M8.3 16.5h11.4" />
       <path d="M10.5 20.8v2.2M17.5 20.8v2.2" />
@@ -47,19 +49,55 @@ const buildPinGlyph = (variant: 'free' | 'paid' | 'venue') => {
   `;
 };
 
-const buildPinIcon = (variant: 'free' | 'paid' | 'venue', isActive = false) => {
+const pinBaseClasses =
+  "relative flex h-[46px] w-[46px] pointer-events-auto items-center justify-center rounded-full border-[1.8px] bg-[radial-gradient(circle_at_30%_25%,rgba(35,43,58,0.98)_0%,rgba(11,14,20,0.96)_72%)] transition-all duration-150 after:absolute after:-bottom-[7px] after:left-1/2 after:h-3 after:w-3 after:-translate-x-1/2 after:rotate-[-45deg] after:rounded-[1px] after:border-l-[1.8px] after:border-b-[1.8px] after:bg-[rgba(11,14,20,0.96)] after:content-['']";
+
+const pinVariants: Record<
+  PinVariant,
+  { pinClasses: string; activeClasses: string; badgeLabel: string | null; badgeClasses: string }
+> = {
+  free: {
+    pinClasses:
+      'border-[#9ca9c0] text-[#eef3ff] after:border-[#9ca9c0] shadow-[0_8px_20px_rgba(3,8,16,0.45),0_0_0_3px_rgba(156,169,192,0.22)]',
+    activeClasses:
+      '-translate-y-[2px] scale-[1.08] shadow-[0_12px_24px_rgba(3,8,16,0.55),0_0_0_4px_rgba(156,169,192,0.22)]',
+    badgeLabel: 'FREE',
+    badgeClasses:
+      'absolute -top-2 -right-2.5 pointer-events-none inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-white/50 bg-[rgba(11,14,20,0.95)] px-[5px] text-[10px] font-extrabold uppercase leading-none tracking-[0.08em] text-white/95',
+  },
+  paid: {
+    pinClasses:
+      'border-[#9ca9c0] text-[#eef3ff] after:border-[#9ca9c0] shadow-[0_8px_20px_rgba(3,8,16,0.45),0_0_0_3px_rgba(156,169,192,0.22)]',
+    activeClasses:
+      '-translate-y-[2px] scale-[1.08] shadow-[0_12px_24px_rgba(3,8,16,0.55),0_0_0_4px_rgba(156,169,192,0.22)]',
+    badgeLabel: '€',
+    badgeClasses:
+      'absolute -top-2 -right-2.5 pointer-events-none inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-white/50 bg-[rgba(11,14,20,0.95)] px-1 text-xs font-extrabold leading-none tracking-[0] text-white/95',
+  },
+  venue: {
+    pinClasses:
+      'border-[#7ea8ff] text-[#d2e2ff] after:border-[#7ea8ff] shadow-[0_8px_20px_rgba(3,8,16,0.45),0_0_0_3px_rgba(126,168,255,0.22)]',
+    activeClasses:
+      '-translate-y-[2px] scale-[1.08] shadow-[0_12px_24px_rgba(3,8,16,0.55),0_0_0_4px_rgba(126,168,255,0.22)]',
+    badgeLabel: null,
+    badgeClasses: '',
+  },
+};
+
+const buildPinIcon = (variant: PinVariant, isActive = false) => {
+  const pinConfig = pinVariants[variant];
   const glyph = buildPinGlyph(variant);
-  const badge = variant === 'venue'
-    ? ''
-    : `<span class="map-pin-badge map-pin-badge--${variant}">${variant === 'free' ? 'FREE' : '€'}</span>`;
+  const badge = pinConfig.badgeLabel
+    ? `<span class="${pinConfig.badgeClasses}">${pinConfig.badgeLabel}</span>`
+    : '';
   const html = `
-    <div class="map-pin map-pin--${variant} ${isActive ? 'map-pin--active' : ''}" style="pointer-events:auto;">
+    <div class="${pinBaseClasses} ${pinConfig.pinClasses} ${isActive ? pinConfig.activeClasses : ''}">
       ${badge}
-      <span class="map-pin-icon">${glyph}</span>
+      <span class="inline-flex h-6 w-6 items-center justify-center">${glyph}</span>
     </div>
   `;
   return L.divIcon({
-    className: `leaflet-div-icon leaflet-interactive map-pin-wrapper`,
+    className: 'leaflet-div-icon leaflet-interactive !border-0 !bg-transparent',
     html,
     iconSize: isActive ? [52, 60] : [48, 56],
     iconAnchor: [24, 56],

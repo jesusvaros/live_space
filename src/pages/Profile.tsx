@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { IonSpinner } from '@ionic/react';
+import { IonContent, IonModal, IonSpinner } from '@ionic/react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Event, PostWithSetlist, ProfileRole } from '../lib/types';
@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import AppShell from '../components/AppShell';
 import EventPosterTile from '../features/events/components/EventPosterTile';
-import { IconCalendar, IconEdit, IconHeart, IconLogout, IconPlay, IconBriefcase } from '../components/icons';
+import { IconCalendar, IconEdit, IconHeart, IconLogout, IconPlay } from '../components/icons';
 
 const Profile: React.FC = () => {
   const { 
@@ -25,7 +25,6 @@ const Profile: React.FC = () => {
   } = useWorkspace();
 
   const [isManagementMode, setIsManagementMode] = useState(false);
-  const setManagementMode = (val: boolean) => setIsManagementMode(val);
 
   const history = useHistory();
   const location = useLocation();
@@ -39,7 +38,6 @@ const Profile: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedTab, setSelectedTab] = useState<'liked' | 'attended' | 'moments'>('moments');
-  const [showEdit, setShowEdit] = useState(false);
   const [displayName, setDisplayName] = useState(profile?.display_name || '');
   const [username, setUsername] = useState(profile?.username || '');
   const [primaryCity, setPrimaryCity] = useState(profile?.primary_city || '');
@@ -64,12 +62,54 @@ const Profile: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
+  const searchParams = new URLSearchParams(location.search);
+  const editTarget = searchParams.get('edit');
+  const showEdit = editTarget === 'profile' || editTarget === 'artist' || editTarget === 'venue';
+
+  const closeEditModal = () => {
+    const nextParams = new URLSearchParams(location.search);
+    nextParams.delete('edit');
+    history.replace({
+      pathname: location.pathname,
+      search: nextParams.toString(),
+    });
+  };
+
+  const openEditModal = (target: 'profile' | 'artist' | 'venue') => {
+    const nextParams = new URLSearchParams(location.search);
+    nextParams.set('edit', target);
+    history.replace({
+      pathname: location.pathname,
+      search: nextParams.toString(),
+    });
+  };
+
+  const openContextualEditModal = () => {
+    if (activeEntity?.type === 'artist' || profile?.role === 'artist') {
+      openEditModal('artist');
+      return;
+    }
+    if (activeEntity?.type === 'venue' || profile?.role === 'venue') {
+      openEditModal('venue');
+      return;
+    }
+    openEditModal('profile');
+  };
+
+  const editModalTitle =
+    editTarget === 'artist'
+      ? 'Edit artist profile'
+      : editTarget === 'venue'
+        ? 'Edit venue profile'
+        : 'Edit profile';
+
   useEffect(() => {
     setIsManagementMode(Boolean(activeEntity));
   }, [activeEntity]);
 
   useEffect(() => {
     if (!activeEntity) return;
+    if (location.pathname.startsWith('/tabs/profile')) return;
     // Route to entity-specific profile pages when acting as an entity
     if (activeEntity.type === 'artist' && activeEntity.artist?.id) {
       const artistPath = `/tabs/artist/${activeEntity.artist.id}`;
@@ -359,7 +399,7 @@ const Profile: React.FC = () => {
     await refreshProfile();
     await loadProfileData();
     setMessage('Profile updated.');
-    setShowEdit(false);
+    closeEditModal();
     setSaving(false);
   };
 
@@ -389,6 +429,20 @@ const Profile: React.FC = () => {
     return IconCalendar; // Calendar for regular attendance
   };
 
+  const renderEmptyState = (
+    Icon: React.ComponentType<{ className?: string }>,
+    title: string,
+    description: string
+  ) => (
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(155deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.03)_46%,rgba(3,7,14,0.75)_100%)] p-5">
+      <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-white/85">
+        <Icon className="h-5 w-5" />
+      </div>
+      <h3 className="mt-3 font-display text-lg font-semibold text-white">{title}</h3>
+      <p className="mt-1 text-sm text-white/60">{description}</p>
+    </div>
+  );
+
   const renderTabContent = () => {
     if (loading) {
       return (
@@ -405,16 +459,11 @@ const Profile: React.FC = () => {
     // For artists, show their concerts in the "attended" tab
     if (profile?.role === 'artist' && selectedTab === 'attended') {
       return artistEvents.length === 0 ? (
-        <div className="space-y-3">
-          <p className="text-sm text-white/55">No shows here yet.</p>
-          <button
-            type="button"
-            className="bg-white/10 px-4 py-2 text-sm font-semibold text-white"
-            onClick={() => history.push('/tabs/map')}
-          >
-            Find a show
-          </button>
-        </div>
+        renderEmptyState(
+          IconPlay,
+          'No shows yet',
+          'Your upcoming and past shows will appear here.'
+        )
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {artistEvents.map(event => (
@@ -432,16 +481,11 @@ const Profile: React.FC = () => {
     // For venues, show all their events in the "attended" tab
     if (profile?.role === 'venue' && selectedTab === 'attended') {
       return venueEvents.length === 0 ? (
-        <div className="space-y-3">
-          <p className="text-sm text-white/55">No nights here yet.</p>
-          <button
-            type="button"
-            className="bg-white/10 px-4 py-2 text-sm font-semibold text-white"
-            onClick={() => history.push('/tabs/map')}
-          >
-            Explore nearby
-          </button>
-        </div>
+        renderEmptyState(
+          IconCalendar,
+          'No venue events yet',
+          'Published nights at your venue will appear here.'
+        )
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {venueEvents.map(event => (
@@ -459,16 +503,11 @@ const Profile: React.FC = () => {
     // For regular users or other roles
     if (selectedTab === 'liked') {
       return likedEvents.length === 0 ? (
-        <div className="space-y-3">
-          <p className="text-sm text-white/55">Nothing saved yet.</p>
-          <button
-            type="button"
-            className="bg-white/10 px-4 py-2 text-sm font-semibold text-white"
-            onClick={() => history.push('/tabs/discover')}
-          >
-            Discover concerts
-          </button>
-        </div>
+        renderEmptyState(
+          IconHeart,
+          'No saved events yet',
+          'When you save shows, they will appear here.'
+        )
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {likedEvents.map(event => (
@@ -485,16 +524,11 @@ const Profile: React.FC = () => {
 
     if (selectedTab === 'attended') {
       return attendedEvents.length === 0 ? (
-        <div className="space-y-3">
-          <p className="text-sm text-white/55">No nights here yet.</p>
-          <button
-            type="button"
-            className="bg-white/10 px-4 py-2 text-sm font-semibold text-white"
-            onClick={() => history.push('/tabs/map')}
-          >
-            Find a show
-          </button>
-        </div>
+        renderEmptyState(
+          getAttendedTabIcon(),
+          'No attended history yet',
+          'Concerts you attend will build your timeline here.'
+        )
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {attendedEvents.map(event => (
@@ -511,16 +545,11 @@ const Profile: React.FC = () => {
 
     // Moments tab - show all moments from events they participated in
     return posts.length === 0 ? (
-      <div className="space-y-3">
-        <p className="text-sm text-white/55">Your concert memories start after the show.</p>
-        <button
-          type="button"
-          className="bg-white/10 px-4 py-2 text-sm font-semibold text-white"
-          onClick={() => history.push('/tabs/events')}
-        >
-          Go to Main
-        </button>
-      </div>
+      renderEmptyState(
+        IconPlay,
+        'No moments yet',
+        'Upload your first moment after a show and it will appear here.'
+      )
     ) : (
       <div className="grid grid-cols-3 gap-2">
         {posts.map(post => (
@@ -548,44 +577,63 @@ const Profile: React.FC = () => {
       <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
             {!isManagementMode && (
               <div className="space-y-4 animate-fade-up motion-reduce:animate-none">
-                <div className="flex items-center gap-4">
-                  <div className="h-16 w-16 overflow-hidden bg-white/10">
-                    <img
-                      src={profile?.avatar_url || `https://picsum.photos/seed/${profile?.id}/120/120`}
-                      alt="Profile avatar"
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Profile</p>
-                    <h2 className="mt-2 font-display text-2xl font-bold text-white line-clamp-1">
-                      {profile?.username ? `@${profile.username}` : profile?.display_name || 'You'}
-                    </h2>
-                    <p className="mt-1 text-sm text-white/55">{profile?.primary_city || ''}</p>
-                  </div>
+                <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(155deg,rgba(255,107,74,0.2)_0%,rgba(255,107,74,0.08)_38%,rgba(9,13,22,0.95)_100%)] p-4 shadow-[0_18px_42px_rgba(2,6,13,0.35)]">
                   <button
                     type="button"
-                    className="px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
-                    onClick={() => setShowEdit(prev => !prev)}
+                    aria-label="Edit profile"
+                    className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white/80 transition hover:bg-white/15 hover:text-white"
+                    onClick={openContextualEditModal}
                   >
-                    Edit
+                    <IconEdit className="h-4 w-4" />
                   </button>
+                  <div className="flex items-start gap-4">
+                    <div className="h-20 w-20 overflow-hidden rounded-2xl border border-white/20 bg-white/10">
+                      <img
+                        src={profile?.avatar_url || `https://picsum.photos/seed/${profile?.id}/120/120`}
+                        alt="Profile avatar"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/65">
+                        Personal profile
+                      </p>
+                      <h2 className="mt-2 line-clamp-1 font-display text-2xl font-bold text-white">
+                        {profile?.username ? `@${profile.username}` : profile?.display_name || 'You'}
+                      </h2>
+                      <p className="mt-1 text-sm text-white/60">
+                        {profile?.primary_city || 'Set your city to improve recommendations'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-center">
+                      <p className="text-lg font-bold text-white">{posts.length}</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/55">Moments</p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-center">
+                      <p className="text-lg font-bold text-white">{likedEvents.length}</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/55">Saved</p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-center">
+                      <p className="text-lg font-bold text-white">{attendedEvents.length}</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/55">Attended</p>
+                    </div>
+                  </div>
                 </div>
-
-                <p className="text-sm text-white/70">Your concert memories live here.</p>
-
-                <button
-                  type="button"
-                  className="bg-white/10 px-4 py-3 text-sm font-semibold text-white"
-                  onClick={() => history.push('/tabs/discover')}
-                >
-                  Discover concerts
-                </button>
               </div>
             )}
 
             {isManagementMode && (
-              <div className="flex items-center gap-4 animate-fade-up motion-reduce:animate-none">
+              <div className="relative flex items-center gap-4 animate-fade-up motion-reduce:animate-none">
+                <button
+                  type="button"
+                  aria-label="Edit profile"
+                  className="absolute right-0 top-0 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white/80 transition hover:bg-white/15 hover:text-white"
+                  onClick={openContextualEditModal}
+                >
+                  <IconEdit className="h-4 w-4" />
+                </button>
                 <div className="h-16 w-16 overflow-hidden bg-white/10">
                   <img
                     src={
@@ -611,7 +659,7 @@ const Profile: React.FC = () => {
                     {activeEntity ? (activeEntity.type === 'artist' ? 'Managed artist' : 'Managed venue') : ''}
                   </p>
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="mr-10 flex flex-col gap-2">
                   {activeEntity?.type === 'artist' && activeEntity.artist?.id && (
                     <button
                       type="button"
@@ -630,13 +678,6 @@ const Profile: React.FC = () => {
                       View profile
                     </button>
                   )}
-                  <button
-                    type="button"
-                    className="px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
-                    onClick={() => setShowEdit(prev => !prev)}
-                  >
-                    Edit
-                  </button>
                 </div>
               </div>
             )}
@@ -664,8 +705,7 @@ const Profile: React.FC = () => {
 
             {profile?.role === 'artist' && (linkWebsite || linkInstagram || linkSpotify) && (
               <div
-                className="space-y-3 rounded-2xl bg-white/5 p-4"
-                style={{ animationDelay: '0.16s' }}
+                className="space-y-3 rounded-2xl bg-white/5 p-4 [animation-delay:160ms]"
               >
                 <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Artist links</p>
                 <div className="space-y-2 text-sm text-white/80">
@@ -705,8 +745,7 @@ const Profile: React.FC = () => {
 
             {profile?.role === 'venue' && displayVenue && (
               <div
-                className="space-y-3 rounded-2xl bg-white/5 p-4"
-                style={{ animationDelay: '0.16s' }}
+                className="space-y-3 rounded-2xl bg-white/5 p-4 [animation-delay:160ms]"
               >
                 <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Venue details</p>
                 <div className="space-y-2 text-sm text-white/80">
@@ -739,267 +778,8 @@ const Profile: React.FC = () => {
               </div>
             )}
 
-            {showEdit && (
-              <div
-                className="space-y-4 rounded-2xl bg-white/5 p-4"
-                style={{ animationDelay: '0.16s' }}
-              >
-                <label className="flex flex-col gap-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                    Display name
-                  </span>
-                  <input
-                    value={displayName}
-                    onChange={e => setDisplayName(e.target.value)}
-                    className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                  />
-                </label>
-                <label className="flex flex-col gap-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                    Username
-                  </span>
-                  <input
-                    value={username}
-                    onChange={e => setUsername(e.target.value)}
-                    className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                  />
-                </label>
-                <label className="flex flex-col gap-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                    Primary city
-                  </span>
-                  <input
-                    value={primaryCity}
-                    onChange={e => setPrimaryCity(e.target.value)}
-                    className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                  />
-                </label>
-                <label className="flex flex-col gap-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                    Bio
-                  </span>
-                  <textarea
-                    value={bio}
-                    onChange={e => setBio(e.target.value)}
-                    className="min-h-[96px] w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                  />
-                </label>
-                {isDev && (
-                  <label className="flex flex-col gap-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                      Role (dev)
-                    </span>
-                    <select
-                      value={role}
-                      onChange={e => setRole(e.target.value as ProfileRole)}
-                      className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/15"
-                    >
-                      <option value="user">User</option>
-                      <option value="artist">Artist</option>
-                      <option value="venue">Venue</option>
-                      <option value="label">Label</option>
-                    </select>
-                    <span className="text-xs text-white/60">
-                      Solo para testing. En prod queda bloqueado.
-                    </span>
-                  </label>
-                )}
-                {profile?.role === 'artist' && (
-                  <div className="space-y-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Artist links</p>
-                    <label className="flex flex-col gap-2">
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                        Website
-                      </span>
-                      <input
-                        value={linkWebsite}
-                        onChange={e => setLinkWebsite(e.target.value)}
-                        className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                        placeholder="https://your-site.com"
-                      />
-                    </label>
-                    <label className="flex flex-col gap-2">
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                        Instagram
-                      </span>
-                      <input
-                        value={linkInstagram}
-                        onChange={e => setLinkInstagram(e.target.value)}
-                        className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                        placeholder="https://instagram.com/you"
-                      />
-                    </label>
-                    <label className="flex flex-col gap-2">
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                        Spotify
-                      </span>
-                      <input
-                        value={linkSpotify}
-                        onChange={e => setLinkSpotify(e.target.value)}
-                        className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                        placeholder="https://open.spotify.com/artist/..."
-                      />
-                    </label>
-                  </div>
-                )}
-
-                {profile?.role === 'venue' && (
-                  <div className="space-y-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Venue management</p>
-                    {managedEntities.filter(e => e.type === 'venue').length === 0 ? (
-                      <p className="text-sm text-white/60">
-                        No managed venue place yet. Create or claim a venue to edit its details.
-                      </p>
-                    ) : (
-                      <>
-                        {managedEntities.filter(e => e.type === 'venue').length > 1 && (
-                          <label className="flex flex-col gap-2">
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                              Managed venue
-                            </span>
-                            <select
-                              value={selectedVenuePlaceId || ''}
-                              onChange={e => setSelectedVenuePlaceId(e.target.value || null)}
-                              className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/15"
-                            >
-                              {managedEntities
-                                .filter(e => e.type === 'venue')
-                                .map(ent => (
-                                  <option key={ent.venue?.id} value={ent.venue?.id}>
-                                    {ent.venue?.name}
-                                  </option>
-                                ))}
-                            </select>
-                          </label>
-                        )}
-                        <label className="flex flex-col gap-2">
-                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                            Venue name
-                          </span>
-                          <input
-                            value={venueName}
-                            onChange={e => setVenueName(e.target.value)}
-                            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                            placeholder="Venue name"
-                          />
-                        </label>
-                        <label className="flex flex-col gap-2">
-                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                            City
-                          </span>
-                          <input
-                            value={venueCity}
-                            onChange={e => setVenueCity(e.target.value)}
-                            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                            placeholder="City"
-                          />
-                        </label>
-                        <label className="flex flex-col gap-2">
-                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                            Venue type
-                          </span>
-                          <input
-                            value={venueType}
-                            onChange={e => setVenueType(e.target.value)}
-                            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                            placeholder="Club, hall, theatre..."
-                          />
-                        </label>
-                        <label className="flex flex-col gap-2">
-                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                            Capacity
-                          </span>
-                          <input
-                            value={venueCapacity}
-                            onChange={e => setVenueCapacity(e.target.value)}
-                            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                            placeholder="450"
-                          />
-                        </label>
-                        <label className="flex flex-col gap-2">
-                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                            Address
-                          </span>
-                          <input
-                            value={venueAddress}
-                            onChange={e => setVenueAddress(e.target.value)}
-                            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                            placeholder="Street address"
-                          />
-                        </label>
-                        <label className="flex flex-col gap-2">
-                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                            Website
-                          </span>
-                          <input
-                            value={venueWebsite}
-                            onChange={e => setVenueWebsite(e.target.value)}
-                            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                            placeholder="https://venue-site.com"
-                          />
-                        </label>
-                        <div className="grid grid-cols-2 gap-3">
-                          <label className="flex flex-col gap-2">
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                              Latitude
-                            </span>
-                            <input
-                              value={venueLatitude}
-                              onChange={e => setVenueLatitude(e.target.value)}
-                              className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/15"
-                            />
-                          </label>
-                          <label className="flex flex-col gap-2">
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                              Longitude
-                            </span>
-                            <input
-                              value={venueLongitude}
-                              onChange={e => setVenueLongitude(e.target.value)}
-                              className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/15"
-                            />
-                          </label>
-                        </div>
-                        <label className="flex flex-col gap-2">
-                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                            Venue photos (URLs)
-                          </span>
-                          <textarea
-                            value={venuePhotos}
-                            onChange={e => setVenuePhotos(e.target.value)}
-                            className="min-h-[96px] w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                            placeholder="One URL per line"
-                          />
-                        </label>
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {formError && <p className="text-sm text-rose-400">{formError}</p>}
-                {message && <p className="text-sm text-emerald-400">{message}</p>}
-
-                <button
-                  type="button"
-                  className="inline-flex w-full items-center justify-center bg-white/10 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-                  onClick={handleSave}
-                  disabled={saving}
-                >
-                  {saving ? 'Saving...' : 'Save changes'}
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex w-full items-center justify-center px-4 py-2 text-sm font-semibold text-white/70 transition hover:text-white"
-                  onClick={() => setShowEdit(false)}
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
-
             <div
-              className="flex gap-2 animate-fade-up motion-reduce:animate-none"
-              style={{ animationDelay: '0.16s' }}
+              className="flex gap-2 animate-fade-up motion-reduce:animate-none [animation-delay:160ms]"
             >
               <button
                 type="button"
@@ -1034,8 +814,7 @@ const Profile: React.FC = () => {
             </div>
 
             <div
-              className="animate-fade-up motion-reduce:animate-none"
-              style={{ animationDelay: '0.24s' }}
+              className="animate-fade-up motion-reduce:animate-none [animation-delay:240ms]"
             >
               {renderTabContent()}
             </div>
@@ -1045,7 +824,7 @@ const Profile: React.FC = () => {
 
             <button
               type="button"
-              className="inline-flex w-full items-center justify-center gap-2 bg-white/10 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="hidden w-full items-center justify-center gap-2 bg-white/10 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
               onClick={handleSignOut}
               disabled={signingOut}
             >
@@ -1053,6 +832,276 @@ const Profile: React.FC = () => {
               {signingOut ? 'Signing out...' : 'Log out'}
             </button>
       </div>
+
+      <IonModal isOpen={showEdit} onDidDismiss={closeEditModal}>
+        <IonContent fullscreen>
+          <div className="min-h-full bg-app-bg p-5">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="font-display text-lg font-bold text-white">{editModalTitle}</h2>
+              <button
+                type="button"
+                className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
+                onClick={closeEditModal}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mt-6 space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <label className="flex flex-col gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                  Display name
+                </span>
+                <input
+                  value={displayName}
+                  onChange={e => setDisplayName(e.target.value)}
+                  className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                />
+              </label>
+              <label className="flex flex-col gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                  Username
+                </span>
+                <input
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                  className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                />
+              </label>
+              <label className="flex flex-col gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                  Primary city
+                </span>
+                <input
+                  value={primaryCity}
+                  onChange={e => setPrimaryCity(e.target.value)}
+                  className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                />
+              </label>
+              <label className="flex flex-col gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                  Bio
+                </span>
+                <textarea
+                  value={bio}
+                  onChange={e => setBio(e.target.value)}
+                  className="min-h-[96px] w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                />
+              </label>
+              {isDev && (
+                <label className="flex flex-col gap-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                    Role (dev)
+                  </span>
+                  <select
+                    value={role}
+                    onChange={e => setRole(e.target.value as ProfileRole)}
+                    className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/15"
+                  >
+                    <option value="user">User</option>
+                    <option value="artist">Artist</option>
+                    <option value="venue">Venue</option>
+                    <option value="label">Label</option>
+                  </select>
+                  <span className="text-xs text-white/60">
+                    Solo para testing. En prod queda bloqueado.
+                  </span>
+                </label>
+              )}
+              {profile?.role === 'artist' && (
+                <div className="space-y-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Artist links</p>
+                  <label className="flex flex-col gap-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                      Website
+                    </span>
+                    <input
+                      value={linkWebsite}
+                      onChange={e => setLinkWebsite(e.target.value)}
+                      className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                      placeholder="https://your-site.com"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                      Instagram
+                    </span>
+                    <input
+                      value={linkInstagram}
+                      onChange={e => setLinkInstagram(e.target.value)}
+                      className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                      placeholder="https://instagram.com/you"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                      Spotify
+                    </span>
+                    <input
+                      value={linkSpotify}
+                      onChange={e => setLinkSpotify(e.target.value)}
+                      className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                      placeholder="https://open.spotify.com/artist/..."
+                    />
+                  </label>
+                </div>
+              )}
+
+              {profile?.role === 'venue' && (
+                <div className="space-y-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Venue management</p>
+                  {managedEntities.filter(e => e.type === 'venue').length === 0 ? (
+                    <p className="text-sm text-white/60">
+                      No managed venue place yet. Create or claim a venue to edit its details.
+                    </p>
+                  ) : (
+                    <>
+                      {managedEntities.filter(e => e.type === 'venue').length > 1 && (
+                        <label className="flex flex-col gap-2">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                            Managed venue
+                          </span>
+                          <select
+                            value={selectedVenuePlaceId || ''}
+                            onChange={e => setSelectedVenuePlaceId(e.target.value || null)}
+                            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/15"
+                          >
+                            {managedEntities
+                              .filter(e => e.type === 'venue')
+                              .map(ent => (
+                                <option key={ent.venue?.id} value={ent.venue?.id}>
+                                  {ent.venue?.name}
+                                </option>
+                              ))}
+                          </select>
+                        </label>
+                      )}
+                      <label className="flex flex-col gap-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                          Venue name
+                        </span>
+                        <input
+                          value={venueName}
+                          onChange={e => setVenueName(e.target.value)}
+                          className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                          placeholder="Venue name"
+                        />
+                      </label>
+                      <label className="flex flex-col gap-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                          City
+                        </span>
+                        <input
+                          value={venueCity}
+                          onChange={e => setVenueCity(e.target.value)}
+                          className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                          placeholder="City"
+                        />
+                      </label>
+                      <label className="flex flex-col gap-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                          Venue type
+                        </span>
+                        <input
+                          value={venueType}
+                          onChange={e => setVenueType(e.target.value)}
+                          className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                          placeholder="Club, hall, theatre..."
+                        />
+                      </label>
+                      <label className="flex flex-col gap-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                          Capacity
+                        </span>
+                        <input
+                          value={venueCapacity}
+                          onChange={e => setVenueCapacity(e.target.value)}
+                          className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                          placeholder="450"
+                        />
+                      </label>
+                      <label className="flex flex-col gap-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                          Address
+                        </span>
+                        <input
+                          value={venueAddress}
+                          onChange={e => setVenueAddress(e.target.value)}
+                          className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                          placeholder="Street address"
+                        />
+                      </label>
+                      <label className="flex flex-col gap-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                          Website
+                        </span>
+                        <input
+                          value={venueWebsite}
+                          onChange={e => setVenueWebsite(e.target.value)}
+                          className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                          placeholder="https://venue-site.com"
+                        />
+                      </label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <label className="flex flex-col gap-2">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                            Latitude
+                          </span>
+                          <input
+                            value={venueLatitude}
+                            onChange={e => setVenueLatitude(e.target.value)}
+                            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/15"
+                          />
+                        </label>
+                        <label className="flex flex-col gap-2">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                            Longitude
+                          </span>
+                          <input
+                            value={venueLongitude}
+                            onChange={e => setVenueLongitude(e.target.value)}
+                            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/15"
+                          />
+                        </label>
+                      </div>
+                      <label className="flex flex-col gap-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                          Venue photos (URLs)
+                        </span>
+                        <textarea
+                          value={venuePhotos}
+                          onChange={e => setVenuePhotos(e.target.value)}
+                          className="min-h-[96px] w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                          placeholder="One URL per line"
+                        />
+                      </label>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {formError && <p className="text-sm text-rose-400">{formError}</p>}
+              {message && <p className="text-sm text-emerald-400">{message}</p>}
+
+              <button
+                type="button"
+                className="inline-flex w-full items-center justify-center rounded-xl bg-[#ff6b4a] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving ? 'Saving...' : 'Save changes'}
+              </button>
+              <button
+                type="button"
+                className="inline-flex w-full items-center justify-center rounded-xl border border-white/20 px-4 py-3 text-sm font-semibold text-white/75 transition hover:text-white"
+                onClick={closeEditModal}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </IonContent>
+      </IonModal>
     </AppShell>
   );
 };

@@ -108,6 +108,8 @@ const Map: React.FC = () => {
     setShowPast,
     filterToday,
     filterTomorrow,
+    toggleToday,
+    toggleTomorrow,
     filterDate,
     setFilterDate,
     filterNow,
@@ -505,8 +507,8 @@ const Map: React.FC = () => {
               showVenues={showVenues}
               onToggleUpcoming={() => setShowUpcoming((prev: boolean) => !prev)}
               onTogglePast={() => setShowPast((prev: boolean) => !prev)}
-              onToggleToday={() => {}}
-              onToggleTomorrow={() => {}}
+              onToggleToday={toggleToday}
+              onToggleTomorrow={toggleTomorrow}
               onDateChange={value => {
                 setFilterDate(value);
                 if (value) {

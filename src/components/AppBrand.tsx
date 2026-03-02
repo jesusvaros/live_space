@@ -7,12 +7,7 @@ const AppBrand: React.FC = () => {
         className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-[10px] border border-white/25 bg-black/30 text-white shadow-[0_8px_22px_rgba(255,141,64,0.32)]"
         aria-hidden="true"
       >
-        <span
-          className="absolute inset-0"
-          style={{
-            background: 'linear-gradient(135deg, #ff8f4e 0%, #ffd166 48%, #6fd1c8 100%)',
-          }}
-        />
+        <span className="absolute inset-0 bg-[linear-gradient(135deg,#ff8f4e_0%,#ffd166_48%,#6fd1c8_100%)]" />
         <svg
           viewBox="0 0 24 24"
           className="relative z-10 h-4 w-4 text-[#12151f]"
@@ -26,14 +21,7 @@ const AppBrand: React.FC = () => {
           <path d="M9 6.5v11M15 6.5v11" />
         </svg>
       </span>
-      <span
-        className="font-display text-sm font-semibold tracking-[0.08em] text-transparent"
-        style={{
-          backgroundImage: 'linear-gradient(90deg, #ffe5bf 0%, #ffd277 38%, #ff9f54 76%, #ff7f52 100%)',
-          WebkitBackgroundClip: 'text',
-          backgroundClip: 'text',
-        }}
-      >
+      <span className="bg-[linear-gradient(90deg,#ffe5bf_0%,#ffd277_38%,#ff9f54_76%,#ff7f52_100%)] bg-clip-text font-display text-sm font-semibold tracking-[0.08em] text-transparent">
         SpacioMusical
       </span>
     </div>

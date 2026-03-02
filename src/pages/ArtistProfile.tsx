@@ -263,7 +263,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
               playedCount={playedCount}
               externalLinks={externalLinks}
               heroStyle={heroBackground}
-              onEdit={() => history.push('/tabs/profile')}
+              onEdit={() => history.push('/tabs/profile?edit=artist')}
             />
             <ArtistTabs activeTab={activeTab} onSelect={key => setActiveTab(key)} />
             <div>{renderTabContent()}</div>
@@ -292,7 +292,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
             externalLinks={externalLinks}
             heroStyle={heroBackground}
             immersive
-            onEdit={() => history.push('/tabs/profile')}
+            onEdit={() => history.push('/tabs/profile?edit=artist')}
           />
 
           <div className="relative z-10 -mt-16 rounded-t-[28px] border-t border-white/10 bg-app-bg backdrop-blur-xl sm:-mt-20">

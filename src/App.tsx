@@ -30,7 +30,7 @@ import Admin from './pages/Admin';
 
 const App: React.FC = () => {
   const { user, loading } = useAuth();
-  const { activeWorkspace, loading: workspaceLoading } = useWorkspace();
+  const { activeWorkspace } = useWorkspace();
   const activeArtistId = activeWorkspace?.type === 'artist'
     ? (activeWorkspace.artist as any)?.id || (activeWorkspace.artist as any)?.artist_id || null
     : null;
@@ -45,19 +45,6 @@ const App: React.FC = () => {
         : '/tabs/profile';
   const isArtistWorkspace = activeWorkspace?.type === 'artist';
   const mainTabHref = isArtistWorkspace ? '/tabs/mySpace' : '/tabs/events';
-  const tabBarStyle: { [key: string]: string } = {
-    '--background': 'rgba(11, 11, 13, 0.92)',
-    '--border': 'none',
-    '--color': 'rgba(255, 255, 255, 0.62)',
-    '--color-selected': '#ffffff',
-    '--padding-top': '6px',
-    '--padding-bottom': '6px',
-    '--padding-start': '10px',
-    '--padding-end': '10px',
-    '--border-radius': '0px',
-    '--background-focused': 'rgba(255, 107, 74, 0.16)',
-  };
-
   const showOverlay = loading && !user;
 
   return (
@@ -119,8 +106,12 @@ const App: React.FC = () => {
                     <Route
                       exact
                       path="/tabs/profile"
-                      render={() => {
-                        console.log('[profile-route] workspace loading:', workspaceLoading, 'workspace:', activeWorkspace);
+                      render={({ location: routeLocation }) => {
+                        const routeParams = new URLSearchParams(routeLocation.search);
+                        const keepProfileOpen = routeParams.has('edit');
+                        if (keepProfileOpen) {
+                          return <Profile />;
+                        }
                         if (activeWorkspace?.type === 'artist' && activeArtistId) {
                           return <Redirect to={`/tabs/artist/${activeArtistId}`} />;
                         }
@@ -136,8 +127,7 @@ const App: React.FC = () => {
                   </IonRouterOutlet>
                   <IonTabBar
                     slot="bottom"
-                    className="h-16 px-2 py-2"
-                    style={tabBarStyle}
+                    className="h-16 px-2 py-2 [--background:rgba(11,11,13,0.92)] [--border:none] [--color:rgba(255,255,255,0.62)] [--color-selected:#ffffff] [--padding-top:6px] [--padding-bottom:6px] [--padding-start:10px] [--padding-end:10px] [--border-radius:0px] [--background-focused:rgba(255,107,74,0.16)]"
                   >
                     <IonTabButton tab="main" href={mainTabHref} aria-label="Main">
                       <IconCalendar className="h-5 w-5" />
