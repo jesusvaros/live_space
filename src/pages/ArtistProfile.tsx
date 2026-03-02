@@ -5,7 +5,6 @@ import { supabase } from '../lib/supabase';
 import { PostWithSetlist } from '../lib/types';
 import AppShell from '../components/AppShell';
 import { useWorkspace } from '../contexts/WorkspaceContext';
-import { useAuth } from '../contexts/AuthContext';
 import { ArtistProfileArtist, ArtistProfileEvent } from '../components/artist/types';
 import ArtistHero from '../components/artist/ArtistHero';
 import ArtistTabs, { ArtistTabKey } from '../components/artist/ArtistTabs';
@@ -26,7 +25,6 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
   const id = artistId || routeId;
   const history = useHistory();
   const { managedEntities, activeWorkspace } = useWorkspace();
-  const { user } = useAuth();
 
   const [artist, setArtist] = useState<ArtistProfileArtist | null>(null);
   const [upcomingShows, setUpcomingShows] = useState<ArtistProfileEvent[]>([]);
@@ -168,12 +166,12 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
 
   const heroBackground = artist?.avatar_url
     ? {
-        backgroundColor: '#0b0b0d',
-        backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.68) 70%, #0b0b0d 100%), url(${artist.avatar_url})`,
+        backgroundColor: '#06080d',
+        backgroundImage: `url(${artist.avatar_url})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       }
-    : { backgroundColor: '#0b0b0d' };
+    : { backgroundColor: '#06080d' };
 
   const handleOpenMap = () => {
     if (!artist) return;
@@ -248,51 +246,66 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
     }
   };
 
-  const content = (
-    <>
+  if (embedded) {
+    return (
+      <div className="p-4">
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <IonSpinner name="crescent" />
+          </div>
+        )}
+        {!loading && error && <p className="text-sm text-rose-400">{error}</p>}
+        {!loading && artist && (
+          <div className="space-y-6">
+            <ArtistHero
+              artist={artist}
+              isManager={isManager}
+              playedCount={playedCount}
+              externalLinks={externalLinks}
+              heroStyle={heroBackground}
+              onEdit={() => history.push('/tabs/profile')}
+            />
+            <ArtistTabs activeTab={activeTab} onSelect={key => setActiveTab(key)} />
+            <div>{renderTabContent()}</div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <AppShell contentWrapperClassName={false}>
       {loading && (
         <div className="flex items-center justify-center py-12">
           <IonSpinner name="crescent" />
         </div>
       )}
 
-      {!loading && error && (
-        <p className="text-sm text-rose-400">{error}</p>
-      )}
+      {!loading && error && <div className="p-4"><p className="text-sm text-rose-400">{error}</p></div>}
 
       {!loading && artist && (
-        <div className="space-y-8">
+        <>
           <ArtistHero
             artist={artist}
             isManager={isManager}
             playedCount={playedCount}
             externalLinks={externalLinks}
             heroStyle={heroBackground}
+            immersive
             onEdit={() => history.push('/tabs/profile')}
           />
 
-          <div className="sticky top-[72px] z-10 -mx-4 bg-app-bg px-4 py-3">
-            <ArtistTabs
-              activeTab={activeTab}
-              onSelect={key => setActiveTab(key)}
-            />
+          <div className="relative z-10 -mt-16 rounded-t-[28px] border-t border-white/10 bg-app-bg backdrop-blur-xl sm:-mt-20">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/[0.03] to-transparent" />
+            <div className="relative flex flex-col gap-6 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
+              <div className="sticky top-[72px] z-20 -mx-4 border-b border-white/10 bg-app-bg/95 px-4 py-2 backdrop-blur-xl">
+                <ArtistTabs activeTab={activeTab} onSelect={key => setActiveTab(key)} />
+              </div>
+              <div>{renderTabContent()}</div>
+            </div>
           </div>
-
-          <div>{renderTabContent()}</div>
-        </div>
+        </>
       )}
-    </>
-  );
-
-  if (embedded) {
-    return <div className="p-4">{content}</div>;
-  }
-
-  return (
-    <AppShell>
-      <div className="p-4">
-        {content}
-      </div>
     </AppShell>
   );
 };

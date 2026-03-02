@@ -13,9 +13,10 @@ export type AppHeaderProps = {
 const AppHeader: React.FC<AppHeaderProps> = ({ title, rightSlot, showBack }) => {
   const history = useHistory();
   const location = useLocation();
+  const tabsRootPaths = ['/tabs/feed', '/tabs/mySpace', '/tabs/events', '/tabs/map', '/tabs/upload', '/tabs/profile', '/tabs/discover'];
 
   // Determine if we should show back button
-  const shouldShowBack = showBack ?? !['/tabs/feed', '/tabs/events', '/tabs/map', '/tabs/upload', '/tabs/profile', '/tabs/discover '].includes(location.pathname);
+  const shouldShowBack = showBack ?? !tabsRootPaths.includes(location.pathname);
 
   const handleBrandClick = () => {
     history.push('/');
@@ -23,10 +24,15 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, rightSlot, showBack }) => 
 
   const handleBackClick = () => {
     history.goBack();
+    window.setTimeout(() => {
+      if (window.location.pathname === '/') {
+        history.replace('/tabs/events');
+      }
+    }, 120);
   };
 
   return (
-    <header className="sticky top-0 z-20 bg-app-bg px-4 py-3 pt-[calc(12px+env(safe-area-inset-top,0px))]">
+    <header className="sticky top-0 z-[1200] bg-app-bg px-4 py-3 pt-[calc(12px+env(safe-area-inset-top,0px))]">
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-1 items-center gap-2">
           {shouldShowBack ? (

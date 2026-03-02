@@ -60,10 +60,10 @@ const WorkspaceSwitcher: React.FC = () => {
       {isOpen && (
         <>
           <div 
-            className="fixed inset-0 z-30" 
+            className="fixed inset-0 z-[1300]" 
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute right-0 top-full z-40 mt-2 w-64 overflow-hidden rounded-xl bg-black/95">
+          <div className="absolute right-0 top-full z-[1310] mt-2 w-64 overflow-hidden rounded-xl border border-white/10 bg-black/95 shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
             <div className="px-4 pb-2 pt-4 text-[10px] font-semibold uppercase tracking-[0.24em] text-white/40">
               Personal
             </div>

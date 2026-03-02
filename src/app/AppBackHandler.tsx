@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react';
 import { useIonRouter } from '@ionic/react';
 import { useLocation } from 'react-router-dom';
 
-const HOME_PATH = '/tabs/events';
+const HOME_PATHS = ['/tabs/events', '/tabs/mySpace'];
+const DEFAULT_HOME_PATH = '/tabs/events';
 
 const AppBackHandler = () => {
   const router = useIonRouter();
@@ -22,8 +23,8 @@ const AppBackHandler = () => {
           return;
         }
 
-        if (pathRef.current !== HOME_PATH) {
-          router.push(HOME_PATH, 'root', 'replace');
+        if (!HOME_PATHS.includes(pathRef.current)) {
+          router.push(DEFAULT_HOME_PATH, 'root', 'replace');
         }
       });
     };

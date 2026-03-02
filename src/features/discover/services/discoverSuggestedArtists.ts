@@ -4,6 +4,7 @@ import { EventListItem } from '../../events/types';
 import { calculateDistanceKm, toNumber } from '../../events/utils';
 import { fetchUpcomingEvents } from './discoverUpcomingEvents';
 import { DiscoverArtist, SuggestedSection } from '../types';
+import { withArtistRecentPosters } from './discoverRecentPosters';
 
 const SUGGESTED_LIMIT = 10;
 const NEARBY_RADIUS_KM = 50;
@@ -48,7 +49,8 @@ const fetchArtistsByIds = async (artistIds: string[]) => {
   );
   const byId = new Map<string, any>();
   for (const row of data as any[]) byId.set((row as any).artist_id, row);
-  return artistIds.map(id => byId.get(id)).filter(Boolean).map(mapArtist) as DiscoverArtist[];
+  const artists = artistIds.map(id => byId.get(id)).filter(Boolean).map(mapArtist) as DiscoverArtist[];
+  return withArtistRecentPosters(artists);
 };
 
 const topArtistIdsFromEvents = (events: EventListItem[]) => {
@@ -107,7 +109,10 @@ export const getSuggestedArtists = async (options?: { location?: { lat: number; 
     },
     { ttlMs: 60_000 }
   );
-  if (recentArtists.length > 0) sections.push({ key: 'recently_active', title: 'Recently active', items: recentArtists });
+  const recentArtistsWithPosters = await withArtistRecentPosters(recentArtists);
+  if (recentArtistsWithPosters.length > 0) {
+    sections.push({ key: 'recently_active', title: 'Recently active', items: recentArtistsWithPosters });
+  }
 
   const seen = new Set<string>();
   return sections.map(section => ({

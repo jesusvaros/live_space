@@ -37,11 +37,11 @@ const MapPreviewSection: React.FC<MapPreviewSectionProps> = ({ center, pins, onO
   }, [center, pins]);
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
       <button
         type="button"
         onClick={onOpenMap}
-        className="relative w-full overflow-hidden text-left"
+        className="relative w-full overflow-hidden rounded-2xl border border-white/10 text-left"
       >
         <div className="relative h-44 w-full overflow-hidden bg-black">
           <div className="pointer-events-none absolute inset-0">
@@ -77,8 +77,8 @@ const MapPreviewSection: React.FC<MapPreviewSectionProps> = ({ center, pins, onO
               ))}
             </MapContainer>
           </div>
-          <div className="absolute inset-x-0 bottom-0 bg-black/70 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Map</p>
+          <div className="absolute inset-x-0 bottom-0 bg-black/65 p-4 backdrop-blur-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/65">Map</p>
             <p className="mt-1 text-sm font-semibold text-white/90">
               {pins.length > 0 ? `${pins.length} nearby` : 'Open the map to explore'}
             </p>

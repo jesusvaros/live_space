@@ -8,7 +8,7 @@ type MomentsSectionProps = {
 };
 
 const MomentsSection: React.FC<MomentsSectionProps> = ({ moments, isManager, onSelect }) => (
-  <section className="space-y-3">
+  <section className="animate-fade-up space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 motion-reduce:animate-none">
     <div className="flex items-center justify-between">
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-white/60">Moments</p>
@@ -23,7 +23,7 @@ const MomentsSection: React.FC<MomentsSectionProps> = ({ moments, isManager, onS
     </div>
     {moments.length === 0 ? (
       isManager ? (
-        <div className="rounded-2xl bg-white/5 p-5 text-white/80">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-white/80">
           <p className="font-semibold text-white">No moments yet — share your first live moment</p>
           <p className="mt-1 text-sm text-white/70">
             Upload a clip or photo from a recent performance.
@@ -37,7 +37,7 @@ const MomentsSection: React.FC<MomentsSectionProps> = ({ moments, isManager, onS
             key={moment.id}
             type="button"
             onClick={() => onSelect(moment.id)}
-            className="relative aspect-square overflow-hidden bg-black/30"
+            className="relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-black/30"
           >
             {moment.media_type === 'video' ? (
               <video className="h-full w-full object-cover" muted>

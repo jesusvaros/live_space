@@ -61,121 +61,130 @@ const DiscoverScreen: React.FC = () => {
   }, [tab]);
 
   return (
-    <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
-      <header className="space-y-2">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Discover</p>
-        <h2 className="font-display text-3xl font-bold text-white">{tab === 'artists' ? 'Artists' : 'Venues'}</h2>
-        <p className="text-sm text-white/55">{headerSubtitle}</p>
-      </header>
+    <div className="relative min-h-full">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-[radial-gradient(circle_at_14%_2%,rgba(255,107,74,0.2),transparent_58%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-[radial-gradient(circle_at_88%_7%,rgba(122,167,255,0.14),transparent_62%)]" />
 
-      <DiscoverSearchBar
-        value={query}
-        placeholder="Search artists or venues"
-        onChange={setQuery}
-        onClear={() => setQuery('')}
-      />
+      <div className="relative z-10 flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
+        <header className="rounded-2xl border border-white/10 bg-[linear-gradient(140deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02)_55%,rgba(255,107,74,0.08))] p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/65">Discover</p>
+          <h2 className="mt-2 font-display text-3xl font-bold text-white">
+            {tab === 'artists' ? 'Artists' : 'Venues'}
+          </h2>
+          <p className="mt-1 text-sm text-white/65">{headerSubtitle}</p>
+        </header>
 
-      <DiscoverSegmentedControl value={tab} onChange={setTab} />
+        <DiscoverSearchBar
+          value={query}
+          placeholder="Search artists or venues"
+          onChange={setQuery}
+          onClear={() => setQuery('')}
+        />
 
-      {loading && <DiscoverSkeletonList rows={6} />}
+        <DiscoverSegmentedControl value={tab} onChange={setTab} />
 
-      {!loading && tab === 'artists' && (
-        <>
-          {isSearching ? (
-            artists.length === 0 ? (
-              <DiscoverEmptyState
-                title={`No results for "${debouncedQuery.trim()}"`}
-                description="Try a different spelling or search by city."
-                actionLabel="Clear search"
-                onAction={() => setQuery('')}
-              />
-            ) : (
-              <div className="space-y-3">
-                {artists.map(artist => (
-                  <ArtistRow
-                    key={artist.id}
-                    artist={artist}
-                    canFollow={canFollow}
-                    isFollowing={isFollowing(artist.subject_id)}
-                    followLoading={isToggling(artist.subject_id)}
-                    onToggleFollow={() => onToggleFollow(artist.subject_id)}
-                    onOpenProfile={() => history.push(`/artist/${artist.id}`)}
+        <div className="space-y-4">
+          {loading && <DiscoverSkeletonList rows={6} />}
+
+          {!loading && tab === 'artists' && (
+            <>
+              {isSearching ? (
+                artists.length === 0 ? (
+                  <DiscoverEmptyState
+                    title={`No results for "${debouncedQuery.trim()}"`}
+                    description="Try a different spelling or search by city."
+                    actionLabel="Clear search"
+                    onAction={() => setQuery('')}
                   />
-                ))}
-              </div>
-            )
-          ) : suggestedArtistSections.length === 0 ? (
-            <DiscoverEmptyState
-              title="No artist suggestions yet"
-              description="Search by name to find an artist."
-            />
-          ) : (
-            <SuggestedSectionList
-              sections={suggestedArtistSections}
-              renderItem={artist => (
-                <ArtistRow
-                  key={(artist as DiscoverArtist).id}
-                  artist={artist as DiscoverArtist}
-                  canFollow={canFollow}
-                  isFollowing={isFollowing((artist as DiscoverArtist).subject_id)}
-                  followLoading={isToggling((artist as DiscoverArtist).subject_id)}
-                  onToggleFollow={() => onToggleFollow((artist as DiscoverArtist).subject_id)}
-                  onOpenProfile={() => history.push(`/artist/${(artist as DiscoverArtist).id}`)}
+                ) : (
+                  <div className="space-y-3">
+                    {artists.map(artist => (
+                      <ArtistRow
+                        key={artist.id}
+                        artist={artist}
+                        canFollow={canFollow}
+                        isFollowing={isFollowing(artist.subject_id)}
+                        followLoading={isToggling(artist.subject_id)}
+                        onToggleFollow={() => onToggleFollow(artist.subject_id)}
+                        onOpenProfile={() => history.push(`/artist/${artist.id}`)}
+                      />
+                    ))}
+                  </div>
+                )
+              ) : suggestedArtistSections.length === 0 ? (
+                <DiscoverEmptyState
+                  title="No artist suggestions yet"
+                  description="Search by name to find an artist."
+                />
+              ) : (
+                <SuggestedSectionList
+                  sections={suggestedArtistSections}
+                  renderItem={artist => (
+                    <ArtistRow
+                      key={(artist as DiscoverArtist).id}
+                      artist={artist as DiscoverArtist}
+                      canFollow={canFollow}
+                      isFollowing={isFollowing((artist as DiscoverArtist).subject_id)}
+                      followLoading={isToggling((artist as DiscoverArtist).subject_id)}
+                      onToggleFollow={() => onToggleFollow((artist as DiscoverArtist).subject_id)}
+                      onOpenProfile={() => history.push(`/artist/${(artist as DiscoverArtist).id}`)}
+                    />
+                  )}
                 />
               )}
-            />
+            </>
           )}
-        </>
-      )}
 
-      {!loading && tab === 'venues' && (
-        <>
-          {isSearching ? (
-            venues.length === 0 ? (
-              <DiscoverEmptyState
-                title={`No results for "${debouncedQuery.trim()}"`}
-                description="Try a different spelling or search by city."
-                actionLabel="Clear search"
-                onAction={() => setQuery('')}
-              />
-            ) : (
-              <div className="space-y-3">
-                {venues.map(venue => (
-                  <VenueRow
-                    key={venue.id}
-                    venue={venue}
-                    canFollow={canFollow}
-                    isFollowing={isFollowing(venue.subject_id)}
-                    followLoading={isToggling(venue.subject_id)}
-                    onToggleFollow={() => onToggleFollow(venue.subject_id)}
-                    onOpenProfile={() => history.push(`/venue/${venue.id}`)}
+          {!loading && tab === 'venues' && (
+            <>
+              {isSearching ? (
+                venues.length === 0 ? (
+                  <DiscoverEmptyState
+                    title={`No results for "${debouncedQuery.trim()}"`}
+                    description="Try a different spelling or search by city."
+                    actionLabel="Clear search"
+                    onAction={() => setQuery('')}
                   />
-                ))}
-              </div>
-            )
-          ) : suggestedVenueSections.length === 0 ? (
-            <DiscoverEmptyState
-              title="No venue suggestions yet"
-              description="Search by name to find a venue."
-            />
-          ) : (
-            <SuggestedSectionList
-              sections={suggestedVenueSections}
-              renderItem={venue => (
-                <VenueRow
-                  key={(venue as DiscoverVenue).id}
-                  venue={venue as DiscoverVenue}
-                  canFollow={canFollow}
-                  isFollowing={isFollowing((venue as DiscoverVenue).subject_id)}
-                  followLoading={isToggling((venue as DiscoverVenue).subject_id)}
-                  onToggleFollow={() => onToggleFollow((venue as DiscoverVenue).subject_id)}
-                  onOpenProfile={() => history.push(`/venue/${(venue as DiscoverVenue).id}`)}
+                ) : (
+                  <div className="space-y-3">
+                    {venues.map(venue => (
+                      <VenueRow
+                        key={venue.id}
+                        venue={venue}
+                        canFollow={canFollow}
+                        isFollowing={isFollowing(venue.subject_id)}
+                        followLoading={isToggling(venue.subject_id)}
+                        onToggleFollow={() => onToggleFollow(venue.subject_id)}
+                        onOpenProfile={() => history.push(`/venue/${venue.id}`)}
+                      />
+                    ))}
+                  </div>
+                )
+              ) : suggestedVenueSections.length === 0 ? (
+                <DiscoverEmptyState
+                  title="No venue suggestions yet"
+                  description="Search by name to find a venue."
+                />
+              ) : (
+                <SuggestedSectionList
+                  sections={suggestedVenueSections}
+                  renderItem={venue => (
+                    <VenueRow
+                      key={(venue as DiscoverVenue).id}
+                      venue={venue as DiscoverVenue}
+                      canFollow={canFollow}
+                      isFollowing={isFollowing((venue as DiscoverVenue).subject_id)}
+                      followLoading={isToggling((venue as DiscoverVenue).subject_id)}
+                      onToggleFollow={() => onToggleFollow((venue as DiscoverVenue).subject_id)}
+                      onOpenProfile={() => history.push(`/venue/${(venue as DiscoverVenue).id}`)}
+                    />
+                  )}
                 />
               )}
-            />
+            </>
           )}
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 };

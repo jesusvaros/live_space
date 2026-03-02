@@ -9,7 +9,7 @@ import {
 } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
 import { Redirect, Route } from 'react-router-dom';
-import { IconCalendar, IconMap, IconUser, IconCompass } from './components/icons';
+import { IconCalendar, IconMap, IconUser, IconCompass, IconPlus } from './components/icons';
 import { useAuth } from './contexts/AuthContext';
 import { useWorkspace } from './contexts/WorkspaceContext';
 import AppBackHandler from './app/AppBackHandler';
@@ -46,6 +46,8 @@ const App: React.FC = () => {
       : activeWorkspace?.type === 'venue' && activeVenueId
         ? `/tabs/venue/${activeVenueId}`
         : '/tabs/profile';
+  const isArtistWorkspace = activeWorkspace?.type === 'artist';
+  const mainTabHref = isArtistWorkspace ? '/tabs/mySpace' : '/tabs/events';
   const tabBarStyle: { [key: string]: string } = {
     '--background': 'rgba(11, 11, 13, 0.92)',
     '--border': 'none',
@@ -69,7 +71,7 @@ const App: React.FC = () => {
           <Route
             exact
             path="/welcome"
-            render={() => (!loading && !user ? <Welcome /> : <Redirect to="/tabs/events" />)}
+            render={() => (!loading && !user ? <Welcome /> : <Redirect to={mainTabHref} />)}
           />
           <Route exact path="/event/:id" component={EventDetail} />
           <Route exact path="/profile/:id" component={ProfileDetail} />
@@ -90,7 +92,18 @@ const App: React.FC = () => {
           <Route exact path="/admin/create-venue" component={AdminCreateVenue} />
           <Route exact path="/admin/access-grants" component={AdminAccessList} />
           <Route exact path="/reset" component={ResetPassword} />
-          <Route exact path="/create-event" component={CreateEventPage} />
+          <Route
+            exact
+            path="/create-event"
+            render={({ location }) => (
+              <Redirect
+                to={{
+                  pathname: '/tabs/create-event',
+                  state: location.state,
+                }}
+              />
+            )}
+          />
           <Route
             path="/tabs"
             render={() =>
@@ -100,6 +113,8 @@ const App: React.FC = () => {
                 <IonTabs>
                   <IonRouterOutlet>
                     <Route exact path="/tabs/feed" component={Feed} />
+                    <Route exact path="/tabs/mySpace" component={Feed} />
+                    <Route exact path="/tabs/create-event" component={CreateEventPage} />
                     <Route exact path="/tabs/map" component={Map} />
                     <Route exact path="/tabs/discover" component={Discover} />
                     <Route exact path="/tabs/events" component={Events} />
@@ -119,21 +134,28 @@ const App: React.FC = () => {
                     />
                     <Route exact path="/tabs/artist/:id" component={ArtistProfile} />
                     <Route exact path="/tabs/venue/:id" component={VenueDetail} />
-                    <Route exact path="/tabs" render={() => <Redirect to="/tabs/events" />} />
+                    <Route exact path="/tabs" render={() => <Redirect to={mainTabHref} />} />
                   </IonRouterOutlet>
                   <IonTabBar
                     slot="bottom"
                     className="h-16 px-2 py-2"
                     style={tabBarStyle}
                   >
-                    <IonTabButton tab="events" href="/tabs/events">
+                    <IonTabButton tab="main" href={mainTabHref}>
                       <IconCalendar className="h-5 w-5" />
                       <span className="text-[11px] uppercase tracking-[0.12em]">Main</span>
                     </IonTabButton>
-                    <IonTabButton tab="discover" href="/tabs/discover">
-                      <IconCompass className="h-5 w-5" />
-                      <span className="text-[11px] uppercase tracking-[0.12em]">Discover</span>
-                    </IonTabButton>
+                    {isArtistWorkspace ? (
+                      <IonTabButton tab="create-event" href="/tabs/create-event">
+                        <IconPlus className="h-5 w-5" />
+                        <span className="text-[11px] uppercase tracking-[0.12em]">Create Event</span>
+                      </IonTabButton>
+                    ) : (
+                      <IonTabButton tab="discover" href="/tabs/discover">
+                        <IconCompass className="h-5 w-5" />
+                        <span className="text-[11px] uppercase tracking-[0.12em]">Discover</span>
+                      </IonTabButton>
+                    )}
                     <IonTabButton tab="map" href="/tabs/map">
                       <IconMap className="h-5 w-5" />
                       <span className="text-[11px] uppercase tracking-[0.12em]">Map</span>
@@ -150,7 +172,7 @@ const App: React.FC = () => {
           <Route
             exact
             path="/"
-            render={() => <Redirect to={loading || user ? "/tabs/events" : "/welcome"} />}
+            render={() => <Redirect to={loading || user ? mainTabHref : "/welcome"} />}
           />
         </IonRouterOutlet>
       </IonReactRouter>

@@ -17,7 +17,7 @@ const PastShowsSection: React.FC<PastShowsSectionProps> = ({
   onViewEvent,
   onCreateShow,
 }) => (
-  <section className="space-y-3">
+  <section className="animate-fade-up space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 motion-reduce:animate-none">
     <div className="flex items-center justify-between">
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Archive</p>
@@ -25,13 +25,13 @@ const PastShowsSection: React.FC<PastShowsSectionProps> = ({
         <p className="text-sm text-white/55">Last {events.length || 3} performances.</p>
       </div>
       {playedCount > 0 && (
-        <span className="bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white/80">
+        <span className="rounded-full border border-white/20 bg-white/[0.04] px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white/80">
           Played {playedCount}
         </span>
       )}
     </div>
     {events.length === 0 ? (
-      <div className="bg-white/5 p-5">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
         <p className="font-semibold text-white">No past shows yet</p>
         <p className="mt-1 text-sm text-white/55">
           We will start showing the archive as soon as the first show finishes.
@@ -40,7 +40,7 @@ const PastShowsSection: React.FC<PastShowsSectionProps> = ({
           <button
             type="button"
             onClick={onCreateShow}
-            className="mt-3 bg-white/10 px-4 py-2 text-sm font-semibold text-white"
+            className="mt-4 inline-flex items-center justify-center rounded-full border border-white/20 bg-white/[0.06] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/[0.1]"
           >
             Create show
           </button>
@@ -57,15 +57,16 @@ const PastShowsSection: React.FC<PastShowsSectionProps> = ({
           const venueName = event.venue_place?.name || event.address || 'Venue TBA';
           const city = event.venue_place?.city || event.city || 'City';
           return (
-            <EventPosterTile
-              key={event.id}
-              event={event}
-              className="w-[220px] shrink-0"
-              kicker={dateLabel}
-              title={venueName}
-              subtitle={city}
-              onSelect={selected => onViewEvent(selected.id)}
-            />
+            <div key={event.id} className="w-[220px] shrink-0 overflow-hidden rounded-2xl border border-white/10">
+              <EventPosterTile
+                event={event}
+                className="w-full"
+                kicker={dateLabel}
+                title={venueName}
+                subtitle={city}
+                onSelect={selected => onViewEvent(selected.id)}
+              />
+            </div>
           );
         })}
       </div>

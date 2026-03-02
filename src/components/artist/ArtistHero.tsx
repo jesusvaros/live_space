@@ -10,6 +10,7 @@ type ArtistHeroProps = {
   playedCount: number;
   externalLinks: LinkItem[];
   heroStyle: React.CSSProperties;
+  immersive?: boolean;
   onEdit?: () => void;
 };
 
@@ -59,79 +60,95 @@ const SocialIcon: React.FC<{ name: SocialKey }> = ({ name }) => {
   );
 };
 
-const ArtistHero: React.FC<ArtistHeroProps> = ({ artist, isManager, playedCount, externalLinks, heroStyle, onEdit }) => {
+const ArtistHero: React.FC<ArtistHeroProps> = ({
+  artist,
+  isManager,
+  playedCount,
+  externalLinks,
+  heroStyle,
+  immersive = false,
+  onEdit,
+}) => {
   const verifiedBadge = (artist as any)?.is_verified;
+  const wrapperClass = immersive
+    ? 'relative h-[70vh] sm:h-[76vh]'
+    : 'relative min-h-[420px] overflow-hidden rounded-2xl';
+  const heroContainerClass = immersive
+    ? 'fixed inset-x-0 top-[calc(56px+env(safe-area-inset-top,0px))] z-0 h-[70vh] overflow-hidden sm:h-[76vh]'
+    : 'absolute inset-0 overflow-hidden';
 
   return (
-    <section className="relative min-h-[420px] overflow-hidden bg-black" style={heroStyle}>
+    <section className={wrapperClass}>
+      <div className={heroContainerClass} style={heroStyle}>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_8%,rgba(255,107,74,0.2),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_84%_12%,rgba(122,167,255,0.16),transparent_52%)]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-black/24" />
+
       {isManager && (
         <button
           type="button"
           onClick={onEdit}
-          className="absolute right-4 top-4 z-10 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
+          className="absolute right-3 top-3 z-10 inline-flex items-center gap-2 rounded-full border border-white/25 bg-black/35 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/80 transition-colors hover:border-white/40 hover:text-white sm:right-4 sm:top-4"
         >
-          <span className="inline-flex items-center gap-2">
-            <IconEdit size={14} />
-            Edit
-          </span>
+          <IconEdit size={14} />
+          Edit
         </button>
       )}
 
-      <div className="absolute inset-x-0 bottom-0 bg-black/70 p-6">
-        <div className="flex items-center gap-4">
-          <div className="h-16 w-16 overflow-hidden bg-white/10">
-            {artist.avatar_url ? (
-              <img src={artist.avatar_url} alt={artist.name} className="h-full w-full object-cover" />
-            ) : (
-              <div className="h-full w-full bg-white/10" />
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="font-display text-2xl font-bold text-white line-clamp-1">{artist.name}</h1>
-            <p className="mt-1 text-sm text-white/55 line-clamp-1">
-              {artist.city ? artist.city : artist.artist_type === 'band' ? 'Band' : 'Solo'}
-              {verifiedBadge ? ' · Verified' : ''}
-              {playedCount > 0 ? ` · ${playedCount} shows` : ''}
-            </p>
-          </div>
-        </div>
-
-        {artist.bio && (
-          <p
-            className="mt-4 text-sm text-white/80"
-            style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
-          >
-            {artist.bio}
+        <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/65">Artist</p>
+          <h1 className="mt-2 font-display text-3xl font-bold leading-tight text-white sm:text-4xl">{artist.name}</h1>
+          <p className="mt-2 text-sm font-semibold uppercase tracking-[0.18em] text-white/80 line-clamp-1">
+            {artist.city || (artist.artist_type === 'band' ? 'Band' : 'Solo artist')}
+            {playedCount > 0 ? ` · ${playedCount} shows` : ''}
           </p>
-        )}
+          {verifiedBadge && (
+            <div className="mt-2 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/80">
+              <IconCheckCircle size={14} />
+              Verified
+            </div>
+          )}
 
-        {externalLinks.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
-            {externalLinks.map(link => {
-              const key = link.key as SocialKey;
-              const labelMap: Record<SocialKey, string> = {
-                spotify: 'Spotify',
-                apple_music: 'Apple Music',
-                instagram: 'Instagram',
-                youtube: 'YouTube',
-                website: 'Website',
-              };
-              return (
-                <a
-                  key={key}
-                  href={link.value}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70 hover:text-white"
-                >
-                  <SocialIcon name={key} />
-                  {labelMap[key]}
-                </a>
-              );
-            })}
-          </div>
-        )}
+          {artist.bio && (
+            <p
+              className="mt-3 text-sm text-white/80"
+              style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+            >
+              {artist.bio}
+            </p>
+          )}
+
+          {externalLinks.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {externalLinks.map(link => {
+                const key = link.key as SocialKey;
+                const labelMap: Record<SocialKey, string> = {
+                  spotify: 'Spotify',
+                  apple_music: 'Apple Music',
+                  instagram: 'Instagram',
+                  youtube: 'YouTube',
+                  website: 'Website',
+                };
+                return (
+                  <a
+                    key={key}
+                    href={link.value}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/30 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/80 transition-colors hover:border-white/35 hover:text-white"
+                  >
+                    <SocialIcon name={key} />
+                    {labelMap[key]}
+                  </a>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
+      {!immersive && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/80 to-transparent" />
+      )}
     </section>
   );
 };

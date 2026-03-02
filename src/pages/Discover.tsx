@@ -4,7 +4,7 @@ import DiscoverScreen from '../features/discover/DiscoverScreen';
 
 const Discover: React.FC = () => {
   return (
-    <AppShell>
+    <AppShell contentWrapperClassName={false}>
       <DiscoverScreen />
     </AppShell>
   );

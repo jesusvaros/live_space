@@ -115,66 +115,76 @@ const Events: React.FC = () => {
   }, [endOfEventsWindow, events, followedArtistIds, startOfToday]);
 
   return (
-    <AppShell>
+    <AppShell contentWrapperClassName={false}>
       <TimelineHeroSection
         state={hero}
         onDismissPendingMoments={hero.kind === 'just_attended' ? dismissPendingMoments : undefined}
       />
 
       {hero.kind !== 'just_attended' && (
-        <div className="flex flex-col gap-8 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
-          {hero.kind !== 'cold_start' && nextUpcoming && (
-            <section className="space-y-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Next</p>
-                <h3 className="mt-2 font-display text-xl font-bold text-white">Coming up</h3>
-              </div>
-              <div className="flex gap-3 overflow-x-auto pb-1">
-                <EventPosterTile
-                  event={{ ...nextUpcoming, cover_image_url: getEventCoverImage(nextUpcoming) }}
-                  className="w-[220px] shrink-0"
-                  kicker={formatDate(nextUpcoming.starts_at)}
-                  title={getPrimaryArtistName(nextUpcoming)}
-                  subtitle={nextUpcoming.venue_place?.name || nextUpcoming.city}
-                  onSelect={selected => history.push(`/event/${selected.id}`)}
-                />
-              </div>
-            </section>
-          )}
+        <div className="relative z-10 -mt-16 rounded-t-[28px] border-t border-white/10 bg-app-bg/95 backdrop-blur-xl sm:-mt-20">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/[0.03] to-transparent" />
+          <div className="relative flex flex-col gap-8 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
+            <div className="space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/60">Events</p>
+              <h2 className="font-display text-2xl font-bold text-white sm:text-3xl">Find your next night</h2>
+            </div>
 
-          {hero.kind === 'cold_start' && (
-            <NearbyHeroSection
-              canCreateEvent={canCreateEvent}
-              loading={loading}
-              loadError={loadError}
-              location={location}
-              locationLoading={locationLoading}
-              locationError={locationError}
-              onRequestLocation={requestLocation}
-              nearbyUpcoming={nearbyUpcoming}
+            {hero.kind !== 'cold_start' && nextUpcoming && (
+              <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">Next</p>
+                  <h3 className="mt-2 font-display text-xl font-bold text-white">Coming up</h3>
+                </div>
+                <div className="flex gap-3 overflow-x-auto pb-1">
+                  <div className="w-[220px] shrink-0 overflow-hidden rounded-2xl border border-white/10">
+                    <EventPosterTile
+                      event={{ ...nextUpcoming, cover_image_url: getEventCoverImage(nextUpcoming) }}
+                      className="w-full"
+                      kicker={formatDate(nextUpcoming.starts_at)}
+                      title={getPrimaryArtistName(nextUpcoming)}
+                      subtitle={nextUpcoming.venue_place?.name || nextUpcoming.city}
+                      onSelect={selected => history.push(`/event/${selected.id}`)}
+                    />
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {hero.kind === 'cold_start' && (
+              <NearbyHeroSection
+                canCreateEvent={canCreateEvent}
+                loading={loading}
+                loadError={loadError}
+                location={location}
+                locationLoading={locationLoading}
+                locationError={locationError}
+                onRequestLocation={requestLocation}
+                nearbyUpcoming={nearbyUpcoming}
+              />
+            )}
+
+            <MapPreviewSection
+              center={location}
+              pins={mapPins}
+              onOpenMap={() => history.push('/tabs/map')}
             />
-          )}
 
-          <MapPreviewSection
-            center={location}
-            pins={mapPins}
-            onOpenMap={() => history.push('/tabs/map')}
-          />
+            <TrendingSection loading={trendingLoading} trending={trending} meta={trendingMeta} />
 
-          <TrendingSection loading={trendingLoading} trending={trending} meta={trendingMeta} />
+            <DiscoverSection
+              loading={suggestionsLoading}
+              canFollow={canFollow}
+              followedSubjectIds={followedSubjectIds}
+              suggestedArtists={suggestedArtists}
+              suggestedVenues={suggestedVenues}
+              onToggleFollowSubject={(subjectId) => {
+                void toggleFollowSubject(subjectId);
+              }}
+            />
 
-          <DiscoverSection
-            loading={suggestionsLoading}
-            canFollow={canFollow}
-            followedSubjectIds={followedSubjectIds}
-            suggestedArtists={suggestedArtists}
-            suggestedVenues={suggestedVenues}
-            onToggleFollowSubject={(subjectId) => {
-              void toggleFollowSubject(subjectId);
-            }}
-          />
-
-          <FollowedFromArtistsSection visible={followedArtistIds.size > 0} events={followedUpcoming} />
+            <FollowedFromArtistsSection visible={followedArtistIds.size > 0} events={followedUpcoming} />
+          </div>
         </div>
       )}
     </AppShell>

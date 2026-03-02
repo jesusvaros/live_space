@@ -1,11 +1,12 @@
 import { supabase } from '../../../lib/supabase';
 import { cached } from '../../../lib/requestCache';
 import { DiscoverArtist, DiscoverVenue } from '../types';
+import { withArtistRecentPosters, withVenueRecentPosters } from './discoverRecentPosters';
 
 export const searchArtists = async (query: string, limit = 20): Promise<DiscoverArtist[]> => {
   const q = query.trim();
   if (!q) return [];
-  return cached(
+  const artists = await cached(
     `discover:artists:search:${q}:${limit}`,
     async () => {
       const { data, error } = await supabase
@@ -25,12 +26,13 @@ export const searchArtists = async (query: string, limit = 20): Promise<Discover
     },
     { ttlMs: 10_000 }
   );
+  return withArtistRecentPosters(artists);
 };
 
 export const searchVenues = async (query: string, limit = 20): Promise<DiscoverVenue[]> => {
   const q = query.trim();
   if (!q) return [];
-  return cached(
+  const venues = await cached(
     `discover:venues:search:${q}:${limit}`,
     async () => {
       const { data, error } = await supabase
@@ -52,4 +54,5 @@ export const searchVenues = async (query: string, limit = 20): Promise<DiscoverV
     },
     { ttlMs: 10_000 }
   );
+  return withVenueRecentPosters(venues);
 };

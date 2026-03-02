@@ -44,6 +44,18 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Keep scrolling behavior but hide visible scrollbars globally */
+* {
+  -ms-overflow-style: none; /* IE and old Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none; /* Chrome, Safari, Opera, iOS WebKit */
+}
+
 .font-display {
   font-family: var(--font-display);
   letter-spacing: -0.02em;

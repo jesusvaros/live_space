@@ -38,11 +38,11 @@ const DiscoverSection: React.FC<DiscoverSectionProps> = ({
   const history = useHistory();
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Discover</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">Discover</p>
         <h3 className="mt-2 font-display text-xl font-bold text-white">Artists & venues</h3>
-        <p className="mt-1 text-sm text-white/55">Follow to keep them close.</p>
+        <p className="mt-1 text-sm text-white/65">Follow to keep them close.</p>
       </div>
 
       {loading ? (
@@ -53,10 +53,10 @@ const DiscoverSection: React.FC<DiscoverSectionProps> = ({
         <div className="space-y-6">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Artists</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">Artists</p>
               <button
                 type="button"
-                className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/70 hover:text-white"
+                className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/80 transition-colors hover:text-white"
                 onClick={() => history.push('/tabs/discover', { initialTab: 'artists' })}
               >
                 Explore
@@ -71,14 +71,14 @@ const DiscoverSection: React.FC<DiscoverSectionProps> = ({
                   return (
                     <div
                       key={artist.id}
-                      className="flex items-center justify-between gap-4 py-2"
+                      className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2"
                     >
                       <button
                         type="button"
                         className="flex min-w-0 flex-1 items-center gap-3 text-left"
                         onClick={() => history.push(`/artist/${artist.id}`)}
                       >
-                        <div className="h-14 w-14 shrink-0 overflow-hidden bg-white/5">
+                        <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/5">
                           {artist.avatar_url ? (
                             <img src={artist.avatar_url} alt={artist.name} className="h-full w-full object-cover" />
                           ) : (
@@ -92,8 +92,10 @@ const DiscoverSection: React.FC<DiscoverSectionProps> = ({
                       </button>
                       <button
                         type="button"
-                        className={`shrink-0 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] disabled:opacity-60 ${
-                          isFollowing ? 'bg-white/10 text-white/80' : 'bg-[#ff6b4a] text-white'
+                        className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] disabled:opacity-60 ${
+                          isFollowing
+                            ? 'border-white/25 bg-white/10 text-white/80'
+                            : 'border-app-accent/35 bg-app-accent text-white'
                         }`}
                         onClick={() => onToggleFollowSubject(artist.subject_id)}
                         disabled={!canFollow}
@@ -109,10 +111,10 @@ const DiscoverSection: React.FC<DiscoverSectionProps> = ({
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Venues</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">Venues</p>
               <button
                 type="button"
-                className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/70 hover:text-white"
+                className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/80 transition-colors hover:text-white"
                 onClick={() => history.push('/tabs/discover', { initialTab: 'venues' })}
               >
                 Explore
@@ -127,7 +129,7 @@ const DiscoverSection: React.FC<DiscoverSectionProps> = ({
                   return (
                     <div
                       key={venue.id}
-                      className="flex items-center justify-between gap-4 py-2"
+                      className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2"
                     >
                       <button
                         type="button"
@@ -141,8 +143,10 @@ const DiscoverSection: React.FC<DiscoverSectionProps> = ({
                       </button>
                       <button
                         type="button"
-                        className={`shrink-0 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] disabled:opacity-60 ${
-                          isFollowing ? 'bg-white/10 text-white/80' : 'bg-[#ff6b4a] text-white'
+                        className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] disabled:opacity-60 ${
+                          isFollowing
+                            ? 'border-white/25 bg-white/10 text-white/80'
+                            : 'border-app-accent/35 bg-app-accent text-white'
                         }`}
                         onClick={() => onToggleFollowSubject(venue.subject_id)}
                         disabled={!canFollow}

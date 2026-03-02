@@ -4,6 +4,7 @@ import { EventListItem } from '../../events/types';
 import { calculateDistanceKm, toNumber } from '../../events/utils';
 import { fetchUpcomingEvents } from './discoverUpcomingEvents';
 import { DiscoverVenue, SuggestedSection } from '../types';
+import { withVenueRecentPosters } from './discoverRecentPosters';
 
 const SUGGESTED_LIMIT = 10;
 const NEARBY_RADIUS_KM = 50;
@@ -50,7 +51,8 @@ const fetchVenuesByIds = async (venuePlaceIds: string[]) => {
   );
   const byId = new Map<string, any>();
   for (const row of data as any[]) byId.set((row as any).venue_place_id, row);
-  return venuePlaceIds.map(id => byId.get(id)).filter(Boolean).map(mapVenue) as DiscoverVenue[];
+  const venues = venuePlaceIds.map(id => byId.get(id)).filter(Boolean).map(mapVenue) as DiscoverVenue[];
+  return withVenueRecentPosters(venues);
 };
 
 const topVenueIdsFromEvents = (events: EventListItem[]) => {
@@ -107,7 +109,10 @@ export const getSuggestedVenues = async (options?: { location?: { lat: number; l
     },
     { ttlMs: 60_000 }
   );
-  if (recentVenues.length > 0) sections.push({ key: 'recently_added', title: 'Recently added venues', items: recentVenues });
+  const recentVenuesWithPosters = await withVenueRecentPosters(recentVenues);
+  if (recentVenuesWithPosters.length > 0) {
+    sections.push({ key: 'recently_added', title: 'Recently added venues', items: recentVenuesWithPosters });
+  }
 
   const seen = new Set<string>();
   return sections.map(section => ({

@@ -7,6 +7,7 @@ export type DiscoverArtist = {
   avatar_url: string | null;
   city: string | null;
   genres: string[];
+  recent_posters?: string[];
   is_verified?: boolean | null;
 };
 
@@ -19,6 +20,7 @@ export type DiscoverVenue = {
   photos: string[];
   venue_type: string | null;
   capacity: number | null;
+  recent_posters?: string[];
   is_verified?: boolean | null;
 };
 
@@ -27,4 +29,3 @@ export type SuggestedSection<T> = {
   title: string;
   items: T[];
 };
-
