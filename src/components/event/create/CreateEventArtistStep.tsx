@@ -69,26 +69,26 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
   };
 
   return (
-    <section className="h-full space-y-4 rounded-2xl bg-white/5 p-4">
+    <section className="h-full space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Artists</p>
-          <p className="mt-2 text-sm text-white/70">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/60">Artists</p>
+          <p className="mt-1 text-sm text-white/65">
             {profileRole === 'artist' ? 'Add yourself and other artists to your event.' : 'Add multiple artists to your event.'}
           </p>
         </div>
         <button
           type="button"
-          className="inline-flex items-center justify-center text-sm font-semibold text-white/70 transition hover:text-white"
+          className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-white/80 transition-colors hover:text-white"
           onClick={toggleArtistMode}
         >
-          {artistMode === 'existing' ? 'New artist' : 'Use existing'}
+          {artistMode === 'existing' ? 'Add New' : 'Use Existing'}
         </button>
       </div>
 
       {artistMode === 'existing' ? (
         <>
-            <label className="flex items-center gap-2 rounded-2xl bg-white/10 px-3 py-2 text-sm text-white">
+            <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white">
               <svg className="h-4 w-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" />
               </svg>
@@ -114,7 +114,7 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
             )}
 
             {!artistsLoading && artists.length === 0 && artistSearch.trim() === '' && (
-              <p className="h-[250px] text-sm text-white/60">
+              <p className="h-[250px] rounded-xl border border-white/10 bg-white/[0.02] p-4 text-sm text-white/60">
                 No artists found. Switch to &quot;New artist&quot; to add one.
               </p>
             )}
@@ -128,9 +128,9 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
                   <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
                     Selected Artists ({selectedArtists.length})
                   </p>
-                  <div className="space-y-2">
-                    {selectedArtists.map(artist => (
-                      <div key={artist.id} className="flex items-center justify-between gap-3 rounded-xl bg-white/10 p-3">
+                <div className="space-y-2">
+                  {selectedArtists.map(artist => (
+                      <div key={artist.id} className="flex items-center justify-between gap-3 rounded-xl border border-app-accent/30 bg-app-accent/10 p-3">
                         <div>
                           <p className="text-sm font-semibold text-white">
                             {artist.display_name || artist.username || 'Artist'}
@@ -149,7 +149,7 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
                         ) : null}
                         <button
                           type="button"
-                          className="inline-flex items-center justify-center rounded-lg bg-white/10 px-2 py-1 text-xs font-semibold text-white/80 transition hover:bg-white/15 hover:text-white"
+                          className="inline-flex items-center justify-center rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-xs font-semibold text-white/80 transition hover:bg-white/15 hover:text-white"
                           onClick={() => toggleArtist(artist.id)}
                         >
                           Remove
@@ -168,7 +168,7 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
                     .map(artist => (
                       <div
                         key={artist.id}
-                        className="flex cursor-pointer items-center gap-4 rounded-2xl bg-white/5 p-4 text-left transition hover:bg-white/10"
+                        className="flex cursor-pointer items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left transition hover:bg-white/[0.06]"
                         onClick={() => toggleArtist(artist.id)}
                       >
                         {/* Artist Avatar Placeholder */}
@@ -220,7 +220,7 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
 
               {/* No Selection Message - Fixed */}
               {selectedArtists.length === 0 && (
-                <div className="flex flex-shrink-0 items-center justify-between gap-3 rounded-2xl bg-white/5 p-3">
+                <div className="flex flex-shrink-0 items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
                   <p className="text-sm text-white">
                     {artists.length === 0
                       ? 'No matching artists. Try a different search or add a new artist.'
@@ -232,13 +232,13 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
             )}
         </>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
           <label className="flex flex-col gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
               Artist name
             </span>
             <input
-              className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
               value={newArtistName}
               onChange={e => setNewArtistName(e.target.value)}
               placeholder="Artist name"
@@ -247,7 +247,7 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
           <label className="flex flex-col gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Username</span>
             <input
-              className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
               value={newArtistUsername}
               onChange={e => setNewArtistUsername(e.target.value)}
               placeholder="Username"
@@ -261,11 +261,11 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
         onDidDismiss={() => setPreviewArtist(null)}
       >
         <IonContent fullscreen>
-          <div className="flex items-center justify-between gap-4 bg-app-bg px-5 py-4">
+          <div className="flex items-center justify-between gap-4 border-b border-white/10 bg-app-bg px-5 py-4">
             <h2 className="font-display text-lg font-bold text-white">Artist profile</h2>
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/15"
+              className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/15"
               onClick={() => setPreviewArtist(null)}
             >
               Close

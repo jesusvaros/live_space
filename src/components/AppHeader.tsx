@@ -3,6 +3,7 @@ import { useHistory, useLocation } from 'react-router-dom';
 import AppBrand from './AppBrand';
 import { IconBell, IconChevronLeft } from './icons';
 import WorkspaceSwitcher from './WorkspaceSwitcher';
+import { useAuth } from '../contexts/AuthContext';
 
 export type AppHeaderProps = {
   title?: string;
@@ -13,7 +14,9 @@ export type AppHeaderProps = {
 const AppHeader: React.FC<AppHeaderProps> = ({ title, rightSlot, showBack }) => {
   const history = useHistory();
   const location = useLocation();
+  const { profile } = useAuth();
   const tabsRootPaths = ['/tabs/feed', '/tabs/mySpace', '/tabs/events', '/tabs/map', '/tabs/upload', '/tabs/profile', '/tabs/discover'];
+  const isAdmin = profile?.role === 'admin';
 
   // Determine if we should show back button
   const shouldShowBack = showBack ?? !tabsRootPaths.includes(location.pathname);
@@ -60,6 +63,16 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, rightSlot, showBack }) => 
         </div>
         <div className="inline-flex items-center gap-2">
           <WorkspaceSwitcher />
+          {isAdmin ? (
+            <button
+              type="button"
+              className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/80 transition-colors hover:border-white/35 hover:bg-white/10 hover:text-white"
+              aria-label="Open admin actions"
+              onClick={() => history.push('/admin')}
+            >
+              Admin
+            </button>
+          ) : null}
           <button
             type="button"
             className="inline-flex items-center justify-center px-3 py-2 text-sm font-semibold text-white/80 disabled:cursor-not-allowed disabled:opacity-60"

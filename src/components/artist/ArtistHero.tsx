@@ -71,10 +71,10 @@ const ArtistHero: React.FC<ArtistHeroProps> = ({
 }) => {
   const verifiedBadge = (artist as any)?.is_verified;
   const wrapperClass = immersive
-    ? 'relative h-[70vh] sm:h-[76vh]'
+    ? 'relative h-[70vh] overflow-hidden sm:h-[76vh]'
     : 'relative min-h-[420px] overflow-hidden rounded-2xl';
   const heroContainerClass = immersive
-    ? 'fixed inset-x-0 top-[calc(56px+env(safe-area-inset-top,0px))] z-0 h-[70vh] overflow-hidden sm:h-[76vh]'
+    ? 'absolute inset-0 overflow-hidden'
     : 'absolute inset-0 overflow-hidden';
 
   return (

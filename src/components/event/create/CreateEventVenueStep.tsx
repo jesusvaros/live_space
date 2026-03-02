@@ -72,29 +72,35 @@ const CreateEventVenueStep: React.FC<CreateEventVenueStepProps> = ({
   onNewVenueLngChange,
 }) => {
   return (
-    <section className="h-full space-y-4 rounded-2xl bg-white/5 p-4">
+    <section className="flex h-full min-h-0 flex-col gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Venue</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/60">Venue</p>
         </div>
         <button
           type="button"
-          className="inline-flex items-center justify-center text-sm font-semibold text-white/70 transition hover:text-white"
+          className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-white/80 transition-colors hover:text-white"
           onClick={onToggleVenueMode}
         >
-          {venueMode === 'existing' ? 'New venue' : 'Use existing'}
+          {venueMode === 'existing' ? 'Add New' : 'Use Existing'}
         </button>
       </div>
 
-      <input
-        type="search"
-        className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-        placeholder="Search venues"
-        value={venueSearch}
-        onChange={e => onVenueSearchChange(e.target.value)}
-      />
-
-      <div className="h-[220px] overflow-hidden rounded-2xl bg-black/30">
+      <div className="relative h-[220px] overflow-hidden rounded-2xl border border-white/10 bg-black/35 sm:h-[250px]">
+        {venueMode === 'existing' && (
+          <label className="pointer-events-auto absolute left-3 right-3 top-3 z-[950] flex items-center gap-2 rounded-xl border border-white/15 bg-black/45 px-3 py-2 text-sm text-white backdrop-blur-sm">
+            <svg className="h-4 w-4 text-white/55" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" />
+            </svg>
+            <input
+              type="search"
+              className="w-full bg-transparent px-1 py-1 text-sm text-white placeholder:text-white/45 focus:outline-none"
+              placeholder="Search venues"
+              value={venueSearch}
+              onChange={e => onVenueSearchChange(e.target.value)}
+            />
+          </label>
+        )}
         <MapContainer
           center={mapCenter}
           zoom={12}
@@ -125,24 +131,26 @@ const CreateEventVenueStep: React.FC<CreateEventVenueStepProps> = ({
       </div>
 
       {venueMode === 'existing' && (
-        <>
+        <div className="min-h-0 flex-1">
           {venuesLoading ? (
             <div className="flex items-center gap-3 text-sm text-white/70">
               <IonSpinner name="crescent" />
               Loading venues...
             </div>
           ) : visibleVenues.length === 0 ? (
-            <p className="h-[250px] text-sm text-white/60">
+            <p className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-sm text-white/60">
               No venues found. Switch to &quot;New venue&quot; to add one.
             </p>
           ) : (
-            <div className="max-h-[250px] overflow-auto pr-1">
+            <div className="h-full overflow-y-auto pr-1">
               <div className="space-y-3">
                 {visibleVenues.map(venue => (
                   <div
                     key={venue.id}
-                    className={`flex cursor-pointer items-center gap-4 rounded-2xl p-4 text-left transition ${
-                      selectedVenue?.id === venue.id ? 'bg-white/10' : 'bg-white/5 hover:bg-white/10'
+                    className={`flex cursor-pointer items-center gap-4 rounded-2xl border p-4 text-left transition ${
+                      selectedVenue?.id === venue.id
+                        ? 'border-app-accent/40 bg-app-accent/10'
+                        : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06]'
                     }`}
                     onClick={() => onSelectVenue(venue)}
                   >
@@ -171,7 +179,7 @@ const CreateEventVenueStep: React.FC<CreateEventVenueStepProps> = ({
                         {venue.address ? ` · ${venue.address}` : ''}
                       </p>
                       {venue.venue_type && (
-                        <p className="text-xs text-white/50">
+                        <p className="text-xs text-white/55">
                           {venue.venue_type}
                           {venue.capacity ? ` · Capacity: ${venue.capacity}` : ''}
                         </p>
@@ -187,18 +195,17 @@ const CreateEventVenueStep: React.FC<CreateEventVenueStepProps> = ({
               </div>
             </div>
           )}
-
-        </>
+        </div>
       )}
 
       {venueMode === 'new' && (
-        <div className="space-y-3">
+        <div className="space-y-3 overflow-y-auto rounded-2xl border border-white/10 bg-white/[0.02] p-3">
           <label className="flex flex-col gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
               Venue name
             </span>
             <input
-              className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
               value={newVenueName}
               onChange={e => onNewVenueNameChange(e.target.value)}
               placeholder="Venue name"
@@ -207,7 +214,7 @@ const CreateEventVenueStep: React.FC<CreateEventVenueStepProps> = ({
           <label className="flex flex-col gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">City</span>
             <input
-              className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
               value={newVenueCity}
               onChange={e => onNewVenueCityChange(e.target.value)}
               placeholder="City"
@@ -216,7 +223,7 @@ const CreateEventVenueStep: React.FC<CreateEventVenueStepProps> = ({
           <label className="flex flex-col gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Address</span>
             <input
-              className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
               value={newVenueAddress}
               onChange={e => onNewVenueAddressChange(e.target.value)}
               placeholder="Street address"

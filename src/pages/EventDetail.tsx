@@ -3,6 +3,7 @@ import {
   IonContent,
   IonSpinner,
   IonModal,
+  useIonViewDidEnter,
 } from '@ionic/react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -10,13 +11,14 @@ import { Event, PostWithSetlist, Profile, VenuePlace, EventSetlistEntry, Artist 
 import { clearCached } from '../lib/requestCache';
 import { eventService } from '../services/event.service';
 import { useAuth } from '../contexts/AuthContext';
+import { useWorkspace } from '../contexts/WorkspaceContext';
 import { buildMomentItems, parseDatetimeLocalValue, MomentItem } from '../lib/moments';
 import AppShell from '../components/AppShell';
 import EventHero, { EventEntity } from '../components/event/EventHero';
 import TimelinePlayer, { MediaFilter } from '../components/event/TimelinePlayer';
 import { TimelineBucket } from '../components/event/TimelineScrubber';
 import ShareSheet from '../components/ShareSheet';
-import { IconBookmark, IconBookmarkFilled, IconPlus, IconTicket } from '../components/icons';
+import { IconBookmark, IconBookmarkFilled, IconCalendar, IconCompass, IconMap, IconPlus, IconTicket, IconUser } from '../components/icons';
 
 type EventDetailData = Event & {
   organizer?: Profile | null;
@@ -33,6 +35,7 @@ const EventDetail: React.FC = () => {
   const location = useLocation<EventDetailLocationState>();
   const { id } = useParams<{ id: string }>();
   const { user, profile, isManagementMode, activeEntity } = useAuth();
+  const { activeWorkspace } = useWorkspace();
   const [event, setEvent] = useState<EventDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -67,6 +70,25 @@ const EventDetail: React.FC = () => {
   const attendanceFxTimerRef = useRef<number | null>(null);
   const bucketCacheRef = useRef<Record<string, PostWithSetlist[]>>({});
   const bucketLoadingRef = useRef<Record<string, boolean>>({});
+  const activeArtistId = activeWorkspace?.type === 'artist'
+    ? (activeWorkspace.artist as any)?.id || (activeWorkspace.artist as any)?.artist_id || null
+    : null;
+  const activeVenueId = activeWorkspace?.type === 'venue'
+    ? (activeWorkspace.venue as any)?.id || (activeWorkspace.venue as any)?.venue_place_id || null
+    : null;
+  const isArtistWorkspace = activeWorkspace?.type === 'artist';
+  const mainTabHref = isArtistWorkspace ? '/tabs/mySpace' : '/tabs/events';
+  const profileTabHref =
+    activeWorkspace?.type === 'artist' && activeArtistId
+      ? `/tabs/artist/${activeArtistId}`
+      : activeWorkspace?.type === 'venue' && activeVenueId
+        ? `/tabs/venue/${activeVenueId}`
+        : '/tabs/profile';
+
+  const scrollToTop = () => {
+    const contentEl = document.querySelector('ion-content.event-detail-content') as any;
+    contentEl?.scrollToTop?.(0);
+  };
 
   useEffect(() => {
     if (!location.state?.openAddMoments) return;
@@ -317,7 +339,12 @@ const EventDetail: React.FC = () => {
     setShowAddMoments(false);
     loadEvent();
     loadCounts();
+    window.setTimeout(scrollToTop, 0);
   }, [id]);
+
+  useIonViewDidEnter(() => {
+    window.setTimeout(scrollToTop, 0);
+  });
 
   useEffect(() => {
     loadBuckets(mediaFilter);
@@ -760,7 +787,7 @@ const EventDetail: React.FC = () => {
   };
 
   return (
-    <AppShell contentWrapperClassName={false}>
+    <AppShell contentWrapperClassName={false} contentClassName="event-detail-content">
           {loading && (
             <div className="flex items-center justify-center py-12">
               <IonSpinner name="crescent" />
@@ -916,7 +943,7 @@ const EventDetail: React.FC = () => {
                 <button
                   type="button"
                   onClick={handlePrimaryCtaClick}
-                  className="fixed bottom-[calc(18px+env(safe-area-inset-bottom,0px))] right-4 z-[1400] inline-flex items-center gap-2 rounded-full border border-app-accent/45 bg-[linear-gradient(135deg,rgba(255,107,74,0.95),rgba(255,138,110,0.92))] px-4 py-3 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(255,107,74,0.3)] transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98] motion-reduce:transition-none"
+                  className="fixed bottom-[calc(82px+env(safe-area-inset-bottom,0px))] right-4 z-[1400] inline-flex items-center gap-2 rounded-full border border-app-accent/45 bg-[linear-gradient(135deg,rgba(255,107,74,0.95),rgba(255,138,110,0.92))] px-4 py-3 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(255,107,74,0.3)] transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98] motion-reduce:transition-none"
                 >
                   <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/20">
                     <IconPlus className="h-4 w-4" />
@@ -924,6 +951,54 @@ const EventDetail: React.FC = () => {
                   <span>Add moment</span>
                 </button>
               )}
+
+              <div className="fixed inset-x-0 bottom-0 z-[1300] border-t border-white/10 bg-[rgba(11,11,13,0.92)] backdrop-blur-xl">
+                <div className="grid h-16 grid-cols-4 items-center px-4 pb-[env(safe-area-inset-bottom,0px)]">
+                  <button
+                    type="button"
+                    aria-label="Main"
+                    className="inline-flex items-center justify-center text-app-accent"
+                    onClick={() => history.push(mainTabHref)}
+                  >
+                    <IconCalendar className="h-5 w-5" />
+                  </button>
+                  {isArtistWorkspace ? (
+                    <button
+                      type="button"
+                      aria-label="Create event"
+                      className="inline-flex items-center justify-center text-white/75 transition-colors hover:text-white"
+                      onClick={() => history.push('/tabs/create-event')}
+                    >
+                      <IconPlus className="h-5 w-5" />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      aria-label="Discover"
+                      className="inline-flex items-center justify-center text-white/75 transition-colors hover:text-white"
+                      onClick={() => history.push('/tabs/discover')}
+                    >
+                      <IconCompass className="h-5 w-5" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    aria-label="Map"
+                    className="inline-flex items-center justify-center text-white/75 transition-colors hover:text-white"
+                    onClick={() => history.push('/tabs/map')}
+                  >
+                    <IconMap className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Profile"
+                    className="inline-flex items-center justify-center text-white/75 transition-colors hover:text-white"
+                    onClick={() => history.push(profileTabHref)}
+                  >
+                    <IconUser className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
             </>
           )}
         <IonModal isOpen={showAddMoments} onDidDismiss={() => setShowAddMoments(false)}>

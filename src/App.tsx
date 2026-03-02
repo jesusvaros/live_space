@@ -26,10 +26,7 @@ import ProfileDetail from './pages/ProfileDetail';
 import ArtistProfile from './pages/ArtistProfile';
 import PostDetail from './pages/PostDetail';
 import VenueDetail from './pages/VenueDetail';
-import AdminGrants from './pages/AdminGrants';
-import AdminCreateArtist from './pages/AdminCreateArtist';
-import AdminCreateVenue from './pages/AdminCreateVenue';
-import AdminAccessList from './pages/AdminAccessList';
+import Admin from './pages/Admin';
 
 const App: React.FC = () => {
   const { user, loading } = useAuth();
@@ -87,10 +84,11 @@ const App: React.FC = () => {
             path="/venue/:id"
             render={({ match }) => <Redirect to={`/tabs/venue/${match.params.id}`} />}
           />
-          <Route exact path="/admin/grants" component={AdminGrants} />
-          <Route exact path="/admin/create-artist" component={AdminCreateArtist} />
-          <Route exact path="/admin/create-venue" component={AdminCreateVenue} />
-          <Route exact path="/admin/access-grants" component={AdminAccessList} />
+          <Route exact path="/admin" component={Admin} />
+          <Route exact path="/admin/grants" render={() => <Redirect to="/admin" />} />
+          <Route exact path="/admin/create-artist" render={() => <Redirect to="/admin" />} />
+          <Route exact path="/admin/create-venue" render={() => <Redirect to="/admin" />} />
+          <Route exact path="/admin/access-grants" render={() => <Redirect to="/admin" />} />
           <Route exact path="/reset" component={ResetPassword} />
           <Route
             exact
@@ -141,28 +139,23 @@ const App: React.FC = () => {
                     className="h-16 px-2 py-2"
                     style={tabBarStyle}
                   >
-                    <IonTabButton tab="main" href={mainTabHref}>
+                    <IonTabButton tab="main" href={mainTabHref} aria-label="Main">
                       <IconCalendar className="h-5 w-5" />
-                      <span className="text-[11px] uppercase tracking-[0.12em]">Main</span>
                     </IonTabButton>
                     {isArtistWorkspace ? (
-                      <IonTabButton tab="create-event" href="/tabs/create-event">
+                      <IonTabButton tab="create-event" href="/tabs/create-event" aria-label="Create event">
                         <IconPlus className="h-5 w-5" />
-                        <span className="text-[11px] uppercase tracking-[0.12em]">Create Event</span>
                       </IonTabButton>
                     ) : (
-                      <IonTabButton tab="discover" href="/tabs/discover">
+                      <IonTabButton tab="discover" href="/tabs/discover" aria-label="Discover">
                         <IconCompass className="h-5 w-5" />
-                        <span className="text-[11px] uppercase tracking-[0.12em]">Discover</span>
                       </IonTabButton>
                     )}
-                    <IonTabButton tab="map" href="/tabs/map">
+                    <IonTabButton tab="map" href="/tabs/map" aria-label="Map">
                       <IconMap className="h-5 w-5" />
-                      <span className="text-[11px] uppercase tracking-[0.12em]">Map</span>
                     </IonTabButton>
-                    <IonTabButton tab="profile" href={profileTabHref}>
+                    <IonTabButton tab="profile" href={profileTabHref} aria-label="Profile">
                       <IconUser className="h-5 w-5" />
-                      <span className="text-[11px] uppercase tracking-[0.12em]">Profile</span>
                     </IonTabButton>
                   </IonTabBar>
                 </IonTabs>
