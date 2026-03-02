@@ -1,4 +1,5 @@
 import React from 'react';
+import { IconFilters } from '../icons';
 
 type MapFilterBarProps = {
   showUpcoming: boolean;
@@ -35,12 +36,14 @@ const MapFilterBar: React.FC<MapFilterBarProps> = ({
   onOpenFilters,
 }) => {
   const baseChip =
-    'inline-flex items-center justify-center whitespace-nowrap rounded-xl bg-white/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] transition-colors hover:bg-white/20';
+    'inline-flex h-8 items-center justify-center whitespace-nowrap rounded-lg bg-white/15 px-2.5 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors hover:bg-white/20';
   const inactiveChip = 'text-white/85';
   const activeChip = 'bg-white/20 text-app-accent';
+  const filterIconButton =
+    'ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white/15 text-white/85 transition-colors hover:bg-white/20';
 
   return (
-    <div className="flex flex-wrap gap-2 overflow-x-auto pb-1">
+    <div className="flex items-center gap-1 overflow-hidden pb-1">
       <button type="button" className={`${baseChip} ${showEvents ? activeChip : inactiveChip}`} onClick={onToggleEvents}>
         Events
       </button>
@@ -57,8 +60,13 @@ const MapFilterBar: React.FC<MapFilterBarProps> = ({
       <button type="button" className={`${baseChip} ${filterFree ? activeChip : inactiveChip}`} onClick={onToggleFree}>
         Free
       </button>
-      <button type="button" className={`${baseChip} ${inactiveChip}`} onClick={onOpenFilters}>
-        Filters
+      <button
+        type="button"
+        aria-label="Open filters"
+        className={filterIconButton}
+        onClick={onOpenFilters}
+      >
+        <IconFilters size={14} />
       </button>
     </div>
   );

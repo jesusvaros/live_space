@@ -330,7 +330,7 @@ export const useCreateEventForm = ({
         return {
           venue,
           position: [lat, lng] as [number, number],
-          icon: buildPinIcon('venue', 'SALA', venue.photos?.[0] || null),
+          icon: buildPinIcon('venue'),
         };
       })
       .filter(Boolean) as { venue: VenuePlace; position: [number, number]; icon: L.DivIcon }[];

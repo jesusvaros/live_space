@@ -184,3 +184,11 @@ export const IconExpand: React.FC<IconProps> = ({ className, size = 20 }) => (
     <path d="M15 4h5v5M9 20H4v-5M20 9V4h-5M4 15v5h5" />
   </svg>
 );
+
+export const IconFilters: React.FC<IconProps> = ({ className, size = 20 }) => (
+  <svg {...baseProps(size)} className={className}>
+    <path d="M4 6h16" />
+    <path d="M7 12h10" />
+    <path d="M10 18h4" />
+  </svg>
+);

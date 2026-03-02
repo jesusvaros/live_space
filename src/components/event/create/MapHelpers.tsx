@@ -2,23 +2,25 @@ import { useEffect } from 'react';
 import { useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 
-export const buildPinIcon = (variant: 'venue', label: string, imageUrl?: string | null) => {
-  const safeUrl = imageUrl ? encodeURI(imageUrl).replace(/'/g, '%27') : '';
-  const avatar = imageUrl
-    ? `<div class="map-pin-avatar" style="background-image:url('${safeUrl}')"></div>`
-    : '<div class="map-pin-avatar map-pin-avatar--empty"></div>';
+export const buildPinIcon = (variant: 'venue') => {
   const html = `
     <div class="map-pin map-pin--${variant}">
-      ${avatar}
-      <span class="map-pin-label">${label}</span>
+      <span class="map-pin-icon">
+        <svg viewBox="0 0 28 28" aria-hidden="true">
+          <path d="M2.8 12L14 4.8 25.2 12" />
+          <rect x="4.5" y="12" width="19" height="10" rx="1.5" />
+          <path d="M9.5 22v-4.6h9V22" />
+          <path d="M10 15.5h2.2M15.8 15.5H18" />
+        </svg>
+      </span>
     </div>
   `;
   return L.divIcon({
     className: 'map-pin-wrapper',
     html,
-    iconSize: [52, 60],
-    iconAnchor: [26, 60],
-    popupAnchor: [0, -54],
+    iconSize: [48, 56],
+    iconAnchor: [24, 56],
+    popupAnchor: [0, -50],
   });
 };
 

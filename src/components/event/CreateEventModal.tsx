@@ -40,7 +40,50 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
     defaultArtistName: profileName || undefined,
     initialCenter: initialMapCenter || undefined,
   });
-  const newVenueIcon = useMemo(() => buildPinIcon('venue', 'SALA'), []);
+  const newVenueIcon = useMemo(() => buildPinIcon('venue'), []);
+  const stepCompletion = useMemo(() => {
+    const venueComplete =
+      form.venueMode === 'existing'
+        ? Boolean(form.selectedVenue)
+        : Boolean(
+            form.newVenueName.trim() &&
+            form.newVenueCity.trim() &&
+            form.venueLat !== null &&
+            form.venueLng !== null
+          );
+    const artistsComplete = form.selectedArtistIds.length > 0;
+    const ticketsComplete = Boolean(
+      form.eventName.trim() &&
+      form.eventStart &&
+      (form.isFree || form.priceTiers.length > 0)
+    );
+    const detailsComplete = Boolean(
+      form.eventEnd ||
+      form.eventGenres.trim() ||
+      form.eventCoverUrl.trim() ||
+      form.eventDescription.trim() ||
+      form.posterFile
+    );
+
+    return [venueComplete, artistsComplete, ticketsComplete, detailsComplete];
+  }, [
+    form.venueMode,
+    form.selectedVenue,
+    form.newVenueName,
+    form.newVenueCity,
+    form.venueLat,
+    form.venueLng,
+    form.selectedArtistIds,
+    form.eventName,
+    form.eventStart,
+    form.isFree,
+    form.priceTiers,
+    form.eventEnd,
+    form.eventGenres,
+    form.eventCoverUrl,
+    form.eventDescription,
+    form.posterFile,
+  ]);
 
   const handleBack = () => setStepIndex(prev => Math.max(prev - 1, 0));
   const handleNext = () => setStepIndex(prev => Math.min(prev + 1, steps.length - 1));
@@ -173,24 +216,33 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
           <div className="flex items-center gap-2 overflow-x-auto pb-1">
             {steps.map((label, index) => {
               const isActive = index === stepIndex;
-              const isDone = index < stepIndex;
+              const isDone = index < stepIndex || stepCompletion[index];
               return (
-                <div key={label} className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => setStepIndex(index)}
+                  className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 transition-colors ${
+                    isActive
+                      ? 'border-app-accent/55 bg-app-accent/20'
+                      : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.07]'
+                  }`}
+                >
                   <span
                     className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold ${
-                      isActive
-                        ? 'bg-app-accent text-white'
-                        : isDone
-                          ? 'bg-white/20 text-white'
+                      isDone
+                        ? 'bg-emerald-500/25 text-emerald-300'
+                        : isActive
+                          ? 'bg-app-accent text-white'
                           : 'bg-white/10 text-white/60'
                     }`}
                   >
-                    {index + 1}
+                    {isDone ? '✓' : index + 1}
                   </span>
                   <span className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${isActive ? 'text-white' : 'text-white/65'}`}>
                     {label}
                   </span>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -207,21 +259,21 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
         </div>
 
         <div className="shrink-0 border-t border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))] p-4">
-          <div className="tw flex flex-col gap-2 sm:flex-row sm:justify-between">
+          <div className="flex items-center justify-between gap-3">
             {stepIndex > 0 ? (
               <button
                 type="button"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/15 sm:w-auto"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/15"
                 onClick={handleBack}
               >
                 Back
               </button>
             ) : (
-              <div />
+              <span className="h-11 w-20 shrink-0" aria-hidden />
             )}
             <button
               type="button"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-app-accent/35 bg-app-accent px-6 py-3 text-sm font-semibold text-white transition-transform duration-200 hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none sm:w-auto"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-app-accent/35 bg-app-accent px-6 py-3 text-sm font-semibold text-white transition-transform duration-200 hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none"
               onClick={handlePrimary}
               disabled={form.saving || (stepIndex === steps.length - 1 && !organizerAllowed)}
             >
