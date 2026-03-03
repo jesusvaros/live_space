@@ -15,6 +15,7 @@ import MapFilterBar from '../components/map/MapFilterBar';
 import MapFilterModal from '../components/map/MapFilterModal';
 import MapSelectionSheet from '../components/map/MapSelectionSheet';
 import { useMapFilters } from '../hooks/useMapFilters';
+import { useQuery } from '../shared/hooks/useQuery';
 
 const defaultCenter: [number, number] = [37.3891, -5.9845];
 const defaultZoom = 15;
@@ -53,8 +54,6 @@ const Map: React.FC = () => {
   const history = useHistory();
   const location = useLocation<{ artistFilter?: { id: string; name: string; avatar_url: string | null } }>();
   const { user } = useAuth();
-  const [events, setEvents] = useState<EventWithVenue[]>([]);
-  const [venues, setVenues] = useState<VenuePlace[]>([]);
   const [followedEventIds, setFollowedEventIds] = useState<Set<string>>(new Set());
   const [attendanceStatusByEventId, setAttendanceStatusByEventId] = useState<Record<string, 'going' | 'attended'>>({});
   const [followPendingEventIds, setFollowPendingEventIds] = useState<Set<string>>(new Set());
@@ -94,6 +93,70 @@ const Map: React.FC = () => {
 
   const [showFilters, setShowFilters] = useState(false);
   const [initialArtistFilterApplied, setInitialArtistFilterApplied] = useState<string | null>(null);
+
+  const eventsQuery = useQuery<EventWithVenue[]>(
+    ['map:events'],
+    async () => {
+      const { data, error } = await supabase
+        .from('events')
+        .select(
+          `
+          *,
+          venue_place:venue_places(*),
+          event_artists(artist:artists(*))
+        `
+        );
+      if (error) throw error;
+      return (data || []) as EventWithVenue[];
+    },
+    { ttlMs: 15_000, initialData: [] }
+  );
+
+  const venuesQuery = useQuery<VenuePlace[]>(
+    ['map:venues'],
+    async () => {
+      const { data, error } = await supabase
+        .from('venue_places')
+        .select('id, name, city, address, latitude, longitude, photos, venue_type, capacity');
+      if (error) throw error;
+      return (data || []) as VenuePlace[];
+    },
+    { ttlMs: 30_000, initialData: [] }
+  );
+
+  const userEngagementQuery = useQuery<{ followedIds: string[]; attendanceByEventId: Record<string, 'going' | 'attended'> }>(
+    ['map:user_engagement', user?.id || 'anonymous'],
+    async () => {
+      if (!user?.id) return { followedIds: [], attendanceByEventId: {} };
+      const [savesRes, attendanceRes] = await Promise.all([
+        supabase
+          .from('event_saves')
+          .select('event_id')
+          .eq('user_id', user.id),
+        supabase
+          .from('event_attendance')
+          .select('event_id,status')
+          .eq('user_id', user.id),
+      ]);
+
+      const followedIds = (savesRes.data || [])
+        .map((row: any) => row?.event_id)
+        .filter((value: unknown): value is string => typeof value === 'string');
+
+      const attendanceByEventId: Record<string, 'going' | 'attended'> = {};
+      (attendanceRes.data || []).forEach((row: any) => {
+        if (row?.event_id && (row?.status === 'going' || row?.status === 'attended')) {
+          attendanceByEventId[row.event_id] = row.status;
+        }
+      });
+
+      return { followedIds, attendanceByEventId };
+    },
+    { enabled: Boolean(user?.id), ttlMs: 10_000, initialData: { followedIds: [], attendanceByEventId: {} } }
+  );
+
+  const events = eventsQuery.data || [];
+  const venues = venuesQuery.data || [];
 
   const {
     search,
@@ -149,77 +212,24 @@ const Map: React.FC = () => {
     });
   }, []);
 
-  const loadEvents = useCallback(async () => {
-    const { data } = await supabase
-      .from('events')
-      .select(`
-        *,
-        venue_place:venue_places(*),
-        event_artists(artist:artists(*))
-      `);
-    setEvents((data || []) as EventWithVenue[]);
-  }, []);
-
-  const loadVenues = useCallback(async () => {
-    const { data } = await supabase
-      .from('venue_places')
-      .select('id, name, city, address, latitude, longitude, photos, venue_type, capacity');
-    setVenues((data || []) as VenuePlace[]);
-  }, []);
-
-  const loadUserEngagement = useCallback(async () => {
+  useEffect(() => {
     if (!user?.id) {
       setFollowedEventIds(new Set());
       setAttendanceStatusByEventId({});
       return;
     }
-
-    const [savesRes, attendanceRes] = await Promise.all([
-      supabase
-        .from('event_saves')
-        .select('event_id')
-        .eq('user_id', user.id),
-      supabase
-        .from('event_attendance')
-        .select('event_id,status')
-        .eq('user_id', user.id),
-    ]);
-
-    const nextFollowed = new Set<string>();
-    (savesRes.data || []).forEach((row: any) => {
-      if (row?.event_id) nextFollowed.add(row.event_id);
-    });
-    setFollowedEventIds(nextFollowed);
-
-    const nextAttendance: Record<string, 'going' | 'attended'> = {};
-    (attendanceRes.data || []).forEach((row: any) => {
-      if (row?.event_id && (row?.status === 'going' || row?.status === 'attended')) {
-        nextAttendance[row.event_id] = row.status;
-      }
-    });
-    setAttendanceStatusByEventId(nextAttendance);
-  }, [user?.id]);
-
-  useEffect(() => {
-    loadEvents();
-    loadVenues();
-  }, []);
-
-  useEffect(() => {
-    void loadUserEngagement();
-  }, [loadUserEngagement]);
-
-  useEffect(() => {
-    if (events.length === 0) {
-      loadEvents();
-    }
-  }, [events.length, loadEvents]);
-
-  useEffect(() => {
-    if (venues.length === 0) {
-      loadVenues();
-    }
-  }, [venues.length, loadVenues]);
+    if (followPendingEventIds.size > 0 || attendancePendingEventIds.size > 0) return;
+    const followedIds = userEngagementQuery.data?.followedIds || [];
+    const attendanceByEventId = userEngagementQuery.data?.attendanceByEventId || {};
+    setFollowedEventIds(new Set(followedIds));
+    setAttendanceStatusByEventId(attendanceByEventId);
+  }, [
+    attendancePendingEventIds.size,
+    followPendingEventIds.size,
+    user?.id,
+    userEngagementQuery.data?.attendanceByEventId,
+    userEngagementQuery.data?.followedIds,
+  ]);
 
   useEffect(() => {
     const stored = readStoredView();

@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabase';
 import { PostWithRelations } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
+import { useAppResume } from '../shared/hooks/useAppResume';
+import { fetchQuery } from '../lib/queryClient';
 
 const PAGE_SIZE = 6;
 
@@ -18,49 +20,55 @@ const Feed: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const history = useHistory();
+  const resumeTick = useAppResume();
 
-  const loadPosts = async (nextPage: number, replace = false) => {
+  const loadPosts = async (nextPage: number, replace = false, force = false) => {
     const from = nextPage * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
 
-    const { data, error } = await supabase
-      .from('posts')
-      .select(
-        `
-        id,
-        user_id,
-        event_id,
-        media_url,
-        media_type,
-        thumbnail_url,
-        caption,
-        created_at,
-        profiles:profiles!posts_user_id_fkey (
-          id,
-          username,
-          display_name,
-          avatar_url
-        ),
-        events:events!posts_event_id_fkey (
-          id,
-          name,
-          city,
-          starts_at,
-          cover_image_url
-        )
-        `
-      )
-      .order('created_at', { ascending: false })
-      .range(from, to);
+    const data = await fetchQuery<PostWithRelations[]>(
+      ['feed:posts', nextPage],
+      async () => {
+        const { data, error } = await supabase
+          .from('posts')
+          .select(
+            `
+            id,
+            user_id,
+            event_id,
+            media_url,
+            media_type,
+            thumbnail_url,
+            caption,
+            created_at,
+            profiles:profiles!posts_user_id_fkey (
+              id,
+              username,
+              display_name,
+              avatar_url
+            ),
+            events:events!posts_event_id_fkey (
+              id,
+              name,
+              city,
+              starts_at,
+              cover_image_url
+            )
+            `
+          )
+          .order('created_at', { ascending: false })
+          .range(from, to);
+        if (error) throw error;
+        return data as PostWithRelations[];
+      },
+      {
+        ttlMs: 10_000,
+        force,
+      }
+    );
 
-    if (error) {
-      throw error;
-    }
-
-    if (data) {
-      setPosts(prev => (replace ? data : [...prev, ...data]));
-      setHasMore(data.length === PAGE_SIZE);
-    }
+    setPosts(prev => (replace ? data : [...prev, ...data]));
+    setHasMore(data.length === PAGE_SIZE);
   };
 
   useEffect(() => {
@@ -68,7 +76,7 @@ const Feed: React.FC = () => {
       setLoading(true);
       setError('');
       try {
-        await loadPosts(0, true);
+        await loadPosts(0, true, true);
       } catch (err) {
         setHasMore(false);
         setError('Could not load the feed. Check your Supabase connection.');
@@ -77,14 +85,14 @@ const Feed: React.FC = () => {
       }
     };
     init();
-  }, []);
+  }, [resumeTick]);
 
   useEffect(() => {
     if (!loading && posts.length === 0) {
       setError('');
       setHasMore(true);
       setPage(0);
-      loadPosts(0, true).catch(() => {
+      loadPosts(0, true, true).catch(() => {
         setHasMore(false);
         setError('Could not load the feed. Check your Supabase connection.');
       });

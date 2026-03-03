@@ -8,6 +8,8 @@ import { useWorkspace } from '../contexts/WorkspaceContext';
 import AppShell from '../components/AppShell';
 import EventPosterTile from '../features/events/components/EventPosterTile';
 import { IconCalendar, IconEdit, IconHeart, IconLogout, IconPlay } from '../components/icons';
+import { useAppResume } from '../shared/hooks/useAppResume';
+import { fetchQuery } from '../lib/queryClient';
 
 const Profile: React.FC = () => {
   const { 
@@ -61,6 +63,7 @@ const Profile: React.FC = () => {
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const resumeTick = useAppResume();
 
   const searchParams = new URLSearchParams(location.search);
   const editTarget = searchParams.get('edit');
@@ -128,125 +131,125 @@ const Profile: React.FC = () => {
     ? (activeEntity.type === 'user' ? activeEntity.profile : null)
     : profile;
 
-  const lastLoadedRef = React.useRef<string>('');
-
   const loadProfileData = async (isManualRefresh = false) => {
     if (!user?.id) return;
-    
-    const loadContext = `${user.id}-${isManagementMode}-${activeEntity?.subject_id}`;
-    if (!isManualRefresh && lastLoadedRef.current === loadContext) {
-      return;
-    }
+    const loadContext = `${user.id}-${isManagementMode}-${activeEntity?.subject_id || 'none'}-${profile?.role || 'user'}`;
 
     setLoading(true);
     setError('');
 
     try {
-      const eventCardSelect = `
-        id,
-        name,
-        city,
-        address,
-        starts_at,
-        cover_image_url,
-        venue_place:venue_places!events_venue_place_id_fkey (
-          id,
-          name,
-          city,
-          address
-        ),
-        event_artists (
-          artist:artists!event_artists_artist_entity_fk (
+      const data = await fetchQuery<{
+        posts: PostWithSetlist[];
+        liked: Event[];
+        attended: Event[];
+        artistEvents: Event[];
+        venueEvents: Event[];
+      }>(
+        ['profile:data', loadContext],
+        async () => {
+          const eventCardSelect = `
             id,
             name,
-            avatar_url
-          )
-        )
-      `;
+            city,
+            address,
+            starts_at,
+            cover_image_url,
+            venue_place:venue_places!events_venue_place_id_fkey (
+              id,
+              name,
+              city,
+              address
+            ),
+            event_artists (
+              artist:artists!event_artists_artist_entity_fk (
+                id,
+                name,
+                avatar_url
+              )
+            )
+          `;
 
-      // Use a local variable to check if we're still relevant after async calls
-      const currentContext = loadContext;
+          let postsQuery = supabase
+            .from('posts')
+            .select('id, media_url, media_type, caption, created_at, event_offset_ms, song_title');
 
-      // Load posts (moments shared) - if management mode, show posts BY that actor
-      let postsQuery = supabase
-        .from('posts')
-        .select('id, media_url, media_type, caption, created_at, event_offset_ms, song_title');
-      
-      if (isManagementMode && activeEntity) {
-        postsQuery = postsQuery.eq('actor_subject_id', activeEntity.subject_id);
-      } else {
-        postsQuery = postsQuery.eq('user_id', user.id);
-      }
+          if (isManagementMode && activeEntity) {
+            postsQuery = postsQuery.eq('actor_subject_id', activeEntity.subject_id);
+          } else {
+            postsQuery = postsQuery.eq('user_id', user.id);
+          }
 
-      const [postsRes, likedRes, attendedRes] = await Promise.all([
-        postsQuery.order('created_at', { ascending: false }).limit(12),
-        supabase.from('event_saves').select(`events!inner (${eventCardSelect})`).eq('user_id', user.id),
-        supabase.from('event_attendance').select(`status, events!inner (${eventCardSelect})`).eq('user_id', user.id)
-      ]);
+          const [postsRes, likedRes, attendedRes] = await Promise.all([
+            postsQuery.order('created_at', { ascending: false }).limit(12),
+            supabase.from('event_saves').select(`events!inner (${eventCardSelect})`).eq('user_id', user.id),
+            supabase.from('event_attendance').select(`status, events!inner (${eventCardSelect})`).eq('user_id', user.id),
+          ]);
 
-      if (lastLoadedRef.current !== currentContext && !isManualRefresh) return;
-
-      const postsData = postsRes.data;
-      const likedData = likedRes.data;
-      const attendedData = attendedRes.data;
-
-      // Load role-specific data based on ACTIVE role
-      let artistEvents: Event[] = [];
-      let venueEvents: Event[] = [];
-
-      const activeRole = isManagementMode && activeEntity ? activeEntity.type : profile?.role;
-
-      if (activeRole === 'artist') {
-        const artistEntityId = isManagementMode && activeEntity ? activeEntity.artist?.id : null;
-        if (artistEntityId) {
-          const { data: artistEventData } = await supabase
-            .from('event_artists')
-            .select(`
-                events!inner (
-                  ${eventCardSelect}
-                )
-              `)
-            .eq('artist_entity_id', artistEntityId);
-
-          artistEvents = (artistEventData || [])
+          const posts = (postsRes.data || []) as PostWithSetlist[];
+          const liked = (likedRes.data || [])
             .map((item: any) => item.events)
             .filter((event: any): event is Event => Boolean(event));
+          const attended = (attendedRes.data || [])
+            .map((item: any) => item.events)
+            .filter((event: any): event is Event => Boolean(event));
+
+          let artistEvents: Event[] = [];
+          let venueEvents: Event[] = [];
+
+          const activeRole = isManagementMode && activeEntity ? activeEntity.type : profile?.role;
+          if (activeRole === 'artist') {
+            const artistEntityId = isManagementMode && activeEntity ? activeEntity.artist?.id : null;
+            if (artistEntityId) {
+              const { data: artistEventData } = await supabase
+                .from('event_artists')
+                .select(
+                  `
+                  events!inner (
+                    ${eventCardSelect}
+                  )
+                `
+                )
+                .eq('artist_entity_id', artistEntityId);
+
+              artistEvents = (artistEventData || [])
+                .map((item: any) => item.events)
+                .filter((event: any): event is Event => Boolean(event));
+            }
+          }
+
+          if (activeRole === 'venue') {
+            const venuePlaceId = isManagementMode && activeEntity ? activeEntity.venue?.id : null;
+            if (venuePlaceId) {
+              const { data: venueEventData } = await supabase
+                .from('events')
+                .select(eventCardSelect)
+                .eq('venue_place_id', venuePlaceId)
+                .order('starts_at', { ascending: false });
+              venueEvents = (venueEventData || []) as unknown as Event[];
+            }
+          }
+
+          return { posts, liked, attended, artistEvents, venueEvents };
+        },
+        {
+          ttlMs: 10_000,
+          force: isManualRefresh,
         }
-      }
+      );
 
-      if (activeRole === 'venue') {
-        const venuePlaceId = isManagementMode && activeEntity 
-          ? activeEntity.venue?.id 
-          : null;
-
-        if (venuePlaceId) {
-          const { data: venueEventData } = await supabase
-            .from('events')
-            .select(eventCardSelect)
-            .eq('venue_place_id', venuePlaceId)
-            .order('starts_at', { ascending: false });
-
-          venueEvents = (venueEventData || []) as unknown as Event[];
-        }
-      }
-
-      if (lastLoadedRef.current !== currentContext && !isManualRefresh) return;
-
-      setPosts((postsData || []) as PostWithSetlist[]);
-      const liked = (likedData || [])
-        .map((item: any) => item.events)
-        .filter((event: any): event is Event => Boolean(event));
-      const attended = (attendedData || [])
-        .map((item: any) => item.events)
-        .filter((event: any): event is Event => Boolean(event));
-      
-      setLikedEvents(liked);
-      setAttendedEvents([...attended, ...artistEvents]);
-      setArtistEvents(artistEvents);
-      setVenueEvents(venueEvents);
-      lastLoadedRef.current = currentContext;
+      setPosts(data.posts);
+      setLikedEvents(data.liked);
+      setAttendedEvents([...data.attended, ...data.artistEvents]);
+      setArtistEvents(data.artistEvents);
+      setVenueEvents(data.venueEvents);
     } catch (err) {
       setError('Could not load profile data. Check your Supabase connection.');
+      setPosts([]);
+      setLikedEvents([]);
+      setAttendedEvents([]);
+      setArtistEvents([]);
+      setVenueEvents([]);
     } finally {
       setLoading(false);
     }
@@ -254,9 +257,9 @@ const Profile: React.FC = () => {
 
   useEffect(() => {
     if (user?.id) {
-      loadProfileData();
+      void loadProfileData(true);
     }
-  }, [user?.id, profile?.role, isManagementMode, activeEntity?.subject_id]);
+  }, [activeEntity?.subject_id, isManagementMode, profile?.role, resumeTick, user?.id]);
 
   useEffect(() => {
     setDisplayName(profile?.display_name || '');
@@ -397,7 +400,7 @@ const Profile: React.FC = () => {
     }
 
     await refreshProfile();
-    await loadProfileData();
+    await loadProfileData(true);
     setMessage('Profile updated.');
     closeEditModal();
     setSaving(false);
