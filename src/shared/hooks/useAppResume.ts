@@ -10,11 +10,15 @@ export const useAppResume = () => {
     };
 
     window.addEventListener('focus', handleResume);
+    window.addEventListener('pageshow', handleResume);
     document.addEventListener('visibilitychange', handleResume);
+    document.addEventListener('resume', handleResume);
 
     return () => {
       window.removeEventListener('focus', handleResume);
+      window.removeEventListener('pageshow', handleResume);
       document.removeEventListener('visibilitychange', handleResume);
+      document.removeEventListener('resume', handleResume);
     };
   }, []);
 
