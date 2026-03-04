@@ -53,7 +53,7 @@ const TimelineHeroSection: React.FC<TimelineHeroSectionProps> = ({ state, onDism
           <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/45 to-black/75" />
           <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/65">Events</p>
-            <h2 className="mt-2 font-display text-3xl font-bold text-white sm:text-4xl">Discover concerts near you</h2>
+            <h2 className="mt-2 font-display text-3xl font-bold text-white sm:text-4xl">Discover concerts near you </h2>
             <div className="mt-5 flex items-center gap-3">
               <button
                 type="button"

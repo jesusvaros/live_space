@@ -63,6 +63,7 @@ const Profile: React.FC = () => {
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [editModalTab, setEditModalTab] = useState<'config' | 'logout' | 'premium'>('config');
   const resumeTick = useAppResume();
 
   const searchParams = new URLSearchParams(location.search);
@@ -271,6 +272,13 @@ const Profile: React.FC = () => {
     setLinkInstagram(profile?.external_links?.instagram || '');
     setLinkSpotify(profile?.external_links?.spotify || '');
   }, [profile]);
+
+  useEffect(() => {
+    if (!showEdit) return;
+    setEditModalTab('config');
+    setFormError('');
+    setMessage('');
+  }, [showEdit, editTarget]);
 
   const selectedVenuePlace = managedEntities.find(ent => ent.venue?.id === selectedVenuePlaceId)?.venue || null;
   const displayVenue = selectedVenuePlace ?? managedEntities.find(ent => ent.type === 'venue')?.venue ?? null;
@@ -850,258 +858,323 @@ const Profile: React.FC = () => {
               </button>
             </div>
 
-            <div className="mt-6 space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-              <label className="flex flex-col gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                  Display name
-                </span>
-                <input
-                  value={displayName}
-                  onChange={e => setDisplayName(e.target.value)}
-                  className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                />
-              </label>
-              <label className="flex flex-col gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                  Username
-                </span>
-                <input
-                  value={username}
-                  onChange={e => setUsername(e.target.value)}
-                  className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                />
-              </label>
-              <label className="flex flex-col gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                  Primary city
-                </span>
-                <input
-                  value={primaryCity}
-                  onChange={e => setPrimaryCity(e.target.value)}
-                  className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                />
-              </label>
-              <label className="flex flex-col gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                  Bio
-                </span>
-                <textarea
-                  value={bio}
-                  onChange={e => setBio(e.target.value)}
-                  className="min-h-[96px] w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                />
-              </label>
-              {isDev && (
-                <label className="flex flex-col gap-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                    Role (dev)
-                  </span>
-                  <select
-                    value={role}
-                    onChange={e => setRole(e.target.value as ProfileRole)}
-                    className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/15"
-                  >
-                    <option value="user">User</option>
-                    <option value="artist">Artist</option>
-                    <option value="venue">Venue</option>
-                    <option value="label">Label</option>
-                  </select>
-                  <span className="text-xs text-white/60">
-                    Solo para testing. En prod queda bloqueado.
-                  </span>
-                </label>
-              )}
-              {profile?.role === 'artist' && (
-                <div className="space-y-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Artist links</p>
-                  <label className="flex flex-col gap-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                      Website
-                    </span>
-                    <input
-                      value={linkWebsite}
-                      onChange={e => setLinkWebsite(e.target.value)}
-                      className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                      placeholder="https://your-site.com"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                      Instagram
-                    </span>
-                    <input
-                      value={linkInstagram}
-                      onChange={e => setLinkInstagram(e.target.value)}
-                      className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                      placeholder="https://instagram.com/you"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                      Spotify
-                    </span>
-                    <input
-                      value={linkSpotify}
-                      onChange={e => setLinkSpotify(e.target.value)}
-                      className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                      placeholder="https://open.spotify.com/artist/..."
-                    />
-                  </label>
-                </div>
-              )}
-
-              {profile?.role === 'venue' && (
-                <div className="space-y-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Venue management</p>
-                  {managedEntities.filter(e => e.type === 'venue').length === 0 ? (
-                    <p className="text-sm text-white/60">
-                      No managed venue place yet. Create or claim a venue to edit its details.
-                    </p>
-                  ) : (
-                    <>
-                      {managedEntities.filter(e => e.type === 'venue').length > 1 && (
-                        <label className="flex flex-col gap-2">
-                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                            Managed venue
-                          </span>
-                          <select
-                            value={selectedVenuePlaceId || ''}
-                            onChange={e => setSelectedVenuePlaceId(e.target.value || null)}
-                            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/15"
-                          >
-                            {managedEntities
-                              .filter(e => e.type === 'venue')
-                              .map(ent => (
-                                <option key={ent.venue?.id} value={ent.venue?.id}>
-                                  {ent.venue?.name}
-                                </option>
-                              ))}
-                          </select>
-                        </label>
-                      )}
-                      <label className="flex flex-col gap-2">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                          Venue name
-                        </span>
-                        <input
-                          value={venueName}
-                          onChange={e => setVenueName(e.target.value)}
-                          className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                          placeholder="Venue name"
-                        />
-                      </label>
-                      <label className="flex flex-col gap-2">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                          City
-                        </span>
-                        <input
-                          value={venueCity}
-                          onChange={e => setVenueCity(e.target.value)}
-                          className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                          placeholder="City"
-                        />
-                      </label>
-                      <label className="flex flex-col gap-2">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                          Venue type
-                        </span>
-                        <input
-                          value={venueType}
-                          onChange={e => setVenueType(e.target.value)}
-                          className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                          placeholder="Club, hall, theatre..."
-                        />
-                      </label>
-                      <label className="flex flex-col gap-2">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                          Capacity
-                        </span>
-                        <input
-                          value={venueCapacity}
-                          onChange={e => setVenueCapacity(e.target.value)}
-                          className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                          placeholder="450"
-                        />
-                      </label>
-                      <label className="flex flex-col gap-2">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                          Address
-                        </span>
-                        <input
-                          value={venueAddress}
-                          onChange={e => setVenueAddress(e.target.value)}
-                          className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                          placeholder="Street address"
-                        />
-                      </label>
-                      <label className="flex flex-col gap-2">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                          Website
-                        </span>
-                        <input
-                          value={venueWebsite}
-                          onChange={e => setVenueWebsite(e.target.value)}
-                          className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                          placeholder="https://venue-site.com"
-                        />
-                      </label>
-                      <div className="grid grid-cols-2 gap-3">
-                        <label className="flex flex-col gap-2">
-                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                            Latitude
-                          </span>
-                          <input
-                            value={venueLatitude}
-                            onChange={e => setVenueLatitude(e.target.value)}
-                            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/15"
-                          />
-                        </label>
-                        <label className="flex flex-col gap-2">
-                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                            Longitude
-                          </span>
-                          <input
-                            value={venueLongitude}
-                            onChange={e => setVenueLongitude(e.target.value)}
-                            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/15"
-                          />
-                        </label>
-                      </div>
-                      <label className="flex flex-col gap-2">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                          Venue photos (URLs)
-                        </span>
-                        <textarea
-                          value={venuePhotos}
-                          onChange={e => setVenuePhotos(e.target.value)}
-                          className="min-h-[96px] w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                          placeholder="One URL per line"
-                        />
-                      </label>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {formError && <p className="text-sm text-rose-400">{formError}</p>}
-              {message && <p className="text-sm text-emerald-400">{message}</p>}
-
+            <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl border border-white/10 bg-white/5 p-1">
               <button
                 type="button"
-                className="inline-flex w-full items-center justify-center rounded-xl bg-[#ff6b4a] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-                onClick={handleSave}
-                disabled={saving}
+                className={`rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] transition ${
+                  editModalTab === 'config'
+                    ? 'bg-[#ff6b4a] text-white'
+                    : 'text-white/65 hover:text-white'
+                }`}
+                onClick={() => setEditModalTab('config')}
               >
-                {saving ? 'Saving...' : 'Save changes'}
+                Config
               </button>
               <button
                 type="button"
-                className="inline-flex w-full items-center justify-center rounded-xl border border-white/20 px-4 py-3 text-sm font-semibold text-white/75 transition hover:text-white"
-                onClick={closeEditModal}
+                className={`rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] transition ${
+                  editModalTab === 'logout'
+                    ? 'bg-[#ff6b4a] text-white'
+                    : 'text-white/65 hover:text-white'
+                }`}
+                onClick={() => setEditModalTab('logout')}
               >
-                Cancel
+                Logout
+              </button>
+              <button
+                type="button"
+                className={`rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] transition ${
+                  editModalTab === 'premium'
+                    ? 'bg-[#ff6b4a] text-white'
+                    : 'text-white/65 hover:text-white'
+                }`}
+                onClick={() => setEditModalTab('premium')}
+              >
+                Premium
               </button>
             </div>
+
+            {editModalTab === 'config' && (
+              <div className="mt-6 space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                <label className="flex flex-col gap-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                    Display name
+                  </span>
+                  <input
+                    value={displayName}
+                    onChange={e => setDisplayName(e.target.value)}
+                    className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                  />
+                </label>
+                <label className="flex flex-col gap-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                    Username
+                  </span>
+                  <input
+                    value={username}
+                    onChange={e => setUsername(e.target.value)}
+                    className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                  />
+                </label>
+                <label className="flex flex-col gap-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                    Primary city
+                  </span>
+                  <input
+                    value={primaryCity}
+                    onChange={e => setPrimaryCity(e.target.value)}
+                    className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                  />
+                </label>
+                <label className="flex flex-col gap-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                    Bio
+                  </span>
+                  <textarea
+                    value={bio}
+                    onChange={e => setBio(e.target.value)}
+                    className="min-h-[96px] w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                  />
+                </label>
+                {isDev && (
+                  <label className="flex flex-col gap-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                      Role (dev)
+                    </span>
+                    <select
+                      value={role}
+                      onChange={e => setRole(e.target.value as ProfileRole)}
+                      className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/15"
+                    >
+                      <option value="user">User</option>
+                      <option value="artist">Artist</option>
+                      <option value="venue">Venue</option>
+                      <option value="label">Label</option>
+                    </select>
+                    <span className="text-xs text-white/60">
+                      Solo para testing. En prod queda bloqueado.
+                    </span>
+                  </label>
+                )}
+                {profile?.role === 'artist' && (
+                  <div className="space-y-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Artist links</p>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                        Website
+                      </span>
+                      <input
+                        value={linkWebsite}
+                        onChange={e => setLinkWebsite(e.target.value)}
+                        className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                        placeholder="https://your-site.com"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                        Instagram
+                      </span>
+                      <input
+                        value={linkInstagram}
+                        onChange={e => setLinkInstagram(e.target.value)}
+                        className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                        placeholder="https://instagram.com/you"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                        Spotify
+                      </span>
+                      <input
+                        value={linkSpotify}
+                        onChange={e => setLinkSpotify(e.target.value)}
+                        className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                        placeholder="https://open.spotify.com/artist/..."
+                      />
+                    </label>
+                  </div>
+                )}
+
+                {profile?.role === 'venue' && (
+                  <div className="space-y-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Venue management</p>
+                    {managedEntities.filter(e => e.type === 'venue').length === 0 ? (
+                      <p className="text-sm text-white/60">
+                        No managed venue place yet. Create or claim a venue to edit its details.
+                      </p>
+                    ) : (
+                      <>
+                        {managedEntities.filter(e => e.type === 'venue').length > 1 && (
+                          <label className="flex flex-col gap-2">
+                            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                              Managed venue
+                            </span>
+                            <select
+                              value={selectedVenuePlaceId || ''}
+                              onChange={e => setSelectedVenuePlaceId(e.target.value || null)}
+                              className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/15"
+                            >
+                              {managedEntities
+                                .filter(e => e.type === 'venue')
+                                .map(ent => (
+                                  <option key={ent.venue?.id} value={ent.venue?.id}>
+                                    {ent.venue?.name}
+                                  </option>
+                                ))}
+                            </select>
+                          </label>
+                        )}
+                        <label className="flex flex-col gap-2">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                            Venue name
+                          </span>
+                          <input
+                            value={venueName}
+                            onChange={e => setVenueName(e.target.value)}
+                            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                            placeholder="Venue name"
+                          />
+                        </label>
+                        <label className="flex flex-col gap-2">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                            City
+                          </span>
+                          <input
+                            value={venueCity}
+                            onChange={e => setVenueCity(e.target.value)}
+                            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                            placeholder="City"
+                          />
+                        </label>
+                        <label className="flex flex-col gap-2">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                            Venue type
+                          </span>
+                          <input
+                            value={venueType}
+                            onChange={e => setVenueType(e.target.value)}
+                            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                            placeholder="Club, hall, theatre..."
+                          />
+                        </label>
+                        <label className="flex flex-col gap-2">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                            Capacity
+                          </span>
+                          <input
+                            value={venueCapacity}
+                            onChange={e => setVenueCapacity(e.target.value)}
+                            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                            placeholder="450"
+                          />
+                        </label>
+                        <label className="flex flex-col gap-2">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                            Address
+                          </span>
+                          <input
+                            value={venueAddress}
+                            onChange={e => setVenueAddress(e.target.value)}
+                            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                            placeholder="Street address"
+                          />
+                        </label>
+                        <label className="flex flex-col gap-2">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                            Website
+                          </span>
+                          <input
+                            value={venueWebsite}
+                            onChange={e => setVenueWebsite(e.target.value)}
+                            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                            placeholder="https://venue-site.com"
+                          />
+                        </label>
+                        <div className="grid grid-cols-2 gap-3">
+                          <label className="flex flex-col gap-2">
+                            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                              Latitude
+                            </span>
+                            <input
+                              value={venueLatitude}
+                              onChange={e => setVenueLatitude(e.target.value)}
+                              className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/15"
+                            />
+                          </label>
+                          <label className="flex flex-col gap-2">
+                            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                              Longitude
+                            </span>
+                            <input
+                              value={venueLongitude}
+                              onChange={e => setVenueLongitude(e.target.value)}
+                              className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/15"
+                            />
+                          </label>
+                        </div>
+                        <label className="flex flex-col gap-2">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                            Venue photos (URLs)
+                          </span>
+                          <textarea
+                            value={venuePhotos}
+                            onChange={e => setVenuePhotos(e.target.value)}
+                            className="min-h-[96px] w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+                            placeholder="One URL per line"
+                          />
+                        </label>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {formError && <p className="text-sm text-rose-400">{formError}</p>}
+                {message && <p className="text-sm text-emerald-400">{message}</p>}
+
+                <button
+                  type="button"
+                  className="inline-flex w-full items-center justify-center rounded-xl bg-[#ff6b4a] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? 'Saving...' : 'Save changes'}
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex w-full items-center justify-center rounded-xl border border-white/20 px-4 py-3 text-sm font-semibold text-white/75 transition hover:text-white"
+                  onClick={closeEditModal}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+
+            {editModalTab === 'logout' && (
+              <div className="mt-6 space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                <p className="text-sm text-white/70">
+                  Cerrar sesión en este dispositivo.
+                </p>
+                {formError && <p className="text-sm text-rose-400">{formError}</p>}
+                <button
+                  type="button"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-rose-300/45 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-200 transition hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={handleSignOut}
+                  disabled={signingOut}
+                >
+                  <IconLogout className="h-4 w-4" />
+                  {signingOut ? 'Signing out...' : 'Log out'}
+                </button>
+              </div>
+            )}
+
+            {editModalTab === 'premium' && (
+              <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-white/60">Premium</p>
+                <p className="mt-2 text-sm text-white/70">
+                  Próximamente.
+                </p>
+              </div>
+            )}
           </div>
         </IonContent>
       </IonModal>

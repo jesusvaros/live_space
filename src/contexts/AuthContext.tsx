@@ -134,32 +134,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let authListener: { subscription: { unsubscribe: () => void } } | null = null;
 
     const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (mounted) {
-        if (session?.user) {
-          await loadProfile(session.user.id, session.user, mounted);
-        } else {
-          setUserId(null);
-          resetWorkspace();
-          setAuthState({
-            user: null,
-            profile: null,
-            loading: false,
-          });
-        }
-      }
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
 
-      const { data } = supabase.auth.onAuthStateChange(
-        async (event, session) => {
-          if (!mounted) return;
-
-          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-            if (session?.user) {
-              await loadProfile(session.user.id, session.user, mounted);
-            }
-          } else if (event === 'SIGNED_OUT') {
-            profileUserIdRef.current = null;
+        if (mounted) {
+          if (session?.user) {
+            await loadProfile(session.user.id, session.user, mounted);
+          } else {
             setUserId(null);
             resetWorkspace();
             setAuthState({
@@ -169,11 +150,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
           }
         }
-      );
-      authListener = data;
+
+        const { data } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            if (!mounted) return;
+
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+              if (session?.user) {
+                await loadProfile(session.user.id, session.user, mounted);
+              }
+            } else if (event === 'SIGNED_OUT') {
+              profileUserIdRef.current = null;
+              setUserId(null);
+              resetWorkspace();
+              setAuthState({
+                user: null,
+                profile: null,
+                loading: false,
+              });
+            }
+          }
+        );
+        authListener = data;
+      } catch (error) {
+        console.error('[auth] failed to initialize auth', error);
+        if (mounted) {
+          loadingProfileRef.current = null;
+          profileUserIdRef.current = null;
+          setUserId(null);
+          resetWorkspace();
+          setAuthState({
+            user: null,
+            profile: null,
+            loading: false,
+          });
+        }
+      }
     };
 
-    initAuth();
+    initAuth().catch(error => {
+      console.error('[auth] unexpected initAuth error', error);
+      if (mounted) {
+        setAuthState(prev => ({ ...prev, loading: false }));
+      }
+    });
 
     return () => {
       mounted = false;
