@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useIonRouter } from '@ionic/react';
 import { useHistory, useLocation } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 
 const MAX_HISTORY_DEPTH = 80;
 const MAIN_TAB_PATH = '/tabs/events';
@@ -15,6 +16,12 @@ const AppBackHandler = () => {
   const hashRef = useRef(location.hash);
   const routeStackRef = useRef<string[]>([]);
   const lastHandledAtRef = useRef(0);
+  const iosLastLocationRef = useRef({
+    pathname: location.pathname,
+    search: location.search,
+    hash: location.hash,
+  });
+  const iosRedirectLockRef = useRef(false);
 
   useEffect(() => {
     pathRef.current = location.pathname;
@@ -54,6 +61,48 @@ const AppBackHandler = () => {
       stack.splice(0, stack.length - MAX_HISTORY_DEPTH);
     }
   }, [location.hash, location.pathname, location.search]);
+
+  useEffect(() => {
+    if (Capacitor.getPlatform() !== 'ios') {
+      return;
+    }
+
+    const unlisten = history.listen((nextLocation, action) => {
+      const previous = iosLastLocationRef.current;
+      const next = {
+        pathname: nextLocation.pathname,
+        search: nextLocation.search || '',
+        hash: nextLocation.hash || '',
+      };
+
+      if (iosRedirectLockRef.current) {
+        iosRedirectLockRef.current = false;
+        iosLastLocationRef.current = next;
+        return;
+      }
+
+      if (action === 'POP') {
+        const cameFromEditFlow =
+          previous.pathname === next.pathname &&
+          previous.search.includes('edit=') &&
+          !next.search.includes('edit=');
+
+        if (!cameFromEditFlow && next.pathname.startsWith('/tabs/') && next.pathname !== MAIN_TAB_PATH) {
+          iosRedirectLockRef.current = true;
+          routeStackRef.current = [MAIN_TAB_PATH];
+          history.replace(MAIN_TAB_PATH);
+          iosLastLocationRef.current = { pathname: MAIN_TAB_PATH, search: '', hash: '' };
+          return;
+        }
+      }
+
+      iosLastLocationRef.current = next;
+    });
+
+    return () => {
+      unlisten();
+    };
+  }, [history]);
 
   useEffect(() => {
     const handleBackAction = () => {
