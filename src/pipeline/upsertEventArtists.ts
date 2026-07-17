@@ -11,7 +11,7 @@ export const upsertEventArtists = async (
 
   const { data, error } = await supabase
     .from('event_artists')
-    .select('artist_entity_id')
+    .select('artist_id')
     .eq('event_id', eventId);
 
   if (error) {
@@ -20,7 +20,7 @@ export const upsertEventArtists = async (
 
   const existingIds = new Set(
     (data || [])
-      .map((row) => (row as { artist_entity_id?: string | null }).artist_entity_id || null)
+      .map((row) => (row as { artist_id?: string | null }).artist_id || null)
       .filter(Boolean) as string[]
   );
 
@@ -28,7 +28,9 @@ export const upsertEventArtists = async (
     .filter((artistId) => !existingIds.has(artistId))
     .map((artistId) => ({
       event_id: eventId,
-      artist_entity_id: artistId,
+      artist_id: artistId,
+      billing_order: artistIds.indexOf(artistId),
+      is_headliner: artistIds.indexOf(artistId) === 0,
     }));
 
   if (rowsToInsert.length === 0) {

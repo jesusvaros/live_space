@@ -40,12 +40,12 @@ export type ScrapeSourceMetadata = {
 export type ScrapeSource = {
   id: string;
   source_type: SourceType;
-  source_name: string;
-  source_url: string;
+  name: string;
+  base_url: string;
   city: string | null;
-  country: string;
+  country_code: string;
   parser_key: ParserKey;
-  scrape_frequency: string;
+  frequency: string;
   is_active: boolean;
   metadata: ScrapeSourceMetadata;
   created_at?: string;
@@ -55,13 +55,13 @@ export type ScrapeSource = {
 export type ScrapeRun = {
   id: string;
   source_id: string;
-  status: 'pending' | 'running' | 'success' | 'error';
+  status: 'pending' | 'running' | 'success' | 'partial' | 'error';
   started_at: string;
   finished_at: string | null;
   raw_count: number;
   normalized_count: number;
-  inserted_count: number;
-  updated_count: number;
+  published_count: number;
+  metrics: Record<string, unknown>;
   error_message: string | null;
 };
 
@@ -69,20 +69,21 @@ export type StagingEventRecord = {
   id: string;
   scrape_run_id: string;
   source_id: string;
+  source_url: string;
   raw_payload: unknown;
-  source_event_url: string | null;
+  raw_hash: string;
   source_event_id: string | null;
   extracted_title: string | null;
-  extracted_description: string | null;
   extracted_date_text: string | null;
   extracted_starts_at: string | null;
   extracted_venue_name: string | null;
   extracted_city: string | null;
   extracted_artist_names: string[];
-  ai_normalized: unknown;
-  normalization_status: 'pending' | 'processed' | 'error';
+  normalized_payload: unknown;
+  confidence: number | null;
+  review_status: 'pending' | 'approved' | 'rejected' | 'merged';
+  published_event_id: string | null;
   processing_error: string | null;
-  processed: boolean;
   created_at: string;
   updated_at: string;
 };

@@ -1,13 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  IonContent,
-  IonSpinner,
-  IonModal,
-} from '@ionic/react';
-import { useHistory, useLocation } from 'react-router-dom';
+import { Content, Modal, Spinner } from '../components/ui/AppPrimitives';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Event, VenuePlace } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
+import { useWorkspace } from '../contexts/WorkspaceContext';
 import QrScanner from '../components/QrScanner';
 import { buildMomentItems, parseDatetimeLocalValue, MomentItem } from '../lib/moments';
 import AppShell from '../components/AppShell';
@@ -74,9 +71,10 @@ const getCaptureLabel = (source: string | null, capturedAt: Date | null) => {
 };
 
 const Upload: React.FC = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useLocation();
-  const { user, profile, isManagementMode, activeEntity } = useAuth();
+  const { user, profile } = useAuth();
+  const { activeWorkspace } = useWorkspace();
   const [events, setEvents] = useState<EventWithVenue[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [eventsError, setEventsError] = useState('');
@@ -373,9 +371,7 @@ const Upload: React.FC = () => {
 
         const { data: publicUrl } = supabase.storage.from('media').getPublicUrl(path);
 
-        const actorSubjectId = isManagementMode && activeEntity 
-          ? activeEntity.subject_id 
-          : profile?.subject_id;
+        const actorSubjectId = activeWorkspace?.subject_id ?? profile?.subject_id;
 
         const { error: insertError } = await supabase.from('posts').insert({
           user_id: user.id,
@@ -429,7 +425,7 @@ const Upload: React.FC = () => {
 
           {loadingEvents && (
             <div className="flex items-center justify-center py-8">
-              <IonSpinner name="crescent" />
+              <Spinner />
             </div>
           )}
 
@@ -550,7 +546,7 @@ const Upload: React.FC = () => {
                 <button
                   type="button"
                   className="inline-flex w-full items-center justify-center rounded-2xl bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15"
-                  onClick={() => history.push('/welcome')}
+                  onClick={() => navigate('/welcome')}
                 >
                   Sign in to upload
                 </button>
@@ -574,8 +570,8 @@ const Upload: React.FC = () => {
           )}
       </div>
 
-      <IonModal isOpen={showScanner} onDidDismiss={() => setShowScanner(false)}>
-          <IonContent fullscreen>
+      <Modal isOpen={showScanner} onDidDismiss={() => setShowScanner(false)} title="Scan event QR">
+          <Content fullscreen>
             <div className="flex flex-col gap-4 rounded-3xl bg-app-bg p-5">
               <div className="flex items-center justify-between gap-4">
                 <h2 className="font-display text-lg font-bold text-white">Scan QR</h2>
@@ -589,11 +585,11 @@ const Upload: React.FC = () => {
               </div>
               <QrScanner onDetected={handleQrDetected} />
             </div>
-          </IonContent>
-        </IonModal>
+          </Content>
+        </Modal>
 
-        <IonModal isOpen={showAddMoments} onDidDismiss={() => setShowAddMoments(false)}>
-          <IonContent fullscreen>
+        <Modal isOpen={showAddMoments} onDidDismiss={() => setShowAddMoments(false)} title="Add moments">
+          <Content fullscreen>
             <div className="flex flex-col gap-4 rounded-3xl bg-app-bg p-5">
               <div className="flex items-center justify-between gap-4">
                 <h2 className="font-display text-lg font-bold text-white">Add moments</h2>
@@ -693,8 +689,8 @@ const Upload: React.FC = () => {
                 Add more
               </button>
             </div>
-          </IonContent>
-        </IonModal>
+          </Content>
+        </Modal>
     </AppShell>
   );
 };

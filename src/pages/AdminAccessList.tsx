@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { IonContent, IonPage, IonSpinner } from '@ionic/react';
+import { Content, Page, Spinner } from '../components/ui/AppPrimitives';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
@@ -71,7 +71,7 @@ const AdminAccessList: React.FC = () => {
           .order('created_at', { ascending: false });
 
         if (err) throw err;
-        setRows(data as AccessRow[]);
+        setRows((data || []) as unknown as AccessRow[]);
       } catch (e: any) {
         setError(e.message || 'Failed to load access grants');
       } finally {
@@ -86,11 +86,11 @@ const AdminAccessList: React.FC = () => {
 
   if (profile?.role !== 'admin') {
     return (
-      <IonPage>
-        <IonContent className="ion-padding">
+      <Page>
+        <Content className="p-4">
           <div className="flex h-full items-center justify-center text-app-light/60">Access Denied. Admin only.</div>
-        </IonContent>
-      </IonPage>
+        </Content>
+      </Page>
     );
   }
 
@@ -113,7 +113,7 @@ const AdminAccessList: React.FC = () => {
     <AppShell
       headerProps={{ title: 'Access Grants', showBack: true }}
       headerPlacement="outside"
-      contentClassName="ion-padding"
+      contentClassName="p-4"
       contentFullscreen={false}
       contentWrapperClassName={false}
     >
@@ -123,7 +123,7 @@ const AdminAccessList: React.FC = () => {
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold uppercase tracking-wider text-app-light/70">Granted Accesses</h2>
-              {loading && <IonSpinner name="crescent" color="light" />}
+              {loading && <Spinner />}
             </div>
             {error && <div className="mt-3 rounded-xl bg-red-500/10 p-3 text-sm text-red-300">{error}</div>}
             {!loading && !error && rows.length === 0 && (

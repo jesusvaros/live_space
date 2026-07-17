@@ -41,7 +41,7 @@ const toNumber = (value: number | string | null | undefined) => {
 
 const sanitizeFilename = (value: string) => value.replace(/[^a-zA-Z0-9._-]/g, '-');
 
-const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> => {
+const withTimeout = async <T,>(promise: PromiseLike<T>, timeoutMs: number, label: string): Promise<T> => {
   let timeoutId: number | null = null;
   const timeoutPromise = new Promise<T>((_resolve, reject) => {
     timeoutId = window.setTimeout(() => {
@@ -50,7 +50,7 @@ const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number, label: st
   });
 
   try {
-    return await Promise.race([promise, timeoutPromise]);
+    return await Promise.race([Promise.resolve(promise), timeoutPromise]);
   } finally {
     if (timeoutId !== null) {
       window.clearTimeout(timeoutId);

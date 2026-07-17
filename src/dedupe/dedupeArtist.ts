@@ -5,11 +5,11 @@ import { stringSimilarity } from '../utils/stringSimilarity.js';
 
 export type ArtistDedupeResult = {
   match: ArtistRow | null;
-  strategy: 'normalized_name' | 'aliases' | 'fuzzy' | 'none';
+  strategy: 'normalized_name' | 'fuzzy' | 'none';
   confidence: number;
 };
 
-const ARTIST_SELECT = 'id,name,normalized_name,aliases,artist_type,city';
+const ARTIST_SELECT = 'id,name,normalized_name,artist_type,city,country_code';
 
 export const dedupeArtist = async (
   supabase: SupabaseClient,
@@ -19,6 +19,7 @@ export const dedupeArtist = async (
     .from('artists')
     .select(ARTIST_SELECT)
     .eq('normalized_name', artist.normalizedName)
+    .eq('country_code', 'ES')
     .limit(5);
 
   if (exactError) {
@@ -31,27 +32,6 @@ export const dedupeArtist = async (
       strategy: 'normalized_name',
       confidence: 1,
     };
-  }
-
-  const aliasCandidates = Array.from(new Set([artist.rawName, artist.displayName].filter(Boolean)));
-  for (const alias of aliasCandidates) {
-    const { data: aliasMatches, error: aliasError } = await supabase
-      .from('artists')
-      .select(ARTIST_SELECT)
-      .contains('aliases', [alias])
-      .limit(5);
-
-    if (aliasError) {
-      throw aliasError;
-    }
-
-    if ((aliasMatches || []).length > 0) {
-      return {
-        match: (aliasMatches || [])[0] as ArtistRow,
-        strategy: 'aliases',
-        confidence: 0.98,
-      };
-    }
   }
 
   const prefix = artist.normalizedName.split(' ')[0];
@@ -67,6 +47,7 @@ export const dedupeArtist = async (
     .from('artists')
     .select(ARTIST_SELECT)
     .ilike('normalized_name', `${prefix}%`)
+    .eq('country_code', 'ES')
     .limit(100);
 
   if (candidateError) {

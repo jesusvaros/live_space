@@ -2,112 +2,132 @@ import { env } from '../config/env.js';
 import { getSupabaseAdmin } from '../db/supabase.js';
 import { extractAmbiguousEventWithAi } from '../normalize/aiExtraction.js';
 import { mergeAiExtraction, normalizeStagingEvent } from '../normalize/normalizeEvent.js';
-import { upsertArtists } from './upsertArtists.js';
-import { upsertEvent } from './upsertEvents.js';
-import { upsertEventArtists } from './upsertEventArtists.js';
-import { upsertVenue } from './upsertVenues.js';
-import type { AiExtractionPayload } from '../types/domain.js';
+import type { AiExtractionPayload, NormalizedEvent } from '../types/domain.js';
 import type { ScrapeSource, StagingEventRecord } from '../types/scrape.js';
 import { Logger } from '../utils/logger.js';
 import { runWithConcurrency } from '../utils/promisePool.js';
+import { decideByConfidence } from './confidenceDecision.js';
+import { upsertArtists } from './upsertArtists.js';
+import { upsertEventArtists } from './upsertEventArtists.js';
+import { upsertEvent } from './upsertEvents.js';
+import { upsertVenue } from './upsertVenues.js';
 
 type RunMetrics = {
   normalizedCount: number;
+  publishedCount: number;
   insertedCount: number;
   updatedCount: number;
+  reviewCount: number;
+  rejectedCount: number;
 };
 
 export type ProcessStagingSummary = {
   pendingCount: number;
   processedCount: number;
+  publishedCount: number;
+  reviewCount: number;
+  rejectedCount: number;
   errorCount: number;
 };
 
 const STAGING_SELECT =
-  'id,scrape_run_id,source_id,raw_payload,source_event_url,source_event_id,extracted_title,extracted_description,extracted_date_text,extracted_starts_at,extracted_venue_name,extracted_city,extracted_artist_names,ai_normalized,normalization_status,processing_error,processed,created_at,updated_at';
+  'id,scrape_run_id,source_id,source_url,raw_payload,raw_hash,source_event_id,extracted_title,extracted_date_text,extracted_starts_at,extracted_venue_name,extracted_city,extracted_artist_names,normalized_payload,confidence,review_status,published_event_id,processing_error,created_at,updated_at';
 
-const ensureProcessable = (record: StagingEventRecord, source: ScrapeSource) => {
-  if (!source) {
-    throw new Error(`Missing scrape source ${record.source_id}`);
-  }
-};
+const emptyRunMetrics = (): RunMetrics => ({
+  normalizedCount: 0,
+  publishedCount: 0,
+  insertedCount: 0,
+  updatedCount: 0,
+  reviewCount: 0,
+  rejectedCount: 0,
+});
 
 const incrementMetrics = (
   metricsMap: Map<string, RunMetrics>,
   runId: string,
-  updates: Partial<RunMetrics>
+  updates: Partial<RunMetrics>,
 ) => {
-  const current = metricsMap.get(runId) || {
-    normalizedCount: 0,
-    insertedCount: 0,
-    updatedCount: 0,
-  };
-
-  current.normalizedCount += updates.normalizedCount || 0;
-  current.insertedCount += updates.insertedCount || 0;
-  current.updatedCount += updates.updatedCount || 0;
-
+  const current = metricsMap.get(runId) || emptyRunMetrics();
+  for (const key of Object.keys(current) as Array<keyof RunMetrics>) {
+    current[key] += updates[key] || 0;
+  }
   metricsMap.set(runId, current);
 };
 
-const updateRunMetrics = async (runId: string, metrics: RunMetrics) => {
+const metricNumber = (metrics: Record<string, unknown>, key: string): number => {
+  const value = metrics[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+};
+
+const updateRunMetrics = async (runId: string, updates: RunMetrics) => {
   const supabase = getSupabaseAdmin();
-  const { data: currentRow, error: readError } = await supabase
+  const { data, error: readError } = await supabase
     .from('scrape_runs')
-    .select('normalized_count,inserted_count,updated_count')
+    .select('normalized_count,published_count,metrics')
     .eq('id', runId)
     .maybeSingle();
+  if (readError) throw readError;
 
-  if (readError) {
-    throw readError;
-  }
-
-  const current = (currentRow || {
-    normalized_count: 0,
-    inserted_count: 0,
-    updated_count: 0,
-  }) as {
-    normalized_count: number;
-    inserted_count: number;
-    updated_count: number;
+  const current = (data || {}) as {
+    normalized_count?: number;
+    published_count?: number;
+    metrics?: Record<string, unknown>;
   };
-
+  const metrics = current.metrics || {};
   const { error: updateError } = await supabase
     .from('scrape_runs')
     .update({
-      normalized_count: current.normalized_count + metrics.normalizedCount,
-      inserted_count: current.inserted_count + metrics.insertedCount,
-      updated_count: current.updated_count + metrics.updatedCount,
+      normalized_count: (current.normalized_count || 0) + updates.normalizedCount,
+      published_count: (current.published_count || 0) + updates.publishedCount,
+      metrics: {
+        ...metrics,
+        inserted_count: metricNumber(metrics, 'inserted_count') + updates.insertedCount,
+        updated_count: metricNumber(metrics, 'updated_count') + updates.updatedCount,
+        review_count: metricNumber(metrics, 'review_count') + updates.reviewCount,
+        rejected_count: metricNumber(metrics, 'rejected_count') + updates.rejectedCount,
+      },
     })
     .eq('id', runId);
+  if (updateError) throw updateError;
+};
 
-  if (updateError) {
-    throw updateError;
-  }
+const isNormalizedEvent = (value: unknown): value is NormalizedEvent => {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Partial<NormalizedEvent>;
+  return (
+    typeof candidate.canonicalName === 'string' &&
+    typeof candidate.normalizedName === 'string' &&
+    typeof candidate.confidence === 'number' &&
+    Array.isArray(candidate.artists) &&
+    Boolean(candidate.venue && typeof candidate.venue === 'object')
+  );
 };
 
 export const processPendingStaging = async (
-  logger = new Logger(env.logLevel)
+  logger = new Logger(env.logLevel),
 ): Promise<ProcessStagingSummary> => {
   const supabase = getSupabaseAdmin();
   const rootLogger = logger.child({ pipeline: 'processStaging' });
-
-  const { data: stagingRows, error } = await supabase
+  const { data, error } = await supabase
     .from('staging_events')
     .select(STAGING_SELECT)
-    .eq('processed', false)
+    .is('published_event_id', null)
+    .in('review_status', ['pending', 'approved'])
     .order('created_at', { ascending: true });
+  if (error) throw error;
 
-  if (error) {
-    throw error;
-  }
-
-  const pendingRows = (stagingRows || []) as StagingEventRecord[];
+  const candidateRows = (data || []) as StagingEventRecord[];
+  const pendingRows = candidateRows.filter(
+    (row) => row.review_status === 'approved' || row.normalized_payload === null,
+  );
   if (pendingRows.length === 0) {
-    rootLogger.info('No pending staging rows found');
+    rootLogger.info('No processable staging rows found');
     return {
       pendingCount: 0,
       processedCount: 0,
+      publishedCount: 0,
+      reviewCount: 0,
+      rejectedCount: 0,
       errorCount: 0,
     };
   }
@@ -117,59 +137,98 @@ export const processPendingStaging = async (
     .from('scrape_sources')
     .select('*')
     .in('id', sourceIds);
-
-  if (sourcesError) {
-    throw sourcesError;
-  }
+  if (sourcesError) throw sourcesError;
 
   const sourceMap = new Map(((sources || []) as ScrapeSource[]).map((source) => [source.id, source]));
   const metricsByRun = new Map<string, RunMetrics>();
   let processedCount = 0;
+  let publishedCount = 0;
+  let reviewCount = 0;
+  let rejectedCount = 0;
   let errorCount = 0;
 
   await runWithConcurrency(pendingRows, env.scraperConcurrency, async (row) => {
     const source = sourceMap.get(row.source_id);
-    ensureProcessable(row, source as ScrapeSource);
-    const resolvedSource = source as ScrapeSource;
-
     const itemLogger = rootLogger.child({
       stagingEventId: row.id,
       scrapeRunId: row.scrape_run_id,
       sourceId: row.source_id,
-      sourceUrl: resolvedSource.source_url,
-      parserKey: resolvedSource.parser_key,
+      sourceUrl: source?.base_url,
+      parserKey: source?.parser_key,
     });
 
-    let aiPayload: AiExtractionPayload | null = (row.ai_normalized as AiExtractionPayload | null) || null;
-
     try {
-      const heuristic = normalizeStagingEvent(row, resolvedSource);
-      let normalizedEvent = heuristic.normalizedEvent;
+      if (!source) throw new Error(`Missing scrape source ${row.source_id}`);
 
-      if (heuristic.needsAi && env.enableAiNormalization) {
-        aiPayload = await extractAmbiguousEventWithAi(
-          {
-            title: row.extracted_title,
-            description: row.extracted_description,
-            venueName: row.extracted_venue_name,
-            city: row.extracted_city,
-            dateText: row.extracted_date_text,
-            sourceEventUrl: row.source_event_url,
-          },
-          itemLogger
-        );
-        normalizedEvent = mergeAiExtraction(normalizedEvent, aiPayload, resolvedSource);
+      let normalizedEvent: NormalizedEvent;
+      if (row.review_status === 'approved' && isNormalizedEvent(row.normalized_payload)) {
+        normalizedEvent = row.normalized_payload;
+      } else {
+        const heuristic = normalizeStagingEvent(row, source);
+        normalizedEvent = heuristic.normalizedEvent;
+
+        if (heuristic.needsAi && env.enableAiNormalization) {
+          const raw =
+            row.raw_payload && typeof row.raw_payload === 'object'
+              ? (row.raw_payload as Record<string, unknown>)
+              : {};
+          const aiPayload: AiExtractionPayload = await extractAmbiguousEventWithAi(
+            {
+              title: row.extracted_title,
+              description: typeof raw.description === 'string' ? raw.description : null,
+              venueName: row.extracted_venue_name,
+              city: row.extracted_city,
+              dateText: row.extracted_date_text,
+              sourceEventUrl: row.source_url,
+            },
+            itemLogger,
+          );
+          normalizedEvent = mergeAiExtraction(normalizedEvent, aiPayload, source);
+        }
+
+        const decision = decideByConfidence(normalizedEvent);
+        const { error: decisionError } = await supabase
+          .from('staging_events')
+          .update({
+            normalized_payload: normalizedEvent,
+            confidence: normalizedEvent.confidence,
+            review_status: decision.reviewStatus,
+            processing_error: null,
+          })
+          .eq('id', row.id);
+        if (decisionError) throw decisionError;
+
+        incrementMetrics(metricsByRun, row.scrape_run_id, {
+          normalizedCount: 1,
+          reviewCount: decision.reviewStatus === 'pending' ? 1 : 0,
+          rejectedCount: decision.reviewStatus === 'rejected' ? 1 : 0,
+        });
+
+        if (!decision.shouldPublish) {
+          processedCount += 1;
+          if (decision.reviewStatus === 'pending') reviewCount += 1;
+          if (decision.reviewStatus === 'rejected') rejectedCount += 1;
+          itemLogger.info('Retained staging row without publication', {
+            confidence: normalizedEvent.confidence,
+            reviewStatus: decision.reviewStatus,
+            reasons: decision.reasons,
+          });
+          return;
+        }
       }
 
-      if (!normalizedEvent.startsAt) {
-        throw new Error('Unable to resolve startsAt from heuristics or AI.');
+      const decision = decideByConfidence(normalizedEvent);
+      if (decision.reviewStatus === 'rejected') {
+        await supabase
+          .from('staging_events')
+          .update({ review_status: 'rejected', processing_error: null })
+          .eq('id', row.id);
+        incrementMetrics(metricsByRun, row.scrape_run_id, { rejectedCount: 1 });
+        rejectedCount += 1;
+        processedCount += 1;
+        return;
       }
-      if (normalizedEvent.artists.length === 0) {
-        throw new Error('Unable to resolve artist list from heuristics or AI.');
-      }
-      if (!normalizedEvent.venue.normalizedName) {
-        throw new Error('Unable to resolve venue normalization.');
-      }
+      if (row.review_status !== 'approved' && !decision.shouldPublish) return;
 
       const venueResult = await upsertVenue(supabase, normalizedEvent.venue, itemLogger);
       const artistsResult = await upsertArtists(supabase, normalizedEvent.artists, itemLogger);
@@ -177,31 +236,27 @@ export const processPendingStaging = async (
         supabase,
         normalizedEvent,
         venueResult.row.id,
-        resolvedSource.id,
-        itemLogger
+        source.id,
+        itemLogger,
       );
       const insertedEventArtistCount = await upsertEventArtists(
         supabase,
         eventResult.row.id,
-        artistsResult.rows.map((artist) => artist.id)
+        artistsResult.rows.map((artist) => artist.id),
       );
 
-      const { error: updateStagingError } = await supabase
+      const { error: publishError } = await supabase
         .from('staging_events')
         .update({
-          ai_normalized: aiPayload,
-          normalization_status: 'processed',
-          processed: true,
+          review_status: 'approved',
+          published_event_id: eventResult.row.id,
           processing_error: null,
         })
         .eq('id', row.id);
-
-      if (updateStagingError) {
-        throw updateStagingError;
-      }
+      if (publishError) throw publishError;
 
       incrementMetrics(metricsByRun, row.scrape_run_id, {
-        normalizedCount: 1,
+        publishedCount: 1,
         insertedCount:
           (venueResult.created ? 1 : 0) +
           artistsResult.createdCount +
@@ -212,11 +267,10 @@ export const processPendingStaging = async (
           artistsResult.updatedCount +
           (eventResult.updated ? 1 : 0),
       });
-
       processedCount += 1;
-      itemLogger.info('Processed staging row', {
-        artistCount: artistsResult.rows.length,
-        venueId: venueResult.row.id,
+      publishedCount += 1;
+      itemLogger.info('Published staging row', {
+        confidence: normalizedEvent.confidence,
         eventId: eventResult.row.id,
       });
     } catch (processingError) {
@@ -225,29 +279,21 @@ export const processPendingStaging = async (
       await supabase
         .from('staging_events')
         .update({
-          ai_normalized: aiPayload,
-          normalization_status: 'error',
           processing_error:
             processingError instanceof Error ? processingError.message : String(processingError),
-          processed: false,
         })
         .eq('id', row.id);
     }
   });
 
-  for (const [runId, metrics] of metricsByRun.entries()) {
-    await updateRunMetrics(runId, metrics);
-  }
-
-  rootLogger.info('Finished processing staging rows', {
-    pendingCount: pendingRows.length,
-    processedCount,
-    errorCount,
-  });
+  for (const [runId, metrics] of metricsByRun.entries()) await updateRunMetrics(runId, metrics);
 
   return {
     pendingCount: pendingRows.length,
     processedCount,
+    publishedCount,
+    reviewCount,
+    rejectedCount,
     errorCount,
   };
 };

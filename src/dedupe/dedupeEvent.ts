@@ -7,7 +7,7 @@ export type EventDedupeResult = {
   match: EventRow | null;
   strategy:
     | 'source_url'
-    | 'external_source'
+    | 'source_identity'
     | 'venue_starts_at_normalized_name'
     | 'fuzzy'
     | 'none';
@@ -15,7 +15,7 @@ export type EventDedupeResult = {
 };
 
 const EVENT_SELECT =
-  'id,name,normalized_name,venue_place_id,starts_at,source_url,external_source,external_source_id';
+  'id,name,normalized_name,venue_place_id,starts_at,source_url,source_id,source_external_id';
 
 const buildDayBounds = (isoString: string): { from: string; to: string } => {
   const date = new Date(isoString);
@@ -30,7 +30,7 @@ export const dedupeEvent = async (
   supabase: SupabaseClient,
   event: NormalizedEvent,
   venueId: string,
-  externalSource: string
+  sourceId: string
 ): Promise<EventDedupeResult> => {
   if (event.sourceUrl) {
     const { data, error } = await supabase
@@ -56,8 +56,8 @@ export const dedupeEvent = async (
     const { data, error } = await supabase
       .from('events')
       .select(EVENT_SELECT)
-      .eq('external_source', externalSource)
-      .eq('external_source_id', event.sourceExternalId)
+      .eq('source_id', sourceId)
+      .eq('source_external_id', event.sourceExternalId)
       .maybeSingle();
 
     if (error) {
@@ -67,7 +67,7 @@ export const dedupeEvent = async (
     if (data) {
       return {
         match: data as EventRow,
-        strategy: 'external_source',
+        strategy: 'source_identity',
         confidence: 0.99,
       };
     }

@@ -1,6 +1,6 @@
 import React from 'react';
-import { IonSpinner } from '@ionic/react';
-import { useHistory } from 'react-router-dom';
+import { Spinner } from '../../../components/ui/AppPrimitives';
+import { useNavigate } from 'react-router-dom';
 import { NearbyEventListItem } from '../types';
 import { formatDate, formatDistance, getEventCoverImage, getPrimaryArtistName } from '../utils';
 import EventPosterTile from '../components/EventPosterTile';
@@ -26,7 +26,7 @@ const NearbyHeroSection: React.FC<NearbyHeroSectionProps> = ({
   onRequestLocation,
   nearbyUpcoming,
 }) => {
-  const history = useHistory();
+  const navigate = useNavigate();
 
   return (
     <section className="animate-fade-up space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 motion-reduce:animate-none">
@@ -40,7 +40,7 @@ const NearbyHeroSection: React.FC<NearbyHeroSectionProps> = ({
             <button
               type="button"
               className="inline-flex items-center gap-2 rounded-full border border-app-accent/40 bg-app-accent/20 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-app-accent/30"
-              onClick={() => history.push('/create-event')}
+              onClick={() => navigate('/create-event')}
             >
               Create event
             </button>
@@ -52,7 +52,7 @@ const NearbyHeroSection: React.FC<NearbyHeroSectionProps> = ({
 
       {loading ? (
         <div className="flex items-center justify-center py-8">
-          <IonSpinner name="crescent" />
+          <Spinner />
         </div>
       ) : (
         <>
@@ -74,7 +74,7 @@ const NearbyHeroSection: React.FC<NearbyHeroSectionProps> = ({
                 <button
                   type="button"
                   className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white/90"
-                  onClick={() => history.push('/tabs/map')}
+                  onClick={() => navigate('/tabs/map')}
                 >
                   Explore map
                 </button>
@@ -88,7 +88,7 @@ const NearbyHeroSection: React.FC<NearbyHeroSectionProps> = ({
                 <button
                   type="button"
                   className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white"
-                  onClick={() => history.push('/tabs/map')}
+                  onClick={() => navigate('/tabs/map')}
                 >
                   Explore map
                 </button>
@@ -106,7 +106,7 @@ const NearbyHeroSection: React.FC<NearbyHeroSectionProps> = ({
                       title={getPrimaryArtistName(event)}
                       subtitle={event.venue_place?.name || event.city}
                       badge={formatDistance(event.distanceKm)}
-                      onSelect={selected => history.push(`/event/${selected.id}`)}
+                      onSelect={selected => navigate(`/event/${selected.id}`)}
                     />
                   </div>
                 );

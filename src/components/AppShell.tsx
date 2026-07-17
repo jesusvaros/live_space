@@ -1,5 +1,5 @@
 import React from 'react';
-import { IonContent, IonPage } from '@ionic/react';
+import { Content, Page } from './ui/AppPrimitives';
 import AppHeader, { AppHeaderProps } from './AppHeader';
 
 type AppShellProps = {
@@ -28,16 +28,12 @@ const AppShell: React.FC<AppShellProps> = ({
   );
 
   return (
-    <IonPage>
+    <Page>
       {headerPlacement === 'outside' ? headerNode : null}
-      <IonContent fullscreen={contentFullscreen} className={contentClassName}>
-        {contentWrapperClassName === false ? (
-          content
-        ) : (
-          <div className={contentWrapperClassName}>{content}</div>
-        )}
-      </IonContent>
-    </IonPage>
+      <Content fullscreen={contentFullscreen} className={contentClassName}>
+        {contentWrapperClassName === false ? content : <div className={contentWrapperClassName}>{content}</div>}
+      </Content>
+    </Page>
   );
 };
 

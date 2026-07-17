@@ -50,6 +50,7 @@ export type ScraperEnv = {
   enableAiNormalization: boolean;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
   errorScreenshotDir: string;
+  cityAllowlist: string[];
 };
 
 export const env: ScraperEnv = {
@@ -65,11 +66,15 @@ export const env: ScraperEnv = {
   openAiModel: process.env.OPENAI_MODEL || 'gpt-4o-mini',
   scraperConcurrency: parseInteger(process.env.SCRAPER_CONCURRENCY, 3),
   scraperTimeoutMs: parseInteger(process.env.SCRAPER_TIMEOUT_MS, 30_000),
-  enableAiNormalization: parseBoolean(process.env.ENABLE_AI_NORMALIZATION, true),
+  enableAiNormalization: parseBoolean(process.env.ENABLE_AI_NORMALIZATION, false),
   logLevel:
     (process.env.LOG_LEVEL as ScraperEnv['logLevel'] | undefined) ||
     (process.env.NODE_ENV === 'development' ? 'debug' : 'info'),
   errorScreenshotDir: process.env.SCRAPER_ERROR_SCREENSHOT_DIR || 'tmp/scraper-errors',
+  cityAllowlist: (process.env.SCRAPER_CITY_ALLOWLIST || 'Madrid,Barcelona')
+    .split(',')
+    .map((city) => city.trim())
+    .filter(Boolean),
 };
 
 export const assertOpenAiEnabled = () => {

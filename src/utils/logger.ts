@@ -10,7 +10,7 @@ const levelWeight: Record<LogLevel, number> = {
 
 const redactSecrets = (value: unknown): unknown => {
   if (typeof value === 'string') {
-    if (value.length > 24 && /^[A-Za-z0-9_\-]+$/.test(value)) {
+    if (value.length > 24 && /^[A-Za-z0-9_-]+$/.test(value)) {
       return `${value.slice(0, 6)}...${value.slice(-4)}`;
     }
     return value;

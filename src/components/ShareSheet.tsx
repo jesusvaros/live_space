@@ -1,8 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-  IonModal,
-  IonContent,
-} from '@ionic/react';
+import { Content, Modal } from './ui/AppPrimitives';
 import { IconCopy, IconShare } from './icons';
 
 type ShareSheetProps = {
@@ -44,14 +41,14 @@ const ShareSheet: React.FC<ShareSheetProps> = ({ isOpen, onClose, link }) => {
   };
 
   return (
-    <IonModal
+    <Modal
       isOpen={isOpen}
       onDidDismiss={onClose}
       initialBreakpoint={0.5}
       breakpoints={[0, 0.5, 0.9]}
       className="share-sheet"
     >
-      <IonContent fullscreen>
+      <Content fullscreen>
         <div className="min-h-full bg-app-bg p-5">
           <div className="flex items-center justify-between gap-4">
             <h2 className="font-display text-lg font-bold text-white">Share</h2>
@@ -87,8 +84,8 @@ const ShareSheet: React.FC<ShareSheetProps> = ({ isOpen, onClose, link }) => {
 
           {message && <p className="mt-4 text-sm text-white/55">{message}</p>}
         </div>
-      </IonContent>
-    </IonModal>
+      </Content>
+    </Modal>
   );
 };
 

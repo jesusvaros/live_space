@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import { IconChevronDown, IconChevronUp, IconBriefcase, IconUser } from './icons';
 import { ManagedEntity } from '../lib/types';
@@ -7,7 +7,7 @@ import { ManagedEntity } from '../lib/types';
 const WorkspaceSwitcher: React.FC = () => {
   const { managedEntities, activeWorkspace, setActiveWorkspace } = useWorkspace();
   const [isOpen, setIsOpen] = useState(false);
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const handleSelect = (workspace: ManagedEntity | null) => {
     console.log('[workspace-switcher] selecting', workspace);
@@ -26,11 +26,11 @@ const WorkspaceSwitcher: React.FC = () => {
     );
     setIsOpen(false);
     if (workspace?.type === 'artist' && (workspace.artist as any)?.id) {
-      history.replace(`/tabs/artist/${(workspace.artist as any).id}`);
+      navigate(`/tabs/artist/${(workspace.artist as any).id}`, { replace: true });
     } else if (workspace?.type === 'venue' && (workspace.venue as any)?.id) {
-      history.replace(`/tabs/venue/${(workspace.venue as any).id}`);
+      navigate(`/tabs/venue/${(workspace.venue as any).id}`, { replace: true });
     } else {
-      history.replace('/tabs/profile');
+      navigate('/tabs/profile', { replace: true });
     }
   };
 

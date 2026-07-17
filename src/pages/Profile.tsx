@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { IonContent, IonModal, IonSpinner } from '@ionic/react';
-import { useHistory, useLocation } from 'react-router-dom';
+import { Content, Modal, Spinner } from '../components/ui/AppPrimitives';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Event, PostWithSetlist, ProfileRole } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
@@ -28,7 +28,7 @@ const Profile: React.FC = () => {
 
   const [isManagementMode, setIsManagementMode] = useState(false);
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useLocation();
   const isDev = Boolean((import.meta as any).env?.DEV);
 
@@ -73,19 +73,19 @@ const Profile: React.FC = () => {
   const closeEditModal = () => {
     const nextParams = new URLSearchParams(location.search);
     nextParams.delete('edit');
-    history.replace({
+    navigate({
       pathname: location.pathname,
       search: nextParams.toString(),
-    });
+    }, { replace: true });
   };
 
   const openEditModal = (target: 'profile' | 'artist' | 'venue') => {
     const nextParams = new URLSearchParams(location.search);
     nextParams.set('edit', target);
-    history.replace({
+    navigate({
       pathname: location.pathname,
       search: nextParams.toString(),
-    });
+    }, { replace: true });
   };
 
   const openContextualEditModal = () => {
@@ -118,15 +118,15 @@ const Profile: React.FC = () => {
     if (activeEntity.type === 'artist' && activeEntity.artist?.id) {
       const artistPath = `/tabs/artist/${activeEntity.artist.id}`;
       if (!location.pathname.startsWith(artistPath)) {
-        history.replace(artistPath);
+        navigate(artistPath, { replace: true });
       }
     } else if (activeEntity.type === 'venue' && activeEntity.venue?.id) {
       const venuePath = `/tabs/venue/${activeEntity.venue.id}`;
       if (!location.pathname.startsWith(venuePath)) {
-        history.replace(venuePath);
+        navigate(venuePath, { replace: true });
       }
     }
-  }, [activeEntity, history, location.pathname]);
+  }, [activeEntity, location.pathname, navigate]);
 
   const activeProfile = isManagementMode && activeEntity 
     ? (activeEntity.type === 'user' ? activeEntity.profile : null)
@@ -420,7 +420,7 @@ const Profile: React.FC = () => {
     setSigningOut(true);
     try {
       await signOut();
-      history.replace('/welcome');
+      navigate('/welcome', { replace: true });
     } catch (err) {
       setFormError('Sign out failed. Check your Supabase connection.');
     } finally {
@@ -458,7 +458,7 @@ const Profile: React.FC = () => {
     if (loading) {
       return (
         <div className="flex items-center justify-center py-12">
-          <IonSpinner name="crescent" />
+          <Spinner />
         </div>
       );
     }
@@ -482,7 +482,7 @@ const Profile: React.FC = () => {
               key={event.id}
               event={event}
               className="w-full"
-              onSelect={selected => history.push(`/event/${selected.id}`)}
+              onSelect={selected => navigate(`/event/${selected.id}`)}
             />
           ))}
         </div>
@@ -504,7 +504,7 @@ const Profile: React.FC = () => {
               key={event.id}
               event={event}
               className="w-full"
-              onSelect={selected => history.push(`/event/${selected.id}`)}
+              onSelect={selected => navigate(`/event/${selected.id}`)}
             />
           ))}
         </div>
@@ -526,7 +526,7 @@ const Profile: React.FC = () => {
               key={event.id}
               event={event}
               className="w-full"
-              onSelect={selected => history.push(`/event/${selected.id}`)}
+              onSelect={selected => navigate(`/event/${selected.id}`)}
             />
           ))}
         </div>
@@ -547,7 +547,7 @@ const Profile: React.FC = () => {
               key={event.id}
               event={event}
               className="w-full"
-              onSelect={selected => history.push(`/event/${selected.id}`)}
+              onSelect={selected => navigate(`/event/${selected.id}`)}
             />
           ))}
         </div>
@@ -567,7 +567,7 @@ const Profile: React.FC = () => {
           <button
             key={post.id}
             type="button"
-            onClick={() => history.push(`/post/${post.id}`)}
+            onClick={() => navigate(`/post/${post.id}`)}
             className="overflow-hidden bg-white/5 transition-opacity hover:opacity-90"
           >
             {post.media_type === 'video' ? (
@@ -675,7 +675,7 @@ const Profile: React.FC = () => {
                     <button
                       type="button"
                       className="bg-white/10 px-3 py-1.5 text-xs font-semibold text-white"
-                      onClick={() => history.push(`/tabs/artist/${(activeEntity.artist as any).id || (activeEntity.artist as any).artist_id}`)}
+                      onClick={() => navigate(`/tabs/artist/${(activeEntity.artist as any).id || (activeEntity.artist as any).artist_id}`)}
                     >
                       View profile
                     </button>
@@ -684,7 +684,7 @@ const Profile: React.FC = () => {
                     <button
                       type="button"
                       className="bg-white/10 px-3 py-1.5 text-xs font-semibold text-white"
-                      onClick={() => history.push(`/tabs/venue/${(activeEntity.venue as any).id || (activeEntity.venue as any).venue_place_id}`)}
+                      onClick={() => navigate(`/tabs/venue/${(activeEntity.venue as any).id || (activeEntity.venue as any).venue_place_id}`)}
                     >
                       View profile
                     </button>
@@ -844,8 +844,8 @@ const Profile: React.FC = () => {
             </button>
       </div>
 
-      <IonModal isOpen={showEdit} onDidDismiss={closeEditModal}>
-        <IonContent fullscreen>
+      <Modal isOpen={showEdit} onDidDismiss={closeEditModal} title="Edit profile">
+        <Content fullscreen>
           <div className="min-h-full bg-app-bg p-5">
             <div className="flex items-center justify-between gap-4">
               <h2 className="font-display text-lg font-bold text-white">{editModalTitle}</h2>
@@ -1176,8 +1176,8 @@ const Profile: React.FC = () => {
               </div>
             )}
           </div>
-        </IonContent>
-      </IonModal>
+        </Content>
+      </Modal>
     </AppShell>
   );
 };

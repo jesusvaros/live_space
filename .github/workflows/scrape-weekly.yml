@@ -1,9 +1,12 @@
-name: Weekly concert scraping
+name: Daily concert scraping
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 4 * * 1"
+    - cron: "17 4 * * *"
+
+permissions:
+  contents: read
 
 jobs:
   scrape:
@@ -17,7 +20,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -31,8 +34,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
           SCRAPER_CONCURRENCY: "3"
           SCRAPER_TIMEOUT_MS: "30000"
-          ENABLE_AI_NORMALIZATION: "true"
+          ENABLE_AI_NORMALIZATION: "false"
+          SCRAPER_CITY_ALLOWLIST: "Madrid,Barcelona"

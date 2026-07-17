@@ -177,8 +177,8 @@ export const parseCardList = async (
     },
     {
       selectors,
-      sourceUrl: source.source_url,
-      fallbackVenueName: source.source_name,
+      sourceUrl: source.base_url,
+      fallbackVenueName: source.name,
       fallbackCity: source.city,
     }
   );
@@ -187,8 +187,8 @@ export const parseCardList = async (
     events
       .map((event) => ({
         ...event,
-        sourceUrl: source.source_url,
-        sourceEventUrl: toAbsoluteUrl(event.sourceEventUrl || null, source.source_url),
+        sourceUrl: source.base_url,
+        sourceEventUrl: toAbsoluteUrl(event.sourceEventUrl || null, source.base_url),
         city: event.city || undefined,
       }))
       .filter((event) => Boolean(event.title || event.dateText || event.sourceEventUrl))

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { IonSpinner } from '@ionic/react';
+import { Spinner } from '../components/ui/AppPrimitives';
 import { CircleMarker, MapContainer } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import AppShell from '../components/AppShell';
@@ -171,7 +171,7 @@ const Admin: React.FC = () => {
           .order('created_at', { ascending: false });
 
         if (error) throw error;
-        if (!cancelled) setRows((data || []) as AccessRow[]);
+        if (!cancelled) setRows((data || []) as unknown as AccessRow[]);
       } catch (e: any) {
         if (!cancelled) setAccessError(e?.message || 'Failed to load access grants');
       } finally {
@@ -457,7 +457,7 @@ const Admin: React.FC = () => {
               onClick={handleCreateArtist}
               className="inline-flex w-full items-center justify-center rounded-xl bg-app-accent px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
             >
-              {artistLoading ? <IonSpinner name="crescent" /> : 'Create artist'}
+              {artistLoading ? <Spinner /> : 'Create artist'}
             </button>
           </section>
         )}
@@ -523,7 +523,7 @@ const Admin: React.FC = () => {
                     disabled={reverseGeoLoading}
                     className="inline-flex min-w-[146px] items-center justify-center rounded-xl border border-white/20 bg-white/[0.06] px-4 py-3 text-sm font-semibold text-white/85 transition hover:bg-white/[0.1] disabled:opacity-60"
                   >
-                    {reverseGeoLoading ? <IonSpinner name="crescent" /> : 'Reverse geocode'}
+                    {reverseGeoLoading ? <Spinner /> : 'Reverse geocode'}
                   </button>
                 </div>
                 <div className="relative h-[230px] overflow-hidden rounded-2xl border border-white/10 bg-black/35 sm:h-[280px]">
@@ -572,7 +572,7 @@ const Admin: React.FC = () => {
               onClick={handleCreateVenue}
               className="inline-flex w-full items-center justify-center rounded-xl bg-app-accent px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
             >
-              {venueLoading ? <IonSpinner name="crescent" /> : 'Create venue'}
+              {venueLoading ? <Spinner /> : 'Create venue'}
             </button>
           </section>
         )}
@@ -710,7 +710,7 @@ const Admin: React.FC = () => {
               onClick={handleGrant}
               className="inline-flex w-full items-center justify-center rounded-xl bg-app-accent px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
             >
-              {grantLoading ? <IonSpinner name="crescent" /> : 'Grant access'}
+              {grantLoading ? <Spinner /> : 'Grant access'}
             </button>
           </section>
         )}
@@ -719,7 +719,7 @@ const Admin: React.FC = () => {
           <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-white/70">Granted accesses</p>
-              {accessLoading ? <IonSpinner name="crescent" /> : null}
+              {accessLoading ? <Spinner /> : null}
             </div>
             {accessError ? (
               <div className="rounded-xl bg-rose-500/10 p-3 text-sm text-rose-300">{accessError}</div>

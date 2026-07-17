@@ -4,10 +4,7 @@ import { dedupeArtist } from '../dedupe/dedupeArtist.js';
 import type { ArtistRow, NormalizedArtist } from '../types/domain.js';
 import { Logger } from '../utils/logger.js';
 
-const ARTIST_SELECT = 'id,name,normalized_name,aliases,artist_type,city';
-
-const dedupeAliases = (values: Array<string | undefined>): string[] =>
-  Array.from(new Set(values.map((value) => value?.trim()).filter(Boolean) as string[]));
+const ARTIST_SELECT = 'id,name,normalized_name,artist_type,city,country_code';
 
 const detectArtistType = (displayName: string): 'solo' | 'band' => {
   return /\bband|trio|quartet|orquesta|orchestra|ensemble|collective\b/i.test(displayName)
@@ -33,15 +30,10 @@ export const upsertArtists = async (
   for (const artist of artists) {
     const match = await dedupeArtist(supabase, artist);
     if (match.match) {
-      const aliases = dedupeAliases([...(match.match.aliases || []), artist.rawName, artist.displayName]);
       const updates: Record<string, unknown> = {};
 
       if (!match.match.normalized_name) {
         updates.normalized_name = artist.normalizedName;
-      }
-
-      if (aliases.length !== (match.match.aliases || []).length) {
-        updates.aliases = aliases;
       }
 
       if (Object.keys(updates).length === 0) {
@@ -75,7 +67,8 @@ export const upsertArtists = async (
         name: artist.displayName,
         artist_type: detectArtistType(artist.displayName),
         normalized_name: artist.normalizedName,
-        aliases: dedupeAliases([artist.rawName, artist.displayName]),
+        country_code: 'ES',
+        status: 'published',
       })
       .select(ARTIST_SELECT)
       .single();

@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useIonViewDidEnter } from '@ionic/react';
 import { MapContainer } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { supabase } from '../lib/supabase';
 import { Artist, Event, VenuePlace } from '../lib/types';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
 import MapLibreLayer from '../components/MapLibreLayer';
@@ -39,7 +38,7 @@ const readStoredView = () => {
 const persistView = (center: [number, number], zoom: number) => {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(mapViewKey, JSON.stringify({ center: `${center[0]},${center[1]}`, zoom }));
+    window.localStorage.setItem(mapViewKey, JSON.stringify({ center, zoom }));
   } catch (e) {
     // ignore storage failures
   }
@@ -50,9 +49,13 @@ type EventWithVenue = Event & {
   event_artists?: { artist: Artist | null }[];
 };
 
+type MapLocationState = {
+  artistFilter?: { id: string; name: string; avatar_url: string | null };
+};
+
 const Map: React.FC = () => {
-  const history = useHistory();
-  const location = useLocation<{ artistFilter?: { id: string; name: string; avatar_url: string | null } }>();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [followedEventIds, setFollowedEventIds] = useState<Set<string>>(new Set());
   const [attendanceStatusByEventId, setAttendanceStatusByEventId] = useState<Record<string, 'going' | 'attended'>>({});
@@ -194,7 +197,6 @@ const Map: React.FC = () => {
     filterAttended,
     setFilterAttended,
     clearExtraFilters,
-    selectedArtistIds,
     setSelectedArtistIds,
     filteredEvents,
     filteredVenues,
@@ -203,6 +205,20 @@ const Map: React.FC = () => {
     venues,
     userId: user?.id,
   });
+
+  useEffect(() => {
+    const artistFilter = (location.state as MapLocationState | null)?.artistFilter;
+    if (!artistFilter || initialArtistFilterApplied === artistFilter.id) return;
+
+    setSelectedArtists(current =>
+      current.some(artist => artist.id === artistFilter.id) ? current : [...current, artistFilter]
+    );
+    setSelectedArtistIds(current =>
+      current.includes(artistFilter.id) ? current : [...current, artistFilter.id]
+    );
+    setShowVenues(false);
+    setInitialArtistFilterApplied(artistFilter.id);
+  }, [initialArtistFilterApplied, location.state, setSelectedArtistIds, setShowVenues]);
 
   useEffect(() => {
     L.Icon.Default.mergeOptions({
@@ -282,12 +298,13 @@ const Map: React.FC = () => {
     mapInstance.setView(center, zoom, { animate: true });
   }, [center, zoom, mapInstance]);
 
-  useIonViewDidEnter(() => {
+  useEffect(() => {
     if (!mapInstance) return;
-    window.setTimeout(() => {
+    const timer = window.setTimeout(() => {
       mapInstance.invalidateSize();
     }, 150);
-  });
+    return () => window.clearTimeout(timer);
+  }, [mapInstance, location.key]);
 
   // Center map when activeSelection changes
   useEffect(() => {
@@ -377,7 +394,7 @@ const Map: React.FC = () => {
   const handleFollowEvent = useCallback(
     async (eventId: string) => {
       if (!user?.id) {
-        history.push('/welcome');
+        navigate('/welcome');
         return;
       }
       if (followPendingEventIds.has(eventId)) return;
@@ -428,13 +445,13 @@ const Map: React.FC = () => {
         });
       }
     },
-    [followPendingEventIds, followedEventIds, history, user?.id]
+    [followPendingEventIds, followedEventIds, navigate, user?.id]
   );
 
   const handleAttendanceEvent = useCallback(
     async (eventId: string, nextStatus: 'going' | 'attended') => {
       if (!user?.id) {
-        history.push('/welcome');
+        navigate('/welcome');
         return;
       }
       if (attendancePendingEventIds.has(eventId)) return;
@@ -490,7 +507,7 @@ const Map: React.FC = () => {
         });
       }
     },
-    [attendancePendingEventIds, attendanceStatusByEventId, history, user?.id]
+    [attendancePendingEventIds, attendanceStatusByEventId, navigate, user?.id]
   );
 
   return (
@@ -653,10 +670,10 @@ const Map: React.FC = () => {
         }}
         filterGenres={filterGenres}
         onGenresChange={setFilterGenres}
-        priceMin={priceMin.toString()}
-        onPriceMinChange={(value) => setPriceMin(Number(value) || 0)}
-        priceMax={priceMax.toString()}
-        onPriceMaxChange={(value) => setPriceMax(Number(value) || 100)}
+        priceMin={priceMin}
+        onPriceMinChange={setPriceMin}
+        priceMax={priceMax}
+        onPriceMaxChange={setPriceMax}
         filterDayPart={filterDayPart || ''}
         onDayPartChange={setFilterDayPart}
         filterBandOnly={filterBandOnly}
@@ -666,6 +683,7 @@ const Map: React.FC = () => {
         filterAttended={filterAttended}
         onToggleAttended={setFilterAttended}
         disableAttendance={false}
+        autoFocusArtist={focusArtistSearch}
         selectedArtists={selectedArtists}
         onAddArtist={artist => {
           setSelectedArtists(prev => [...prev, artist]);
@@ -692,8 +710,8 @@ const Map: React.FC = () => {
           setFilterNow(false);
           setFilterFree(false);
           setFilterGenres('');
-          setPriceMin(0);
-          setPriceMax(100);
+          setPriceMin('');
+          setPriceMax('');
           setFilterDayPart('');
           setFilterBandOnly(false);
           setFilterGoing(false);

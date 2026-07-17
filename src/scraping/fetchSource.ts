@@ -10,14 +10,14 @@ const compact = (value: string | undefined): string | undefined => {
 
 const normalizeRawEvent = (source: ScrapeSource, event: RawScrapedEvent): RawScrapedEvent => ({
   ...event,
-  sourceUrl: source.source_url,
+  sourceUrl: source.base_url,
   sourceEventUrl: compact(event.sourceEventUrl),
   sourceEventId: compact(event.sourceEventId),
   title: compact(event.title),
   description: compact(event.description),
   dateText: compact(event.dateText),
   startsAt: compact(event.startsAt ?? undefined) ?? null,
-  venueName: compact(event.venueName) || source.source_name,
+  venueName: compact(event.venueName) || source.name,
   city: compact(event.city) || source.city || undefined,
   artistNames: (event.artistNames || []).map((name) => compact(name)).filter(Boolean) as string[],
 });
@@ -50,7 +50,7 @@ export const fetchSource = async (
   const parser = getParser(source.parser_key);
   const sourceLogger = logger.child({
     sourceId: source.id,
-    sourceUrl: source.source_url,
+    sourceUrl: source.base_url,
     parserKey: source.parser_key,
   });
 
@@ -58,11 +58,11 @@ export const fetchSource = async (
     {
       logger: sourceLogger,
       sourceId: source.id,
-      sourceUrl: source.source_url,
+      sourceUrl: source.base_url,
     },
     async (page) => {
       sourceLogger.info('Opening source page');
-      await page.goto(source.source_url, {
+      await page.goto(source.base_url, {
         waitUntil: 'domcontentloaded',
         timeout: 45_000,
       });
@@ -74,7 +74,7 @@ export const fetchSource = async (
       await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => undefined);
 
       const html = await page.content();
-      if (!parser.canHandle(source.source_url, html)) {
+      if (!parser.canHandle(source.base_url, html)) {
         sourceLogger.warn('Parser does not confidently match page HTML; continuing with configured parser');
       }
 

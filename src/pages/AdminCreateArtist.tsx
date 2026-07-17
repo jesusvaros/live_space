@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { IonContent, IonPage, IonSpinner } from '@ionic/react';
+import { Content, Page, Spinner } from '../components/ui/AppPrimitives';
 import { artistService } from '../services/artist.service';
 import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
@@ -54,11 +54,11 @@ const AdminCreateArtist: React.FC = () => {
 
   if (profile?.role !== 'admin') {
     return (
-      <IonPage>
-        <IonContent className="ion-padding">
+      <Page>
+        <Content className="p-4">
           <div className="flex h-full items-center justify-center text-app-light/60">Access Denied. Admin only.</div>
-        </IonContent>
-      </IonPage>
+        </Content>
+      </Page>
     );
   }
 
@@ -66,7 +66,7 @@ const AdminCreateArtist: React.FC = () => {
     <AppShell
       headerProps={{ title: 'Create Artist', showBack: true }}
       headerPlacement="outside"
-      contentClassName="ion-padding"
+      contentClassName="p-4"
       contentFullscreen={false}
       contentWrapperClassName={false}
     >
@@ -125,7 +125,7 @@ const AdminCreateArtist: React.FC = () => {
               onClick={handleCreateArtist}
               className="flex w-full items-center justify-center rounded-2xl bg-white/10 py-4 font-bold text-app-light shadow-lg shadow-white/10 transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
             >
-              {artistLoading ? <IonSpinner name="crescent" color="light" /> : 'Create Artist'}
+              {artistLoading ? <Spinner /> : 'Create Artist'}
             </button>
           </div>
       </div>

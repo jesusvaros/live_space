@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { IonSpinner } from '@ionic/react';
-import { useParams, useHistory } from 'react-router-dom';
+import { Spinner } from '../components/ui/AppPrimitives';
+import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Event, PostWithRelations, VenuePlace } from '../lib/types';
 import AppShell from '../components/AppShell';
@@ -8,7 +8,7 @@ import { IconHeart, IconShare } from '../components/icons';
 
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [post, setPost] = useState<PostWithRelations | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -74,7 +74,7 @@ const PostDetail: React.FC = () => {
     <AppShell>
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <IonSpinner name="crescent" />
+          <Spinner />
         </div>
       )}
 
@@ -130,7 +130,7 @@ const PostDetail: React.FC = () => {
             {event && (
               <button
                 type="button"
-                onClick={() => history.push(`/event/${event.id}`)}
+                onClick={() => navigate(`/event/${event.id}`)}
                 className="bg-white/5 p-4 text-left"
               >
                 <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Event</p>

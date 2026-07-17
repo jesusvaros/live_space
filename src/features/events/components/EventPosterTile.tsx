@@ -1,11 +1,13 @@
 import React, { useMemo } from 'react';
 import { Artist, Event, Profile, VenuePlace } from '../../../lib/types';
 
+type EventPosterTileArtist = Pick<Artist, 'id' | 'name' | 'avatar_url'>;
+
 type EventPosterTileEvent = Event & {
   organizer?: Profile | null;
   venue?: Profile | null;
   venue_place?: VenuePlace | null;
-  event_artists?: { artist: Artist | null }[];
+  event_artists?: { artist: EventPosterTileArtist | null }[];
 };
 
 type EventPosterTileProps = {

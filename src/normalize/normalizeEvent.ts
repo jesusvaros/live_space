@@ -99,27 +99,14 @@ export const parseDateTextToIso = (
     return null;
   }
 
-  const directDate = new Date(value);
-  if (!Number.isNaN(directDate.getTime())) {
-    return directDate.toISOString();
-  }
-
-  const numericMatch = value.match(/(\d{1,2})[/. -](\d{1,2})(?:[/. -](\d{2,4}))?/);
-  if (numericMatch) {
-    const { hour, minute } = parseTime(value);
-    const day = Number(numericMatch[1]);
-    const month = Number(numericMatch[2]) - 1;
-    let year = numericMatch[3] ? Number(numericMatch[3]) : referenceDate.getUTCFullYear();
-    if (year < 100) {
-      year += 2000;
+  // The built-in parser is intentionally limited to ISO-like input here.
+  // Runtime-dependent parsing of localized strings such as
+  // "10 diciembre 2026" can silently produce a different valid date.
+  if (/^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/.test(value)) {
+    const directDate = new Date(value);
+    if (!Number.isNaN(directDate.getTime())) {
+      return directDate.toISOString();
     }
-
-    let parsed = buildMadridDate(year, month, day, hour, minute);
-    if (!numericMatch[3] && parsed.getTime() < referenceDate.getTime() - 7 * 24 * 60 * 60 * 1000) {
-      parsed = buildMadridDate(year + 1, month, day, hour, minute);
-    }
-
-    return parsed.toISOString();
   }
 
   const monthNameMatch = value
@@ -133,6 +120,24 @@ export const parseDateTextToIso = (
     const year = monthNameMatch[3] ? Number(monthNameMatch[3]) : referenceDate.getUTCFullYear();
     let parsed = buildMadridDate(year, month, day, hour, minute);
     if (!monthNameMatch[3] && parsed.getTime() < referenceDate.getTime() - 7 * 24 * 60 * 60 * 1000) {
+      parsed = buildMadridDate(year + 1, month, day, hour, minute);
+    }
+
+    return parsed.toISOString();
+  }
+
+  const numericMatch = value.match(/(?:^|\D)(\d{1,2})[/. -](\d{1,2})(?:[/. -](\d{2,4}))?(?=\D|$)/);
+  if (numericMatch) {
+    const { hour, minute } = parseTime(value);
+    const day = Number(numericMatch[1]);
+    const month = Number(numericMatch[2]) - 1;
+    let year = numericMatch[3] ? Number(numericMatch[3]) : referenceDate.getUTCFullYear();
+    if (year < 100) {
+      year += 2000;
+    }
+
+    let parsed = buildMadridDate(year, month, day, hour, minute);
+    if (!numericMatch[3] && parsed.getTime() < referenceDate.getTime() - 7 * 24 * 60 * 60 * 1000) {
       parsed = buildMadridDate(year + 1, month, day, hour, minute);
     }
 
@@ -195,9 +200,9 @@ export const mergeAiExtraction = (
     .filter(Boolean) as NormalizedArtist[];
 
   const venue = normalizeVenue({
-    name: aiPayload.venue_name || baseEvent.venue.name || source.source_name,
+    name: aiPayload.venue_name || baseEvent.venue.name || source.name,
     city: aiPayload.city || baseEvent.venue.city || source.city,
-    sourceUrl: baseEvent.venue.sourceUrl || source.source_url,
+    sourceUrl: baseEvent.venue.sourceUrl || source.base_url,
     websiteUrl: baseEvent.venue.websiteUrl,
   });
 
@@ -222,13 +227,19 @@ export const normalizeStagingEvent = (
   source: ScrapeSource
 ): EventNormalizationResult => {
   const title = cleanupDisplayText(record.extracted_title);
-  const description = cleanupDisplayText(record.extracted_description);
+  const rawPayload =
+    record.raw_payload && typeof record.raw_payload === 'object'
+      ? (record.raw_payload as Record<string, unknown>)
+      : {};
+  const description = cleanupDisplayText(
+    typeof rawPayload.description === 'string' ? rawPayload.description : undefined,
+  );
   const artistResult = normalizeArtistNames(record.extracted_artist_names, title);
   const startsAt = record.extracted_starts_at || parseDateTextToIso(record.extracted_date_text || description || title);
   const venue = normalizeVenue({
-    name: record.extracted_venue_name || source.source_name,
+    name: record.extracted_venue_name || source.name,
     city: record.extracted_city || source.city,
-    sourceUrl: source.source_url,
+    sourceUrl: source.base_url,
     websiteUrl: typeof source.metadata.officialWebsite === 'string' ? source.metadata.officialWebsite : null,
   });
   const eventType = detectEventType(source, title || '', description);
@@ -263,7 +274,7 @@ export const normalizeStagingEvent = (
       startsAt,
       city: cleanupDisplayText(record.extracted_city) || source.city || venue.city,
       eventType,
-      sourceUrl: record.source_event_url || source.source_url,
+      sourceUrl: record.source_url || source.base_url,
       sourceExternalId: record.source_event_id || undefined,
       artists: artistResult.artists,
       venue,

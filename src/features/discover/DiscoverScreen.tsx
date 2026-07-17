@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useHistory, useLocation } from 'react-router-dom';
-import { useIonToast } from '@ionic/react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useToast } from '../../components/ui/AppPrimitives';
 import DiscoverSearchBar from './components/DiscoverSearchBar';
 import DiscoverSegmentedControl from './components/DiscoverSegmentedControl';
 import DiscoverEmptyState from './components/DiscoverEmptyState';
@@ -17,10 +17,10 @@ import { useFollowedSubjects } from '../../hooks/useFollowedSubjects';
 type RouteState = { initialTab?: DiscoverTabKey } | undefined;
 
 const DiscoverScreen: React.FC = () => {
-  const history = useHistory();
-  const locationState = useLocation<RouteState>().state;
+  const navigate = useNavigate();
+  const locationState = useLocation().state as RouteState;
   const storedLocation = useStoredLocation();
-  const [presentToast] = useIonToast();
+  const { presentToast } = useToast();
 
   const [tab, setTab] = useState<DiscoverTabKey>('artists');
   const [query, setQuery] = useState('');
@@ -41,7 +41,6 @@ const DiscoverScreen: React.FC = () => {
     if (locationState?.initialTab) {
       setTab(locationState.initialTab);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onToggleFollow = async (subjectId: string) => {
@@ -106,7 +105,7 @@ const DiscoverScreen: React.FC = () => {
                         isFollowing={isFollowing(artist.subject_id)}
                         followLoading={isToggling(artist.subject_id)}
                         onToggleFollow={() => onToggleFollow(artist.subject_id)}
-                        onOpenProfile={() => history.push(`/artist/${artist.id}`)}
+                        onOpenProfile={() => navigate(`/artist/${artist.id}`)}
                       />
                     ))}
                   </div>
@@ -127,7 +126,7 @@ const DiscoverScreen: React.FC = () => {
                       isFollowing={isFollowing((artist as DiscoverArtist).subject_id)}
                       followLoading={isToggling((artist as DiscoverArtist).subject_id)}
                       onToggleFollow={() => onToggleFollow((artist as DiscoverArtist).subject_id)}
-                      onOpenProfile={() => history.push(`/artist/${(artist as DiscoverArtist).id}`)}
+                      onOpenProfile={() => navigate(`/artist/${(artist as DiscoverArtist).id}`)}
                     />
                   )}
                 />
@@ -155,7 +154,7 @@ const DiscoverScreen: React.FC = () => {
                         isFollowing={isFollowing(venue.subject_id)}
                         followLoading={isToggling(venue.subject_id)}
                         onToggleFollow={() => onToggleFollow(venue.subject_id)}
-                        onOpenProfile={() => history.push(`/venue/${venue.id}`)}
+                        onOpenProfile={() => navigate(`/venue/${venue.id}`)}
                       />
                     ))}
                   </div>
@@ -176,7 +175,7 @@ const DiscoverScreen: React.FC = () => {
                       isFollowing={isFollowing((venue as DiscoverVenue).subject_id)}
                       followLoading={isToggling((venue as DiscoverVenue).subject_id)}
                       onToggleFollow={() => onToggleFollow((venue as DiscoverVenue).subject_id)}
-                      onOpenProfile={() => history.push(`/venue/${(venue as DiscoverVenue).id}`)}
+                      onOpenProfile={() => navigate(`/venue/${(venue as DiscoverVenue).id}`)}
                     />
                   )}
                 />

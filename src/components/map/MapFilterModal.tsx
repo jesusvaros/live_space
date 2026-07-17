@@ -1,5 +1,5 @@
 import React from 'react';
-import { IonContent, IonModal } from '@ionic/react';
+import { Content, Modal } from '../ui/AppPrimitives';
 import { supabase } from '../../lib/supabase';
 
 type MapFilterModalProps = {
@@ -108,8 +108,8 @@ const MapFilterModal: React.FC<MapFilterModalProps> = ({
   }, [artistQuery]);
 
   return (
-    <IonModal isOpen={isOpen} onDidDismiss={onDismiss}>
-      <IonContent fullscreen>
+    <Modal isOpen={isOpen} onDidDismiss={onDismiss} title="Map filters">
+      <Content fullscreen>
         <div className="min-h-full bg-app-bg p-5">
           <div className="flex items-center justify-between gap-4">
             <h2 className="font-display text-lg font-bold text-white">Filters</h2>
@@ -336,8 +336,8 @@ const MapFilterModal: React.FC<MapFilterModalProps> = ({
             </button>
           </div>
         </div>
-      </IonContent>
-    </IonModal>
+      </Content>
+    </Modal>
   );
 };
 

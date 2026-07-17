@@ -1,4 +1,4 @@
-# Weekly Concert Scraper
+# Concert Scraper del piloto
 
 Scraper modular para conciertos en Espana con flujo `scrape_sources -> scrape_runs -> staging_events -> venue_places / artists / events / event_artists`.
 
@@ -41,27 +41,16 @@ src/
 Principios de diseno aplicados:
 
 - `staging` primero, tablas finales despues.
-- IA solo para ambiguedad real.
+- reglas deterministas por defecto; IA desactivada en produccion.
 - deduplicacion conservadora.
 - parsers desacoplados por `parser_key`.
-- reintentos seguros porque `staging_events.processed = false` deja el item pendiente.
-- idempotencia basada en dedupe y matching por origen externo.
+- reintentos seguros con `normalized_payload`, `review_status` y `published_event_id`.
+- idempotencia por `unique(source_id, raw_hash)`, identidad externa y matching conservador.
 
 ## SQL
 
-Ejecuta estos archivos en este orden:
-
-1. `sql/001_scrape_sources.sql`
-2. `sql/002_scrape_runs.sql`
-3. `sql/003_staging_events.sql`
-4. `sql/004_schema_extensions.sql`
-
-`004_schema_extensions.sql` tambien crea:
-
-- columnas de normalizacion en `artists`, `events`, `venue_places`
-- `artist_entity_id` en `event_artists` si no existe
-- indice unico para `event_artists(event_id, artist_entity_id)`
-- cache `ai_extraction_cache`
+El esquema canónico es exclusivamente `supabase/migrations/`. Los SQL historicos de
+`sql/` no deben aplicarse.
 
 ## Variables de entorno
 
@@ -79,7 +68,8 @@ OPENAI_API_KEY=
 OPENAI_MODEL=gpt-4o-mini
 SCRAPER_CONCURRENCY=3
 SCRAPER_TIMEOUT_MS=30000
-ENABLE_AI_NORMALIZATION=true
+ENABLE_AI_NORMALIZATION=false
+SCRAPER_CITY_ALLOWLIST=Madrid,Barcelona
 LOG_LEVEL=info
 SCRAPER_ERROR_SCREENSHOT_DIR=tmp/scraper-errors
 ```
@@ -92,13 +82,13 @@ Compilar el scraper:
 npm run scrape:build
 ```
 
-Semilla inicial de fuentes:
+Semilla inicial de 18 fuentes de Madrid y Barcelona:
 
 ```bash
 npm run scrape:seed
 ```
 
-Scrape semanal completo:
+Scrape completo:
 
 ```bash
 npm run scrape:weekly
@@ -115,14 +105,14 @@ npm run scrape:process
 El workflow `/.github/workflows/scrape-weekly.yml` soporta:
 
 - ejecucion manual con `workflow_dispatch`
-- ejecucion semanal con cron los lunes a las `04:00 UTC`
+- ejecucion diaria mediante cron
 
 Secretos esperados:
 
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `OPENAI_API_KEY`
-- `OPENAI_MODEL`
+
+No se requiere ninguna clave de IA para el piloto.
 
 ## Parsers iniciales
 
@@ -152,17 +142,15 @@ Orden efectivo de procesamiento:
 
 1. scrape y guardado bruto en `staging_events`
 2. normalizacion heuristica
-3. IA si no se detectan artistas, el split es ambiguo, la fecha no parsea o el titulo parece lineup/festival
-4. dedupe de venue
-5. dedupe de artistas
-6. dedupe de evento
-7. insercion de `event_artists`
+3. decision por confianza: `>= 0.95` autopublica, `0.75-0.94` queda pendiente y `< 0.75` se retiene como rechazado
+4. solo los aprobados pasan por dedupe de sala, artistas y evento
+5. insercion idempotente de `event_artists`
 
 Reglas principales:
 
-- `venue_places`: `source_url` -> `website_url` -> `normalized_name + city` -> fuzzy alto
-- `artists`: `normalized_name` -> `aliases` -> fuzzy alto
-- `events`: `source_url` -> `external_source + external_source_id` -> `venue_place_id + starts_at + normalized_name` -> fuzzy fuerte mismo dia/sala
+- `venue_places`: `website_url` -> `normalized_name + city` -> fuzzy alto
+- `artists`: `normalized_name + country_code` -> fuzzy alto
+- `events`: `source_id + source_external_id` -> `venue_place_id + starts_at + normalized_name` -> fuzzy fuerte mismo dia/sala
 
 ## Logging y observabilidad
 
@@ -179,8 +167,8 @@ Los logs salen como JSON estructurado e incluyen contexto operativo:
 
 - La fecha se interpreta en `Europe/Madrid`.
 - Si una fecha tiene dia pero no hora, el parser heuristico usa `20:00` como hora por defecto.
-- Si un `staging_event` falla en el paso final, se marca `normalization_status = 'error'` y `processed = false` para permitir reintento.
-- `external_source` de `events` se rellena con `scrape_sources.id` para tener una clave estable por fuente.
+- Si falla una publicacion, `processing_error` conserva el diagnostico y el registro aprobado puede reintentarse.
+- `events.source_id` referencia `scrape_sources.id`; `source_external_id` conserva la identidad de origen cuando existe.
 
 ## TODOs reales
 

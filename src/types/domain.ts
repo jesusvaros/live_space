@@ -51,7 +51,6 @@ export type VenueRow = {
   name: string;
   city: string;
   website_url: string | null;
-  source_url: string | null;
   normalized_name: string | null;
 };
 
@@ -59,9 +58,9 @@ export type ArtistRow = {
   id: string;
   name: string;
   normalized_name: string | null;
-  aliases: string[];
   artist_type: string | null;
   city: string | null;
+  country_code: string;
 };
 
 export type EventRow = {
@@ -71,6 +70,6 @@ export type EventRow = {
   venue_place_id: string;
   starts_at: string;
   source_url: string | null;
-  external_source: string | null;
-  external_source_id: string | null;
+  source_id: string | null;
+  source_external_id: string | null;
 };

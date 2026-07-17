@@ -5,37 +5,22 @@ import { stringSimilarity } from '../utils/stringSimilarity.js';
 
 export type DedupeResult<T> = {
   match: T | null;
-  strategy: 'source_url' | 'website_url' | 'normalized_name_city' | 'fuzzy' | 'none';
+  strategy: 'website_url' | 'normalized_name_city' | 'fuzzy' | 'none';
   confidence: number;
 };
 
-const VENUE_SELECT = 'id,name,city,website_url,source_url,normalized_name';
+const VENUE_SELECT = 'id,name,city,website_url,normalized_name';
 
 export const dedupeVenue = async (
   supabase: SupabaseClient,
   venue: NormalizedVenue
 ): Promise<DedupeResult<VenueRow>> => {
-  if (venue.sourceUrl) {
+  const websiteUrl = venue.websiteUrl || venue.sourceUrl;
+  if (websiteUrl) {
     const { data, error } = await supabase
       .from('venue_places')
       .select(VENUE_SELECT)
-      .eq('source_url', venue.sourceUrl)
-      .maybeSingle();
-
-    if (error) {
-      throw error;
-    }
-
-    if (data) {
-      return { match: data as VenueRow, strategy: 'source_url', confidence: 1 };
-    }
-  }
-
-  if (venue.websiteUrl) {
-    const { data, error } = await supabase
-      .from('venue_places')
-      .select(VENUE_SELECT)
-      .eq('website_url', venue.websiteUrl)
+      .eq('website_url', websiteUrl)
       .maybeSingle();
 
     if (error) {

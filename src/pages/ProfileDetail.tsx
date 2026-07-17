@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { IonSpinner } from '@ionic/react';
-import { useHistory, useParams } from 'react-router-dom';
+import { Spinner } from '../components/ui/AppPrimitives';
+import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Event, Profile, VenuePlace, PostWithSetlist, Artist } from '../lib/types';
 import { socialService } from '../services/social.service';
@@ -15,7 +15,7 @@ type ProfileEvent = Event & {
 };
 
 const ProfileDetail: React.FC = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { user, profile: currentUserProfile } = useAuth();
   
@@ -156,7 +156,7 @@ const ProfileDetail: React.FC = () => {
 
   const handleFollowToggle = async () => {
     if (!user || !currentUserProfile?.subject_id || !profile?.subject_id) {
-      if (!user) history.push('/welcome');
+      if (!user) navigate('/welcome');
       return;
     }
 
@@ -189,7 +189,7 @@ const ProfileDetail: React.FC = () => {
     <AppShell>
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <IonSpinner name="crescent" />
+          <Spinner />
         </div>
       )}
 
@@ -222,7 +222,7 @@ const ProfileDetail: React.FC = () => {
                           isFollowing ? 'bg-white/10 text-white/80' : 'bg-[#ff6b4a] text-white'
                         }`}
                       >
-                        {followLoading ? <IonSpinner name="crescent" /> : (isFollowing ? 'Following' : 'Follow')}
+                        {followLoading ? <Spinner /> : (isFollowing ? 'Following' : 'Follow')}
                       </button>
                     )}
                   </div>
@@ -305,7 +305,7 @@ const ProfileDetail: React.FC = () => {
                           key={event.id}
                           event={event}
                           className="w-full"
-                          onSelect={selected => history.push(`/event/${selected.id}`)}
+                          onSelect={selected => navigate(`/event/${selected.id}`)}
                         />
                       ))}
                     </div>
@@ -325,7 +325,7 @@ const ProfileDetail: React.FC = () => {
                         <button
                           key={moment.id}
                           type="button"
-                          onClick={() => history.push(`/post/${moment.id}`)}
+                          onClick={() => navigate(`/post/${moment.id}`)}
                           className="aspect-square overflow-hidden bg-white/5 transition-opacity hover:opacity-90"
                         >
                           {moment.media_type === 'video' ? (
@@ -348,7 +348,7 @@ const ProfileDetail: React.FC = () => {
                 <button
                   type="button"
                   className="bg-white/10 px-4 py-3 text-sm font-semibold text-white"
-                  onClick={() => history.goBack()}
+                  onClick={() => navigate(-1)}
                 >
                   Back
                 </button>

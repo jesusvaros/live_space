@@ -5,7 +5,7 @@ import type { EventRow, NormalizedEvent } from '../types/domain.js';
 import { Logger } from '../utils/logger.js';
 
 const EVENT_SELECT =
-  'id,name,normalized_name,venue_place_id,starts_at,source_url,external_source,external_source_id';
+  'id,name,normalized_name,venue_place_id,starts_at,source_url,source_id,source_external_id';
 
 export type UpsertEventResult = {
   row: EventRow;
@@ -17,14 +17,14 @@ export const upsertEvent = async (
   supabase: SupabaseClient,
   event: NormalizedEvent,
   venueId: string,
-  externalSource: string,
+  sourceId: string,
   logger: Logger
 ): Promise<UpsertEventResult> => {
   if (!event.startsAt) {
     throw new Error('Cannot upsert an event without startsAt.');
   }
 
-  const match = await dedupeEvent(supabase, event, venueId, externalSource);
+  const match = await dedupeEvent(supabase, event, venueId, sourceId);
   if (match.match) {
     const updates: Record<string, unknown> = {};
 
@@ -33,21 +33,16 @@ export const upsertEvent = async (
     }
     if (!match.match.source_url && event.sourceUrl) {
       updates.source_url = event.sourceUrl;
-      updates.event_url = event.sourceUrl;
     }
-    if (!match.match.external_source && event.sourceExternalId) {
-      updates.external_source = externalSource;
+    if (!match.match.source_id) {
+      updates.source_id = sourceId;
     }
-    if (!match.match.external_source_id && event.sourceExternalId) {
-      updates.external_source_id = event.sourceExternalId;
+    if (!match.match.source_external_id && event.sourceExternalId) {
+      updates.source_external_id = event.sourceExternalId;
     }
     if (event.description) {
       updates.description = event.description;
     }
-    if (event.eventType) {
-      updates.event_type = event.eventType;
-    }
-
     if (Object.keys(updates).length === 0) {
       return {
         row: match.match,
@@ -86,18 +81,17 @@ export const upsertEvent = async (
       venue_place_id: venueId,
       name: event.canonicalName,
       description: event.description || null,
-      event_url: event.sourceUrl || null,
       source_url: event.sourceUrl || null,
-      external_source: externalSource,
-      external_source_id: event.sourceExternalId || null,
+      source_id: sourceId,
+      source_external_id: event.sourceExternalId || null,
       normalized_name: event.normalizedName,
-      event_type: event.eventType,
       city,
       starts_at: event.startsAt,
       genres: [],
-      is_free: true,
+      is_free: false,
       price_tiers: [],
-      is_public: true,
+      status: 'published',
+      published_at: new Date().toISOString(),
     })
     .select(EVENT_SELECT)
     .single();

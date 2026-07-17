@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import AppShell from '../components/AppShell';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import { useLastKnownLocation } from '../shared/hooks/useLastKnownLocation';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
@@ -23,7 +23,7 @@ const NEARBY_RADIUS_KM = 50;
 const EVENTS_LOOKBACK_DAYS = 4;
 
 const Events: React.FC = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { canCreateEvent } = useWorkspace();
 
   const startOfToday = useMemo(() => {
@@ -144,7 +144,7 @@ const Events: React.FC = () => {
                       kicker={formatDate(nextUpcoming.starts_at)}
                       title={getPrimaryArtistName(nextUpcoming)}
                       subtitle={nextUpcoming.venue_place?.name || nextUpcoming.city}
-                      onSelect={selected => history.push(`/event/${selected.id}`)}
+                      onSelect={selected => navigate(`/event/${selected.id}`)}
                     />
                   </div>
                 </div>
@@ -167,7 +167,7 @@ const Events: React.FC = () => {
             <MapPreviewSection
               center={location}
               pins={mapPins}
-              onOpenMap={() => history.push('/tabs/map')}
+              onOpenMap={() => navigate('/tabs/map')}
             />
 
             <TrendingSection loading={trendingLoading} trending={trending} meta={trendingMeta} />

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { IonSpinner } from '@ionic/react';
-import { useHistory } from 'react-router-dom';
+import { Spinner } from '../components/ui/AppPrimitives';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import { supabase } from '../lib/supabase';
@@ -8,7 +8,7 @@ import AppShell from '../components/AppShell';
 import QrScanner from '../components/QrScanner';
 
 const QrScannerPage: React.FC = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { canCreateEvent } = useWorkspace();
   const [loading, setLoading] = useState(false);
@@ -16,7 +16,7 @@ const QrScannerPage: React.FC = () => {
 
   const handleQrDetected = async (data: string) => {
     if (!user) {
-      history.push('/welcome');
+      navigate('/welcome');
       return;
     }
 
@@ -71,7 +71,7 @@ const QrScannerPage: React.FC = () => {
       }
 
       // Navigate to event page
-      history.push(`/event/${eventId}`);
+      navigate(`/event/${eventId}`);
     } catch (err: any) {
       setError(err?.message || 'Failed to process QR code');
     } finally {
@@ -91,7 +91,7 @@ const QrScannerPage: React.FC = () => {
         {loading && (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
-              <IonSpinner name="crescent" />
+              <Spinner />
               <p className="mt-4 text-sm text-white/55">Checking in...</p>
             </div>
           </div>
@@ -117,7 +117,7 @@ const QrScannerPage: React.FC = () => {
             <button
               type="button"
               className="mt-4 inline-flex w-full items-center justify-center bg-white/10 px-4 py-3 text-sm font-semibold text-white"
-              onClick={() => history.push('/create-event', { from: '/tabs/qr-scanner' })}
+              onClick={() => navigate('/create-event', { state: { from: '/tabs/qr-scanner' } })}
             >
               Create event
             </button>

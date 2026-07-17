@@ -25,18 +25,18 @@ const MapResizeObserver = () => {
     resize();
 
     let observer: ResizeObserver | null = null;
-    if ('ResizeObserver' in window) {
+    if (typeof ResizeObserver !== 'undefined') {
       observer = new ResizeObserver(() => resize());
       observer.observe(container);
     } else {
-      window.addEventListener('resize', resize);
+      globalThis.addEventListener('resize', resize);
     }
 
     return () => {
       if (observer) {
         observer.disconnect();
       } else {
-        window.removeEventListener('resize', resize);
+        globalThis.removeEventListener('resize', resize);
       }
       if (rafId) {
         cancelAnimationFrame(rafId);

@@ -10,7 +10,7 @@ export type UpsertVenueResult = {
   updated: boolean;
 };
 
-const VENUE_SELECT = 'id,name,city,website_url,source_url,normalized_name';
+const VENUE_SELECT = 'id,name,city,website_url,normalized_name';
 
 export const upsertVenue = async (
   supabase: SupabaseClient,
@@ -24,11 +24,8 @@ export const upsertVenue = async (
     if (!match.match.normalized_name && venue.normalizedName) {
       updates.normalized_name = venue.normalizedName;
     }
-    if (!match.match.source_url && venue.sourceUrl) {
-      updates.source_url = venue.sourceUrl;
-    }
-    if (!match.match.website_url && venue.websiteUrl) {
-      updates.website_url = venue.websiteUrl;
+    if (!match.match.website_url && (venue.websiteUrl || venue.sourceUrl)) {
+      updates.website_url = venue.websiteUrl || venue.sourceUrl;
     }
     if ((!match.match.city || match.match.city === 'Unknown') && venue.city) {
       updates.city = venue.city;
@@ -70,9 +67,10 @@ export const upsertVenue = async (
     .insert({
       name: venue.name,
       city: venue.city || 'Unknown',
-      website_url: venue.websiteUrl || null,
-      source_url: venue.sourceUrl || null,
+      website_url: venue.websiteUrl || venue.sourceUrl || null,
       normalized_name: venue.normalizedName,
+      country_code: 'ES',
+      status: 'published',
     })
     .select(VENUE_SELECT)
     .single();

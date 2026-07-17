@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import AppShell from '../components/AppShell';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
 const ResetPassword: React.FC = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { updatePassword } = useAuth();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -102,7 +102,7 @@ const ResetPassword: React.FC = () => {
         <button
           type="button"
           className="inline-flex w-full items-center justify-center px-4 py-2 text-sm font-semibold text-white/70 transition hover:text-white"
-          onClick={() => history.replace('/welcome')}
+          onClick={() => navigate('/welcome', { replace: true })}
         >
           Back to sign in
         </button>
