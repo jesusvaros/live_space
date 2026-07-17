@@ -12,11 +12,19 @@ Fecha de la auditoría de recuperación: **17 de julio de 2026**.
   Ionic y las pantallas pesadas se cargan en chunks separados.
 - La interfaz incluye descubrimiento, agenda, mapa, feed, perfiles de artista y
   sala, detalle de evento, subida, QR y pantallas administrativas.
-- Supabase es el backend previsto. Las migraciones versionadas deben convertirse
-  en la única fuente de verdad antes de desplegar el nuevo proyecto remoto.
+- El proyecto remoto Supabase `live-space-pilot` está creado en París
+  (`eu-west-3`) sobre el plan Free. Las dos migraciones canónicas están aplicadas:
+  existen 24 tablas públicas y las 24 tienen RLS activada.
 - La base local cuenta con configuración, dos migraciones canónicas, RLS, cuotas
   de media y Edge Functions de firma/webhook. Falta ejecutar el reset real porque
   Docker no está disponible en esta máquina durante la revisión.
+- Las funciones `cloudinary-sign-upload` y `cloudinary-webhook` están desplegadas.
+  La firma exige JWT; el webhook no exige JWT de Supabase, pero valida la firma y
+  fecha de Cloudinary antes de aceptar el evento.
+- Cloudinary reutiliza el único entorno permitido por el plan Free, renombrado
+  `Live Space Pilot`. Tiene tres presets firmados, una clave dedicada y un webhook
+  limitado a eventos `Upload`. Los secretos viven únicamente en Supabase y en el
+  entorno local ignorado por Git.
 - El nuevo contrato normaliza autores, membresías y activos respecto al SQL
   heredado. Varias consultas de pantallas todavía usan nombres antiguos; esa capa
   de servicios debe migrarse antes de conectar la app al piloto remoto.
@@ -61,3 +69,19 @@ emails, sesiones y tokens.
 - Cada tabla pública tiene RLS y tests por rol.
 - Los 10 artistas, 8 salas y 8 contenidos únicos se reconcilian; nada sale de
   cuarentena sin propietario, licencia y relación verificadas.
+
+## Infraestructura remota del piloto
+
+| Recurso | Estado al 17 de julio de 2026 |
+| --- | --- |
+| Supabase | `live-space-pilot`, París, Free, Data API sin exposición automática de tablas |
+| Base remota | 2 migraciones registradas, 24/24 tablas públicas con RLS |
+| Auth | email/contraseña, confirmación de email, registro activo, anónimo desactivado |
+| Edge Functions | firma de subida y webhook desplegados; peticiones no autorizadas rechazadas |
+| Cloudinary | entorno `Live Space Pilot` reutilizado por el límite de un entorno del plan Free |
+| Presets | `live_space_user_media`, `live_space_professional_media` y `live_space_catalog_media`, todos firmados |
+| Webhook | eventos `Upload` hacia `cloudinary-webhook`, firmado con la clave dedicada |
+
+Pendientes humanos: rotar la contraseña de base de datos generada durante el alta,
+guardarla en el gestor del propietario, registrar el dominio público cuando exista
+y crear la primera cuenta por el flujo normal antes de elevarla a administradora.

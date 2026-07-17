@@ -8,8 +8,9 @@ Las duraciones son orientativas; las puertas de salida deciden el avance.
 - CI, typecheck, lint, tests, app y wiki: verdes.
 - Retirada de Ionic en código y dependencias: completada; quedan pruebas en
   dispositivos físicos antes de cerrar formalmente la fase.
-- Backend local y funciones Cloudinary: implementados; reset/RLS real y migración
-  de consultas heredadas pendientes antes de desplegar el contrato remoto.
+- Supabase y Cloudinary remotos: creados y configurados; migraciones, RLS, presets,
+  secretos, Edge Functions y webhook están desplegados. Siguen pendientes el reset
+  local con Docker, los tests RLS completos y la migración de consultas heredadas.
 - Scraping: piloto limitado a Madrid/Barcelona y sin IA de pago; aún no está listo
   para publicar automáticamente.
 

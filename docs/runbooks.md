@@ -2,6 +2,10 @@
 
 ## Alta de Supabase
 
+**Estado del piloto:** proyecto creado en París sobre Free, migraciones aplicadas,
+24/24 tablas públicas con RLS y dos Edge Functions desplegadas. El token temporal
+usado para el despliegue se revocó y su archivo temporal se eliminó.
+
 1. Crear `live-space-pilot` en una región europea bajo la cuenta propietaria.
 2. Guardar la contraseña en el gestor del propietario; no compartirla en chat.
 3. Enlazar Supabase CLI y aplicar migraciones desde cero en un entorno vacío.
@@ -15,7 +19,16 @@
 **Verificación:** reset reproducible, cero tablas públicas sin RLS, pruebas verdes
 y ausencia de claves privilegiadas en el bundle.
 
+La contraseña generada durante el alta debe rotarse desde el panel y guardarse en
+el gestor del propietario. No se considera cerrada la entrega de credenciales
+hasta completar esta acción. Las URLs de redirección pública se añaden cuando el
+dominio sea definitivo; no se debe usar un comodín de producción.
+
 ## Alta de Cloudinary
+
+**Estado del piloto:** el plan Free solo permitió un entorno, por lo que se
+reutilizó y renombró el entorno vacío existente como `Live Space Pilot`. Los tres
+presets firmados están creados y el webhook `Upload` apunta a la función remota.
 
 1. Usar un entorno dedicado al piloto y credenciales limitadas.
 2. Reservar prefijo `live-space/pilot/` con carpetas `users`, `events`, `artists`,
@@ -28,6 +41,11 @@ y ausencia de claves privilegiadas en el bundle.
 
 **Verificación:** una firma manipulada o caducada falla; un webhook duplicado no
 crea otro activo; ningún preset permite subida anónima sin firma.
+
+Cloudinary solo ofreció los roles `Master Admin` o `Media Library User` para la
+clave dedicada. Se usó `Master Admin` porque la firma y administración del piloto
+requieren acceso API; esta limitación se revisará si el proveedor incorpora un rol
+de servicio más granular. La clave no debe reutilizarse fuera del piloto.
 
 ## Backup semanal
 
