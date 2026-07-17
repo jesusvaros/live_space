@@ -1,0 +1,93 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+import { dedupeVenue } from '../dedupe/dedupeVenue.js';
+import type { NormalizedVenue, VenueRow } from '../types/domain.js';
+import { Logger } from '../utils/logger.js';
+
+export type UpsertVenueResult = {
+  row: VenueRow;
+  created: boolean;
+  updated: boolean;
+};
+
+const VENUE_SELECT = 'id,name,city,website_url,source_url,normalized_name';
+
+export const upsertVenue = async (
+  supabase: SupabaseClient,
+  venue: NormalizedVenue,
+  logger: Logger
+): Promise<UpsertVenueResult> => {
+  const match = await dedupeVenue(supabase, venue);
+  if (match.match) {
+    const updates: Record<string, unknown> = {};
+
+    if (!match.match.normalized_name && venue.normalizedName) {
+      updates.normalized_name = venue.normalizedName;
+    }
+    if (!match.match.source_url && venue.sourceUrl) {
+      updates.source_url = venue.sourceUrl;
+    }
+    if (!match.match.website_url && venue.websiteUrl) {
+      updates.website_url = venue.websiteUrl;
+    }
+    if ((!match.match.city || match.match.city === 'Unknown') && venue.city) {
+      updates.city = venue.city;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return {
+        row: match.match,
+        created: false,
+        updated: false,
+      };
+    }
+
+    const { data, error } = await supabase
+      .from('venue_places')
+      .update(updates)
+      .eq('id', match.match.id)
+      .select(VENUE_SELECT)
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    logger.info('Updated venue from scraper', {
+      venueId: match.match.id,
+      strategy: match.strategy,
+    });
+
+    return {
+      row: data as VenueRow,
+      created: false,
+      updated: true,
+    };
+  }
+
+  const { data, error } = await supabase
+    .from('venue_places')
+    .insert({
+      name: venue.name,
+      city: venue.city || 'Unknown',
+      website_url: venue.websiteUrl || null,
+      source_url: venue.sourceUrl || null,
+      normalized_name: venue.normalizedName,
+    })
+    .select(VENUE_SELECT)
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  logger.info('Inserted venue from scraper', {
+    venueId: (data as VenueRow).id,
+  });
+
+  return {
+    row: data as VenueRow,
+    created: true,
+    updated: false,
+  };
+};

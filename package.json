@@ -6,7 +6,11 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "scrape:build": "tsc -p tsconfig.scraper.json",
+    "scrape:weekly": "npm run scrape:build && node dist-scraper/scripts/runWeeklyScrape.js",
+    "scrape:process": "npm run scrape:build && node dist-scraper/scripts/processPendingStaging.js",
+    "scrape:seed": "npm run scrape:build && node dist-scraper/scripts/seedSources.js"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.1",
@@ -32,6 +36,7 @@
     "leaflet": "^1.9.4",
     "lucide-react": "^0.555.0",
     "maplibre-gl": "^4.0.0",
+    "playwright": "^1.52.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-leaflet": "^5.0.0",
