@@ -4,6 +4,8 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { useQuery } from '../../../shared/hooks/useQuery';
 import { fetchEventCards } from '../../../data/eventQueries';
 
+const EMPTY_EVENTS: EventListItem[] = [];
+
 export const useEventsList = (options: { startIso: string; endIso: string }) => {
   const { loading: authLoading } = useAuth();
   const queryKey = useMemo(
@@ -19,12 +21,12 @@ export const useEventsList = (options: { startIso: string; endIso: string }) => 
     {
       enabled: !authLoading,
       ttlMs: 10_000,
-      initialData: [],
+      initialData: EMPTY_EVENTS,
     }
   );
 
   return {
-    events: data || [],
+    events: data || EMPTY_EVENTS,
     loading: authLoading || loading,
     error: error ? 'Could not load events. Check your Supabase connection.' : '',
   };

@@ -22,6 +22,11 @@ capacidad: cámara, push, QR y deep links nativos; drag-and-drop y gestión masi
 en escritorio. Ninguna función social o profesional esencial es exclusiva de una
 plataforma.
 
+La agenda, Explorar, Mapa, Momentos y los detalles publicados son accesibles de
+forma anónima. Crear, Perfil, gestión y administración atraviesan `RequireAuth` y
+redirigen al acceso cuando no existe sesión. Este límite coincide con RLS: lectura
+pública de contenido publicado y escritura únicamente autenticada.
+
 La UI utiliza HTML estándar, Tailwind, primitivas Radix y componentes propios.
 Mapa, reproductor, QR y administración se cargan de forma diferida. Las páginas
 no consultan Supabase directamente: usan servicios tipados para que permisos,

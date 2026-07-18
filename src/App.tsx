@@ -53,6 +53,30 @@ const CreateEventRedirect = () => {
   return <Navigate to="/tabs/create-event" replace state={location.state} />;
 };
 
+const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="flex h-full min-h-48 items-center justify-center bg-app-bg text-white">
+        <Spinner />
+      </div>
+    );
+  }
+  return user ? <>{children}</> : <Navigate to="/welcome" replace />;
+};
+
+const WelcomeRoute = () => {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="flex h-dvh items-center justify-center bg-app-bg text-white">
+        <Spinner />
+      </div>
+    );
+  }
+  return user ? <Navigate to="/tabs/events" replace /> : <Welcome />;
+};
+
 const ProfileRoute: React.FC<{
   activeArtistId: string | null;
   activeVenueId: string | null;
@@ -73,19 +97,13 @@ type TabsLayoutProps = {
   mainTabHref: string;
   profileTabHref: string;
   isArtistWorkspace: boolean;
-  loading: boolean;
-  hasUser: boolean;
 };
 
 const TabsLayout: React.FC<TabsLayoutProps> = ({
   mainTabHref,
   profileTabHref,
   isArtistWorkspace,
-  loading,
-  hasUser,
 }) => {
-  if (!loading && !hasUser) return <Navigate to="/welcome" replace />;
-
   const navItemClass = ({ isActive }: { isActive: boolean }) =>
     `flex min-h-11 flex-1 flex-col items-center justify-center gap-1 rounded-xl text-[10px] transition-colors ${
       isActive ? 'bg-app-accent/20 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
@@ -148,21 +166,21 @@ const AppRoutes = () => {
     <>
       <AppBackHandler mainTabPath={mainTabHref} />
       <Routes>
-        <Route path="/welcome" element={!loading && !user ? <Welcome /> : <Navigate to={mainTabHref} replace />} />
+        <Route path="/welcome" element={<WelcomeRoute />} />
         <Route path="/event/:id" element={deferredPage(<EventDetail />)} />
         <Route path="/profile/:id" element={<ProfileDetail />} />
         <Route path="/post/:id" element={<PostDetail />} />
         <Route path="/discover" element={<Navigate to="/tabs/discover" replace />} />
         <Route path="/artist/:id" element={<LegacyEntityRedirect type="artist" />} />
         <Route path="/venue/:id" element={<LegacyEntityRedirect type="venue" />} />
-        <Route path="/admin" element={deferredPage(<Admin />)} />
+        <Route path="/admin" element={<RequireAuth>{deferredPage(<Admin />)}</RequireAuth>} />
         <Route path="/admin/grants" element={<Navigate to="/admin" replace />} />
         <Route path="/admin/create-artist" element={<Navigate to="/admin" replace />} />
         <Route path="/admin/create-venue" element={<Navigate to="/admin" replace />} />
         <Route path="/admin/access-grants" element={<Navigate to="/admin" replace />} />
         <Route path="/reset" element={<ResetPassword />} />
-        <Route path="/create-event" element={<CreateEventRedirect />} />
-        <Route path="/upload" element={<Navigate to="/tabs/upload" replace />} />
+        <Route path="/create-event" element={<RequireAuth><CreateEventRedirect /></RequireAuth>} />
+        <Route path="/upload" element={<RequireAuth><Navigate to="/tabs/upload" replace /></RequireAuth>} />
         <Route
           path="/tabs"
           element={(
@@ -170,33 +188,29 @@ const AppRoutes = () => {
               mainTabHref={mainTabHref}
               profileTabHref={profileTabHref}
               isArtistWorkspace={isArtistWorkspace}
-              loading={loading}
-              hasUser={Boolean(user)}
             />
           )}
         >
           <Route path="feed" element={<Feed />} />
           <Route path="mySpace" element={<Feed />} />
-          <Route path="create-event" element={deferredPage(<CreateEventPage />)} />
-          <Route path="upload" element={deferredPage(<Upload />)} />
+          <Route path="create-event" element={<RequireAuth>{deferredPage(<CreateEventPage />)}</RequireAuth>} />
+          <Route path="upload" element={<RequireAuth>{deferredPage(<Upload />)}</RequireAuth>} />
           <Route path="map" element={deferredPage(<Map />)} />
           <Route path="discover" element={<Discover />} />
           <Route path="events" element={<Events />} />
           <Route
             path="profile"
-            element={(
-              <ProfileRoute
-                activeArtistId={activeArtistId}
-                activeVenueId={activeVenueId}
-                workspaceType={activeWorkspace?.type}
-              />
-            )}
+            element={<RequireAuth><ProfileRoute
+              activeArtistId={activeArtistId}
+              activeVenueId={activeVenueId}
+              workspaceType={activeWorkspace?.type}
+            /></RequireAuth>}
           />
           <Route path="artist/:id" element={<ArtistProfile />} />
           <Route path="venue/:id" element={<VenueDetail />} />
           <Route index element={<Navigate to={mainTabHref} replace />} />
         </Route>
-        <Route path="/" element={<Navigate to={loading || user ? mainTabHref : '/welcome'} replace />} />
+        <Route path="/" element={<Navigate to={loading ? '/welcome' : mainTabHref} replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 

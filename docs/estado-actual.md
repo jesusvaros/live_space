@@ -16,9 +16,8 @@ Fecha de la última actualización: **18 de julio de 2026**.
   (`eu-west-3`) sobre el plan Free. Las dos migraciones canónicas están aplicadas:
   existen 24 tablas públicas y las 24 tienen RLS activada.
 - La base local cuenta con configuración, cuatro migraciones canónicas, RLS,
-  cuotas de media, modelos de lectura y Edge Functions de firma/webhook. La
-  tercera migración está aplicada en remoto; la cuarta, que compone las tarjetas
-  de posts con su evento, está pendiente de ejecución. Falta ejecutar el reset real porque
+  cuotas de media, modelos de lectura y Edge Functions de firma/webhook. Las
+  cuatro migraciones están aplicadas en el piloto remoto. Falta ejecutar el reset real porque
   Docker no está disponible en esta máquina durante la revisión.
 - Las funciones `cloudinary-sign-upload` y `cloudinary-webhook` están desplegadas.
   La firma exige JWT; el webhook no exige JWT de Supabase, pero valida la firma y
@@ -42,7 +41,7 @@ Fecha de la última actualización: **18 de julio de 2026**.
   proyecto nuevo.
 - Los backups incluyen datos de Auth que no se restaurarán: cuentas, sesiones,
   tokens y contraseñas quedan expresamente fuera de la migración.
-- TypeScript, lint, 21 pruebas unitarias, 4 smoke tests E2E responsive, build de
+- TypeScript, lint, 21 pruebas unitarias, 6 smoke tests E2E responsive, build de
   aplicación y build de documentación pasan y están conectados a CI. Aún faltan
   la matriz de tests RLS, fixtures por fuente y pruebas completas de subida.
 - El audit de producción está limpio. VitePress 1.6.4 arrastra tres avisos solo de
@@ -79,7 +78,7 @@ emails, sesiones y tokens.
 | Recurso | Estado al 18 de julio de 2026 |
 | --- | --- |
 | Supabase | `live-space-pilot`, París, Free, Data API sin exposición automática de tablas |
-| Base remota | 3 migraciones aplicadas y cuarta preparada; 24/24 tablas públicas con RLS |
+| Base remota | 4 migraciones aplicadas; 24/24 tablas públicas con RLS |
 | Auth | email/contraseña, confirmación de email, registro activo, anónimo desactivado |
 | Edge Functions | firma de subida y webhook desplegados; peticiones no autorizadas rechazadas |
 | Cloudinary | entorno `Live Space Pilot` reutilizado por el límite de un entorno del plan Free |
@@ -89,3 +88,6 @@ emails, sesiones y tokens.
 Pendientes humanos: rotar la contraseña de base de datos generada durante el alta,
 guardarla en el gestor del propietario, registrar el dominio público cuando exista
 y crear la primera cuenta por el flujo normal antes de elevarla a administradora.
+
+La configuración local apunta ya al piloto con una clave publicable. La clave no
+se versiona; `.env.example` documenta únicamente las variables requeridas.
