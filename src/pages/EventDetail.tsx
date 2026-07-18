@@ -15,7 +15,7 @@ import { TimelineBucket } from '../components/event/TimelineScrubber';
 import ShareSheet from '../components/ShareSheet';
 import { IconBookmark, IconBookmarkFilled, IconCalendar, IconCompass, IconMap, IconPlus, IconTicket, IconUser } from '../components/icons';
 import { fetchEventCardById } from '../data/eventQueries';
-import { createConfiguredCloudinaryMediaProvider } from '../media';
+import { createConfiguredCloudinaryMediaProvider, uploadEventPost } from '../media';
 
 type EventDetailData = Event & {
   organizer?: Profile | null;
@@ -25,20 +25,6 @@ type EventDetailData = Event & {
 
 type EventDetailLocationState = {
   openAddMoments?: boolean;
-};
-
-const waitForMediaAssetId = async (reservationId: string) => {
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    const { data, error } = await supabase
-      .from('media_assets')
-      .select('id')
-      .eq('reservation_id', reservationId)
-      .maybeSingle();
-    if (error) throw error;
-    if (data?.id) return data.id as string;
-    await new Promise(resolve => window.setTimeout(resolve, 500));
-  }
-  throw new Error('The upload completed, but media processing is still pending.');
 };
 
 const EventDetail: React.FC = () => {
@@ -575,24 +561,14 @@ const EventDetail: React.FC = () => {
       for (let i = 0; i < momentItems.length; i += 1) {
         const item = momentItems[i];
         setUploadProgress({ current: i + 1, total: momentItems.length });
-        const upload = await mediaProvider.upload({
+        await uploadEventPost({
+          provider: mediaProvider,
           file: item.file,
           kind: item.mediaType,
           eventId: event.id,
-          purpose: 'user',
+          authorId: user.id,
+          capturedAt: item.captureAt ? item.captureAt.toISOString() : null,
         });
-        const mediaAssetId = await waitForMediaAssetId(upload.reservationId);
-
-        const { error: insertError } = await supabase.from('posts').insert({
-          author_id: user.id,
-          media_asset_id: mediaAssetId,
-          event_id: event.id,
-          captured_at: item.captureAt ? item.captureAt.toISOString() : null,
-        });
-
-        if (insertError) {
-          throw insertError;
-        }
       }
 
       await updateAttendance('attended', { force: true });

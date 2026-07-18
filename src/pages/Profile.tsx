@@ -10,6 +10,8 @@ import EventPosterTile from '../features/events/components/EventPosterTile';
 import { IconCalendar, IconEdit, IconHeart, IconLogout, IconPlay } from '../components/icons';
 import { useAppResume } from '../shared/hooks/useAppResume';
 import { fetchQuery } from '../lib/queryClient';
+import { fetchEventCards } from '../data/eventQueries';
+import { fetchPostCards } from '../data/postQueries';
 
 const Profile: React.FC = () => {
   const { 
@@ -149,51 +151,14 @@ const Profile: React.FC = () => {
       }>(
         ['profile:data', loadContext],
         async () => {
-          const eventCardSelect = `
-            id,
-            name,
-            city,
-            address,
-            starts_at,
-            cover_image_url,
-            venue_place:venue_places!events_venue_place_id_fkey (
-              id,
-              name,
-              city,
-              address
-            ),
-            event_artists (
-              artist:artists!event_artists_artist_entity_fk (
-                id,
-                name,
-                avatar_url
-              )
-            )
-          `;
-
-          let postsQuery = supabase
-            .from('posts')
-            .select('id, media_url, media_type, caption, created_at, event_offset_ms, song_title');
-
-          if (isManagementMode && activeEntity) {
-            postsQuery = postsQuery.eq('actor_subject_id', activeEntity.subject_id);
-          } else {
-            postsQuery = postsQuery.eq('user_id', user.id);
-          }
-
-          const [postsRes, likedRes, attendedRes] = await Promise.all([
-            postsQuery.order('created_at', { ascending: false }).limit(12),
-            supabase.from('event_saves').select(`events!inner (${eventCardSelect})`).eq('profile_id', user.id),
-            supabase.from('event_attendance').select(`status, events!inner (${eventCardSelect})`).eq('profile_id', user.id),
+          const [personalPosts, likedRes, attendedRes] = await Promise.all([
+            isManagementMode ? Promise.resolve([]) : fetchPostCards({ authorId: user.id }),
+            supabase.from('event_saves').select('event_id').eq('profile_id', user.id),
+            supabase.from('event_attendance').select('event_id,status').eq('profile_id', user.id),
           ]);
 
-          const posts = (postsRes.data || []) as PostWithSetlist[];
-          const liked = (likedRes.data || [])
-            .map((item: any) => item.events)
-            .filter((event: any): event is Event => Boolean(event));
-          const attended = (attendedRes.data || [])
-            .map((item: any) => item.events)
-            .filter((event: any): event is Event => Boolean(event));
+          const likedIds = (likedRes.data || []).map(row => row.event_id).filter(Boolean);
+          const attendedIds = (attendedRes.data || []).map(row => row.event_id).filter(Boolean);
 
           let artistEvents: Event[] = [];
           let venueEvents: Event[] = [];
@@ -202,34 +167,31 @@ const Profile: React.FC = () => {
           if (activeRole === 'artist') {
             const artistEntityId = isManagementMode && activeEntity ? activeEntity.artist?.id : null;
             if (artistEntityId) {
-              const { data: artistEventData } = await supabase
+              const { data: artistEventData, error: artistEventError } = await supabase
                 .from('event_artists')
-                .select(
-                  `
-                  events!inner (
-                    ${eventCardSelect}
-                  )
-                `
-                )
-                .eq('artist_entity_id', artistEntityId);
-
-              artistEvents = (artistEventData || [])
-                .map((item: any) => item.events)
-                .filter((event: any): event is Event => Boolean(event));
+                .select('event_id')
+                .eq('artist_id', artistEntityId);
+              if (artistEventError) throw artistEventError;
+              artistEvents = await fetchEventCards({
+                eventIds: (artistEventData || []).map(row => row.event_id),
+              });
             }
           }
 
           if (activeRole === 'venue') {
             const venuePlaceId = isManagementMode && activeEntity ? activeEntity.venue?.id : null;
             if (venuePlaceId) {
-              const { data: venueEventData } = await supabase
-                .from('events')
-                .select(eventCardSelect)
-                .eq('venue_place_id', venuePlaceId)
-                .order('starts_at', { ascending: false });
-              venueEvents = (venueEventData || []) as unknown as Event[];
+              venueEvents = await fetchEventCards({ venueId: venuePlaceId });
             }
           }
+
+          const entityEventIds = [...artistEvents, ...venueEvents].map(event => event.id);
+          const [liked, attended, entityPosts] = await Promise.all([
+            fetchEventCards({ eventIds: likedIds }),
+            fetchEventCards({ eventIds: attendedIds }),
+            isManagementMode ? fetchPostCards({ eventIds: entityEventIds }) : Promise.resolve([]),
+          ]);
+          const posts = (isManagementMode ? entityPosts : personalPosts).slice(0, 12) as PostWithSetlist[];
 
           return { posts, liked, attended, artistEvents, venueEvents };
         },
@@ -380,11 +342,6 @@ const Profile: React.FC = () => {
         setSaving(false);
         return;
       }
-      const photoList = venuePhotos
-        .split(/\n|,/)
-        .map(item => item.trim())
-        .filter(Boolean);
-
       const { error: venueError } = await supabase
         .from('venue_places')
         .update({
@@ -396,7 +353,6 @@ const Profile: React.FC = () => {
           venue_type: venueType.trim() || null,
           latitude: parseCoordinate(venueLatitude),
           longitude: parseCoordinate(venueLongitude),
-          photos: photoList,
         })
         .eq('id', selectedVenuePlaceId);
 

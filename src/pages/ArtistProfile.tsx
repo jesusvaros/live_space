@@ -14,6 +14,8 @@ import GallerySection from '../components/artist/GallerySection';
 import PastShowsSection from '../components/artist/PastShowsSection';
 import MomentsSection from '../components/artist/MomentsSection';
 import AboutSection from '../components/artist/AboutSection';
+import { fetchEventCards } from '../data/eventQueries';
+import { fetchPostCards } from '../data/postQueries';
 
 type ArtistProfileProps = {
   artistId?: string;
@@ -67,38 +69,13 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
         const { data: artistEvents } = await supabase
           .from('event_artists')
           .select('event_id')
-          .eq('artist_entity_id', normalizedArtist.id);
+          .eq('artist_id', normalizedArtist.id);
 
         const eventIds = (artistEvents || []).map(row => row.event_id).filter(Boolean);
 
         let eventRows: ArtistProfileEvent[] = [];
         if (eventIds.length > 0) {
-          const { data: eventsData } = await supabase
-            .from('events')
-            .select(
-              `
-                *,
-                venue_place:venue_places!events_venue_place_id_fkey (
-                  id,
-                  name,
-                  city,
-                  address,
-                  latitude,
-                  longitude
-                ),
-                event_artists (
-                  artist:artists!event_artists_artist_entity_fk (
-                    id,
-                    name,
-                    avatar_url
-                  )
-                )
-              `
-            )
-            .in('id', eventIds)
-            .order('starts_at', { ascending: true });
-
-          eventRows = (eventsData || []) as ArtistProfileEvent[];
+          eventRows = (await fetchEventCards({ eventIds })) as ArtistProfileEvent[];
         }
 
         const now = new Date();
@@ -110,14 +87,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
         setPastShows(past.reverse());
 
         if (eventIds.length > 0) {
-          const { data: momentsData } = await supabase
-            .from('posts')
-            .select('id, media_url, media_type, caption, event_id, created_at, actor_subject_id, song_title')
-            .in('event_id', eventIds)
-            .order('created_at', { ascending: false })
-            .limit(24);
-
-          const allMoments = (momentsData || []) as PostWithSetlist[];
+          const allMoments = (await fetchPostCards({ eventIds })).slice(0, 24) as PostWithSetlist[];
           setMoments(allMoments);
           setGallery(allMoments.filter(item => item.media_type === 'image').slice(0, 6));
         } else {

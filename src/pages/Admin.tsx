@@ -15,17 +15,15 @@ import { supabase } from '../lib/supabase';
 type AdminTab = 'artist' | 'venue' | 'grant' | 'access';
 
 type AccessRow = {
-  admin_subject_id: string;
-  entity_subject_id: string;
+  profile_id: string;
+  subject_id: string;
   role: string;
   created_at?: string;
   admin?: {
-    profile?: {
-      id: string;
-      username: string | null;
-      display_name: string | null;
-      avatar_url: string | null;
-    };
+    id: string;
+    username: string | null;
+    display_name: string | null;
+    avatar_url: string | null;
   };
   entity?: {
     type: 'artist' | 'venue' | string;
@@ -52,7 +50,6 @@ const Admin: React.FC = () => {
   const [artistCity, setArtistCity] = useState('');
   const [artistType, setArtistType] = useState<'solo' | 'band'>('solo');
   const [artistGenres, setArtistGenres] = useState('');
-  const [artistAvatar, setArtistAvatar] = useState('');
   const [artistLoading, setArtistLoading] = useState(false);
   const [artistMessage, setArtistMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -138,31 +135,25 @@ const Admin: React.FC = () => {
       setAccessError(null);
       try {
         const { data, error } = await supabase
-          .from('entity_members')
+          .from('entity_memberships')
           .select(`
-            admin_subject_id,
-            entity_subject_id,
+            profile_id,
+            subject_id,
             role,
             created_at,
-            admin:admin_subject_id (
-              profile:profile_id (
-                id,
-                username,
-                display_name,
-                avatar_url
-              )
+            admin:profiles!entity_memberships_profile_id_fkey (
+              id,
+              username,
+              display_name,
+              avatar_url
             ),
-            entity:entity_subject_id (
+            entity:subjects!entity_memberships_subject_id_fkey (
               type,
-              profile:profile_id (
-                username,
-                display_name
-              ),
-              venue_place:venue_place_id (
+              venue_place:venue_places!subjects_venue_place_id_fkey (
                 name,
                 city
               ),
-              artist:artist_id (
+              artist:artists!subjects_artist_id_fkey (
                 name,
                 city
               )
@@ -273,7 +264,7 @@ const Admin: React.FC = () => {
         artist_type: artistType,
         city: artistCity.trim() || null,
         bio: null,
-        avatar_url: artistAvatar.trim() || null,
+        avatar_url: null,
         genres,
         external_links: {},
       });
@@ -281,7 +272,6 @@ const Admin: React.FC = () => {
       setArtistName('');
       setArtistCity('');
       setArtistGenres('');
-      setArtistAvatar('');
       setArtistType('solo');
     } catch (e: any) {
       setArtistMessage({ type: 'error', text: e?.message || 'Failed to create artist' });
@@ -354,11 +344,11 @@ const Admin: React.FC = () => {
   };
 
   const renderEntityLabel = (row: AccessRow) => {
-    if (!row.entity) return row.entity_subject_id;
+    if (!row.entity) return row.subject_id;
     if (row.entity.type === 'artist' && row.entity.artist) return row.entity.artist.name;
     if (row.entity.type === 'venue' && row.entity.venue_place) return row.entity.venue_place.name;
-    if (row.entity.profile) return row.entity.profile.display_name || row.entity.profile.username || row.entity_subject_id;
-    return row.entity_subject_id;
+    if (row.entity.profile) return row.entity.profile.display_name || row.entity.profile.username || row.subject_id;
+    return row.subject_id;
   };
 
   const renderEntityMeta = (row: AccessRow) => {
@@ -429,13 +419,6 @@ const Admin: React.FC = () => {
                 <option value="solo">Solo</option>
                 <option value="band">Band</option>
               </select>
-              <input
-                type="text"
-                placeholder="Avatar URL"
-                value={artistAvatar}
-                onChange={e => setArtistAvatar(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-white/[0.02] p-3 text-white outline-none focus:border-app-accent/60"
-              />
               <input
                 type="text"
                 placeholder="Genres (comma separated)"
@@ -732,22 +715,22 @@ const Admin: React.FC = () => {
             <div className="space-y-3">
               {rows.map(row => (
                 <div
-                  key={`${row.admin_subject_id}-${row.entity_subject_id}`}
+                  key={`${row.profile_id}-${row.subject_id}`}
                   className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] p-3"
                 >
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 overflow-hidden rounded-full bg-white/10">
-                      {row.admin?.profile?.avatar_url ? (
-                        <img src={row.admin.profile.avatar_url} alt="" className="h-full w-full object-cover" />
+                      {row.admin?.avatar_url ? (
+                        <img src={row.admin.avatar_url} alt="" className="h-full w-full object-cover" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-xs font-bold text-white/70">
-                          {row.admin?.profile?.username?.[0]?.toUpperCase() || '?'}
+                          {row.admin?.username?.[0]?.toUpperCase() || '?'}
                         </div>
                       )}
                     </div>
                     <div>
                       <div className="text-sm font-semibold text-white">
-                        {row.admin?.profile?.display_name || row.admin?.profile?.username || 'Unknown admin'}
+                        {row.admin?.display_name || row.admin?.username || 'Unknown admin'}
                       </div>
                       <div className="text-xs uppercase tracking-[0.18em] text-white/50">{row.role}</div>
                     </div>

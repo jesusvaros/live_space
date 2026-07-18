@@ -11,7 +11,6 @@ const AdminCreateArtist: React.FC = () => {
   const [artistCity, setArtistCity] = useState('');
   const [artistType, setArtistType] = useState<'solo' | 'band'>('solo');
   const [artistGenres, setArtistGenres] = useState('');
-  const [artistAvatar, setArtistAvatar] = useState('');
   const [artistLoading, setArtistLoading] = useState(false);
   const [artistMessage, setArtistMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -34,7 +33,7 @@ const AdminCreateArtist: React.FC = () => {
         artist_type: artistType,
         city: artistCity.trim() || null,
         bio: null,
-        avatar_url: artistAvatar.trim() || null,
+        avatar_url: null,
         genres,
         external_links: {}
       });
@@ -43,7 +42,6 @@ const AdminCreateArtist: React.FC = () => {
       setArtistName('');
       setArtistCity('');
       setArtistGenres('');
-      setArtistAvatar('');
       setArtistType('solo');
     } catch (error: any) {
       setArtistMessage({ type: 'error', text: error.message || 'Failed to create artist' });
@@ -98,13 +96,6 @@ const AdminCreateArtist: React.FC = () => {
               <option value="solo">Solo</option>
               <option value="band">Band</option>
             </select>
-            <input
-              type="text"
-              placeholder="Avatar URL"
-              value={artistAvatar}
-              onChange={(e) => setArtistAvatar(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 p-4 text-app-light outline-none focus:border-app-ink/50"
-            />
             <input
               type="text"
               placeholder="Genres (comma separated)"

@@ -15,10 +15,10 @@ Fecha de la última actualización: **18 de julio de 2026**.
 - El proyecto remoto Supabase `live-space-pilot` está creado en París
   (`eu-west-3`) sobre el plan Free. Las dos migraciones canónicas están aplicadas:
   existen 24 tablas públicas y las 24 tienen RLS activada.
-- La base local cuenta con configuración, tres migraciones canónicas, RLS, cuotas
-  de media, modelos de lectura y Edge Functions de firma/webhook. La tercera
-  migración está preparada en el editor remoto y pendiente de aprobación para
-  ejecutarse. Falta ejecutar el reset real porque
+- La base local cuenta con configuración, cuatro migraciones canónicas, RLS,
+  cuotas de media, modelos de lectura y Edge Functions de firma/webhook. La
+  tercera migración está aplicada en remoto; la cuarta, que compone las tarjetas
+  de posts con su evento, está pendiente de ejecución. Falta ejecutar el reset real porque
   Docker no está disponible en esta máquina durante la revisión.
 - Las funciones `cloudinary-sign-upload` y `cloudinary-webhook` están desplegadas.
   La firma exige JWT; el webhook no exige JWT de Supabase, pero valida la firma y
@@ -29,9 +29,9 @@ Fecha de la última actualización: **18 de julio de 2026**.
   entorno local ignorado por Git.
 - El nuevo contrato normaliza autores, membresías y activos respecto al SQL
   heredado. Auth, catálogo, agenda, gestión profesional, setlists, mapa y detalle
-  de evento ya usan el contrato canónico o sus modelos de lectura. Feed, perfil,
-  subida dedicada y algunas pantallas administrativas aún conservan consultas
-  heredadas y no se consideran listas para el piloto.
+  de evento, Feed, Perfil, Upload y administración ya usan el contrato canónico o
+  sus modelos de lectura. No quedan accesos al bucket `media` ni nombres de claves
+  foráneas heredadas en el cliente.
 - Hay un prototipo de ingesta con fuentes, ejecuciones, staging, normalización,
   deduplicación y parsers genéricos. Aún requiere fixtures por fuente, control de
   confianza y operación prolongada en staging.
@@ -79,7 +79,7 @@ emails, sesiones y tokens.
 | Recurso | Estado al 18 de julio de 2026 |
 | --- | --- |
 | Supabase | `live-space-pilot`, París, Free, Data API sin exposición automática de tablas |
-| Base remota | 2 migraciones registradas y tercera preparada; 24/24 tablas públicas con RLS |
+| Base remota | 3 migraciones aplicadas y cuarta preparada; 24/24 tablas públicas con RLS |
 | Auth | email/contraseña, confirmación de email, registro activo, anónimo desactivado |
 | Edge Functions | firma de subida y webhook desplegados; peticiones no autorizadas rechazadas |
 | Cloudinary | entorno `Live Space Pilot` reutilizado por el límite de un entorno del plan Free |

@@ -68,6 +68,10 @@ campos visuales derivados sin duplicarlos en las tablas de catálogo. La vista
 interfaz heredada. Todas usan `security_invoker`, por lo que las políticas RLS de
 las tablas subyacentes siguen aplicándose al visitante.
 
+`v_post_cards` compone cada momento publicado con el perfil autor y un resumen de
+su evento. Feed, detalle, perfiles y galerías comparten `postQueries`; las pantallas
+ya no reconstruyen relaciones distintas ni dependen de nombres de claves foráneas.
+
 El dominio depende de `MediaProvider`, no de la API concreta. La política inicial
 admite vídeo de hasta 45 s/75 MB con variante pública 720p, imágenes de hasta
 10 MB/2048 px y diez vídeos por usuario al mes. El borrado físico ocurre siete

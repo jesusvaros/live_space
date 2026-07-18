@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Spinner } from '../components/ui/AppPrimitives';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
 import { PostWithRelations } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
 import { useAppResume } from '../shared/hooks/useAppResume';
 import { fetchQuery } from '../lib/queryClient';
+import { fetchPostCards } from '../data/postQueries';
 
 const PAGE_SIZE = 6;
 
@@ -29,45 +29,7 @@ const Feed: React.FC = () => {
     const data = await fetchQuery<PostWithRelations[]>(
       ['feed:posts', nextPage],
       async () => {
-        const { data, error } = await supabase
-          .from('posts')
-          .select(
-            `
-            id,
-            user_id,
-            actor_subject_id,
-            event_id,
-            event_offset_ms,
-            performance_artist_id,
-            song_id,
-            song_title,
-            media_url,
-            media_type,
-            thumbnail_url,
-            caption,
-            captured_at,
-            capture_source,
-            created_at,
-            updated_at,
-            profiles:profiles!posts_user_id_fkey (
-              id,
-              username,
-              display_name,
-              avatar_url
-            ),
-            events:events!posts_event_id_fkey (
-              id,
-              name,
-              city,
-              starts_at,
-              cover_image_url
-            )
-            `
-          )
-          .order('created_at', { ascending: false })
-          .range(from, to);
-        if (error) throw error;
-        return (data || []) as unknown as PostWithRelations[];
+        return fetchPostCards({ from, to });
       },
       {
         ttlMs: 10_000,

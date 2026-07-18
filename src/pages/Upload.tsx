@@ -1,14 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Content, Modal, Spinner } from '../components/ui/AppPrimitives';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
 import { Event, VenuePlace } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
-import { useWorkspace } from '../contexts/WorkspaceContext';
 import QrScanner from '../components/QrScanner';
 import { buildMomentItems, parseDatetimeLocalValue, MomentItem } from '../lib/moments';
 import AppShell from '../components/AppShell';
 import EventPosterTile from '../features/events/components/EventPosterTile';
+import { fetchEventCardById, fetchEventCards } from '../data/eventQueries';
+import { createConfiguredCloudinaryMediaProvider, uploadEventPost } from '../media';
 
 type NearbyEvent = {
   event: EventWithVenue;
@@ -74,7 +74,6 @@ const Upload: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, profile } = useAuth();
-  const { activeWorkspace } = useWorkspace();
   const [events, setEvents] = useState<EventWithVenue[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [eventsError, setEventsError] = useState('');
@@ -98,24 +97,7 @@ const Upload: React.FC = () => {
       setLoadingEvents(true);
       setEventsError('');
       try {
-        const { data, error } = await supabase
-          .from('events')
-          .select(
-            `
-            *,
-            venue_place:venue_places!events_venue_place_id_fkey (
-              id,
-              name,
-              city,
-              address,
-              latitude,
-              longitude
-            )
-            `
-          )
-          .order('starts_at', { ascending: true });
-        if (error) throw error;
-        setEvents((data || []) as Event[]);
+        setEvents((await fetchEventCards({})) as EventWithVenue[]);
       } catch (err) {
         setEvents([]);
         setEventsError('Could not load events. Check your Supabase connection.');
@@ -224,24 +206,8 @@ const Upload: React.FC = () => {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('events')
-        .select(
-          `
-          *,
-          venue_place:venue_places!events_venue_place_id_fkey (
-            id,
-            name,
-            city,
-            address,
-            latitude,
-            longitude
-          )
-          `
-        )
-        .eq('id', eventId)
-        .single();
-      if (error || !data) throw error;
+      const data = await fetchEventCardById(eventId);
+      if (!data) throw new Error('Event not found');
       handleSelectEvent(data as EventWithVenue);
     } catch {
       setEventsError('Event not found for that QR code.');
@@ -353,39 +319,18 @@ const Upload: React.FC = () => {
     setUploadProgress({ current: 0, total: momentItems.length });
 
     try {
+      const mediaProvider = createConfiguredCloudinaryMediaProvider();
       for (let i = 0; i < momentItems.length; i += 1) {
         const item = momentItems[i];
         setUploadProgress({ current: i + 1, total: momentItems.length });
-        const isVideo = item.mediaType === 'video';
-        const ext = item.file.name.split('.').pop() || (isVideo ? 'mp4' : 'jpg');
-        const folder = isVideo ? 'videos' : 'images';
-        const path = `${folder}/${user.id}/${selectedEvent.id}/${Date.now()}-${item.id}.${ext}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('media')
-          .upload(path, item.file, { cacheControl: '3600', upsert: false });
-
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        const { data: publicUrl } = supabase.storage.from('media').getPublicUrl(path);
-
-        const actorSubjectId = activeWorkspace?.subject_id ?? profile?.subject_id;
-
-        const { error: insertError } = await supabase.from('posts').insert({
-          user_id: user.id,
-          actor_subject_id: actorSubjectId,
-          event_id: selectedEvent.id,
-          media_url: publicUrl.publicUrl,
-          media_type: item.mediaType,
-          captured_at: item.captureAt ? item.captureAt.toISOString() : null,
-          capture_source: item.captureSource,
+        await uploadEventPost({
+          provider: mediaProvider,
+          file: item.file,
+          kind: item.mediaType,
+          eventId: selectedEvent.id,
+          authorId: user.id,
+          capturedAt: item.captureAt ? item.captureAt.toISOString() : null,
         });
-
-        if (insertError) {
-          throw insertError;
-        }
       }
 
       setUploadSuccess('Moments uploaded!');
