@@ -3,6 +3,7 @@ import { supabase } from '../../../lib/supabase';
 import { cached, clearCached } from '../../../lib/requestCache';
 import { useAuth } from '../../../contexts/AuthContext';
 import { EventListItem } from '../types';
+import { fetchEventCardById } from '../../../data/eventQueries';
 
 export type UserConcertHeroState =
   | { kind: 'loading' }
@@ -56,7 +57,7 @@ const hasUserMomentsForEvent = async (userId: string, eventId: string) => {
       const { count, error } = await supabase
         .from('posts')
         .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
+        .eq('author_id', userId)
         .eq('event_id', eventId);
       if (error) throw error;
       return count || 0;
@@ -73,7 +74,7 @@ const fetchAttendanceRows = async (userId: string) => {
       const { data, error } = await supabase
         .from('event_attendance')
         .select('event_id,status,created_at')
-        .eq('user_id', userId)
+        .eq('profile_id', userId)
         .in('status', ['going', 'attended'])
         .order('created_at', { ascending: false })
         .limit(50);
@@ -88,32 +89,7 @@ const fetchEventById = async (eventId: string) => {
   return cached(
     `event:detail:${eventId}`,
     async () => {
-      const { data, error } = await supabase
-        .from('events')
-        .select(
-          `
-          *,
-          venue_place:venue_places!events_venue_place_id_fkey (
-            id,
-            name,
-            city,
-            address,
-            latitude,
-            longitude
-          ),
-          event_artists (
-            artist:artists!event_artists_artist_entity_fk (
-              id,
-              name,
-              avatar_url
-            )
-          )
-        `
-        )
-        .eq('id', eventId)
-        .maybeSingle();
-      if (error) throw error;
-      return (data || null) as EventListItem | null;
+      return fetchEventCardById(eventId);
     },
     { ttlMs: 60_000 }
   );

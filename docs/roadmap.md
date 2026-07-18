@@ -2,7 +2,7 @@
 
 Las duraciones son orientativas; las puertas de salida deciden el avance.
 
-## Progreso a 17 de julio de 2026
+## Progreso a 18 de julio de 2026
 
 - Recuperación e inventario: completados sin extraer datos sensibles.
 - CI, typecheck, lint, tests, app y wiki: verdes.
@@ -10,7 +10,10 @@ Las duraciones son orientativas; las puertas de salida deciden el avance.
   dispositivos físicos antes de cerrar formalmente la fase.
 - Supabase y Cloudinary remotos: creados y configurados; migraciones, RLS, presets,
   secretos, Edge Functions y webhook están desplegados. Siguen pendientes el reset
-  local con Docker, los tests RLS completos y la migración de consultas heredadas.
+  local con Docker, los tests RLS completos y terminar Feed, Perfil, Upload y Admin.
+- Contrato de frontend: Auth, catálogo, eventos, mapa, gestión profesional y
+  setlists migrados; carteles y momentos usan firma Cloudinary y confirmación del
+  webhook. La tercera migración remota está pendiente de aprobación para ejecutarse.
 - Scraping: piloto limitado a Madrid/Barcelona y sin IA de pago; aún no está listo
   para publicar automáticamente.
 

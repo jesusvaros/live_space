@@ -14,6 +14,8 @@ import TimelinePlayer, { MediaFilter } from '../components/event/TimelinePlayer'
 import { TimelineBucket } from '../components/event/TimelineScrubber';
 import ShareSheet from '../components/ShareSheet';
 import { IconBookmark, IconBookmarkFilled, IconCalendar, IconCompass, IconMap, IconPlus, IconTicket, IconUser } from '../components/icons';
+import { fetchEventCardById } from '../data/eventQueries';
+import { createConfiguredCloudinaryMediaProvider } from '../media';
 
 type EventDetailData = Event & {
   organizer?: Profile | null;
@@ -25,12 +27,26 @@ type EventDetailLocationState = {
   openAddMoments?: boolean;
 };
 
+const waitForMediaAssetId = async (reservationId: string) => {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const { data, error } = await supabase
+      .from('media_assets')
+      .select('id')
+      .eq('reservation_id', reservationId)
+      .maybeSingle();
+    if (error) throw error;
+    if (data?.id) return data.id as string;
+    await new Promise(resolve => window.setTimeout(resolve, 500));
+  }
+  throw new Error('The upload completed, but media processing is still pending.');
+};
+
 const EventDetail: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const locationState = location.state as EventDetailLocationState | null;
   const { id = '' } = useParams<{ id: string }>();
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const { activeWorkspace } = useWorkspace();
   const [event, setEvent] = useState<EventDetailData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -111,41 +127,9 @@ const EventDetail: React.FC = () => {
     setError('');
 
     try {
-      const { data, error: eventError } = await supabase
-        .from('events')
-        .select(
-          `
-          *,
-          organizer:profiles!events_organizer_id_fkey (
-            id,
-            username,
-            display_name,
-            avatar_url,
-            role
-          ),
-          venue_place:venue_places!events_venue_place_id_fkey (
-            id,
-            name,
-            city,
-            address,
-            latitude,
-            longitude,
-            website_url,
-            photos
-          ),
-          event_artists (
-            artist:artists!event_artists_artist_entity_fk (
-              id,
-              name,
-              avatar_url
-            )
-          )
-        `
-        )
-        .eq('id', id)
-        .single();
+      const data = await fetchEventCardById(id);
 
-      if (eventError || !data) {
+      if (!data) {
         setError('Event not found.');
         setEvent(null);
         return;
@@ -207,19 +191,25 @@ const EventDetail: React.FC = () => {
   const loadCounts = async () => {
     try {
       const baseQuery = supabase
-        .from('posts')
+        .from('media_assets')
         .select('id', { count: 'exact', head: true })
-        .eq('event_id', id);
+        .eq('event_id', id)
+        .eq('status', 'published')
+        .is('deleted_at', null);
       const videoQuery = supabase
-        .from('posts')
+        .from('media_assets')
         .select('id', { count: 'exact', head: true })
         .eq('event_id', id)
-        .eq('media_type', 'video');
+        .eq('status', 'published')
+        .eq('kind', 'video')
+        .is('deleted_at', null);
       const imageQuery = supabase
-        .from('posts')
+        .from('media_assets')
         .select('id', { count: 'exact', head: true })
         .eq('event_id', id)
-        .eq('media_type', 'image');
+        .eq('status', 'published')
+        .eq('kind', 'image')
+        .is('deleted_at', null);
 
       const [{ count: allCount }, { count: videoCount }, { count: imageCount }] = await Promise.all([
         baseQuery,
@@ -273,17 +263,7 @@ const EventDetail: React.FC = () => {
 
       let query = supabase
         .from('v_event_posts_with_setlist')
-        .select(
-          `
-          *,
-          profiles:profiles!posts_user_id_fkey (
-            id,
-            username,
-            display_name,
-            avatar_url
-          )
-        `
-        )
+        .select('*')
         .eq('event_id', id)
         .or(
           `and(captured_at.gte.${bucketStartIso},captured_at.lt.${bucketEndIso}),and(captured_at.is.null,created_at.gte.${bucketStartIso},created_at.lt.${bucketEndIso})`
@@ -390,13 +370,13 @@ const EventDetail: React.FC = () => {
             .from('event_saves')
             .select('event_id')
             .eq('event_id', id)
-            .eq('user_id', user.id)
+            .eq('profile_id', user.id)
             .limit(1),
           supabase
             .from('event_attendance')
             .select('status')
             .eq('event_id', id)
-            .eq('user_id', user.id)
+            .eq('profile_id', user.id)
             .limit(1),
         ]);
 
@@ -591,34 +571,23 @@ const EventDetail: React.FC = () => {
     setUploadProgress({ current: 0, total: momentItems.length });
 
     try {
+      const mediaProvider = createConfiguredCloudinaryMediaProvider();
       for (let i = 0; i < momentItems.length; i += 1) {
         const item = momentItems[i];
         setUploadProgress({ current: i + 1, total: momentItems.length });
-        const isVideo = item.mediaType === 'video';
-        const ext = item.file.name.split('.').pop() || (isVideo ? 'mp4' : 'jpg');
-        const folder = isVideo ? 'videos' : 'images';
-        const path = `${folder}/${user.id}/${event.id}/${Date.now()}-${item.id}.${ext}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('media')
-          .upload(path, item.file, { cacheControl: '3600', upsert: false });
-
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        const { data: publicUrl } = supabase.storage.from('media').getPublicUrl(path);
-
-        const actorSubjectId = activeWorkspace?.subject_id ?? profile?.subject_id;
+        const upload = await mediaProvider.upload({
+          file: item.file,
+          kind: item.mediaType,
+          eventId: event.id,
+          purpose: 'user',
+        });
+        const mediaAssetId = await waitForMediaAssetId(upload.reservationId);
 
         const { error: insertError } = await supabase.from('posts').insert({
-          user_id: user.id,
-          actor_subject_id: actorSubjectId,
+          author_id: user.id,
+          media_asset_id: mediaAssetId,
           event_id: event.id,
-          media_url: publicUrl.publicUrl,
-          media_type: item.mediaType,
           captured_at: item.captureAt ? item.captureAt.toISOString() : null,
-          capture_source: item.captureSource,
         });
 
         if (insertError) {
@@ -653,7 +622,7 @@ const EventDetail: React.FC = () => {
           .from('event_saves')
           .delete()
           .eq('event_id', event.id)
-          .eq('user_id', user.id);
+          .eq('profile_id', user.id);
         if (deleteError) throw deleteError;
         setFollowed(false);
       } else {
@@ -661,7 +630,7 @@ const EventDetail: React.FC = () => {
           .from('event_saves')
           .insert({
             event_id: event.id,
-            user_id: user.id,
+            profile_id: user.id,
           });
         if (insertError) throw insertError;
         setFollowed(true);
@@ -686,7 +655,7 @@ const EventDetail: React.FC = () => {
           .from('event_attendance')
           .delete()
           .eq('event_id', event.id)
-          .eq('user_id', user.id);
+          .eq('profile_id', user.id);
         if (deleteError) throw deleteError;
         setAttendanceStatus(null);
         return true;
@@ -697,10 +666,10 @@ const EventDetail: React.FC = () => {
         .upsert(
           {
             event_id: event.id,
-            user_id: user.id,
+            profile_id: user.id,
             status 
           },
-          { onConflict: 'event_id,user_id' }
+          { onConflict: 'event_id,profile_id' }
         );
       if (upsertError) throw upsertError;
       setAttendanceStatus(status);

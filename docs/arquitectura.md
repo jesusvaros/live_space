@@ -55,6 +55,19 @@ workers privados.
 5. El backend valida idempotencia y registra metadatos en Supabase.
 6. Moderación decide si queda pendiente o publicado.
 
+Los carteles y momentos ya siguen este flujo. El cliente espera la confirmación
+del webhook antes de crear el post canónico, de forma que nunca guarda una URL de
+Cloudinary como sustituto de un activo verificado. Las URLs externas de carteles
+se han retirado del formulario para mantener procedencia y licencia controladas.
+
+## Modelos de lectura
+
+Las vistas `v_subject_artists`, `v_subject_venues` y `v_event_cards` componen los
+campos visuales derivados sin duplicarlos en las tablas de catálogo. La vista
+`v_event_posts_with_setlist` mantiene temporalmente el contrato de timeline de la
+interfaz heredada. Todas usan `security_invoker`, por lo que las políticas RLS de
+las tablas subyacentes siguen aplicándose al visitante.
+
 El dominio depende de `MediaProvider`, no de la API concreta. La política inicial
 admite vídeo de hasta 45 s/75 MB con variante pública 720p, imágenes de hasta
 10 MB/2048 px y diez vídeos por usuario al mes. El borrado físico ocurre siete

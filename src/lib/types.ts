@@ -37,6 +37,7 @@ export interface Profile {
 
 export interface Artist {
   id: string;
+  subject_id?: string | null;
   name: string;
   artist_type: ArtistType;
   city: string | null;

@@ -15,8 +15,8 @@ const buildPostersByArtist = async (artistIds: string[]) => {
     async () => {
       const { data: eventArtistRows, error: eventArtistError } = await supabase
         .from('event_artists')
-        .select('artist_entity_id,event_id')
-        .in('artist_entity_id', sortedIds);
+        .select('artist_id,event_id')
+        .in('artist_id', sortedIds);
       if (eventArtistError) throw eventArtistError;
 
       const eventIds = unique((eventArtistRows || []).map((row: any) => row.event_id).filter(Boolean));
@@ -24,22 +24,25 @@ const buildPostersByArtist = async (artistIds: string[]) => {
 
       const { data: eventRows, error: eventError } = await supabase
         .from('events')
-        .select('id,starts_at,cover_image_url')
+        .select('id,starts_at,media_assets!media_assets_event_id_fkey(kind,status,secure_url,thumbnail_url,created_at)')
         .in('id', eventIds)
         .order('starts_at', { ascending: false });
       if (eventError) throw eventError;
 
       const eventById = new Map<string, { starts_at: string; cover_image_url: string | null }>();
       for (const event of eventRows || []) {
+        const assets = ((event as any).media_assets || [])
+          .filter((asset: any) => asset.kind === 'image' && asset.status === 'published')
+          .sort((left: any, right: any) => String(right.created_at).localeCompare(String(left.created_at)));
         eventById.set((event as any).id, {
           starts_at: (event as any).starts_at,
-          cover_image_url: (event as any).cover_image_url,
+          cover_image_url: assets[0]?.thumbnail_url ?? assets[0]?.secure_url ?? null,
         });
       }
 
       const grouped = new Map<string, { cover: string; starts: number }[]>();
       for (const row of eventArtistRows || []) {
-        const artistId = (row as any).artist_entity_id as string | null;
+        const artistId = (row as any).artist_id as string | null;
         const eventId = (row as any).event_id as string | null;
         if (!artistId || !eventId) continue;
 
@@ -82,7 +85,7 @@ const buildPostersByVenue = async (venueIds: string[]) => {
     async () => {
       const { data: eventRows, error: eventError } = await supabase
         .from('events')
-        .select('venue_place_id,starts_at,cover_image_url')
+        .select('venue_place_id,starts_at,media_assets!media_assets_event_id_fkey(kind,status,secure_url,thumbnail_url,created_at)')
         .in('venue_place_id', sortedIds)
         .order('starts_at', { ascending: false });
       if (eventError) throw eventError;
@@ -90,7 +93,10 @@ const buildPostersByVenue = async (venueIds: string[]) => {
       const grouped = new Map<string, { cover: string; starts: number }[]>();
       for (const row of eventRows || []) {
         const venueId = (row as any).venue_place_id as string | null;
-        const cover = (row as any).cover_image_url as string | null;
+        const assets = ((row as any).media_assets || [])
+          .filter((asset: any) => asset.kind === 'image' && asset.status === 'published')
+          .sort((left: any, right: any) => String(right.created_at).localeCompare(String(left.created_at)));
+        const cover = (assets[0]?.thumbnail_url ?? assets[0]?.secure_url ?? null) as string | null;
         if (!venueId || !cover) continue;
 
         const starts = Date.parse((row as any).starts_at || '');

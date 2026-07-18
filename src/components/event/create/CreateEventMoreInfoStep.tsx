@@ -3,13 +3,11 @@ import React, { useMemo, useRef, useState } from 'react';
 export type CreateEventMoreInfoStepProps = {
   eventEnd: string;
   eventGenres: string;
-  eventCoverUrl: string;
   eventDescription: string;
   posterPreview: string | null;
   posterFile: File | null;
   onEventEndChange: (value: string) => void;
   onEventGenresChange: (value: string) => void;
-  onEventCoverUrlChange: (value: string) => void;
   onEventDescriptionChange: (value: string) => void;
   onPosterFileChange: (file: File | null) => void;
   onPosterRemove: () => void;
@@ -18,13 +16,11 @@ export type CreateEventMoreInfoStepProps = {
 const CreateEventMoreInfoStep: React.FC<CreateEventMoreInfoStepProps> = ({
   eventEnd,
   eventGenres,
-  eventCoverUrl,
   eventDescription,
   posterPreview,
   posterFile,
   onEventEndChange,
   onEventGenresChange,
-  onEventCoverUrlChange,
   onEventDescriptionChange,
   onPosterFileChange,
   onPosterRemove,
@@ -36,9 +32,8 @@ const CreateEventMoreInfoStep: React.FC<CreateEventMoreInfoStepProps> = ({
 
   const posterHelp = useMemo(() => {
     if (posterFile) return posterFile.name;
-    if (eventCoverUrl.trim()) return 'Using poster URL';
-    return 'Upload a poster or paste a URL (optional).';
-  }, [eventCoverUrl, posterFile]);
+    return 'Upload a licensed poster (optional).';
+  }, [posterFile]);
 
   return (
     <section className="h-full overflow-y-auto space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
@@ -109,17 +104,6 @@ const CreateEventMoreInfoStep: React.FC<CreateEventMoreInfoStepProps> = ({
           </div>
         )}
 
-        <label className="flex flex-col gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-            Poster URL (optional)
-          </span>
-          <input
-            className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-            value={eventCoverUrl}
-            onChange={e => onEventCoverUrlChange(e.target.value)}
-            placeholder="https://..."
-          />
-        </label>
       </div>
 
       <label className="flex flex-col gap-2">

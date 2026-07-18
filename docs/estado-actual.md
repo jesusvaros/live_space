@@ -1,6 +1,6 @@
 # Estado actual
 
-Fecha de la auditoría de recuperación: **17 de julio de 2026**.
+Fecha de la última actualización: **18 de julio de 2026**.
 
 ## Código
 
@@ -15,8 +15,10 @@ Fecha de la auditoría de recuperación: **17 de julio de 2026**.
 - El proyecto remoto Supabase `live-space-pilot` está creado en París
   (`eu-west-3`) sobre el plan Free. Las dos migraciones canónicas están aplicadas:
   existen 24 tablas públicas y las 24 tienen RLS activada.
-- La base local cuenta con configuración, dos migraciones canónicas, RLS, cuotas
-  de media y Edge Functions de firma/webhook. Falta ejecutar el reset real porque
+- La base local cuenta con configuración, tres migraciones canónicas, RLS, cuotas
+  de media, modelos de lectura y Edge Functions de firma/webhook. La tercera
+  migración está preparada en el editor remoto y pendiente de aprobación para
+  ejecutarse. Falta ejecutar el reset real porque
   Docker no está disponible en esta máquina durante la revisión.
 - Las funciones `cloudinary-sign-upload` y `cloudinary-webhook` están desplegadas.
   La firma exige JWT; el webhook no exige JWT de Supabase, pero valida la firma y
@@ -26,8 +28,10 @@ Fecha de la auditoría de recuperación: **17 de julio de 2026**.
   limitado a eventos `Upload`. Los secretos viven únicamente en Supabase y en el
   entorno local ignorado por Git.
 - El nuevo contrato normaliza autores, membresías y activos respecto al SQL
-  heredado. Varias consultas de pantallas todavía usan nombres antiguos; esa capa
-  de servicios debe migrarse antes de conectar la app al piloto remoto.
+  heredado. Auth, catálogo, agenda, gestión profesional, setlists, mapa y detalle
+  de evento ya usan el contrato canónico o sus modelos de lectura. Feed, perfil,
+  subida dedicada y algunas pantallas administrativas aún conservan consultas
+  heredadas y no se consideran listas para el piloto.
 - Hay un prototipo de ingesta con fuentes, ejecuciones, staging, normalización,
   deduplicación y parsers genéricos. Aún requiere fixtures por fuente, control de
   confianza y operación prolongada en staging.
@@ -38,7 +42,7 @@ Fecha de la auditoría de recuperación: **17 de julio de 2026**.
   proyecto nuevo.
 - Los backups incluyen datos de Auth que no se restaurarán: cuentas, sesiones,
   tokens y contraseñas quedan expresamente fuera de la migración.
-- TypeScript, lint, 18 pruebas unitarias, 4 smoke tests E2E responsive, build de
+- TypeScript, lint, 21 pruebas unitarias, 4 smoke tests E2E responsive, build de
   aplicación y build de documentación pasan y están conectados a CI. Aún faltan
   la matriz de tests RLS, fixtures por fuente y pruebas completas de subida.
 - El audit de producción está limpio. VitePress 1.6.4 arrastra tres avisos solo de
@@ -72,10 +76,10 @@ emails, sesiones y tokens.
 
 ## Infraestructura remota del piloto
 
-| Recurso | Estado al 17 de julio de 2026 |
+| Recurso | Estado al 18 de julio de 2026 |
 | --- | --- |
 | Supabase | `live-space-pilot`, París, Free, Data API sin exposición automática de tablas |
-| Base remota | 2 migraciones registradas, 24/24 tablas públicas con RLS |
+| Base remota | 2 migraciones registradas y tercera preparada; 24/24 tablas públicas con RLS |
 | Auth | email/contraseña, confirmación de email, registro activo, anónimo desactivado |
 | Edge Functions | firma de subida y webhook desplegados; peticiones no autorizadas rechazadas |
 | Cloudinary | entorno `Live Space Pilot` reutilizado por el límite de un entorno del plan Free |

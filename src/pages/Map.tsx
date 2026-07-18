@@ -15,6 +15,8 @@ import MapFilterModal from '../components/map/MapFilterModal';
 import MapSelectionSheet from '../components/map/MapSelectionSheet';
 import { useMapFilters } from '../hooks/useMapFilters';
 import { useQuery } from '../shared/hooks/useQuery';
+import { fetchEventCards } from '../data/eventQueries';
+import { mapVenue } from '../data/canonicalMappers';
 
 const defaultCenter: [number, number] = [37.3891, -5.9845];
 const defaultZoom = 15;
@@ -100,17 +102,7 @@ const Map: React.FC = () => {
   const eventsQuery = useQuery<EventWithVenue[]>(
     ['map:events'],
     async () => {
-      const { data, error } = await supabase
-        .from('events')
-        .select(
-          `
-          *,
-          venue_place:venue_places(*),
-          event_artists(artist:artists(*))
-        `
-        );
-      if (error) throw error;
-      return (data || []) as EventWithVenue[];
+      return fetchEventCards({}) as Promise<EventWithVenue[]>;
     },
     { ttlMs: 15_000, initialData: [] }
   );
@@ -119,10 +111,10 @@ const Map: React.FC = () => {
     ['map:venues'],
     async () => {
       const { data, error } = await supabase
-        .from('venue_places')
-        .select('id, name, city, address, latitude, longitude, photos, venue_type, capacity');
+        .from('v_subject_venues')
+        .select('*');
       if (error) throw error;
-      return (data || []) as VenuePlace[];
+      return (data || []).map(mapVenue);
     },
     { ttlMs: 30_000, initialData: [] }
   );
@@ -135,11 +127,11 @@ const Map: React.FC = () => {
         supabase
           .from('event_saves')
           .select('event_id')
-          .eq('user_id', user.id),
+          .eq('profile_id', user.id),
         supabase
           .from('event_attendance')
           .select('event_id,status')
-          .eq('user_id', user.id),
+          .eq('profile_id', user.id),
       ]);
 
       const followedIds = (savesRes.data || [])
@@ -419,14 +411,14 @@ const Map: React.FC = () => {
             .from('event_saves')
             .delete()
             .eq('event_id', eventId)
-            .eq('user_id', user.id);
+            .eq('profile_id', user.id);
           if (error) throw error;
         } else {
           const { error } = await supabase
             .from('event_saves')
             .insert({
               event_id: eventId,
-              user_id: user.id,
+              profile_id: user.id,
             });
           if (error) throw error;
         }
@@ -477,7 +469,7 @@ const Map: React.FC = () => {
             .from('event_attendance')
             .delete()
             .eq('event_id', eventId)
-            .eq('user_id', user.id);
+            .eq('profile_id', user.id);
           if (error) throw error;
         } else {
           const { error } = await supabase
@@ -485,10 +477,10 @@ const Map: React.FC = () => {
             .upsert(
               {
                 event_id: eventId,
-                user_id: user.id,
+                profile_id: user.id,
                 status: nextStatus,
               },
-              { onConflict: 'event_id,user_id' }
+              { onConflict: 'event_id,profile_id' }
             );
           if (error) throw error;
         }

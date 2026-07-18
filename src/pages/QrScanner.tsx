@@ -58,11 +58,11 @@ const QrScannerPage: React.FC = () => {
         .upsert(
           { 
             event_id: eventId, 
-            user_id: user.id, 
-            status: 'going' 
+            profile_id: user.id,
+            status: 'going'
           },
           { 
-            onConflict: 'event_id,user_id' 
+            onConflict: 'event_id,profile_id'
           }
         );
 

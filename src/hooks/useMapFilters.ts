@@ -43,7 +43,7 @@ export const useMapFilters = ({ events, venues, userId }: UseMapFiltersParams) =
       const { data } = await supabase
         .from('event_attendance')
         .select('event_id, status')
-        .eq('user_id', userId);
+        .eq('profile_id', userId);
       const nextMap: Record<string, AttendanceStatus> = {};
       (data || []).forEach((row: any) => {
         if (row?.event_id && row?.status) {

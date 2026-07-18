@@ -183,8 +183,8 @@ const Profile: React.FC = () => {
 
           const [postsRes, likedRes, attendedRes] = await Promise.all([
             postsQuery.order('created_at', { ascending: false }).limit(12),
-            supabase.from('event_saves').select(`events!inner (${eventCardSelect})`).eq('user_id', user.id),
-            supabase.from('event_attendance').select(`status, events!inner (${eventCardSelect})`).eq('user_id', user.id),
+            supabase.from('event_saves').select(`events!inner (${eventCardSelect})`).eq('profile_id', user.id),
+            supabase.from('event_attendance').select(`status, events!inner (${eventCardSelect})`).eq('profile_id', user.id),
           ]);
 
           const posts = (postsRes.data || []) as PostWithSetlist[];

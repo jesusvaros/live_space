@@ -3,6 +3,9 @@ import L from 'leaflet';
 import { supabase } from '../lib/supabase';
 import { ProfileRole, VenuePlace } from '../lib/types';
 import { buildPinIcon } from '../components/event/create/MapHelpers';
+import { mapVenue } from '../data/canonicalMappers';
+import { normalizeForMatching } from '../normalize/normalizeText';
+import { createConfiguredCloudinaryMediaProvider } from '../media';
 
 export type ArtistOption = {
   id: string;
@@ -38,8 +41,6 @@ const toNumber = (value: number | string | null | undefined) => {
   const parsed = Number(value);
   return Number.isNaN(parsed) ? null : parsed;
 };
-
-const sanitizeFilename = (value: string) => value.replace(/[^a-zA-Z0-9._-]/g, '-');
 
 const withTimeout = async <T,>(promise: PromiseLike<T>, timeoutMs: number, label: string): Promise<T> => {
   let timeoutId: number | null = null;
@@ -87,7 +88,6 @@ export const useCreateEventForm = ({
   const [eventEnd, setEventEnd] = useState('');
   const [eventDescription, setEventDescription] = useState('');
   const [eventUrl, setEventUrl] = useState('');
-  const [eventCoverUrl, setEventCoverUrl] = useState('');
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [posterPreview, setPosterPreview] = useState<string | null>(null);
   const [eventGenres, setEventGenres] = useState('');
@@ -143,7 +143,6 @@ export const useCreateEventForm = ({
     setEventEnd('');
     setEventDescription('');
     setEventUrl('');
-    setEventCoverUrl('');
     setPosterFile(null);
     setPosterPreview(null);
     setEventGenres('');
@@ -165,14 +164,14 @@ export const useCreateEventForm = ({
     const loadVenues = async () => {
       setVenuesLoading(true);
       const { data, error: venueError } = await supabase
-        .from('venue_places')
-        .select('id, name, city, address, latitude, longitude, website_url, photos')
+        .from('v_subject_venues')
+        .select('venue_place_id, subject_id, name, city, address, latitude, longitude, website_url, photos')
         .order('name', { ascending: true });
       if (venueError) {
         setError('Unable to load venues.');
         setVenues([]);
       } else {
-        setVenues((data || []) as VenuePlace[]);
+        setVenues((data || []).map((row: any) => mapVenue(row)));
       }
       setVenuesLoading(false);
     };
@@ -203,8 +202,8 @@ export const useCreateEventForm = ({
     const handle = window.setTimeout(async () => {
       setArtistsLoading(true);
       const artistQuery = supabase
-        .from('artists')
-        .select('id, name, avatar_url')
+        .from('v_subject_artists')
+        .select('artist_id, name, avatar_url')
         .order('name', { ascending: true });
 
       const { data, error: artistError } = await artistQuery.ilike('name', `%${query}%`);
@@ -219,7 +218,7 @@ export const useCreateEventForm = ({
         setArtistSearchCount(0);
       } else {
         const artistOptions = (data || []).map(row => ({
-          id: row.id,
+          id: row.artist_id,
           display_name: row.name,
           username: null,
           role: 'artist' as ProfileRole,
@@ -458,31 +457,7 @@ export const useCreateEventForm = ({
     setError('');
 
     try {
-      let coverImageUrl = eventCoverUrl.trim() || null;
       let venuePlaceId = selectedVenue?.id || null;
-
-      if (posterFile) {
-        const safeName = sanitizeFilename(posterFile.name || 'poster');
-        const posterPath = `event-posters/${userId}/${Date.now()}-${safeName}`;
-        const { error: uploadError } = await withTimeout(
-          supabase.storage
-            .from('media')
-            .upload(posterPath, posterFile, {
-              cacheControl: '3600',
-              upsert: false,
-              contentType: posterFile.type || 'image/*',
-            }),
-          45_000,
-          'Poster upload'
-        );
-
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        const { data: publicData } = supabase.storage.from('media').getPublicUrl(posterPath);
-        coverImageUrl = publicData.publicUrl;
-      }
 
       if (venueMode === 'new') {
         const { data: newVenue, error: venueError } = await withTimeout(
@@ -490,6 +465,7 @@ export const useCreateEventForm = ({
             .from('venue_places')
             .insert({
               name: newVenueName.trim(),
+              normalized_name: normalizeForMatching(newVenueName),
               city: newVenueCity.trim(),
               address: newVenueAddress.trim() || null,
               latitude: venueLat,
@@ -521,22 +497,23 @@ export const useCreateEventForm = ({
         supabase
           .from('events')
           .insert({
-            organizer_id: userId,
             venue_place_id: venuePlaceId,
             name: eventName.trim(),
+            normalized_name: normalizeForMatching(eventName),
             description: eventDescription.trim() || null,
-            event_url: eventUrl.trim() || null,
+            source_url: eventUrl.trim() || null,
             city: venueCity || (profileCity || ''),
             address: venueAddress || null,
             latitude: venueLat,
             longitude: venueLng,
             genres,
-            cover_image_url: coverImageUrl,
             is_free: isFree,
             price_tiers: isFree ? [] : priceTiers,
             starts_at: startAt.toISOString(),
             ends_at: endAtIso,
-            is_public: true,
+            status: profileRole === 'admin' ? 'published' : 'review',
+            published_at: profileRole === 'admin' ? new Date().toISOString() : null,
+            created_by: userId,
           })
           .select('id')
           .single(),
@@ -549,24 +526,33 @@ export const useCreateEventForm = ({
       }
 
       // Insert artist relationships
-      for (const artistId of artistIds) {
+      if (artistIds.length > 0) {
         const { error: artistError } = await withTimeout(
-          supabase.from('event_artists').insert({
+          supabase.from('event_artists').insert(artistIds.map((artistId, index) => ({
             event_id: eventData.id,
-            artist_entity_id: artistId,
-          }),
+            artist_id: artistId,
+            billing_order: index,
+            is_headliner: index === 0,
+          }))),
           20_000,
           'Lineup create'
         );
 
-        if (artistError) {
-          await withTimeout(
-            supabase.from('events').delete().eq('id', eventData.id),
-            20_000,
-            'Rollback'
-          );
-          throw artistError;
-        }
+        if (artistError) throw artistError;
+      }
+
+      if (posterFile) {
+        const mediaProvider = createConfiguredCloudinaryMediaProvider();
+        await withTimeout(
+          mediaProvider.upload({
+            file: posterFile,
+            kind: 'image',
+            eventId: eventData.id,
+            purpose: 'user',
+          }),
+          45_000,
+          'Poster upload'
+        );
       }
 
       return eventData.id;
@@ -599,7 +585,6 @@ export const useCreateEventForm = ({
     eventEnd,
     eventDescription,
     eventUrl,
-    eventCoverUrl,
     posterFile,
     posterPreview,
     eventGenres,
@@ -632,7 +617,6 @@ export const useCreateEventForm = ({
     setEventEnd,
     setEventDescription,
     setEventUrl,
-    setEventCoverUrl,
     setPosterFile,
     setEventGenres,
     setIsFree,
