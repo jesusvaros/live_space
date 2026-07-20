@@ -78,16 +78,17 @@ const buildMadridDate = (
 
 const parseTime = (value: string): { hour: number; minute: number } => {
   const timeMatch = value.match(/(\d{1,2})[:.h](\d{2})/i);
-  if (!timeMatch) {
-    return { hour: 20, minute: 0 };
+  if (timeMatch) {
+    const hour = Number(timeMatch[1]);
+    const minute = Number(timeMatch[2]);
+    return {
+      hour: Number.isFinite(hour) ? hour : 20,
+      minute: Number.isFinite(minute) ? minute : 0,
+    };
   }
 
-  const hour = Number(timeMatch[1]);
-  const minute = Number(timeMatch[2]);
-  return {
-    hour: Number.isFinite(hour) ? hour : 20,
-    minute: Number.isFinite(minute) ? minute : 0,
-  };
+  const hourOnlyMatch = value.match(/\b(\d{1,2})\s*h\b/i);
+  return hourOnlyMatch ? { hour: Number(hourOnlyMatch[1]), minute: 0 } : { hour: 20, minute: 0 };
 };
 
 export const parseDateTextToIso = (

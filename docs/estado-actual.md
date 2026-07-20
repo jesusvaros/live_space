@@ -32,13 +32,15 @@ Fecha de la última actualización: **18 de julio de 2026**.
   sus modelos de lectura. No quedan accesos al bucket `media` ni nombres de claves
   foráneas heredadas en el cliente.
 - La ingesta dispone de fuentes, ejecuciones, staging, normalización y
-  deduplicación. Hay 18 fuentes piloto registradas y ocho operativas: Jamboree,
-  La Riviera, Movistar Arena, Siroco, Sala Apolo, Sala But, Sala El Sol y
-  Razzmatazz. Los parsers oficiales han publicado 249 conciertos, 7 salas y 239
-  artistas; las otras 10
+  deduplicación. Hay 18 fuentes piloto registradas y nueve operativas:
+  Independance Club, Jamboree, La Riviera, Movistar Arena, Siroco, Sala Apolo,
+  Sala But, Sala El Sol y Razzmatazz. Los parsers oficiales han publicado 253
+  conciertos, 8 salas y 243 artistas; las otras 9
   fuentes siguen pendientes de parser específico. Jamboree filtra exclusivamente
   conciertos: publicó 121, retuvo 55 candidatos ambiguos y rechazó 16 sin artista.
   Movistar Arena añadió 27 conciertos y dejó 3 candidatos en revisión.
+  Independance Club añadió 4 conciertos y conservó 7 títulos largos o ambiguos
+  para revisión.
 
 ## Deuda heredada
 
@@ -46,7 +48,7 @@ Fecha de la última actualización: **18 de julio de 2026**.
   proyecto nuevo.
 - Los backups incluyen datos de Auth que no se restaurarán: cuentas, sesiones,
   tokens y contraseñas quedan expresamente fuera de la migración.
-- TypeScript, lint, 37 pruebas unitarias, 6 smoke tests E2E responsive, build de
+- TypeScript, lint, 41 pruebas unitarias, 6 smoke tests E2E responsive, build de
   aplicación y build de documentación pasan y están conectados a CI. Aún faltan
   la matriz de tests RLS, fixtures por fuente y pruebas completas de subida.
 - El audit de producción está limpio. VitePress 1.6.4 arrastra tres avisos solo de

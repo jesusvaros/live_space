@@ -13,6 +13,7 @@ describe('pilot source catalog', () => {
   it('activates only sources with reviewed terms and live parser probes', () => {
     const active = seedSources.filter((source) => source.is_active);
     expect(active.map((source) => source.name).sort()).toEqual([
+      'Independance Club',
       'Jamboree',
       'La Riviera',
       'Movistar Arena',

@@ -69,7 +69,8 @@ export const seedSources: SeedSource[] = [
     'Independance Club',
     'https://independanceclub.com/pages/conciertos',
     'Madrid',
-    'https://independanceclub.com/'
+    'https://independanceclub.com/',
+    { parserKey: 'shopify-concerts', ready: true, structuredDataVerified: true }
   ),
   source('Siroco', 'https://siroco.es/agenda/', 'Madrid', 'https://siroco.es/', {
     parserKey: 'siroco-agenda',
