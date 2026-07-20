@@ -5,6 +5,7 @@ export type SourceType = 'venue' | 'festival' | 'promoter' | 'directory';
 export type ParserKey =
   | 'apolo-agenda'
   | 'events-manager-calendar'
+  | 'elementor-agenda'
   | 'json-ld-agenda'
   | 'razzmatazz-agenda'
   | 'siroco-agenda'

@@ -122,6 +122,7 @@ No se requiere ninguna clave de IA para el piloto.
 - `single-event-page`: para fuentes que exponen un unico evento o landing de detalle.
 - `resident-advisor-like`: para directorios/event cards con patrones cercanos a RA.
 - `tribe-events-api`: API REST pública de The Events Calendar; activa para La Riviera.
+- `elementor-agenda`: tarjetas de agenda Elementor; activa para Sala But y filtra fechas pasadas.
 
 Cada fuente puede afinar selectores via `scrape_sources.metadata`, por ejemplo:
 

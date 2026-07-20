@@ -16,6 +16,7 @@ describe('pilot source catalog', () => {
       'La Riviera',
       'Razzmatazz',
       'Sala Apolo',
+      'Sala But',
       'Sala El Sol',
       'Siroco',
     ]);

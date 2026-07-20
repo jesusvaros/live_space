@@ -51,7 +51,11 @@ export const seedSources: SeedSource[] = [
     ready: true,
   }),
   source('Sala Caracol', 'https://salacaracol.com/', 'Madrid', 'https://salacaracol.com/'),
-  source('Sala But', 'https://www.salabut.es/agenda-conciertos/', 'Madrid', 'https://www.salabut.es/'),
+  source('Sala But', 'https://www.salabut.es/agenda-conciertos/', 'Madrid', 'https://www.salabut.es/', {
+    parserKey: 'elementor-agenda',
+    ready: true,
+    structuredDataVerified: true,
+  }),
   source('Sala Copérnico', 'https://www.salacopernico.es/', 'Madrid', 'https://www.salacopernico.es/'),
   source(
     'Independance Club',
