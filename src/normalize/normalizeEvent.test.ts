@@ -48,5 +48,10 @@ describe('verified structured events', () => {
       ...record,
       extracted_artist_names: ['Editors + Big Sleep'],
     }, source).normalizedEvent.confidence).toBeLessThan(0.95);
+    expect(normalizeStagingEvent({
+      ...record,
+      extracted_title: 'Jamboree Jam Session',
+      extracted_artist_names: ['Jamboree Jam Session'],
+    }, source).normalizedEvent.confidence).toBeLessThan(0.95);
   });
 });

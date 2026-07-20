@@ -32,8 +32,8 @@ original o hash, parser/versión y campos extraídos. Las fechas se interpretan 
 `Europe/Madrid` y se almacenan con zona horaria.
 
 El catálogo piloto contiene 18 fuentes oficiales versionadas (10 de Madrid y 8
-de Barcelona). Seis están operativas: La Riviera, Sala Apolo, Sala But, Siroco,
-Sala El Sol y Razzmatazz. Las demás se crean con `is_active = false` y
+de Barcelona). Siete están operativas: Jamboree, La Riviera, Sala Apolo, Sala But,
+Siroco, Sala El Sol y Razzmatazz. Las demás se crean con `is_active = false` y
 `termsReviewStatus = pending`. La activación se hace individualmente cuando la
 revisión está registrada y una sonda real del parser devuelve datos coherentes.
 Una restricción de PostgreSQL
@@ -41,20 +41,22 @@ impide además guardar `is_active = true` si falta `terms_reviewed_at` o
 `metadata.fixtureVerified = true`.
 
 Los parsers operativos cubren JSON-LD, Events Manager, la API oficial de The
-Events Calendar usada por La Riviera, las tarjetas Elementor de Sala But, el HTML
-de Siroco, la agenda de Apolo y el SSR de Nuxt usado por Razzmatazz.
+Events Calendar usada por La Riviera y Jamboree, las tarjetas Elementor de Sala
+But, el HTML de Siroco, la agenda de Apolo y el SSR de Nuxt usado por Razzmatazz.
 `json-ld-agenda` extrae eventos Schema.org,
 incluidos grafos `@graph`, resuelve URLs relativas, conserva el payload y elimina
 duplicados por URL canónica. Las webs sin JSON-LD permanecerán inactivas hasta
 disponer de un parser y selectores propios; el parser HTML genérico no constituye
 por sí solo autorización para activar una fuente.
 
-Estado remoto del 20 de julio de 2026: 101 conciertos publicados, 5 salas y 97
+Estado remoto del 20 de julio de 2026: 222 conciertos publicados, 6 salas y 212
 artistas. La Riviera aportó 87 conciertos publicados de 88 detectados; el cartel
 `Editors + Big Sleep` permanece en revisión por contener varios artistas. Los
 candidatos que mezclan promotor, festival o actividad no musical también se
 retienen para evitar perfiles falsos. Sala But aportó sus dos próximas fechas y
-su parser descarta el histórico ya vencido.
+su parser descarta el histórico ya vencido. Jamboree detectó 192 conciertos:
+publicó 121, dejó 55 ambiguos en revisión y rechazó 16 sin artista verificable;
+las actividades de discoteca quedan excluidas por categoría.
 
 ## Confianza y deduplicación
 

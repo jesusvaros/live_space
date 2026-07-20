@@ -6,6 +6,8 @@ type TribeEvent = {
   description?: string;
   url?: string;
   start_date?: string;
+  all_day?: boolean;
+  categories?: Array<{ name?: string }>;
 };
 
 type TribeEventsResponse = {
@@ -33,9 +35,12 @@ const toArtistTitle = (title: string): string =>
     .replace(/\s+/g, ' ')
     .trim();
 
-const toMadridDateText = (value: string | undefined): string | undefined => {
+const toMadridDateText = (value: string | undefined, allDay = false): string | undefined => {
   const match = value?.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
-  return match ? `${match[3]}/${match[2]}/${match[1]} ${match[4]}:${match[5]}` : value;
+  if (!match) return value;
+  return allDay
+    ? `${match[3]}/${match[2]}/${match[1]}`
+    : `${match[3]}/${match[2]}/${match[1]} ${match[4]}:${match[5]}`;
 };
 
 export const mapTribeEvent = (
@@ -45,7 +50,7 @@ export const mapTribeEvent = (
   city?: string,
 ): RawScrapedEvent | null => {
   const title = stripHtml(event.title);
-  const dateText = toMadridDateText(event.start_date);
+  const dateText = toMadridDateText(event.start_date, event.all_day === true);
   if (!title || !dateText) return null;
 
   return {
@@ -72,6 +77,9 @@ export const tribeEventsApiParser: VenueParser = {
     endpoint.searchParams.set('status', 'publish');
 
     const events: TribeEvent[] = [];
+    const categoryAllowlist = Array.isArray(source.metadata.categoryAllowlist)
+      ? source.metadata.categoryAllowlist.filter((value): value is string => typeof value === 'string')
+      : [];
     let pageNumber = 1;
     let totalPages = 1;
 
@@ -89,6 +97,11 @@ export const tribeEventsApiParser: VenueParser = {
     } while (pageNumber <= totalPages);
 
     return events
+      .filter((event) => {
+        if (categoryAllowlist.length === 0) return true;
+        const categories = (event.categories || []).map((category) => category.name).filter(Boolean);
+        return categories.some((category) => categoryAllowlist.includes(category as string));
+      })
       .map((event) => mapTribeEvent(event, source.base_url, source.name, source.city || undefined))
       .filter((event): event is RawScrapedEvent => event !== null);
   },

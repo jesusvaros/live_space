@@ -31,4 +31,13 @@ describe('mapTribeEvent', () => {
       start_date: '2026-10-10 21:00:00',
     }, 'https://example.com', 'La Riviera')?.artistNames).toEqual(['Jesse & Joy']);
   });
+
+  it('does not interpret all-day records as midnight concerts', () => {
+    expect(mapTribeEvent({
+      id: 3,
+      title: 'Adrián Royo Trio',
+      start_date: '2026-07-21 00:00:00',
+      all_day: true,
+    }, 'https://example.com', 'Jamboree')?.dateText).toBe('21/07/2026');
+  });
 });
