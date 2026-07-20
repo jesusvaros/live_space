@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { IonSpinner } from '@ionic/react';
-import { useHistory, useParams } from 'react-router-dom';
+import { Spinner } from '../components/ui/AppPrimitives';
+import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { PostWithSetlist } from '../lib/types';
 import AppShell from '../components/AppShell';
@@ -14,6 +14,8 @@ import GallerySection from '../components/artist/GallerySection';
 import PastShowsSection from '../components/artist/PastShowsSection';
 import MomentsSection from '../components/artist/MomentsSection';
 import AboutSection from '../components/artist/AboutSection';
+import { fetchEventCards } from '../data/eventQueries';
+import { fetchPostCards } from '../data/postQueries';
 
 type ArtistProfileProps = {
   artistId?: string;
@@ -23,7 +25,7 @@ type ArtistProfileProps = {
 const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => {
   const { id: routeId } = useParams<{ id: string }>();
   const id = artistId || routeId;
-  const history = useHistory();
+  const navigate = useNavigate();
   const { managedEntities, activeWorkspace } = useWorkspace();
 
   const [artist, setArtist] = useState<ArtistProfileArtist | null>(null);
@@ -67,38 +69,13 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
         const { data: artistEvents } = await supabase
           .from('event_artists')
           .select('event_id')
-          .eq('artist_entity_id', normalizedArtist.id);
+          .eq('artist_id', normalizedArtist.id);
 
         const eventIds = (artistEvents || []).map(row => row.event_id).filter(Boolean);
 
         let eventRows: ArtistProfileEvent[] = [];
         if (eventIds.length > 0) {
-          const { data: eventsData } = await supabase
-            .from('events')
-            .select(
-              `
-                *,
-                venue_place:venue_places!events_venue_place_id_fkey (
-                  id,
-                  name,
-                  city,
-                  address,
-                  latitude,
-                  longitude
-                ),
-                event_artists (
-                  artist:artists!event_artists_artist_entity_fk (
-                    id,
-                    name,
-                    avatar_url
-                  )
-                )
-              `
-            )
-            .in('id', eventIds)
-            .order('starts_at', { ascending: true });
-
-          eventRows = (eventsData || []) as ArtistProfileEvent[];
+          eventRows = (await fetchEventCards({ eventIds })) as ArtistProfileEvent[];
         }
 
         const now = new Date();
@@ -110,14 +87,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
         setPastShows(past.reverse());
 
         if (eventIds.length > 0) {
-          const { data: momentsData } = await supabase
-            .from('posts')
-            .select('id, media_url, media_type, caption, event_id, created_at, actor_subject_id, song_title')
-            .in('event_id', eventIds)
-            .order('created_at', { ascending: false })
-            .limit(24);
-
-          const allMoments = (momentsData || []) as PostWithSetlist[];
+          const allMoments = (await fetchPostCards({ eventIds })).slice(0, 24) as PostWithSetlist[];
           setMoments(allMoments);
           setGallery(allMoments.filter(item => item.media_type === 'image').slice(0, 6));
         } else {
@@ -175,18 +145,20 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
 
   const handleOpenMap = () => {
     if (!artist) return;
-    history.push('/tabs/map', {
+    navigate('/tabs/map', { state: {
       artistFilter: {
         id: artist.id,
         name: artist.name,
         avatar_url: artist.avatar_url,
       },
-    });
+    } });
   };
 
   const playedCount = pastShows.length + upcomingShows.length;
 
   const renderTabContent = () => {
+    if (!artist) return null;
+
     switch (activeTab) {
       case 'shows':
         return (
@@ -194,16 +166,16 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
             <UpcomingShowsSection
               events={limitedUpcoming}
               isManager={isManager}
-              onViewEvent={eventId => history.push(`/event/${eventId}`)}
-              onCreateShow={() => history.push('/create-event', { from: `/tabs/artist/${id}` })}
+              onViewEvent={eventId => navigate(`/event/${eventId}`)}
+              onCreateShow={() => navigate('/create-event', { state: { from: `/tabs/artist/${id}` } })}
               onOpenMap={handleOpenMap}
             />
             <PastShowsSection
               events={limitedPast}
               playedCount={playedCount}
               isManager={isManager}
-              onViewEvent={eventId => history.push(`/event/${eventId}`)}
-              onCreateShow={() => history.push('/create-event', { from: `/tabs/artist/${id}` })}
+              onViewEvent={eventId => navigate(`/event/${eventId}`)}
+              onCreateShow={() => navigate('/create-event', { state: { from: `/tabs/artist/${id}` } })}
             />
           </div>
         );
@@ -212,14 +184,14 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
           <div className="space-y-6">
             <ArtistMapSection
               hasEvents={upcomingShows.length > 0 || pastShows.length > 0}
-              artistName={artist?.name || ''}
+              artistName={artist.name}
               isManager={isManager}
               onOpenMap={handleOpenMap}
-              onCreateShow={() => history.push('/create-event', { from: `/tabs/artist/${id}` })}
+              onCreateShow={() => navigate('/create-event', { state: { from: `/tabs/artist/${id}` } })}
             />
             <GallerySection
               gallery={gallery}
-              onSelect={postId => history.push(`/post/${postId}`)}
+              onSelect={postId => navigate(`/post/${postId}`)}
               onViewGallery={() => setActiveTab('moments')}
             />
           </div>
@@ -229,7 +201,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
           <MomentsSection
             moments={moments}
             isManager={isManager}
-            onSelect={postId => history.push(`/post/${postId}`)}
+            onSelect={postId => navigate(`/post/${postId}`)}
           />
         );
       case 'about':
@@ -239,7 +211,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
             artist={artist}
             isManager={isManager}
             playedCount={playedCount}
-            onCreateShow={() => history.push('/create-event', { from: `/tabs/artist/${id}` })}
+            onCreateShow={() => navigate('/create-event', { state: { from: `/tabs/artist/${id}` } })}
             onOpenMap={handleOpenMap}
           />
         );
@@ -251,7 +223,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
       <div className="p-4">
         {loading && (
           <div className="flex items-center justify-center py-12">
-            <IonSpinner name="crescent" />
+            <Spinner />
           </div>
         )}
         {!loading && error && <p className="text-sm text-rose-400">{error}</p>}
@@ -263,7 +235,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
               playedCount={playedCount}
               externalLinks={externalLinks}
               heroStyle={heroBackground}
-              onEdit={() => history.push('/tabs/profile?edit=artist')}
+              onEdit={() => navigate('/tabs/profile?edit=artist')}
             />
             <ArtistTabs activeTab={activeTab} onSelect={key => setActiveTab(key)} />
             <div>{renderTabContent()}</div>
@@ -277,7 +249,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
     <AppShell contentWrapperClassName={false}>
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <IonSpinner name="crescent" />
+          <Spinner />
         </div>
       )}
 
@@ -292,7 +264,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
             externalLinks={externalLinks}
             heroStyle={heroBackground}
             immersive
-            onEdit={() => history.push('/tabs/profile?edit=artist')}
+            onEdit={() => navigate('/tabs/profile?edit=artist')}
           />
 
           <div className="relative z-10 -mt-16 rounded-t-[28px] border-t border-white/10 bg-app-bg backdrop-blur-xl sm:-mt-20">

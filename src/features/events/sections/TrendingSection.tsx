@@ -1,6 +1,6 @@
 import React from 'react';
-import { IonSpinner } from '@ionic/react';
-import { useHistory } from 'react-router-dom';
+import { Spinner } from '../../../components/ui/AppPrimitives';
+import { useNavigate } from 'react-router-dom';
 import { EventListItem } from '../types';
 import { formatDate, getEventCoverImage, getPrimaryArtistName } from '../utils';
 import EventPosterTile from '../components/EventPosterTile';
@@ -12,7 +12,7 @@ type TrendingSectionProps = {
 };
 
 const TrendingSection: React.FC<TrendingSectionProps> = ({ loading, trending, meta }) => {
-  const history = useHistory();
+  const navigate = useNavigate();
 
   return (
     <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
@@ -24,7 +24,7 @@ const TrendingSection: React.FC<TrendingSectionProps> = ({ loading, trending, me
         <button
           type="button"
           className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/80 transition-colors hover:text-white"
-          onClick={() => history.push('/tabs/map')}
+          onClick={() => navigate('/tabs/map')}
         >
           Explore
         </button>
@@ -32,7 +32,7 @@ const TrendingSection: React.FC<TrendingSectionProps> = ({ loading, trending, me
 
       {loading ? (
         <div className="flex items-center justify-center py-6">
-          <IonSpinner name="crescent" />
+          <Spinner />
         </div>
       ) : trending.length === 0 ? (
         <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
@@ -59,7 +59,7 @@ const TrendingSection: React.FC<TrendingSectionProps> = ({ loading, trending, me
                   title={getPrimaryArtistName(event)}
                   subtitle={event.venue_place?.name || event.city}
                   badge={badge || undefined}
-                  onSelect={selected => history.push(`/event/${selected.id}`)}
+                  onSelect={selected => navigate(`/event/${selected.id}`)}
                 />
               </div>
             );

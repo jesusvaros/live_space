@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Live Space
 
-## Getting Started
+Live Space es una plataforma audiovisual para descubrir conciertos y revivirlos
+con fotografías y vídeos de fans. Web, Android e iOS comparten la aplicación
+React; Capacitor aporta únicamente las capacidades nativas.
 
-First, run the development server:
+## Stack
+
+- React 19, Vite, React Router 7, Tailwind, Radix y componentes propios.
+- Capacitor 8 para Android/iOS.
+- Supabase (PostgreSQL, Auth, RLS y Edge Functions).
+- Cloudinary detrás de firmas de corta duración.
+- Scraping determinista con revisión humana para Madrid y Barcelona.
+- Wiki VitePress en [`docs/`](./docs/).
+
+## Desarrollo
 
 ```bash
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+La app espera `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` en un `.env.local`
+ignorado por Git. Las claves privilegiadas no deben usar nunca el prefijo
+`VITE_` ni llegar al cliente.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Puertas de calidad
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run typecheck
+npm run lint
+npm test
+npm run test:e2e
+npm run build
+npm run docs:build
+```
 
-## Learn More
+CI ejecuta las mismas comprobaciones en cada push y pull request. Los smoke tests
+E2E cubren Chromium móvil y escritorio.
 
-To learn more about Next.js, take a look at the following resources:
+## Backend local
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Con Docker activo:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run db:start
+npm run db:reset
+npm run db:lint
+npm run db:typegen
+```
 
-## Deploy on Vercel
+Las migraciones de [`supabase/migrations/`](./supabase/migrations/) son la única
+fuente de verdad. Los SQL históricos de la raíz son solo material de recuperación
+y no deben aplicarse al proyecto nuevo.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Recuperación e ingesta
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- El inventario seguro de los backups está en
+  [`docs/recovery/inventory-2026-07-17.json`](./docs/recovery/inventory-2026-07-17.json).
+- La restauración se hace solo en PostgreSQL local aislado siguiendo
+  [`tools/recovery/README.md`](./tools/recovery/README.md).
+- Los workers de scraping se compilan con `npm run scrape:build`; por defecto se
+  limitan a Madrid y Barcelona y no usan una API de IA de pago.
+
+Consulta la [wiki](./docs/index.md) para arquitectura, seguridad, scraping,
+runbooks, agentes y roadmap.

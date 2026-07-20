@@ -1,0 +1,94 @@
+{
+  "database": {
+    "bytes": 38518,
+    "excluded": "All row values and all auth/session/token counts",
+    "filename": "db_cluster-10-12-2025@00-47-29.backup.gz",
+    "format": "gzip-compressed PostgreSQL cluster SQL dump",
+    "public_tables": [
+      "public.artists",
+      "public.profiles",
+      "public.venues",
+      "public.videos"
+    ],
+    "safe_row_counts": {
+      "public.artists": 10,
+      "public.profiles": 2,
+      "public.venues": 8,
+      "public.videos": 0,
+      "storage.buckets": 2,
+      "storage.objects": 8
+    },
+    "sha256": "c186c82f0f381225daa6bc305e11d1678dc01b4edb8ad0b7e9bc52e6bfca0369"
+  },
+  "inventory_format": 1,
+  "privacy": "No row values, archive paths, emails, tokens, or user identifiers",
+  "storage": {
+    "bytes": 112964543,
+    "content_objects": [
+      {
+        "bytes": 16689,
+        "categories": ["thumbnail"],
+        "extensions": [".jpg"],
+        "occurrences": 2,
+        "sha256": "0db9a069f43cf92e950b8aa895802bdb7459d40144ae3420f2185a00cdb4c59b"
+      },
+      {
+        "bytes": 2894516,
+        "categories": ["video"],
+        "extensions": [".mp4"],
+        "occurrences": 2,
+        "sha256": "15fd48457d8d24c216d32dde81ae8e5ee300f765869f40aa174428205fd39193"
+      },
+      {
+        "bytes": 1315144,
+        "categories": ["image"],
+        "extensions": [".png"],
+        "occurrences": 1,
+        "sha256": "2ddf893b2c532d88bad163664ddda82ad9348f1a4469ac628b2f7bbbcabfc348"
+      },
+      {
+        "bytes": 1984741,
+        "categories": ["video"],
+        "extensions": [".mp4"],
+        "occurrences": 2,
+        "sha256": "5f77f001de3661a4d2abf97f273de3334ed4d08af36b665df084b640d99ff3f3"
+      },
+      {
+        "bytes": 160653,
+        "categories": ["thumbnail"],
+        "extensions": [".jpg"],
+        "occurrences": 2,
+        "sha256": "66876cfb278a7c61bbd5f9c4ab80d9bc381fe661c0efe1977ac4461f3c30c512"
+      },
+      {
+        "bytes": 29493,
+        "categories": ["image"],
+        "extensions": [".jpg"],
+        "occurrences": 1,
+        "sha256": "86f2d0eaf1765aedf650a33bcd77b5d8edfa9efb11c29082051564407a0afcc5"
+      },
+      {
+        "bytes": 50783376,
+        "categories": ["video"],
+        "extensions": [".mp4"],
+        "occurrences": 2,
+        "sha256": "b9adf1921577de8647cbeaf638d0d92a5665610ba697c8fbaf203bb920f5ac24"
+      },
+      {
+        "bytes": 47734,
+        "categories": ["event-poster"],
+        "extensions": [".jpg"],
+        "occurrences": 1,
+        "sha256": "d7abda928fe9f35eca3771930c2e16560e96310c6e0341ceb981928319b390aa"
+      }
+    ],
+    "duplicate_entries": 5,
+    "entries": 13,
+    "excluded": "ZIP member paths, timestamps, owners, and embedded user IDs",
+    "filename": "aescoklkdyehyfpsqntr.storage.zip",
+    "format": "ZIP",
+    "sha256": "320aef4f8224307350e802855ab589e659cbd80cd8cd0b64667d3caeff685593",
+    "uncompressed_bytes": 113072321,
+    "unique_contents": 8
+  }
+}

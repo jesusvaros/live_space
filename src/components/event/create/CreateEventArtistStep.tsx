@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { IonContent, IonModal, IonSpinner } from '@ionic/react';
+import { Content, Modal, Spinner } from '../../ui/AppPrimitives';
 import { ProfileRole } from '../../../lib/types';
 import ArtistProfile from '../../../pages/ArtistProfile';
 
@@ -102,7 +102,7 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
 
             {artistsLoading && (
               <div className="flex items-center gap-3 text-sm text-white/70">
-                <IonSpinner name="crescent" />
+                <Spinner />
                 Searching artists...
               </div>
             )}
@@ -256,11 +256,11 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
           <p className="text-xs text-white/60">Note: You can assign a user to this artist later.</p>
         </div>
       )}
-      <IonModal
+      <Modal
         isOpen={Boolean(previewArtist)}
         onDidDismiss={() => setPreviewArtist(null)}
       >
-        <IonContent fullscreen>
+        <Content fullscreen>
           <div className="flex items-center justify-between gap-4 border-b border-white/10 bg-app-bg px-5 py-4">
             <h2 className="font-display text-lg font-bold text-white">Artist profile</h2>
             <button
@@ -272,8 +272,8 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
             </button>
           </div>
           {previewArtist && <ArtistProfile artistId={previewArtist.id} embedded />}
-        </IonContent>
-      </IonModal>
+        </Content>
+      </Modal>
     </section>
   );
 };

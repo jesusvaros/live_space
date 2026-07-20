@@ -1,17 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  IonContent,
-  IonSpinner,
-  IonModal,
-} from '@ionic/react';
-import { useHistory, useLocation } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { Content, Modal, Spinner } from '../components/ui/AppPrimitives';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Event, VenuePlace } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
 import QrScanner from '../components/QrScanner';
 import { buildMomentItems, parseDatetimeLocalValue, MomentItem } from '../lib/moments';
 import AppShell from '../components/AppShell';
 import EventPosterTile from '../features/events/components/EventPosterTile';
+import { fetchEventCardById, fetchEventCards } from '../data/eventQueries';
+import { createConfiguredCloudinaryMediaProvider, uploadEventPost } from '../media';
 
 type NearbyEvent = {
   event: EventWithVenue;
@@ -74,9 +71,9 @@ const getCaptureLabel = (source: string | null, capturedAt: Date | null) => {
 };
 
 const Upload: React.FC = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useLocation();
-  const { user, profile, isManagementMode, activeEntity } = useAuth();
+  const { user, profile } = useAuth();
   const [events, setEvents] = useState<EventWithVenue[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [eventsError, setEventsError] = useState('');
@@ -100,24 +97,7 @@ const Upload: React.FC = () => {
       setLoadingEvents(true);
       setEventsError('');
       try {
-        const { data, error } = await supabase
-          .from('events')
-          .select(
-            `
-            *,
-            venue_place:venue_places!events_venue_place_id_fkey (
-              id,
-              name,
-              city,
-              address,
-              latitude,
-              longitude
-            )
-            `
-          )
-          .order('starts_at', { ascending: true });
-        if (error) throw error;
-        setEvents((data || []) as Event[]);
+        setEvents((await fetchEventCards({})) as EventWithVenue[]);
       } catch (err) {
         setEvents([]);
         setEventsError('Could not load events. Check your Supabase connection.');
@@ -226,24 +206,8 @@ const Upload: React.FC = () => {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('events')
-        .select(
-          `
-          *,
-          venue_place:venue_places!events_venue_place_id_fkey (
-            id,
-            name,
-            city,
-            address,
-            latitude,
-            longitude
-          )
-          `
-        )
-        .eq('id', eventId)
-        .single();
-      if (error || !data) throw error;
+      const data = await fetchEventCardById(eventId);
+      if (!data) throw new Error('Event not found');
       handleSelectEvent(data as EventWithVenue);
     } catch {
       setEventsError('Event not found for that QR code.');
@@ -355,41 +319,18 @@ const Upload: React.FC = () => {
     setUploadProgress({ current: 0, total: momentItems.length });
 
     try {
+      const mediaProvider = createConfiguredCloudinaryMediaProvider();
       for (let i = 0; i < momentItems.length; i += 1) {
         const item = momentItems[i];
         setUploadProgress({ current: i + 1, total: momentItems.length });
-        const isVideo = item.mediaType === 'video';
-        const ext = item.file.name.split('.').pop() || (isVideo ? 'mp4' : 'jpg');
-        const folder = isVideo ? 'videos' : 'images';
-        const path = `${folder}/${user.id}/${selectedEvent.id}/${Date.now()}-${item.id}.${ext}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('media')
-          .upload(path, item.file, { cacheControl: '3600', upsert: false });
-
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        const { data: publicUrl } = supabase.storage.from('media').getPublicUrl(path);
-
-        const actorSubjectId = isManagementMode && activeEntity 
-          ? activeEntity.subject_id 
-          : profile?.subject_id;
-
-        const { error: insertError } = await supabase.from('posts').insert({
-          user_id: user.id,
-          actor_subject_id: actorSubjectId,
-          event_id: selectedEvent.id,
-          media_url: publicUrl.publicUrl,
-          media_type: item.mediaType,
-          captured_at: item.captureAt ? item.captureAt.toISOString() : null,
-          capture_source: item.captureSource,
+        await uploadEventPost({
+          provider: mediaProvider,
+          file: item.file,
+          kind: item.mediaType,
+          eventId: selectedEvent.id,
+          authorId: user.id,
+          capturedAt: item.captureAt ? item.captureAt.toISOString() : null,
         });
-
-        if (insertError) {
-          throw insertError;
-        }
       }
 
       setUploadSuccess('Moments uploaded!');
@@ -429,7 +370,7 @@ const Upload: React.FC = () => {
 
           {loadingEvents && (
             <div className="flex items-center justify-center py-8">
-              <IonSpinner name="crescent" />
+              <Spinner />
             </div>
           )}
 
@@ -550,7 +491,7 @@ const Upload: React.FC = () => {
                 <button
                   type="button"
                   className="inline-flex w-full items-center justify-center rounded-2xl bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15"
-                  onClick={() => history.push('/welcome')}
+                  onClick={() => navigate('/welcome')}
                 >
                   Sign in to upload
                 </button>
@@ -574,8 +515,8 @@ const Upload: React.FC = () => {
           )}
       </div>
 
-      <IonModal isOpen={showScanner} onDidDismiss={() => setShowScanner(false)}>
-          <IonContent fullscreen>
+      <Modal isOpen={showScanner} onDidDismiss={() => setShowScanner(false)} title="Scan event QR">
+          <Content fullscreen>
             <div className="flex flex-col gap-4 rounded-3xl bg-app-bg p-5">
               <div className="flex items-center justify-between gap-4">
                 <h2 className="font-display text-lg font-bold text-white">Scan QR</h2>
@@ -589,11 +530,11 @@ const Upload: React.FC = () => {
               </div>
               <QrScanner onDetected={handleQrDetected} />
             </div>
-          </IonContent>
-        </IonModal>
+          </Content>
+        </Modal>
 
-        <IonModal isOpen={showAddMoments} onDidDismiss={() => setShowAddMoments(false)}>
-          <IonContent fullscreen>
+        <Modal isOpen={showAddMoments} onDidDismiss={() => setShowAddMoments(false)} title="Add moments">
+          <Content fullscreen>
             <div className="flex flex-col gap-4 rounded-3xl bg-app-bg p-5">
               <div className="flex items-center justify-between gap-4">
                 <h2 className="font-display text-lg font-bold text-white">Add moments</h2>
@@ -693,8 +634,8 @@ const Upload: React.FC = () => {
                 Add more
               </button>
             </div>
-          </IonContent>
-        </IonModal>
+          </Content>
+        </Modal>
     </AppShell>
   );
 };

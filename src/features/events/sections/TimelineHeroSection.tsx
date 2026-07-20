@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { UserConcertHeroState } from '../hooks/useUserConcertHero';
 import { getEventCoverImage } from '../utils';
 import { EventListItem } from '../types';
@@ -21,7 +21,7 @@ const formatShortDate = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 
 const TimelineHeroSection: React.FC<TimelineHeroSectionProps> = ({ state, onDismissPendingMoments }) => {
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const heroShellClass = 'relative h-[64vh] min-h-[420px] w-full overflow-hidden bg-black';
   const basePrimaryCtaClass =
@@ -58,14 +58,14 @@ const TimelineHeroSection: React.FC<TimelineHeroSectionProps> = ({ state, onDism
               <button
                 type="button"
                 className={basePrimaryCtaClass}
-                onClick={() => history.push('/tabs/map')}
+                onClick={() => navigate('/tabs/map')}
               >
                 Explore map
               </button>
               <button
                 type="button"
                 className={baseGhostCtaClass}
-                onClick={() => history.push('/tabs/discover')}
+                onClick={() => navigate('/tabs/discover')}
               >
                 Discover
               </button>
@@ -106,7 +106,7 @@ const TimelineHeroSection: React.FC<TimelineHeroSectionProps> = ({ state, onDism
               <button
                 type="button"
                 className={baseGhostCtaClass}
-                onClick={() => history.push(`/event/${state.event.id}`)}
+                onClick={() => navigate(`/event/${state.event.id}`)}
               >
                 View event
               </button>
@@ -155,7 +155,7 @@ const TimelineHeroSection: React.FC<TimelineHeroSectionProps> = ({ state, onDism
             <button
               type="button"
               className={basePrimaryCtaClass}
-              onClick={() => history.push(`/event/${state.event.id}`, { openAddMoments: true })}
+              onClick={() => navigate(`/event/${state.event.id}`, { state: { openAddMoments: true } })}
             >
               Add your moments
             </button>
@@ -163,7 +163,7 @@ const TimelineHeroSection: React.FC<TimelineHeroSectionProps> = ({ state, onDism
         </div>
       </div>
     );
-  }, [baseGhostCtaClass, basePrimaryCtaClass, heroShellClass, history, onDismissPendingMoments, state]);
+  }, [baseGhostCtaClass, basePrimaryCtaClass, heroShellClass, navigate, onDismissPendingMoments, state]);
 
   return <section>{hero}</section>;
 };

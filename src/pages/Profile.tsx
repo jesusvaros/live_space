@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { IonContent, IonModal, IonSpinner } from '@ionic/react';
-import { useHistory, useLocation } from 'react-router-dom';
+import { Content, Modal, Spinner } from '../components/ui/AppPrimitives';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Event, PostWithSetlist, ProfileRole } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,6 +10,8 @@ import EventPosterTile from '../features/events/components/EventPosterTile';
 import { IconCalendar, IconEdit, IconHeart, IconLogout, IconPlay } from '../components/icons';
 import { useAppResume } from '../shared/hooks/useAppResume';
 import { fetchQuery } from '../lib/queryClient';
+import { fetchEventCards } from '../data/eventQueries';
+import { fetchPostCards } from '../data/postQueries';
 
 const Profile: React.FC = () => {
   const { 
@@ -28,7 +30,7 @@ const Profile: React.FC = () => {
 
   const [isManagementMode, setIsManagementMode] = useState(false);
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useLocation();
   const isDev = Boolean((import.meta as any).env?.DEV);
 
@@ -73,19 +75,19 @@ const Profile: React.FC = () => {
   const closeEditModal = () => {
     const nextParams = new URLSearchParams(location.search);
     nextParams.delete('edit');
-    history.replace({
+    navigate({
       pathname: location.pathname,
       search: nextParams.toString(),
-    });
+    }, { replace: true });
   };
 
   const openEditModal = (target: 'profile' | 'artist' | 'venue') => {
     const nextParams = new URLSearchParams(location.search);
     nextParams.set('edit', target);
-    history.replace({
+    navigate({
       pathname: location.pathname,
       search: nextParams.toString(),
-    });
+    }, { replace: true });
   };
 
   const openContextualEditModal = () => {
@@ -118,15 +120,15 @@ const Profile: React.FC = () => {
     if (activeEntity.type === 'artist' && activeEntity.artist?.id) {
       const artistPath = `/tabs/artist/${activeEntity.artist.id}`;
       if (!location.pathname.startsWith(artistPath)) {
-        history.replace(artistPath);
+        navigate(artistPath, { replace: true });
       }
     } else if (activeEntity.type === 'venue' && activeEntity.venue?.id) {
       const venuePath = `/tabs/venue/${activeEntity.venue.id}`;
       if (!location.pathname.startsWith(venuePath)) {
-        history.replace(venuePath);
+        navigate(venuePath, { replace: true });
       }
     }
-  }, [activeEntity, history, location.pathname]);
+  }, [activeEntity, location.pathname, navigate]);
 
   const activeProfile = isManagementMode && activeEntity 
     ? (activeEntity.type === 'user' ? activeEntity.profile : null)
@@ -149,51 +151,14 @@ const Profile: React.FC = () => {
       }>(
         ['profile:data', loadContext],
         async () => {
-          const eventCardSelect = `
-            id,
-            name,
-            city,
-            address,
-            starts_at,
-            cover_image_url,
-            venue_place:venue_places!events_venue_place_id_fkey (
-              id,
-              name,
-              city,
-              address
-            ),
-            event_artists (
-              artist:artists!event_artists_artist_entity_fk (
-                id,
-                name,
-                avatar_url
-              )
-            )
-          `;
-
-          let postsQuery = supabase
-            .from('posts')
-            .select('id, media_url, media_type, caption, created_at, event_offset_ms, song_title');
-
-          if (isManagementMode && activeEntity) {
-            postsQuery = postsQuery.eq('actor_subject_id', activeEntity.subject_id);
-          } else {
-            postsQuery = postsQuery.eq('user_id', user.id);
-          }
-
-          const [postsRes, likedRes, attendedRes] = await Promise.all([
-            postsQuery.order('created_at', { ascending: false }).limit(12),
-            supabase.from('event_saves').select(`events!inner (${eventCardSelect})`).eq('user_id', user.id),
-            supabase.from('event_attendance').select(`status, events!inner (${eventCardSelect})`).eq('user_id', user.id),
+          const [personalPosts, likedRes, attendedRes] = await Promise.all([
+            isManagementMode ? Promise.resolve([]) : fetchPostCards({ authorId: user.id }),
+            supabase.from('event_saves').select('event_id').eq('profile_id', user.id),
+            supabase.from('event_attendance').select('event_id,status').eq('profile_id', user.id),
           ]);
 
-          const posts = (postsRes.data || []) as PostWithSetlist[];
-          const liked = (likedRes.data || [])
-            .map((item: any) => item.events)
-            .filter((event: any): event is Event => Boolean(event));
-          const attended = (attendedRes.data || [])
-            .map((item: any) => item.events)
-            .filter((event: any): event is Event => Boolean(event));
+          const likedIds = (likedRes.data || []).map(row => row.event_id).filter(Boolean);
+          const attendedIds = (attendedRes.data || []).map(row => row.event_id).filter(Boolean);
 
           let artistEvents: Event[] = [];
           let venueEvents: Event[] = [];
@@ -202,34 +167,31 @@ const Profile: React.FC = () => {
           if (activeRole === 'artist') {
             const artistEntityId = isManagementMode && activeEntity ? activeEntity.artist?.id : null;
             if (artistEntityId) {
-              const { data: artistEventData } = await supabase
+              const { data: artistEventData, error: artistEventError } = await supabase
                 .from('event_artists')
-                .select(
-                  `
-                  events!inner (
-                    ${eventCardSelect}
-                  )
-                `
-                )
-                .eq('artist_entity_id', artistEntityId);
-
-              artistEvents = (artistEventData || [])
-                .map((item: any) => item.events)
-                .filter((event: any): event is Event => Boolean(event));
+                .select('event_id')
+                .eq('artist_id', artistEntityId);
+              if (artistEventError) throw artistEventError;
+              artistEvents = await fetchEventCards({
+                eventIds: (artistEventData || []).map(row => row.event_id),
+              });
             }
           }
 
           if (activeRole === 'venue') {
             const venuePlaceId = isManagementMode && activeEntity ? activeEntity.venue?.id : null;
             if (venuePlaceId) {
-              const { data: venueEventData } = await supabase
-                .from('events')
-                .select(eventCardSelect)
-                .eq('venue_place_id', venuePlaceId)
-                .order('starts_at', { ascending: false });
-              venueEvents = (venueEventData || []) as unknown as Event[];
+              venueEvents = await fetchEventCards({ venueId: venuePlaceId });
             }
           }
+
+          const entityEventIds = [...artistEvents, ...venueEvents].map(event => event.id);
+          const [liked, attended, entityPosts] = await Promise.all([
+            fetchEventCards({ eventIds: likedIds }),
+            fetchEventCards({ eventIds: attendedIds }),
+            isManagementMode ? fetchPostCards({ eventIds: entityEventIds }) : Promise.resolve([]),
+          ]);
+          const posts = (isManagementMode ? entityPosts : personalPosts).slice(0, 12) as PostWithSetlist[];
 
           return { posts, liked, attended, artistEvents, venueEvents };
         },
@@ -380,11 +342,6 @@ const Profile: React.FC = () => {
         setSaving(false);
         return;
       }
-      const photoList = venuePhotos
-        .split(/\n|,/)
-        .map(item => item.trim())
-        .filter(Boolean);
-
       const { error: venueError } = await supabase
         .from('venue_places')
         .update({
@@ -396,7 +353,6 @@ const Profile: React.FC = () => {
           venue_type: venueType.trim() || null,
           latitude: parseCoordinate(venueLatitude),
           longitude: parseCoordinate(venueLongitude),
-          photos: photoList,
         })
         .eq('id', selectedVenuePlaceId);
 
@@ -420,7 +376,7 @@ const Profile: React.FC = () => {
     setSigningOut(true);
     try {
       await signOut();
-      history.replace('/welcome');
+      navigate('/welcome', { replace: true });
     } catch (err) {
       setFormError('Sign out failed. Check your Supabase connection.');
     } finally {
@@ -458,7 +414,7 @@ const Profile: React.FC = () => {
     if (loading) {
       return (
         <div className="flex items-center justify-center py-12">
-          <IonSpinner name="crescent" />
+          <Spinner />
         </div>
       );
     }
@@ -482,7 +438,7 @@ const Profile: React.FC = () => {
               key={event.id}
               event={event}
               className="w-full"
-              onSelect={selected => history.push(`/event/${selected.id}`)}
+              onSelect={selected => navigate(`/event/${selected.id}`)}
             />
           ))}
         </div>
@@ -504,7 +460,7 @@ const Profile: React.FC = () => {
               key={event.id}
               event={event}
               className="w-full"
-              onSelect={selected => history.push(`/event/${selected.id}`)}
+              onSelect={selected => navigate(`/event/${selected.id}`)}
             />
           ))}
         </div>
@@ -526,7 +482,7 @@ const Profile: React.FC = () => {
               key={event.id}
               event={event}
               className="w-full"
-              onSelect={selected => history.push(`/event/${selected.id}`)}
+              onSelect={selected => navigate(`/event/${selected.id}`)}
             />
           ))}
         </div>
@@ -547,7 +503,7 @@ const Profile: React.FC = () => {
               key={event.id}
               event={event}
               className="w-full"
-              onSelect={selected => history.push(`/event/${selected.id}`)}
+              onSelect={selected => navigate(`/event/${selected.id}`)}
             />
           ))}
         </div>
@@ -567,7 +523,7 @@ const Profile: React.FC = () => {
           <button
             key={post.id}
             type="button"
-            onClick={() => history.push(`/post/${post.id}`)}
+            onClick={() => navigate(`/post/${post.id}`)}
             className="overflow-hidden bg-white/5 transition-opacity hover:opacity-90"
           >
             {post.media_type === 'video' ? (
@@ -675,7 +631,7 @@ const Profile: React.FC = () => {
                     <button
                       type="button"
                       className="bg-white/10 px-3 py-1.5 text-xs font-semibold text-white"
-                      onClick={() => history.push(`/tabs/artist/${(activeEntity.artist as any).id || (activeEntity.artist as any).artist_id}`)}
+                      onClick={() => navigate(`/tabs/artist/${(activeEntity.artist as any).id || (activeEntity.artist as any).artist_id}`)}
                     >
                       View profile
                     </button>
@@ -684,7 +640,7 @@ const Profile: React.FC = () => {
                     <button
                       type="button"
                       className="bg-white/10 px-3 py-1.5 text-xs font-semibold text-white"
-                      onClick={() => history.push(`/tabs/venue/${(activeEntity.venue as any).id || (activeEntity.venue as any).venue_place_id}`)}
+                      onClick={() => navigate(`/tabs/venue/${(activeEntity.venue as any).id || (activeEntity.venue as any).venue_place_id}`)}
                     >
                       View profile
                     </button>
@@ -844,8 +800,8 @@ const Profile: React.FC = () => {
             </button>
       </div>
 
-      <IonModal isOpen={showEdit} onDidDismiss={closeEditModal}>
-        <IonContent fullscreen>
+      <Modal isOpen={showEdit} onDidDismiss={closeEditModal} title="Edit profile">
+        <Content fullscreen>
           <div className="min-h-full bg-app-bg p-5">
             <div className="flex items-center justify-between gap-4">
               <h2 className="font-display text-lg font-bold text-white">{editModalTitle}</h2>
@@ -1176,8 +1132,8 @@ const Profile: React.FC = () => {
               </div>
             )}
           </div>
-        </IonContent>
-      </IonModal>
+        </Content>
+      </Modal>
     </AppShell>
   );
 };

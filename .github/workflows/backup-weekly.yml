@@ -1,0 +1,62 @@
+name: Encrypted weekly database backup
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 3 * * 0"
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      BACKUP_AGE_RECIPIENT: ${{ secrets.BACKUP_AGE_RECIPIENT }}
+
+    steps:
+      - name: Check backup configuration
+        id: configured
+        shell: bash
+        run: |
+          if [ -n "$SUPABASE_DB_URL" ] && [ -n "$BACKUP_AGE_RECIPIENT" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Backup skipped: configure SUPABASE_DB_URL and BACKUP_AGE_RECIPIENT."
+          fi
+
+      - name: Checkout
+        if: steps.configured.outputs.ready == 'true'
+        uses: actions/checkout@v4
+
+      - name: Install Supabase CLI and age
+        if: steps.configured.outputs.ready == 'true'
+        run: |
+          npm install --global supabase@latest
+          sudo apt-get update
+          sudo apt-get install --yes age
+
+      - name: Dump and encrypt
+        if: steps.configured.outputs.ready == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p backup
+          supabase db dump --db-url "$SUPABASE_DB_URL" --file backup/live-space.sql
+          sha256sum backup/live-space.sql > backup/live-space.sql.sha256
+          age --recipient "$BACKUP_AGE_RECIPIENT" --output backup/live-space.sql.age backup/live-space.sql
+          rm backup/live-space.sql
+
+      - name: Upload encrypted artifact
+        if: steps.configured.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-space-backup-${{ github.run_id }}
+          path: |
+            backup/live-space.sql.age
+            backup/live-space.sql.sha256
+          if-no-files-found: error
+          retention-days: 14

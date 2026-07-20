@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { IonPage, IonContent, IonSpinner } from '@ionic/react';
+import { Content, Page, Spinner } from '../components/ui/AppPrimitives';
 import { managementService } from '../services/management.service';
 import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
@@ -66,13 +66,13 @@ const AdminGrants: React.FC = () => {
 
   if (profile?.role !== 'admin') {
     return (
-      <IonPage>
-        <IonContent className="ion-padding">
+      <Page>
+        <Content className="p-4">
           <div className="flex h-full items-center justify-center text-app-light/60">
             Access Denied. Admin only.
           </div>
-        </IonContent>
-      </IonPage>
+        </Content>
+      </Page>
     );
   }
 
@@ -80,7 +80,7 @@ const AdminGrants: React.FC = () => {
     <AppShell
       headerProps={{ title: 'Admin Grants', showBack: true }}
       headerPlacement="outside"
-      contentClassName="ion-padding"
+      contentClassName="p-4"
       contentFullscreen={false}
       contentWrapperClassName={false}
     >
@@ -202,7 +202,7 @@ const AdminGrants: React.FC = () => {
                 onClick={handleGrant}
                 className="flex w-full items-center justify-center rounded-2xl bg-app-ink py-4 font-bold text-white shadow-lg shadow-app-ink/20 transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
               >
-                {loading ? <IonSpinner name="crescent" color="light" /> : 'Grant Access'}
+                {loading ? <Spinner /> : 'Grant Access'}
               </button>
             </div>
           </section>

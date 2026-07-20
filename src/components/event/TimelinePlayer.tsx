@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { IonSpinner } from '@ionic/react';
+import { Spinner } from '../ui/AppPrimitives';
 import { PostWithSetlist } from '../../lib/types';
 import TimelineScrubber, { TimelineBucket } from './TimelineScrubber';
 import SecondStack from './SecondStack';
@@ -135,7 +135,7 @@ const TimelinePlayer: React.FC<TimelinePlayerProps> = ({
         <div className={`relative aspect-video overflow-hidden rounded-2xl border border-white/10 bg-black/70 ${loading ? 'opacity-90' : ''}`}>
           {loading ? (
             <div className="flex h-full items-center justify-center bg-white/[0.03]">
-              <IonSpinner name="crescent" />
+              <Spinner />
             </div>
           ) : selectedMoment ? (
             <div

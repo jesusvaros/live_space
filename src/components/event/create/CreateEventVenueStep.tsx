@@ -1,5 +1,5 @@
 import React from 'react';
-import { IonSpinner } from '@ionic/react';
+import { Spinner } from '../../ui/AppPrimitives';
 import { MapContainer, Marker } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -55,7 +55,6 @@ const CreateEventVenueStep: React.FC<CreateEventVenueStepProps> = ({
   venuesLoading,
   selectedVenue,
   onSelectVenue,
-  onClearVenue,
   onBoundsChange,
   onMapSelect,
   venueLat,
@@ -63,13 +62,9 @@ const CreateEventVenueStep: React.FC<CreateEventVenueStepProps> = ({
   newVenueName,
   newVenueCity,
   newVenueAddress,
-  newVenueLat,
-  newVenueLng,
   onNewVenueNameChange,
   onNewVenueCityChange,
   onNewVenueAddressChange,
-  onNewVenueLatChange,
-  onNewVenueLngChange,
 }) => {
   return (
     <section className="flex h-full min-h-0 flex-col gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
@@ -134,7 +129,7 @@ const CreateEventVenueStep: React.FC<CreateEventVenueStepProps> = ({
         <div className="min-h-0 flex-1">
           {venuesLoading ? (
             <div className="flex items-center gap-3 text-sm text-white/70">
-              <IonSpinner name="crescent" />
+              <Spinner />
               Loading venues...
             </div>
           ) : visibleVenues.length === 0 ? (

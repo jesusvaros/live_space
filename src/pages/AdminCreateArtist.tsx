@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { IonContent, IonPage, IonSpinner } from '@ionic/react';
+import { Content, Page, Spinner } from '../components/ui/AppPrimitives';
 import { artistService } from '../services/artist.service';
 import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
@@ -11,7 +11,6 @@ const AdminCreateArtist: React.FC = () => {
   const [artistCity, setArtistCity] = useState('');
   const [artistType, setArtistType] = useState<'solo' | 'band'>('solo');
   const [artistGenres, setArtistGenres] = useState('');
-  const [artistAvatar, setArtistAvatar] = useState('');
   const [artistLoading, setArtistLoading] = useState(false);
   const [artistMessage, setArtistMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -34,7 +33,7 @@ const AdminCreateArtist: React.FC = () => {
         artist_type: artistType,
         city: artistCity.trim() || null,
         bio: null,
-        avatar_url: artistAvatar.trim() || null,
+        avatar_url: null,
         genres,
         external_links: {}
       });
@@ -43,7 +42,6 @@ const AdminCreateArtist: React.FC = () => {
       setArtistName('');
       setArtistCity('');
       setArtistGenres('');
-      setArtistAvatar('');
       setArtistType('solo');
     } catch (error: any) {
       setArtistMessage({ type: 'error', text: error.message || 'Failed to create artist' });
@@ -54,11 +52,11 @@ const AdminCreateArtist: React.FC = () => {
 
   if (profile?.role !== 'admin') {
     return (
-      <IonPage>
-        <IonContent className="ion-padding">
+      <Page>
+        <Content className="p-4">
           <div className="flex h-full items-center justify-center text-app-light/60">Access Denied. Admin only.</div>
-        </IonContent>
-      </IonPage>
+        </Content>
+      </Page>
     );
   }
 
@@ -66,7 +64,7 @@ const AdminCreateArtist: React.FC = () => {
     <AppShell
       headerProps={{ title: 'Create Artist', showBack: true }}
       headerPlacement="outside"
-      contentClassName="ion-padding"
+      contentClassName="p-4"
       contentFullscreen={false}
       contentWrapperClassName={false}
     >
@@ -100,13 +98,6 @@ const AdminCreateArtist: React.FC = () => {
             </select>
             <input
               type="text"
-              placeholder="Avatar URL"
-              value={artistAvatar}
-              onChange={(e) => setArtistAvatar(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 p-4 text-app-light outline-none focus:border-app-ink/50"
-            />
-            <input
-              type="text"
               placeholder="Genres (comma separated)"
               value={artistGenres}
               onChange={(e) => setArtistGenres(e.target.value)}
@@ -125,7 +116,7 @@ const AdminCreateArtist: React.FC = () => {
               onClick={handleCreateArtist}
               className="flex w-full items-center justify-center rounded-2xl bg-white/10 py-4 font-bold text-app-light shadow-lg shadow-white/10 transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
             >
-              {artistLoading ? <IonSpinner name="crescent" color="light" /> : 'Create Artist'}
+              {artistLoading ? <Spinner /> : 'Create Artist'}
             </button>
           </div>
       </div>

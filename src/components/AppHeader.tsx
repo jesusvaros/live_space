@@ -1,5 +1,5 @@
 import React from 'react';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import AppBrand from './AppBrand';
 import { IconBell } from './icons';
 import WorkspaceSwitcher from './WorkspaceSwitcher';
@@ -12,7 +12,7 @@ export type AppHeaderProps = {
 };
 
 const AppHeader: React.FC<AppHeaderProps> = ({ title, rightSlot, showBack }) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useLocation();
   const { profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
@@ -20,7 +20,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, rightSlot, showBack }) => 
   void showBack;
 
   const handleBrandClick = () => {
-    history.push('/');
+    navigate('/');
   };
 
   return (
@@ -47,7 +47,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, rightSlot, showBack }) => 
               type="button"
               className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/80 transition-colors hover:border-white/35 hover:bg-white/10 hover:text-white"
               aria-label={inAdminRoute ? 'Back to main' : 'Open admin actions'}
-              onClick={() => history.push(inAdminRoute ? '/tabs/events' : '/admin')}
+              onClick={() => navigate(inAdminRoute ? '/tabs/events' : '/admin')}
             >
               {inAdminRoute ? 'Main' : 'Admin'}
             </button>

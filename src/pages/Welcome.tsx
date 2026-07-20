@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { IonSpinner } from '@ionic/react';
-import { useHistory } from 'react-router-dom';
+import { Spinner } from '../components/ui/AppPrimitives';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
 
@@ -17,7 +17,7 @@ const Welcome: React.FC = () => {
   const [resetEmail, setResetEmail] = useState('');
   const [resetSent, setResetSent] = useState(false);
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const { signIn, signUp, sendPasswordReset } = useAuth();
 
   const handleAuth = async () => {
@@ -48,7 +48,7 @@ const Welcome: React.FC = () => {
         }
       }
 
-      history.replace('/tabs/events');
+      navigate('/tabs/events', { replace: true });
     } catch (err) {
       setError('An unexpected error occurred');
     } finally {
@@ -177,7 +177,7 @@ const Welcome: React.FC = () => {
                 >
                   {loading ? (
                     <span className="flex items-center gap-2">
-                      <IonSpinner name="crescent" />
+                      <Spinner />
                       Loading...
                     </span>
                   ) : isSignUp ? (

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Profile, ManagedEntity } from '../../lib/types';
-import { IconEdit, IconBriefcase } from '../icons';
+import { IconEdit } from '../icons';
 
 interface ProfileHeaderProps {
   isManagementMode: boolean;
@@ -15,13 +15,11 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   isManagementMode,
   activeEntity,
   profile,
-  managedEntities,
   onEditClick,
-  onToggleManagementMode,
 }) => {
   const avatarUrl = isManagementMode && activeEntity
     ? activeEntity.type === 'artist'
-      ? activeEntity.artist?.image_url || `https://picsum.photos/seed/artist-${activeEntity.subject_id}/120/120`
+      ? activeEntity.artist?.avatar_url || `https://picsum.photos/seed/artist-${activeEntity.subject_id}/120/120`
       : activeEntity.venue?.photos?.[0] || `https://picsum.photos/seed/venue-${activeEntity.subject_id}/120/120`
     : profile?.avatar_url || `https://picsum.photos/seed/${profile?.id}/120/120`;
 

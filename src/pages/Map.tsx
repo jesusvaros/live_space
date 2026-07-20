@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useIonViewDidEnter } from '@ionic/react';
 import { MapContainer } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { supabase } from '../lib/supabase';
 import { Artist, Event, VenuePlace } from '../lib/types';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
 import MapLibreLayer from '../components/MapLibreLayer';
@@ -16,6 +15,8 @@ import MapFilterModal from '../components/map/MapFilterModal';
 import MapSelectionSheet from '../components/map/MapSelectionSheet';
 import { useMapFilters } from '../hooks/useMapFilters';
 import { useQuery } from '../shared/hooks/useQuery';
+import { fetchEventCards } from '../data/eventQueries';
+import { mapVenue } from '../data/canonicalMappers';
 
 const defaultCenter: [number, number] = [37.3891, -5.9845];
 const defaultZoom = 15;
@@ -39,7 +40,7 @@ const readStoredView = () => {
 const persistView = (center: [number, number], zoom: number) => {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(mapViewKey, JSON.stringify({ center: `${center[0]},${center[1]}`, zoom }));
+    window.localStorage.setItem(mapViewKey, JSON.stringify({ center, zoom }));
   } catch (e) {
     // ignore storage failures
   }
@@ -50,9 +51,13 @@ type EventWithVenue = Event & {
   event_artists?: { artist: Artist | null }[];
 };
 
+type MapLocationState = {
+  artistFilter?: { id: string; name: string; avatar_url: string | null };
+};
+
 const Map: React.FC = () => {
-  const history = useHistory();
-  const location = useLocation<{ artistFilter?: { id: string; name: string; avatar_url: string | null } }>();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [followedEventIds, setFollowedEventIds] = useState<Set<string>>(new Set());
   const [attendanceStatusByEventId, setAttendanceStatusByEventId] = useState<Record<string, 'going' | 'attended'>>({});
@@ -97,17 +102,7 @@ const Map: React.FC = () => {
   const eventsQuery = useQuery<EventWithVenue[]>(
     ['map:events'],
     async () => {
-      const { data, error } = await supabase
-        .from('events')
-        .select(
-          `
-          *,
-          venue_place:venue_places(*),
-          event_artists(artist:artists(*))
-        `
-        );
-      if (error) throw error;
-      return (data || []) as EventWithVenue[];
+      return fetchEventCards({}) as Promise<EventWithVenue[]>;
     },
     { ttlMs: 15_000, initialData: [] }
   );
@@ -116,10 +111,10 @@ const Map: React.FC = () => {
     ['map:venues'],
     async () => {
       const { data, error } = await supabase
-        .from('venue_places')
-        .select('id, name, city, address, latitude, longitude, photos, venue_type, capacity');
+        .from('v_subject_venues')
+        .select('*');
       if (error) throw error;
-      return (data || []) as VenuePlace[];
+      return (data || []).map(mapVenue);
     },
     { ttlMs: 30_000, initialData: [] }
   );
@@ -132,11 +127,11 @@ const Map: React.FC = () => {
         supabase
           .from('event_saves')
           .select('event_id')
-          .eq('user_id', user.id),
+          .eq('profile_id', user.id),
         supabase
           .from('event_attendance')
           .select('event_id,status')
-          .eq('user_id', user.id),
+          .eq('profile_id', user.id),
       ]);
 
       const followedIds = (savesRes.data || [])
@@ -194,7 +189,6 @@ const Map: React.FC = () => {
     filterAttended,
     setFilterAttended,
     clearExtraFilters,
-    selectedArtistIds,
     setSelectedArtistIds,
     filteredEvents,
     filteredVenues,
@@ -203,6 +197,20 @@ const Map: React.FC = () => {
     venues,
     userId: user?.id,
   });
+
+  useEffect(() => {
+    const artistFilter = (location.state as MapLocationState | null)?.artistFilter;
+    if (!artistFilter || initialArtistFilterApplied === artistFilter.id) return;
+
+    setSelectedArtists(current =>
+      current.some(artist => artist.id === artistFilter.id) ? current : [...current, artistFilter]
+    );
+    setSelectedArtistIds(current =>
+      current.includes(artistFilter.id) ? current : [...current, artistFilter.id]
+    );
+    setShowVenues(false);
+    setInitialArtistFilterApplied(artistFilter.id);
+  }, [initialArtistFilterApplied, location.state, setSelectedArtistIds, setShowVenues]);
 
   useEffect(() => {
     L.Icon.Default.mergeOptions({
@@ -282,12 +290,13 @@ const Map: React.FC = () => {
     mapInstance.setView(center, zoom, { animate: true });
   }, [center, zoom, mapInstance]);
 
-  useIonViewDidEnter(() => {
+  useEffect(() => {
     if (!mapInstance) return;
-    window.setTimeout(() => {
+    const timer = window.setTimeout(() => {
       mapInstance.invalidateSize();
     }, 150);
-  });
+    return () => window.clearTimeout(timer);
+  }, [mapInstance, location.key]);
 
   // Center map when activeSelection changes
   useEffect(() => {
@@ -377,7 +386,7 @@ const Map: React.FC = () => {
   const handleFollowEvent = useCallback(
     async (eventId: string) => {
       if (!user?.id) {
-        history.push('/welcome');
+        navigate('/welcome');
         return;
       }
       if (followPendingEventIds.has(eventId)) return;
@@ -402,14 +411,14 @@ const Map: React.FC = () => {
             .from('event_saves')
             .delete()
             .eq('event_id', eventId)
-            .eq('user_id', user.id);
+            .eq('profile_id', user.id);
           if (error) throw error;
         } else {
           const { error } = await supabase
             .from('event_saves')
             .insert({
               event_id: eventId,
-              user_id: user.id,
+              profile_id: user.id,
             });
           if (error) throw error;
         }
@@ -428,13 +437,13 @@ const Map: React.FC = () => {
         });
       }
     },
-    [followPendingEventIds, followedEventIds, history, user?.id]
+    [followPendingEventIds, followedEventIds, navigate, user?.id]
   );
 
   const handleAttendanceEvent = useCallback(
     async (eventId: string, nextStatus: 'going' | 'attended') => {
       if (!user?.id) {
-        history.push('/welcome');
+        navigate('/welcome');
         return;
       }
       if (attendancePendingEventIds.has(eventId)) return;
@@ -460,7 +469,7 @@ const Map: React.FC = () => {
             .from('event_attendance')
             .delete()
             .eq('event_id', eventId)
-            .eq('user_id', user.id);
+            .eq('profile_id', user.id);
           if (error) throw error;
         } else {
           const { error } = await supabase
@@ -468,10 +477,10 @@ const Map: React.FC = () => {
             .upsert(
               {
                 event_id: eventId,
-                user_id: user.id,
+                profile_id: user.id,
                 status: nextStatus,
               },
-              { onConflict: 'event_id,user_id' }
+              { onConflict: 'event_id,profile_id' }
             );
           if (error) throw error;
         }
@@ -490,7 +499,7 @@ const Map: React.FC = () => {
         });
       }
     },
-    [attendancePendingEventIds, attendanceStatusByEventId, history, user?.id]
+    [attendancePendingEventIds, attendanceStatusByEventId, navigate, user?.id]
   );
 
   return (
@@ -653,10 +662,10 @@ const Map: React.FC = () => {
         }}
         filterGenres={filterGenres}
         onGenresChange={setFilterGenres}
-        priceMin={priceMin.toString()}
-        onPriceMinChange={(value) => setPriceMin(Number(value) || 0)}
-        priceMax={priceMax.toString()}
-        onPriceMaxChange={(value) => setPriceMax(Number(value) || 100)}
+        priceMin={priceMin}
+        onPriceMinChange={setPriceMin}
+        priceMax={priceMax}
+        onPriceMaxChange={setPriceMax}
         filterDayPart={filterDayPart || ''}
         onDayPartChange={setFilterDayPart}
         filterBandOnly={filterBandOnly}
@@ -666,6 +675,7 @@ const Map: React.FC = () => {
         filterAttended={filterAttended}
         onToggleAttended={setFilterAttended}
         disableAttendance={false}
+        autoFocusArtist={focusArtistSearch}
         selectedArtists={selectedArtists}
         onAddArtist={artist => {
           setSelectedArtists(prev => [...prev, artist]);
@@ -692,8 +702,8 @@ const Map: React.FC = () => {
           setFilterNow(false);
           setFilterFree(false);
           setFilterGenres('');
-          setPriceMin(0);
-          setPriceMax(100);
+          setPriceMin('');
+          setPriceMax('');
           setFilterDayPart('');
           setFilterBandOnly(false);
           setFilterGoing(false);

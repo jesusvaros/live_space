@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { IonContent, IonPage, IonSpinner } from '@ionic/react';
+import { Content, Page, Spinner } from '../components/ui/AppPrimitives';
 import { venueService } from '../services/venue.service';
 import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
@@ -56,11 +56,11 @@ const AdminCreateVenue: React.FC = () => {
 
   if (profile?.role !== 'admin') {
     return (
-      <IonPage>
-        <IonContent className="ion-padding">
+      <Page>
+        <Content className="p-4">
           <div className="flex h-full items-center justify-center text-app-light/60">Access Denied. Admin only.</div>
-        </IonContent>
-      </IonPage>
+        </Content>
+      </Page>
     );
   }
 
@@ -68,7 +68,7 @@ const AdminCreateVenue: React.FC = () => {
     <AppShell
       headerProps={{ title: 'Create Venue', showBack: true }}
       headerPlacement="outside"
-      contentClassName="ion-padding"
+      contentClassName="p-4"
       contentFullscreen={false}
       contentWrapperClassName={false}
     >
@@ -133,7 +133,7 @@ const AdminCreateVenue: React.FC = () => {
               onClick={handleCreateVenue}
               className="flex w-full items-center justify-center rounded-2xl bg-white/10 py-4 font-bold text-app-light shadow-lg shadow-white/10 transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
             >
-              {venueLoading ? <IonSpinner name="crescent" color="light" /> : 'Create Venue'}
+              {venueLoading ? <Spinner /> : 'Create Venue'}
             </button>
           </div>
       </div>

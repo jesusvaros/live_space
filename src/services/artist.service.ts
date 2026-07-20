@@ -1,12 +1,25 @@
 import { supabase } from '../api';
 import { Artist } from '../lib/types';
+import { mapArtist } from '../data/canonicalMappers';
+import { normalizeForMatching } from '../normalize/normalizeText';
 
 export const artistService = {
   async createArtist(artist: Omit<Artist, 'id' | 'created_at' | 'updated_at' | 'subject_id'>): Promise<Artist> {
-    // 1. Create artist first (id is deterministic if we provide one, but here we let DB handle or provide uuidv5 if needed)
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) throw authError ?? new Error('Authentication required');
+
     const { data, error } = await supabase
       .from('artists')
-      .insert(artist)
+      .insert({
+        name: artist.name,
+        normalized_name: normalizeForMatching(artist.name),
+        artist_type: artist.artist_type,
+        city: artist.city,
+        bio: artist.bio,
+        genres: artist.genres,
+        external_links: artist.external_links,
+        created_by: authData.user.id,
+      })
       .select()
       .single();
 
@@ -18,7 +31,7 @@ export const artistService = {
 
     if (rpcError) throw rpcError;
 
-    return { ...data, subject_id: subjectId };
+    return mapArtist({ ...data, subject_id: subjectId, avatar_url: artist.avatar_url });
   },
 
   async getArtistBySubject(subjectId: string): Promise<Artist | null> {
@@ -29,18 +42,26 @@ export const artistService = {
       .maybeSingle();
 
     if (error) throw error;
-    return data;
+    return data ? mapArtist(data) : null;
   },
 
   async updateArtist(id: string, updates: Partial<Artist>): Promise<Artist> {
+    const payload = {
+      ...(updates.name === undefined ? {} : { name: updates.name, normalized_name: normalizeForMatching(updates.name) }),
+      ...(updates.artist_type === undefined ? {} : { artist_type: updates.artist_type }),
+      ...(updates.city === undefined ? {} : { city: updates.city }),
+      ...(updates.bio === undefined ? {} : { bio: updates.bio }),
+      ...(updates.genres === undefined ? {} : { genres: updates.genres }),
+      ...(updates.external_links === undefined ? {} : { external_links: updates.external_links }),
+    };
     const { data, error } = await supabase
       .from('artists')
-      .update(updates)
+      .update(payload)
       .eq('id', id)
       .select()
       .single();
 
     if (error) throw error;
-    return data;
+    return mapArtist(data);
   }
 };

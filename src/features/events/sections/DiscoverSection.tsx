@@ -1,6 +1,6 @@
 import React from 'react';
-import { IonSpinner } from '@ionic/react';
-import { useHistory } from 'react-router-dom';
+import { Spinner } from '../../../components/ui/AppPrimitives';
+import { useNavigate } from 'react-router-dom';
 
 type SuggestedArtist = {
   id: string;
@@ -35,7 +35,7 @@ const DiscoverSection: React.FC<DiscoverSectionProps> = ({
   suggestedVenues,
   onToggleFollowSubject,
 }) => {
-  const history = useHistory();
+  const navigate = useNavigate();
 
   return (
     <section className="space-y-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
@@ -47,7 +47,7 @@ const DiscoverSection: React.FC<DiscoverSectionProps> = ({
 
       {loading ? (
         <div className="flex items-center justify-center py-6">
-          <IonSpinner name="crescent" />
+          <Spinner />
         </div>
       ) : (
         <div className="space-y-6">
@@ -57,7 +57,7 @@ const DiscoverSection: React.FC<DiscoverSectionProps> = ({
               <button
                 type="button"
                 className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/80 transition-colors hover:text-white"
-                onClick={() => history.push('/tabs/discover', { initialTab: 'artists' })}
+                onClick={() => navigate('/tabs/discover', { state: { initialTab: 'artists' } })}
               >
                 Explore
               </button>
@@ -76,7 +76,7 @@ const DiscoverSection: React.FC<DiscoverSectionProps> = ({
                       <button
                         type="button"
                         className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                        onClick={() => history.push(`/artist/${artist.id}`)}
+                        onClick={() => navigate(`/artist/${artist.id}`)}
                       >
                         <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/5">
                           {artist.avatar_url ? (
@@ -115,7 +115,7 @@ const DiscoverSection: React.FC<DiscoverSectionProps> = ({
               <button
                 type="button"
                 className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/80 transition-colors hover:text-white"
-                onClick={() => history.push('/tabs/discover', { initialTab: 'venues' })}
+                onClick={() => navigate('/tabs/discover', { state: { initialTab: 'venues' } })}
               >
                 Explore
               </button>
@@ -134,7 +134,7 @@ const DiscoverSection: React.FC<DiscoverSectionProps> = ({
                       <button
                         type="button"
                         className="min-w-0 flex-1 text-left"
-                        onClick={() => history.push(`/venue/${venue.id}`)}
+                        onClick={() => navigate(`/venue/${venue.id}`)}
                       >
                         <p className="font-display text-base font-bold text-white line-clamp-1">{venue.name}</p>
                         <p className="mt-1 text-xs text-white/55">

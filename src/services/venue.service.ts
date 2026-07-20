@@ -1,12 +1,27 @@
 import { supabase } from '../api';
 import { VenuePlace } from '../lib/types';
+import { mapVenue } from '../data/canonicalMappers';
+import { normalizeForMatching } from '../normalize/normalizeText';
 
 export const venueService = {
   async createVenue(venue: Omit<VenuePlace, 'id' | 'created_at' | 'updated_at' | 'subject_id'>): Promise<VenuePlace> {
-    // 1. Create venue place first
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) throw authError ?? new Error('Authentication required');
+
     const { data, error } = await supabase
       .from('venue_places')
-      .insert(venue)
+      .insert({
+        name: venue.name,
+        normalized_name: normalizeForMatching(venue.name),
+        city: venue.city,
+        address: venue.address,
+        capacity: venue.capacity,
+        venue_type: venue.venue_type,
+        latitude: venue.latitude,
+        longitude: venue.longitude,
+        website_url: venue.website_url,
+        created_by: authData.user.id,
+      })
       .select()
       .single();
 
@@ -18,7 +33,7 @@ export const venueService = {
 
     if (rpcError) throw rpcError;
 
-    return { ...data, subject_id: subjectId };
+    return mapVenue({ ...data, subject_id: subjectId, photos: venue.photos });
   },
 
   async getVenueBySubject(subjectId: string): Promise<VenuePlace | null> {
@@ -29,18 +44,28 @@ export const venueService = {
       .maybeSingle();
 
     if (error) throw error;
-    return data;
+    return data ? mapVenue(data) : null;
   },
 
   async updateVenue(id: string, updates: Partial<VenuePlace>): Promise<VenuePlace> {
+    const payload = {
+      ...(updates.name === undefined ? {} : { name: updates.name, normalized_name: normalizeForMatching(updates.name) }),
+      ...(updates.city === undefined ? {} : { city: updates.city }),
+      ...(updates.address === undefined ? {} : { address: updates.address }),
+      ...(updates.capacity === undefined ? {} : { capacity: updates.capacity }),
+      ...(updates.venue_type === undefined ? {} : { venue_type: updates.venue_type }),
+      ...(updates.latitude === undefined ? {} : { latitude: updates.latitude }),
+      ...(updates.longitude === undefined ? {} : { longitude: updates.longitude }),
+      ...(updates.website_url === undefined ? {} : { website_url: updates.website_url }),
+    };
     const { data, error } = await supabase
       .from('venue_places')
-      .update(updates)
+      .update(payload)
       .eq('id', id)
       .select()
       .single();
 
     if (error) throw error;
-    return data;
+    return mapVenue(data);
   }
 };

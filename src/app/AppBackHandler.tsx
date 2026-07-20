@@ -1,174 +1,101 @@
 import { useEffect, useRef } from 'react';
-import { useIonRouter } from '@ionic/react';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 
 const MAX_HISTORY_DEPTH = 80;
-const MAIN_TAB_PATH = '/tabs/events';
-const OVERLAY_SELECTOR = 'ion-modal, ion-alert, ion-action-sheet, ion-popover, ion-picker, ion-loading';
+const OVERLAY_SELECTOR = '[data-app-overlay]';
 
-const AppBackHandler = () => {
-  const router = useIonRouter();
-  const history = useHistory();
+type AppBackHandlerProps = {
+  mainTabPath?: string;
+};
+
+const AppBackHandler: React.FC<AppBackHandlerProps> = ({ mainTabPath = '/tabs/events' }) => {
+  const navigate = useNavigate();
   const location = useLocation();
-  const pathRef = useRef(location.pathname);
-  const searchRef = useRef(location.search);
-  const hashRef = useRef(location.hash);
+  const navigationType = useNavigationType();
+  const locationRef = useRef(location);
   const routeStackRef = useRef<string[]>([]);
   const lastHandledAtRef = useRef(0);
-  const iosLastLocationRef = useRef({
-    pathname: location.pathname,
-    search: location.search,
-    hash: location.hash,
-  });
   const iosRedirectLockRef = useRef(false);
 
   useEffect(() => {
-    pathRef.current = location.pathname;
-  }, [location.pathname]);
-
-  useEffect(() => {
-    searchRef.current = location.search;
-  }, [location.search]);
-
-  useEffect(() => {
-    hashRef.current = location.hash;
-  }, [location.hash]);
-
-  useEffect(() => {
+    locationRef.current = location;
     const currentRoute = `${location.pathname}${location.search}${location.hash}`;
     const stack = routeStackRef.current;
-    const last = stack[stack.length - 1];
-    const previous = stack[stack.length - 2];
+    const last = stack.at(-1);
+    const previous = stack.at(-2);
 
     if (!last) {
       stack.push(currentRoute);
       return;
     }
-
-    if (last === currentRoute) {
-      return;
-    }
-
-    // If navigation already moved back one step, keep the stack aligned.
+    if (last === currentRoute) return;
     if (previous === currentRoute) {
       stack.pop();
-      return;
+    } else {
+      stack.push(currentRoute);
+      if (stack.length > MAX_HISTORY_DEPTH) stack.splice(0, stack.length - MAX_HISTORY_DEPTH);
     }
 
-    stack.push(currentRoute);
-    if (stack.length > MAX_HISTORY_DEPTH) {
-      stack.splice(0, stack.length - MAX_HISTORY_DEPTH);
-    }
-  }, [location.hash, location.pathname, location.search]);
-
-  useEffect(() => {
-    if (Capacitor.getPlatform() !== 'ios') {
-      return;
-    }
-
-    const unlisten = history.listen((nextLocation, action) => {
-      const previous = iosLastLocationRef.current;
-      const next = {
-        pathname: nextLocation.pathname,
-        search: nextLocation.search || '',
-        hash: nextLocation.hash || '',
-      };
-
-      if (iosRedirectLockRef.current) {
+    if (
+      Capacitor.getPlatform() === 'ios' &&
+      navigationType === 'POP' &&
+      !iosRedirectLockRef.current &&
+      location.pathname.startsWith('/tabs/') &&
+      location.pathname !== mainTabPath &&
+      !location.search.includes('edit=')
+    ) {
+      iosRedirectLockRef.current = true;
+      routeStackRef.current = [mainTabPath];
+      navigate(mainTabPath, { replace: true });
+      window.setTimeout(() => {
         iosRedirectLockRef.current = false;
-        iosLastLocationRef.current = next;
-        return;
-      }
-
-      if (action === 'POP') {
-        const cameFromEditFlow =
-          previous.pathname === next.pathname &&
-          previous.search.includes('edit=') &&
-          !next.search.includes('edit=');
-
-        if (!cameFromEditFlow && next.pathname.startsWith('/tabs/') && next.pathname !== MAIN_TAB_PATH) {
-          iosRedirectLockRef.current = true;
-          routeStackRef.current = [MAIN_TAB_PATH];
-          history.replace(MAIN_TAB_PATH);
-          iosLastLocationRef.current = { pathname: MAIN_TAB_PATH, search: '', hash: '' };
-          return;
-        }
-      }
-
-      iosLastLocationRef.current = next;
-    });
-
-    return () => {
-      unlisten();
-    };
-  }, [history]);
+      }, 0);
+    }
+  }, [location, mainTabPath, navigate, navigationType]);
 
   useEffect(() => {
     const handleBackAction = () => {
       const now = Date.now();
-      if (now - lastHandledAtRef.current < 200) {
-        return;
-      }
+      if (now - lastHandledAtRef.current < 200) return;
       lastHandledAtRef.current = now;
 
-      const currentPath = pathRef.current;
-      const currentSearch = searchRef.current;
-      const currentRoute = `${pathRef.current}${searchRef.current}${hashRef.current}`;
-      const stack = routeStackRef.current;
-      const last = stack[stack.length - 1];
-      if (last !== currentRoute) {
-        stack.push(currentRoute);
-      }
-
-      const visibleOverlays = Array.from(document.querySelectorAll(OVERLAY_SELECTOR))
-        .reverse()
-        .find(overlay => !overlay.classList.contains('overlay-hidden')) as
-        | (Element & { dismiss?: () => Promise<boolean> })
-        | undefined;
-
-      if (visibleOverlays?.dismiss) {
-        void visibleOverlays.dismiss();
+      const visibleOverlay = Array.from(document.querySelectorAll(OVERLAY_SELECTOR)).at(-1);
+      const closeButton = visibleOverlay?.nextElementSibling?.querySelector<HTMLButtonElement>('[data-modal-close]');
+      if (closeButton) {
+        closeButton.click();
         return;
       }
 
-      if (currentSearch.includes('edit=')) {
-        const params = new URLSearchParams(currentSearch);
+      const current = locationRef.current;
+      if (current.search.includes('edit=')) {
+        const params = new URLSearchParams(current.search);
         params.delete('edit');
-        const nextSearch = params.toString();
-        const nextRoute = `${currentPath}${nextSearch ? `?${nextSearch}` : ''}${hashRef.current}`;
-        stack[stack.length - 1] = nextRoute;
-        history.replace(nextRoute);
+        navigate(
+          { pathname: current.pathname, search: params.toString(), hash: current.hash },
+          { replace: true },
+        );
         return;
       }
 
-      if (currentPath.startsWith('/tabs/') && currentPath !== MAIN_TAB_PATH) {
-        routeStackRef.current = [MAIN_TAB_PATH];
-        history.replace(MAIN_TAB_PATH);
+      if (current.pathname.startsWith('/tabs/') && current.pathname !== mainTabPath) {
+        routeStackRef.current = [mainTabPath];
+        navigate(mainTabPath, { replace: true });
         return;
       }
 
+      const stack = routeStackRef.current;
       if (stack.length > 1) {
         stack.pop();
-        history.replace(stack[stack.length - 1]);
+        navigate(stack.at(-1) ?? mainTabPath, { replace: true });
         return;
       }
 
-      if (router.canGoBack()) {
-        router.goBack();
-        return;
+      if (window.history.length > 1) {
+        navigate(-1);
+      } else if (current.pathname !== mainTabPath) {
+        navigate(mainTabPath, { replace: true });
       }
-
-      if (currentPath !== MAIN_TAB_PATH) {
-        history.replace(MAIN_TAB_PATH);
-      }
-    };
-
-    const ionicBackHandler = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      customEvent.detail?.register(10000, () => {
-        handleBackAction();
-      });
     };
 
     const nativeBackHandler = (event: Event) => {
@@ -176,13 +103,9 @@ const AppBackHandler = () => {
       handleBackAction();
     };
 
-    document.addEventListener('ionBackButton', ionicBackHandler);
     document.addEventListener('backbutton', nativeBackHandler);
-    return () => {
-      document.removeEventListener('ionBackButton', ionicBackHandler);
-      document.removeEventListener('backbutton', nativeBackHandler);
-    };
-  }, [history, router]);
+    return () => document.removeEventListener('backbutton', nativeBackHandler);
+  }, [mainTabPath, navigate]);
 
   return null;
 };

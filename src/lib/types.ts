@@ -37,6 +37,7 @@ export interface Profile {
 
 export interface Artist {
   id: string;
+  subject_id?: string | null;
   name: string;
   artist_type: ArtistType;
   city: string | null;
@@ -129,6 +130,12 @@ export interface PostWithSetlist extends Post {
   actor_name: string | null;
   actor_image_url: string | null;
   actor_type: SubjectType | null;
+  profiles?: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url'> | null;
+}
+
+export interface PostWithRelations extends Post {
+  profiles?: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url'> | null;
+  events?: Event | null;
 }
 
 export interface Song {

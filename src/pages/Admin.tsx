@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { IonSpinner } from '@ionic/react';
+import { Spinner } from '../components/ui/AppPrimitives';
 import { CircleMarker, MapContainer } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import AppShell from '../components/AppShell';
@@ -15,17 +15,15 @@ import { supabase } from '../lib/supabase';
 type AdminTab = 'artist' | 'venue' | 'grant' | 'access';
 
 type AccessRow = {
-  admin_subject_id: string;
-  entity_subject_id: string;
+  profile_id: string;
+  subject_id: string;
   role: string;
   created_at?: string;
   admin?: {
-    profile?: {
-      id: string;
-      username: string | null;
-      display_name: string | null;
-      avatar_url: string | null;
-    };
+    id: string;
+    username: string | null;
+    display_name: string | null;
+    avatar_url: string | null;
   };
   entity?: {
     type: 'artist' | 'venue' | string;
@@ -52,7 +50,6 @@ const Admin: React.FC = () => {
   const [artistCity, setArtistCity] = useState('');
   const [artistType, setArtistType] = useState<'solo' | 'band'>('solo');
   const [artistGenres, setArtistGenres] = useState('');
-  const [artistAvatar, setArtistAvatar] = useState('');
   const [artistLoading, setArtistLoading] = useState(false);
   const [artistMessage, setArtistMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -138,31 +135,25 @@ const Admin: React.FC = () => {
       setAccessError(null);
       try {
         const { data, error } = await supabase
-          .from('entity_members')
+          .from('entity_memberships')
           .select(`
-            admin_subject_id,
-            entity_subject_id,
+            profile_id,
+            subject_id,
             role,
             created_at,
-            admin:admin_subject_id (
-              profile:profile_id (
-                id,
-                username,
-                display_name,
-                avatar_url
-              )
+            admin:profiles!entity_memberships_profile_id_fkey (
+              id,
+              username,
+              display_name,
+              avatar_url
             ),
-            entity:entity_subject_id (
+            entity:subjects!entity_memberships_subject_id_fkey (
               type,
-              profile:profile_id (
-                username,
-                display_name
-              ),
-              venue_place:venue_place_id (
+              venue_place:venue_places!subjects_venue_place_id_fkey (
                 name,
                 city
               ),
-              artist:artist_id (
+              artist:artists!subjects_artist_id_fkey (
                 name,
                 city
               )
@@ -171,7 +162,7 @@ const Admin: React.FC = () => {
           .order('created_at', { ascending: false });
 
         if (error) throw error;
-        if (!cancelled) setRows((data || []) as AccessRow[]);
+        if (!cancelled) setRows((data || []) as unknown as AccessRow[]);
       } catch (e: any) {
         if (!cancelled) setAccessError(e?.message || 'Failed to load access grants');
       } finally {
@@ -273,7 +264,7 @@ const Admin: React.FC = () => {
         artist_type: artistType,
         city: artistCity.trim() || null,
         bio: null,
-        avatar_url: artistAvatar.trim() || null,
+        avatar_url: null,
         genres,
         external_links: {},
       });
@@ -281,7 +272,6 @@ const Admin: React.FC = () => {
       setArtistName('');
       setArtistCity('');
       setArtistGenres('');
-      setArtistAvatar('');
       setArtistType('solo');
     } catch (e: any) {
       setArtistMessage({ type: 'error', text: e?.message || 'Failed to create artist' });
@@ -354,11 +344,11 @@ const Admin: React.FC = () => {
   };
 
   const renderEntityLabel = (row: AccessRow) => {
-    if (!row.entity) return row.entity_subject_id;
+    if (!row.entity) return row.subject_id;
     if (row.entity.type === 'artist' && row.entity.artist) return row.entity.artist.name;
     if (row.entity.type === 'venue' && row.entity.venue_place) return row.entity.venue_place.name;
-    if (row.entity.profile) return row.entity.profile.display_name || row.entity.profile.username || row.entity_subject_id;
-    return row.entity_subject_id;
+    if (row.entity.profile) return row.entity.profile.display_name || row.entity.profile.username || row.subject_id;
+    return row.subject_id;
   };
 
   const renderEntityMeta = (row: AccessRow) => {
@@ -431,13 +421,6 @@ const Admin: React.FC = () => {
               </select>
               <input
                 type="text"
-                placeholder="Avatar URL"
-                value={artistAvatar}
-                onChange={e => setArtistAvatar(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-white/[0.02] p-3 text-white outline-none focus:border-app-accent/60"
-              />
-              <input
-                type="text"
                 placeholder="Genres (comma separated)"
                 value={artistGenres}
                 onChange={e => setArtistGenres(e.target.value)}
@@ -457,7 +440,7 @@ const Admin: React.FC = () => {
               onClick={handleCreateArtist}
               className="inline-flex w-full items-center justify-center rounded-xl bg-app-accent px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
             >
-              {artistLoading ? <IonSpinner name="crescent" /> : 'Create artist'}
+              {artistLoading ? <Spinner /> : 'Create artist'}
             </button>
           </section>
         )}
@@ -523,7 +506,7 @@ const Admin: React.FC = () => {
                     disabled={reverseGeoLoading}
                     className="inline-flex min-w-[146px] items-center justify-center rounded-xl border border-white/20 bg-white/[0.06] px-4 py-3 text-sm font-semibold text-white/85 transition hover:bg-white/[0.1] disabled:opacity-60"
                   >
-                    {reverseGeoLoading ? <IonSpinner name="crescent" /> : 'Reverse geocode'}
+                    {reverseGeoLoading ? <Spinner /> : 'Reverse geocode'}
                   </button>
                 </div>
                 <div className="relative h-[230px] overflow-hidden rounded-2xl border border-white/10 bg-black/35 sm:h-[280px]">
@@ -572,7 +555,7 @@ const Admin: React.FC = () => {
               onClick={handleCreateVenue}
               className="inline-flex w-full items-center justify-center rounded-xl bg-app-accent px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
             >
-              {venueLoading ? <IonSpinner name="crescent" /> : 'Create venue'}
+              {venueLoading ? <Spinner /> : 'Create venue'}
             </button>
           </section>
         )}
@@ -710,7 +693,7 @@ const Admin: React.FC = () => {
               onClick={handleGrant}
               className="inline-flex w-full items-center justify-center rounded-xl bg-app-accent px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
             >
-              {grantLoading ? <IonSpinner name="crescent" /> : 'Grant access'}
+              {grantLoading ? <Spinner /> : 'Grant access'}
             </button>
           </section>
         )}
@@ -719,7 +702,7 @@ const Admin: React.FC = () => {
           <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-white/70">Granted accesses</p>
-              {accessLoading ? <IonSpinner name="crescent" /> : null}
+              {accessLoading ? <Spinner /> : null}
             </div>
             {accessError ? (
               <div className="rounded-xl bg-rose-500/10 p-3 text-sm text-rose-300">{accessError}</div>
@@ -732,22 +715,22 @@ const Admin: React.FC = () => {
             <div className="space-y-3">
               {rows.map(row => (
                 <div
-                  key={`${row.admin_subject_id}-${row.entity_subject_id}`}
+                  key={`${row.profile_id}-${row.subject_id}`}
                   className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] p-3"
                 >
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 overflow-hidden rounded-full bg-white/10">
-                      {row.admin?.profile?.avatar_url ? (
-                        <img src={row.admin.profile.avatar_url} alt="" className="h-full w-full object-cover" />
+                      {row.admin?.avatar_url ? (
+                        <img src={row.admin.avatar_url} alt="" className="h-full w-full object-cover" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-xs font-bold text-white/70">
-                          {row.admin?.profile?.username?.[0]?.toUpperCase() || '?'}
+                          {row.admin?.username?.[0]?.toUpperCase() || '?'}
                         </div>
                       )}
                     </div>
                     <div>
                       <div className="text-sm font-semibold text-white">
-                        {row.admin?.profile?.display_name || row.admin?.profile?.username || 'Unknown admin'}
+                        {row.admin?.display_name || row.admin?.username || 'Unknown admin'}
                       </div>
                       <div className="text-xs uppercase tracking-[0.18em] text-white/50">{row.role}</div>
                     </div>

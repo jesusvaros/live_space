@@ -1,5 +1,5 @@
 import React from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { EventListItem } from '../types';
 import EventPosterTile from '../components/EventPosterTile';
 import { formatDate, getEventCoverImage, getPrimaryArtistName } from '../utils';
@@ -10,7 +10,7 @@ type FollowedFromArtistsSectionProps = {
 };
 
 const FollowedFromArtistsSection: React.FC<FollowedFromArtistsSectionProps> = ({ visible, events }) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   if (!visible) return null;
 
   return (
@@ -23,7 +23,7 @@ const FollowedFromArtistsSection: React.FC<FollowedFromArtistsSectionProps> = ({
         <button
           type="button"
           className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/80 transition-colors hover:text-white"
-          onClick={() => history.push('/tabs/map')}
+          onClick={() => navigate('/tabs/map')}
         >
           Explore
         </button>
@@ -44,7 +44,7 @@ const FollowedFromArtistsSection: React.FC<FollowedFromArtistsSectionProps> = ({
                 kicker={formatDate(event.starts_at)}
                 title={getPrimaryArtistName(event)}
                 subtitle={event.venue_place?.name || event.city}
-                onSelect={selected => history.push(`/event/${selected.id}`)}
+                onSelect={selected => navigate(`/event/${selected.id}`)}
               />
             </div>
           ))}

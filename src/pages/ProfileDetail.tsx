@@ -1,12 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { IonSpinner } from '@ionic/react';
-import { useHistory, useParams } from 'react-router-dom';
+import { Spinner } from '../components/ui/AppPrimitives';
+import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Event, Profile, VenuePlace, PostWithSetlist, Artist } from '../lib/types';
 import { socialService } from '../services/social.service';
 import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
 import EventPosterTile from '../features/events/components/EventPosterTile';
+import { mapProfile } from '../data/canonicalMappers';
+import { fetchEventCards } from '../data/eventQueries';
+import { fetchPostCards } from '../data/postQueries';
 
 type ProfileEvent = Event & {
   organizer?: Profile | null;
@@ -15,7 +18,7 @@ type ProfileEvent = Event & {
 };
 
 const ProfileDetail: React.FC = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { user, profile: currentUserProfile } = useAuth();
   
@@ -35,17 +38,21 @@ const ProfileDetail: React.FC = () => {
       setLoading(true);
       setError('');
       try {
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', id)
+        const { data: subjectData, error: profileError } = await supabase
+          .from('subjects')
+          .select('id, profile:profiles!subjects_profile_id_fkey(*)')
+          .eq('profile_id', id)
           .single();
         
-        if (profileError || !profileData) {
+        const profileRow = Array.isArray(subjectData?.profile)
+          ? subjectData.profile[0]
+          : subjectData?.profile;
+        if (profileError || !profileRow) {
           throw profileError;
         }
 
-        setProfile(profileData as Profile);
+        const profileData = mapProfile({ ...profileRow, subject_id: subjectData.id });
+        setProfile(profileData);
 
         if (profileData.subject_id) {
           const [count, following] = await Promise.all([
@@ -58,93 +65,11 @@ const ProfileDetail: React.FC = () => {
           setIsFollowing(following);
         }
 
-        const eventSelect = `
-          *,
-          organizer:profiles!events_organizer_id_fkey (
-            id,
-            username,
-            display_name,
-            role
-          ),
-          venue_place:venue_places!events_venue_place_id_fkey (
-            id,
-            name,
-            city,
-            address,
-            latitude,
-            longitude
-          ),
-          event_artists (
-            artist:artists!event_artists_artist_entity_fk (
-              id,
-              name,
-              avatar_url
-            )
-          )
-        `;
-
-        let eventIds: string[] = [];
-        let eventRows: ProfileEvent[] = [];
-
-        if (profileData.role === 'artist') {
-          const { data: artistEvents } = await supabase
-            .from('event_artists')
-            .select('event_id')
-            .eq('artist_entity_id', id);
-          eventIds = (artistEvents || []).map((row: any) => row.event_id);
-          if (eventIds.length > 0) {
-            const { data: eventsData } = await supabase
-              .from('events')
-              .select(eventSelect)
-              .in('id', eventIds)
-              .order('starts_at', { ascending: false });
-            eventRows = (eventsData || []) as ProfileEvent[];
-          }
-        } else if (profileData.role === 'venue') {
-          const { data: venuesData } = await supabase
-            .from('venue_places')
-            .select('*')
-            .eq('created_by', id)
-            .order('name', { ascending: true });
-          const venuePlacesList = (venuesData || []) as VenuePlace[];
-          setVenuePlaces(venuePlacesList);
-
-          const venuePlaceIds = venuePlacesList.map(v => v.id).filter(Boolean);
-          if (venuePlaceIds.length > 0) {
-            const { data: eventsData } = await supabase
-              .from('events')
-              .select(eventSelect)
-              .in('venue_place_id', venuePlaceIds)
-              .order('starts_at', { ascending: false });
-            eventRows = (eventsData || []) as ProfileEvent[];
-            eventIds = eventRows.map(event => event.id);
-          } else {
-            eventRows = [];
-            eventIds = [];
-          }
-        } else if (profileData.role === 'label') {
-          const { data: eventsData } = await supabase
-            .from('events')
-            .select(eventSelect)
-            .eq('organizer_id', id)
-            .order('starts_at', { ascending: false });
-          eventRows = (eventsData || []) as ProfileEvent[];
-          eventIds = eventRows.map(event => event.id);
-        }
-
-        setEvents(eventRows);
-
-        if (eventIds.length > 0) {
-          const { data: momentsData } = await supabase
-            .from('posts')
-            .select('id, media_url, media_type, caption, event_id, created_at, actor_subject_id, song_title')
-            .in('event_id', eventIds)
-            .order('created_at', { ascending: false })
-            .limit(18);
-          setMoments((momentsData || []) as PostWithSetlist[]);
-        } else {
-          setMoments([]);
-        }
+        const authoredMoments = (await fetchPostCards({ authorId: profileData.id })).slice(0, 18);
+        const eventIds = [...new Set(authoredMoments.map(moment => moment.event_id))];
+        setMoments(authoredMoments as PostWithSetlist[]);
+        setEvents((await fetchEventCards({ eventIds })) as ProfileEvent[]);
+        setVenuePlaces([]);
       } catch (err) {
         setError('Profile not found.');
       } finally {
@@ -156,7 +81,7 @@ const ProfileDetail: React.FC = () => {
 
   const handleFollowToggle = async () => {
     if (!user || !currentUserProfile?.subject_id || !profile?.subject_id) {
-      if (!user) history.push('/welcome');
+      if (!user) navigate('/welcome');
       return;
     }
 
@@ -189,7 +114,7 @@ const ProfileDetail: React.FC = () => {
     <AppShell>
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <IonSpinner name="crescent" />
+          <Spinner />
         </div>
       )}
 
@@ -222,7 +147,7 @@ const ProfileDetail: React.FC = () => {
                           isFollowing ? 'bg-white/10 text-white/80' : 'bg-[#ff6b4a] text-white'
                         }`}
                       >
-                        {followLoading ? <IonSpinner name="crescent" /> : (isFollowing ? 'Following' : 'Follow')}
+                        {followLoading ? <Spinner /> : (isFollowing ? 'Following' : 'Follow')}
                       </button>
                     )}
                   </div>
@@ -305,7 +230,7 @@ const ProfileDetail: React.FC = () => {
                           key={event.id}
                           event={event}
                           className="w-full"
-                          onSelect={selected => history.push(`/event/${selected.id}`)}
+                          onSelect={selected => navigate(`/event/${selected.id}`)}
                         />
                       ))}
                     </div>
@@ -325,7 +250,7 @@ const ProfileDetail: React.FC = () => {
                         <button
                           key={moment.id}
                           type="button"
-                          onClick={() => history.push(`/post/${moment.id}`)}
+                          onClick={() => navigate(`/post/${moment.id}`)}
                           className="aspect-square overflow-hidden bg-white/5 transition-opacity hover:opacity-90"
                         >
                           {moment.media_type === 'video' ? (
@@ -348,7 +273,7 @@ const ProfileDetail: React.FC = () => {
                 <button
                   type="button"
                   className="bg-white/10 px-4 py-3 text-sm font-semibold text-white"
-                  onClick={() => history.goBack()}
+                  onClick={() => navigate(-1)}
                 >
                   Back
                 </button>

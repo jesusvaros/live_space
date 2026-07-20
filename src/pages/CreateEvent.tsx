@@ -1,20 +1,21 @@
 import React, { useEffect, useRef } from 'react';
-import { IonContent, IonPage, IonSpinner } from '@ionic/react';
-import { Redirect, useHistory, useLocation } from 'react-router-dom';
+import { Content, Page, Spinner } from '../components/ui/AppPrimitives';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import CreateEventModal from '../components/event/CreateEventModal';
 import { ManagedEntity, Profile } from '../lib/types';
 
 const CreateEventPage: React.FC = () => {
-  const history = useHistory();
-  const location = useLocation<{ from?: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const locationState = location.state as { from?: string } | null;
   const { user, profile, loading: authLoading } = useAuth();
   const { canCreateEvent, activeWorkspace, loading: workspaceLoading, ready: workspaceReady } = useWorkspace();
   const lastCanCreateRef = useRef<boolean | null>(null);
   const lastWorkspaceRef = useRef<ManagedEntity | null>(null);
   const lastProfileRef = useRef<Profile | null>(null);
-  const fallbackRoute = location.state?.from || '/tabs/mySpace';
+  const fallbackRoute = locationState?.from || '/tabs/mySpace';
 
   useEffect(() => {
     if (workspaceReady) {
@@ -64,51 +65,51 @@ const CreateEventPage: React.FC = () => {
 
   if (authLoading && !user) {
     return (
-      <IonPage>
-        <IonContent fullscreen>
+      <Page>
+        <Content fullscreen>
           <div className="flex min-h-full items-center justify-center py-12">
-            <IonSpinner name="crescent" />
+            <Spinner />
           </div>
-        </IonContent>
-      </IonPage>
+        </Content>
+      </Page>
     );
   }
 
   if (!user) {
-    return <Redirect to="/welcome" />;
+    return <Navigate to="/welcome" replace />;
   }
 
   if ((!workspaceReady || workspaceLoading) && !canCreateStable) {
     return (
-      <IonPage>
-        <IonContent fullscreen>
+      <Page>
+        <Content fullscreen>
           <div className="flex min-h-full items-center justify-center py-12">
-            <IonSpinner name="crescent" />
+            <Spinner />
           </div>
-        </IonContent>
-      </IonPage>
+        </Content>
+      </Page>
     );
   }
 
   if (workspaceReady && !canCreateStable) {
-    return <Redirect to="/tabs/events" />;
+    return <Navigate to="/tabs/events" replace />;
   }
 
   return (
-    <IonPage>
-      <IonContent fullscreen scrollY={false}>
+    <Page>
+      <Content fullscreen scrollY={false}>
         <div className="relative h-full overflow-hidden bg-app-bg">
           <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(circle_at_10%_8%,rgba(255,107,74,0.24),transparent_56%)]" />
           <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_88%_10%,rgba(122,167,255,0.16),transparent_62%)]" />
           <div className="relative z-10 mx-auto h-full w-full max-w-3xl px-0 sm:px-4 sm:py-4">
             <div className="h-full sm:overflow-hidden sm:rounded-3xl sm:border sm:border-white/10 sm:bg-black/20 sm:backdrop-blur-xl">
               <CreateEventModal
-                onDismiss={() => history.push(fallbackRoute)}
+                onDismiss={() => navigate(fallbackRoute)}
                 onCreated={eventId => {
                   if (eventId) {
-                    history.push(`/event/${eventId}`);
+                    navigate(`/event/${eventId}`);
                   } else {
-                    history.push(fallbackRoute);
+                    navigate(fallbackRoute);
                   }
                 }}
                 userId={user?.id}
@@ -121,8 +122,8 @@ const CreateEventPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </IonContent>
-    </IonPage>
+      </Content>
+    </Page>
   );
 };
 

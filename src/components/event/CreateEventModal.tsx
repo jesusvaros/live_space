@@ -60,7 +60,6 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
     const detailsComplete = Boolean(
       form.eventEnd ||
       form.eventGenres.trim() ||
-      form.eventCoverUrl.trim() ||
       form.eventDescription.trim() ||
       form.posterFile
     );
@@ -80,7 +79,6 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
     form.priceTiers,
     form.eventEnd,
     form.eventGenres,
-    form.eventCoverUrl,
     form.eventDescription,
     form.posterFile,
   ]);
@@ -178,13 +176,11 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
           <CreateEventMoreInfoStep
             eventEnd={form.eventEnd}
             eventGenres={form.eventGenres}
-            eventCoverUrl={form.eventCoverUrl}
             eventDescription={form.eventDescription}
             posterPreview={form.posterPreview}
             posterFile={form.posterFile}
             onEventEndChange={form.setEventEnd}
             onEventGenresChange={form.setEventGenres}
-            onEventCoverUrlChange={form.setEventCoverUrl}
             onEventDescriptionChange={form.setEventDescription}
             onPosterFileChange={form.setPosterFile}
             onPosterRemove={() => form.setPosterFile(null)}

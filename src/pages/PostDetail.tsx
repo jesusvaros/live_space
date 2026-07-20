@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { IonSpinner } from '@ionic/react';
-import { useParams, useHistory } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { Spinner } from '../components/ui/AppPrimitives';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Event, PostWithRelations, VenuePlace } from '../lib/types';
 import AppShell from '../components/AppShell';
 import { IconHeart, IconShare } from '../components/icons';
+import { fetchPostCardById } from '../data/postQueries';
 
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [post, setPost] = useState<PostWithRelations | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -21,44 +21,9 @@ const PostDetail: React.FC = () => {
       setLoading(true);
       setError('');
       try {
-        const { data, error: postError } = await supabase
-          .from('posts')
-          .select(
-            `
-            id,
-            media_url,
-            media_type,
-            thumbnail_url,
-            caption,
-            created_at,
-            profiles:profiles!posts_user_id_fkey (
-              id,
-              username,
-              display_name,
-              avatar_url
-            ),
-            events:events!posts_event_id_fkey (
-              id,
-              name,
-              city,
-              starts_at,
-              cover_image_url,
-              address,
-              venue_place:venue_places!events_venue_place_id_fkey (
-                id,
-                name,
-                city,
-                address
-              )
-            )
-          `
-          )
-          .eq('id', id)
-          .single();
-        if (postError || !data) {
-          throw postError;
-        }
-        setPost(data as unknown as PostWithRelations);
+        const data = id ? await fetchPostCardById(id) : null;
+        if (!data) throw new Error('Post not found');
+        setPost(data);
       } catch {
         setError('Post not found.');
         setPost(null);
@@ -74,7 +39,7 @@ const PostDetail: React.FC = () => {
     <AppShell>
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <IonSpinner name="crescent" />
+          <Spinner />
         </div>
       )}
 
@@ -130,7 +95,7 @@ const PostDetail: React.FC = () => {
             {event && (
               <button
                 type="button"
-                onClick={() => history.push(`/event/${event.id}`)}
+                onClick={() => navigate(`/event/${event.id}`)}
                 className="bg-white/5 p-4 text-left"
               >
                 <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Event</p>

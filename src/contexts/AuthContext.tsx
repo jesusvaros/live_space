@@ -4,6 +4,7 @@ import { supabase } from '../api';
 import { Profile, AuthState } from '../lib/types';
 import { cached, setCached } from '../lib/requestCache';
 import { useAuthStore, useWorkspaceStore } from '../store/appStore';
+import { mapProfile } from '../data/canonicalMappers';
 
 interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
@@ -42,7 +43,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading: true,
   });
   
-  const isDev = Boolean((import.meta as any).env?.DEV);
   const profileUserIdRef = useRef<string | null>(null);
   const loadingProfileRef = useRef<string | null>(null);
 
@@ -96,22 +96,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         const subjectKey = `subject:user:${userId}`;
-        const subjectId = await cached(
-          subjectKey,
-          async () => {
-            const { data, error } = await supabase
-              .rpc('get_or_create_user_subject', { p_profile_id: userId });
-            if (error) throw error;
-            return data as unknown as string;
-          },
-          { ttlMs: 24 * 60 * 60 * 1000 }
-        );
+        const subjectId = await cached(subjectKey, async () => {
+          const { data, error } = await supabase
+            .from('subjects')
+            .select('id')
+            .eq('type', 'user')
+            .eq('profile_id', userId)
+            .maybeSingle();
+          if (error) throw error;
+          if (data?.id) return data.id as string;
+
+          const { data: createdId, error: createError } = await supabase
+            .rpc('get_or_create_user_subject', { p_profile_id: userId });
+          if (createError) throw createError;
+          return createdId as unknown as string;
+        }, { ttlMs: 24 * 60 * 60 * 1000 });
 
         if (!mounted || loadingProfileRef.current !== userId) return;
 
-        const finalProfile = finalProfileData
-          ? { ...finalProfileData, subject_id: subjectId }
-          : null;
+        const finalProfile = finalProfileData ? mapProfile(finalProfileData, subjectId) : null;
 
         profileUserIdRef.current = userId;
         setAuthState({
@@ -283,14 +286,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { error: { message: 'No user logged in' } as AuthError };
     }
 
-    const { role: requestedRole, ...safeUpdates } = updates;
+    const {
+      role: _role,
+      is_verified: _isVerified,
+      subject_id: _subjectId,
+      id: _id,
+      created_at: _createdAt,
+      updated_at: _updatedAt,
+      ...safeUpdates
+    } = updates;
     const payload = {
       id: authState.user.id,
       ...safeUpdates,
     };
-    if (isDev && requestedRole) {
-      (payload as Partial<Profile>).role = requestedRole;
-    }
 
     const { data, error } = await supabase
       .from('profiles')
@@ -301,7 +309,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!error && data) {
       setAuthState(prev => ({
         ...prev,
-        profile: data,
+        profile: mapProfile(data, authState.profile?.subject_id),
       }));
     }
 
@@ -319,7 +327,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (profile) {
       setAuthState(prev => ({
         ...prev,
-        profile: profile,
+        profile: mapProfile(profile, authState.profile?.subject_id),
       }));
     }
   };

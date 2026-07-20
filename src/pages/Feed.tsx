@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { IonSpinner } from '@ionic/react';
-import { useHistory } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { Spinner } from '../components/ui/AppPrimitives';
+import { useNavigate } from 'react-router-dom';
 import { PostWithRelations } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
 import { useAppResume } from '../shared/hooks/useAppResume';
 import { fetchQuery } from '../lib/queryClient';
+import { fetchPostCards } from '../data/postQueries';
 
 const PAGE_SIZE = 6;
 
@@ -19,7 +19,7 @@ const Feed: React.FC = () => {
   const [error, setError] = useState('');
   const [hasMore, setHasMore] = useState(true);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
-  const history = useHistory();
+  const navigate = useNavigate();
   const resumeTick = useAppResume();
 
   const loadPosts = async (nextPage: number, replace = false, force = false) => {
@@ -29,37 +29,7 @@ const Feed: React.FC = () => {
     const data = await fetchQuery<PostWithRelations[]>(
       ['feed:posts', nextPage],
       async () => {
-        const { data, error } = await supabase
-          .from('posts')
-          .select(
-            `
-            id,
-            user_id,
-            event_id,
-            media_url,
-            media_type,
-            thumbnail_url,
-            caption,
-            created_at,
-            profiles:profiles!posts_user_id_fkey (
-              id,
-              username,
-              display_name,
-              avatar_url
-            ),
-            events:events!posts_event_id_fkey (
-              id,
-              name,
-              city,
-              starts_at,
-              cover_image_url
-            )
-            `
-          )
-          .order('created_at', { ascending: false })
-          .range(from, to);
-        if (error) throw error;
-        return data as PostWithRelations[];
+        return fetchPostCards({ from, to });
       },
       {
         ttlMs: 10_000,
@@ -143,7 +113,7 @@ const Feed: React.FC = () => {
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <IonSpinner name="crescent" />
+            <Spinner />
           </div>
         ) : (
           <div className="space-y-4">
@@ -161,7 +131,7 @@ const Feed: React.FC = () => {
                   key={post.id}
                   type="button"
                   className="-mx-4 block w-[calc(100%+2rem)] text-left"
-                  onClick={() => history.push(`/post/${post.id}`)}
+                  onClick={() => navigate(`/post/${post.id}`)}
                 >
                   <div className="relative aspect-[4/5] w-full overflow-hidden bg-black">
                     {post.media_type === 'image' ? (
@@ -189,7 +159,7 @@ const Feed: React.FC = () => {
 
         {hasMore && (
           <div ref={loadMoreRef} className="flex items-center justify-center py-6">
-            {loadingMore && <IonSpinner name="crescent" />}
+            {loadingMore && <Spinner />}
           </div>
         )}
       </div>

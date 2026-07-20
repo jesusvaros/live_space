@@ -1,12 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { IonSpinner } from '@ionic/react';
-import { useHistory, useParams } from 'react-router-dom';
+import { Spinner } from '../components/ui/AppPrimitives';
+import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Event, Profile, VenuePlace, PostWithSetlist, Artist } from '../lib/types';
 import { socialService } from '../services/social.service';
 import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
 import EventPosterTile from '../features/events/components/EventPosterTile';
+import { mapVenue } from '../data/canonicalMappers';
+import { fetchEventCards } from '../data/eventQueries';
+import { fetchPostCards } from '../data/postQueries';
 
 type VenueEvent = Event & {
   organizer?: Profile | null;
@@ -16,7 +19,7 @@ type VenueEvent = Event & {
 
 const VenueDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { user, profile: currentUserProfile } = useAuth();
   
   const [venue, setVenue] = useState<VenuePlace | null>(null);
@@ -35,63 +38,21 @@ const VenueDetail: React.FC = () => {
       setError('');
       try {
         const { data: venueData, error: venueError } = await supabase
-          .from('venue_places')
+          .from('v_subject_venues')
           .select('*')
-          .eq('id', id)
+          .eq('venue_place_id', id)
           .single();
 
         if (venueError || !venueData) {
           throw venueError;
         }
 
-        let venueSubjectId: string | null = null;
-        try {
-          const { data: subjectId, error: subjectError } = await supabase
-            .rpc('get_or_create_venue_subject', { p_venue_place_id: venueData.id });
-          if (!subjectError && typeof subjectId === 'string') {
-            venueSubjectId = subjectId;
-          }
-        } catch {
-          // ignore subject lookup errors
-        }
+        const mappedVenue = mapVenue(venueData);
+        const venueSubjectId = mappedVenue.subject_id ?? null;
+        const eventsData = await fetchEventCards({ venueId: mappedVenue.id });
 
-        const { data: eventsData, error: eventsError } = await supabase
-          .from('events')
-          .select(
-            `
-            *,
-            organizer:profiles!events_organizer_id_fkey (
-              id,
-              username,
-              display_name,
-              role
-            ),
-            venue_place:venue_places!events_venue_place_id_fkey (
-              id,
-              name,
-              city,
-              address,
-              latitude,
-              longitude
-            ),
-            event_artists (
-              artist:artists!event_artists_artist_entity_fk (
-                id,
-                name,
-                avatar_url
-              )
-            )
-          `
-          )
-          .eq('venue_place_id', id)
-          .order('starts_at', { ascending: false });
-
-        if (eventsError) {
-          throw eventsError;
-        }
-
-        setVenue({ ...(venueData as VenuePlace), subject_id: venueSubjectId });
-        setEvents((eventsData || []) as VenueEvent[]);
+        setVenue(mappedVenue);
+        setEvents(eventsData as VenueEvent[]);
 
         if (venueSubjectId) {
           const [count, following] = await Promise.all([
@@ -104,15 +65,9 @@ const VenueDetail: React.FC = () => {
           setIsFollowing(following);
         }
 
-        const eventIds = (eventsData || []).map(event => event.id);
+        const eventIds = eventsData.map(event => event.id);
         if (eventIds.length > 0) {
-          const { data: momentsData } = await supabase
-            .from('posts')
-            .select('id, media_url, media_type, caption, event_id, created_at, actor_subject_id, song_title')
-            .in('event_id', eventIds)
-            .order('created_at', { ascending: false })
-            .limit(18);
-          setMoments((momentsData || []) as PostWithSetlist[]);
+          setMoments((await fetchPostCards({ eventIds })).slice(0, 18) as PostWithSetlist[]);
         } else {
           setMoments([]);
         }
@@ -131,7 +86,7 @@ const VenueDetail: React.FC = () => {
 
   const handleFollowToggle = async () => {
     if (!user || !currentUserProfile?.subject_id || !venue?.subject_id) {
-      if (!user) history.push('/welcome');
+      if (!user) navigate('/welcome');
       return;
     }
 
@@ -165,7 +120,7 @@ const VenueDetail: React.FC = () => {
     <AppShell>
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <IonSpinner name="crescent" />
+          <Spinner />
         </div>
       )}
 
@@ -194,7 +149,7 @@ const VenueDetail: React.FC = () => {
                       isFollowing ? 'bg-white/10 text-white/80' : 'bg-[#ff6b4a] text-white'
                     }`}
                   >
-                    {followLoading ? <IonSpinner name="crescent" /> : (isFollowing ? 'Following' : 'Follow')}
+                    {followLoading ? <Spinner /> : (isFollowing ? 'Following' : 'Follow')}
                   </button>
                 )}
               </div>
@@ -243,7 +198,7 @@ const VenueDetail: React.FC = () => {
                           key={event.id}
                           event={event}
                           className="w-full"
-                          onSelect={selected => history.push(`/event/${selected.id}`)}
+                          onSelect={selected => navigate(`/event/${selected.id}`)}
                         />
                       ))}
                     </div>
@@ -263,7 +218,7 @@ const VenueDetail: React.FC = () => {
                         <button
                           key={moment.id}
                           type="button"
-                          onClick={() => history.push(`/post/${moment.id}`)}
+                          onClick={() => navigate(`/post/${moment.id}`)}
                           className="aspect-square overflow-hidden bg-white/5 transition-opacity hover:opacity-90"
                         >
                           {moment.media_type === 'video' ? (
@@ -286,7 +241,7 @@ const VenueDetail: React.FC = () => {
                 <button
                   type="button"
                   className="bg-white/10 px-4 py-3 text-sm font-semibold text-white"
-                  onClick={() => history.goBack()}
+                  onClick={() => navigate(-1)}
                 >
                   Back
                 </button>

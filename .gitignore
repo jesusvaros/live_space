@@ -12,6 +12,8 @@ node_modules
 
 # testing
 /coverage
+/playwright-report
+/test-results
 
 # next.js
 /.next/
@@ -19,6 +21,12 @@ node_modules
 
 # production
 /build
+/dist
+/dist-scraper
+
+# generated recovery and scraper artifacts
+/recovery-work
+/tmp
 
 # misc
 .DS_Store
@@ -32,6 +40,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +48,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# documentation build cache
+/docs/.vitepress/cache
+/docs/.vitepress/dist
+/supabase/.temp

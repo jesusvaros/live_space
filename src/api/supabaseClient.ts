@@ -28,7 +28,7 @@ const timeoutFetch: typeof fetch = async (input, init) => {
   const timeoutController = new AbortController();
   const timeoutId = globalThis.setTimeout(() => timeoutController.abort(), SUPABASE_REQUEST_TIMEOUT_MS);
   try {
-    const signal = mergeAbortSignals(init?.signal, timeoutController.signal);
+    const signal = mergeAbortSignals(init?.signal ?? undefined, timeoutController.signal);
     return await fetch(input, { ...(init || {}), signal });
   } finally {
     globalThis.clearTimeout(timeoutId);

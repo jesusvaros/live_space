@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Event, VenuePlace } from '../../lib/types';
-import { useIonRouter } from '@ionic/react';
+import { useNavigate } from 'react-router-dom';
 import { IconBookmark, IconTicket } from '../icons';
 
 type SelectionItem = { type: 'event' | 'venue'; id: string };
@@ -32,7 +32,7 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({
   followPendingEventIds,
   attendancePendingEventIds,
 }) => {
-  const router = useIonRouter();
+  const navigate = useNavigate();
   const [followAnimating, setFollowAnimating] = useState(false);
   const [attendanceAnimating, setAttendanceAnimating] = useState(false);
   const followTimerRef = useRef<number | null>(null);
@@ -104,7 +104,7 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({
           <div className="flex min-w-0 flex-1 flex-col">
             <div 
               className="flex min-w-0 flex-1 flex-col justify-center cursor-pointer transition-opacity hover:opacity-80"
-              onClick={() => router.push(`/event/${ev.id}`, 'forward')}
+              onClick={() => navigate(`/event/${ev.id}`)}
             >
               <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Event</p>
               <h3 className="mt-2 font-display text-2xl font-bold text-white leading-tight">{ev.name}</h3>
@@ -184,7 +184,7 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({
     return (
       <div 
         className="cursor-pointer transition-opacity hover:opacity-80"
-        onClick={() => router.push(`/venue/${venue.id}`, 'forward')}
+        onClick={() => navigate(`/venue/${venue.id}`)}
       >
         <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Venue</p>
         <h3 className="mt-2 font-display text-xl font-bold text-white">{venue.name}</h3>

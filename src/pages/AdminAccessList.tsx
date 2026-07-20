@@ -1,22 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { IonContent, IonPage, IonSpinner } from '@ionic/react';
+import { Content, Page, Spinner } from '../components/ui/AppPrimitives';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
 import AdminActionsNav from '../components/admin/AdminActionsNav';
 
 type AccessRow = {
-  admin_subject_id: string;
-  entity_subject_id: string;
+  profile_id: string;
+  subject_id: string;
   role: string;
   created_at?: string;
   admin?: {
-    profile?: {
-      id: string;
-      username: string | null;
-      display_name: string | null;
-      avatar_url: string | null;
-    };
+    id: string;
+    username: string | null;
+    display_name: string | null;
+    avatar_url: string | null;
   };
   entity?: {
     type: 'artist' | 'venue' | string;
@@ -38,31 +36,25 @@ const AdminAccessList: React.FC = () => {
       setError(null);
       try {
         const { data, error: err } = await supabase
-          .from('entity_members')
+          .from('entity_memberships')
           .select(`
-            admin_subject_id,
-            entity_subject_id,
+            profile_id,
+            subject_id,
             role,
             created_at,
-            admin:admin_subject_id (
-              profile:profile_id (
-                id,
-                username,
-                display_name,
-                avatar_url
-              )
+            admin:profiles!entity_memberships_profile_id_fkey (
+              id,
+              username,
+              display_name,
+              avatar_url
             ),
-            entity:entity_subject_id (
+            entity:subjects!entity_memberships_subject_id_fkey (
               type,
-              profile:profile_id (
-                username,
-                display_name
-              ),
-              venue_place:venue_place_id (
+              venue_place:venue_places!subjects_venue_place_id_fkey (
                 name,
                 city
               ),
-              artist:artist_id (
+              artist:artists!subjects_artist_id_fkey (
                 name,
                 city
               )
@@ -71,7 +63,7 @@ const AdminAccessList: React.FC = () => {
           .order('created_at', { ascending: false });
 
         if (err) throw err;
-        setRows(data as AccessRow[]);
+        setRows((data || []) as unknown as AccessRow[]);
       } catch (e: any) {
         setError(e.message || 'Failed to load access grants');
       } finally {
@@ -86,20 +78,20 @@ const AdminAccessList: React.FC = () => {
 
   if (profile?.role !== 'admin') {
     return (
-      <IonPage>
-        <IonContent className="ion-padding">
+      <Page>
+        <Content className="p-4">
           <div className="flex h-full items-center justify-center text-app-light/60">Access Denied. Admin only.</div>
-        </IonContent>
-      </IonPage>
+        </Content>
+      </Page>
     );
   }
 
   const renderEntityLabel = (row: AccessRow) => {
-    if (!row.entity) return row.entity_subject_id;
+    if (!row.entity) return row.subject_id;
     if (row.entity.type === 'artist' && row.entity.artist) return row.entity.artist.name;
     if (row.entity.type === 'venue' && row.entity.venue_place) return row.entity.venue_place.name;
-    if (row.entity.profile) return row.entity.profile.display_name || row.entity.profile.username || row.entity_subject_id;
-    return row.entity_subject_id;
+    if (row.entity.profile) return row.entity.profile.display_name || row.entity.profile.username || row.subject_id;
+    return row.subject_id;
   };
 
   const renderEntityMeta = (row: AccessRow) => {
@@ -113,7 +105,7 @@ const AdminAccessList: React.FC = () => {
     <AppShell
       headerProps={{ title: 'Access Grants', showBack: true }}
       headerPlacement="outside"
-      contentClassName="ion-padding"
+      contentClassName="p-4"
       contentFullscreen={false}
       contentWrapperClassName={false}
     >
@@ -123,7 +115,7 @@ const AdminAccessList: React.FC = () => {
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold uppercase tracking-wider text-app-light/70">Granted Accesses</h2>
-              {loading && <IonSpinner name="crescent" color="light" />}
+              {loading && <Spinner />}
             </div>
             {error && <div className="mt-3 rounded-xl bg-red-500/10 p-3 text-sm text-red-300">{error}</div>}
             {!loading && !error && rows.length === 0 && (
@@ -135,26 +127,26 @@ const AdminAccessList: React.FC = () => {
             <div className="mt-4 space-y-3">
               {rows.map((row) => (
                 <div
-                  key={`${row.admin_subject_id}-${row.entity_subject_id}`}
+                  key={`${row.profile_id}-${row.subject_id}`}
                   className="flex items-center justify-between rounded-xl border border-white/10 bg-black/20 p-3"
                 >
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 overflow-hidden rounded-full bg-white/10">
-                      {row.admin?.profile?.avatar_url ? (
+                      {row.admin?.avatar_url ? (
                         <img
-                          src={row.admin.profile.avatar_url}
+                          src={row.admin.avatar_url}
                           alt=""
                           className="h-full w-full object-cover"
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-xs font-bold text-app-light/70">
-                          {row.admin?.profile?.username?.[0]?.toUpperCase() || '?'}
+                          {row.admin?.username?.[0]?.toUpperCase() || '?'}
                         </div>
                       )}
                     </div>
                     <div>
                       <div className="text-sm font-semibold text-app-light">
-                        {row.admin?.profile?.display_name || row.admin?.profile?.username || 'Unknown admin'}
+                        {row.admin?.display_name || row.admin?.username || 'Unknown admin'}
                       </div>
                       <div className="text-xs uppercase tracking-widest text-app-light/50">{row.role}</div>
                     </div>

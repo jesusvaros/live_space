@@ -1,11 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  IonContent,
-  IonSpinner,
-  IonModal,
-  useIonViewDidEnter,
-} from '@ionic/react';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { Content, Modal, Spinner } from '../components/ui/AppPrimitives';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Event, PostWithSetlist, Profile, VenuePlace, EventSetlistEntry, Artist } from '../lib/types';
 import { clearCached } from '../lib/requestCache';
@@ -19,6 +14,8 @@ import TimelinePlayer, { MediaFilter } from '../components/event/TimelinePlayer'
 import { TimelineBucket } from '../components/event/TimelineScrubber';
 import ShareSheet from '../components/ShareSheet';
 import { IconBookmark, IconBookmarkFilled, IconCalendar, IconCompass, IconMap, IconPlus, IconTicket, IconUser } from '../components/icons';
+import { fetchEventCardById } from '../data/eventQueries';
+import { createConfiguredCloudinaryMediaProvider, uploadEventPost } from '../media';
 
 type EventDetailData = Event & {
   organizer?: Profile | null;
@@ -31,10 +28,11 @@ type EventDetailLocationState = {
 };
 
 const EventDetail: React.FC = () => {
-  const history = useHistory();
-  const location = useLocation<EventDetailLocationState>();
-  const { id } = useParams<{ id: string }>();
-  const { user, profile, isManagementMode, activeEntity } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const locationState = location.state as EventDetailLocationState | null;
+  const { id = '' } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const { activeWorkspace } = useWorkspace();
   const [event, setEvent] = useState<EventDetailData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -86,15 +84,17 @@ const EventDetail: React.FC = () => {
         : '/tabs/profile';
 
   const scrollToTop = () => {
-    const contentEl = document.querySelector('ion-content.event-detail-content') as any;
-    contentEl?.scrollToTop?.(0);
+    document.querySelector<HTMLElement>('.event-detail-content')?.scrollTo({ top: 0, behavior: 'auto' });
   };
 
   useEffect(() => {
-    if (!location.state?.openAddMoments) return;
+    if (!locationState?.openAddMoments) return;
     setShowReliveBanner(true);
-    history.replace({ pathname: location.pathname, search: location.search, hash: location.hash, state: {} });
-  }, [history, location.hash, location.pathname, location.search, location.state?.openAddMoments]);
+    navigate(
+      { pathname: location.pathname, search: location.search, hash: location.hash },
+      { replace: true, state: {} },
+    );
+  }, [location.hash, location.pathname, location.search, locationState?.openAddMoments, navigate]);
 
   useEffect(() => {
     momentItemsRef.current = momentItems;
@@ -113,41 +113,9 @@ const EventDetail: React.FC = () => {
     setError('');
 
     try {
-      const { data, error: eventError } = await supabase
-        .from('events')
-        .select(
-          `
-          *,
-          organizer:profiles!events_organizer_id_fkey (
-            id,
-            username,
-            display_name,
-            avatar_url,
-            role
-          ),
-          venue_place:venue_places!events_venue_place_id_fkey (
-            id,
-            name,
-            city,
-            address,
-            latitude,
-            longitude,
-            website_url,
-            photos
-          ),
-          event_artists (
-            artist:artists!event_artists_artist_entity_fk (
-              id,
-              name,
-              avatar_url
-            )
-          )
-        `
-        )
-        .eq('id', id)
-        .single();
+      const data = await fetchEventCardById(id);
 
-      if (eventError || !data) {
+      if (!data) {
         setError('Event not found.');
         setEvent(null);
         return;
@@ -209,19 +177,25 @@ const EventDetail: React.FC = () => {
   const loadCounts = async () => {
     try {
       const baseQuery = supabase
-        .from('posts')
+        .from('media_assets')
         .select('id', { count: 'exact', head: true })
-        .eq('event_id', id);
+        .eq('event_id', id)
+        .eq('status', 'published')
+        .is('deleted_at', null);
       const videoQuery = supabase
-        .from('posts')
+        .from('media_assets')
         .select('id', { count: 'exact', head: true })
         .eq('event_id', id)
-        .eq('media_type', 'video');
+        .eq('status', 'published')
+        .eq('kind', 'video')
+        .is('deleted_at', null);
       const imageQuery = supabase
-        .from('posts')
+        .from('media_assets')
         .select('id', { count: 'exact', head: true })
         .eq('event_id', id)
-        .eq('media_type', 'image');
+        .eq('status', 'published')
+        .eq('kind', 'image')
+        .is('deleted_at', null);
 
       const [{ count: allCount }, { count: videoCount }, { count: imageCount }] = await Promise.all([
         baseQuery,
@@ -275,17 +249,7 @@ const EventDetail: React.FC = () => {
 
       let query = supabase
         .from('v_event_posts_with_setlist')
-        .select(
-          `
-          *,
-          profiles:profiles!posts_user_id_fkey (
-            id,
-            username,
-            display_name,
-            avatar_url
-          )
-        `
-        )
+        .select('*')
         .eq('event_id', id)
         .or(
           `and(captured_at.gte.${bucketStartIso},captured_at.lt.${bucketEndIso}),and(captured_at.is.null,created_at.gte.${bucketStartIso},created_at.lt.${bucketEndIso})`
@@ -342,9 +306,9 @@ const EventDetail: React.FC = () => {
     window.setTimeout(scrollToTop, 0);
   }, [id]);
 
-  useIonViewDidEnter(() => {
+  useEffect(() => {
     window.setTimeout(scrollToTop, 0);
-  });
+  }, [id]);
 
   useEffect(() => {
     loadBuckets(mediaFilter);
@@ -392,13 +356,13 @@ const EventDetail: React.FC = () => {
             .from('event_saves')
             .select('event_id')
             .eq('event_id', id)
-            .eq('user_id', user.id)
+            .eq('profile_id', user.id)
             .limit(1),
           supabase
             .from('event_attendance')
             .select('status')
             .eq('event_id', id)
-            .eq('user_id', user.id)
+            .eq('profile_id', user.id)
             .limit(1),
         ]);
 
@@ -438,7 +402,6 @@ const EventDetail: React.FC = () => {
     };
 
     pushProfile(event.organizer);
-    pushProfile(event.venue);
     event.event_artists?.forEach(item => pushArtist(item.artist));
     return list;
   }, [event]);
@@ -458,8 +421,6 @@ const EventDetail: React.FC = () => {
     if (!event) return null;
     const venueName =
       event.venue_place?.name ||
-      event.venue?.display_name ||
-      event.venue?.username ||
       event.address ||
       'Venue TBA';
     const timeLabel = new Date(event.starts_at).toLocaleString(undefined, {
@@ -472,7 +433,7 @@ const EventDetail: React.FC = () => {
     return (
       <span className="flex flex-wrap items-center gap-2">
         {event.venue_place ? (
-          <button type="button" className="font-semibold text-white transition-colors hover:text-app-accent" onClick={() => history.push(`/tabs/venue/${event.venue_place?.id}`)}>
+          <button type="button" className="font-semibold text-white transition-colors hover:text-app-accent" onClick={() => navigate(`/tabs/venue/${event.venue_place?.id}`)}>
             {venueName}
           </button>
         ) : (
@@ -482,16 +443,16 @@ const EventDetail: React.FC = () => {
         <span className="text-white/80">{timeLabel}</span>
       </span>
     );
-  }, [event, history]);
+  }, [event, navigate]);
 
   const eventStart = useMemo(() => (event ? new Date(event.starts_at) : null), [event]);
   const eventEnd = useMemo(() => (event?.ends_at ? new Date(event.ends_at) : null), [event]);
 
   const handleSelectEntity = (id: string, role: EventEntity['role']) => {
     if (role === 'artist_entity') {
-      history.push(`/tabs/artist/${id}`);
+      navigate(`/tabs/artist/${id}`);
     } else {
-      history.push(`/profile/${id}`);
+      navigate(`/profile/${id}`);
     }
   };
 
@@ -511,7 +472,7 @@ const EventDetail: React.FC = () => {
     setUploadSuccess('');
 
     if (!user) {
-      history.push('/welcome');
+      navigate('/welcome');
       return;
     }
 
@@ -596,41 +557,18 @@ const EventDetail: React.FC = () => {
     setUploadProgress({ current: 0, total: momentItems.length });
 
     try {
+      const mediaProvider = createConfiguredCloudinaryMediaProvider();
       for (let i = 0; i < momentItems.length; i += 1) {
         const item = momentItems[i];
         setUploadProgress({ current: i + 1, total: momentItems.length });
-        const isVideo = item.mediaType === 'video';
-        const ext = item.file.name.split('.').pop() || (isVideo ? 'mp4' : 'jpg');
-        const folder = isVideo ? 'videos' : 'images';
-        const path = `${folder}/${user.id}/${event.id}/${Date.now()}-${item.id}.${ext}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('media')
-          .upload(path, item.file, { cacheControl: '3600', upsert: false });
-
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        const { data: publicUrl } = supabase.storage.from('media').getPublicUrl(path);
-
-        const actorSubjectId = isManagementMode && activeEntity 
-          ? activeEntity.subject_id 
-          : profile?.subject_id;
-
-        const { error: insertError } = await supabase.from('posts').insert({
-          user_id: user.id,
-          actor_subject_id: actorSubjectId,
-          event_id: event.id,
-          media_url: publicUrl.publicUrl,
-          media_type: item.mediaType,
-          captured_at: item.captureAt ? item.captureAt.toISOString() : null,
-          capture_source: item.captureSource,
+        await uploadEventPost({
+          provider: mediaProvider,
+          file: item.file,
+          kind: item.mediaType,
+          eventId: event.id,
+          authorId: user.id,
+          capturedAt: item.captureAt ? item.captureAt.toISOString() : null,
         });
-
-        if (insertError) {
-          throw insertError;
-        }
       }
 
       await updateAttendance('attended', { force: true });
@@ -660,7 +598,7 @@ const EventDetail: React.FC = () => {
           .from('event_saves')
           .delete()
           .eq('event_id', event.id)
-          .eq('user_id', user.id);
+          .eq('profile_id', user.id);
         if (deleteError) throw deleteError;
         setFollowed(false);
       } else {
@@ -668,7 +606,7 @@ const EventDetail: React.FC = () => {
           .from('event_saves')
           .insert({
             event_id: event.id,
-            user_id: user.id,
+            profile_id: user.id,
           });
         if (insertError) throw insertError;
         setFollowed(true);
@@ -693,7 +631,7 @@ const EventDetail: React.FC = () => {
           .from('event_attendance')
           .delete()
           .eq('event_id', event.id)
-          .eq('user_id', user.id);
+          .eq('profile_id', user.id);
         if (deleteError) throw deleteError;
         setAttendanceStatus(null);
         return true;
@@ -704,10 +642,10 @@ const EventDetail: React.FC = () => {
         .upsert(
           {
             event_id: event.id,
-            user_id: user.id,
+            profile_id: user.id,
             status 
           },
-          { onConflict: 'event_id,user_id' }
+          { onConflict: 'event_id,profile_id' }
         );
       if (upsertError) throw upsertError;
       setAttendanceStatus(status);
@@ -760,7 +698,7 @@ const EventDetail: React.FC = () => {
   const handleFollowClick = () => {
     triggerEngagementFx('follow');
     if (!user) {
-      history.push('/welcome');
+      navigate('/welcome');
       return;
     }
     toggleFollow();
@@ -769,7 +707,7 @@ const EventDetail: React.FC = () => {
   const handleAttendanceClick = () => {
     triggerEngagementFx('attendance');
     if (!user) {
-      history.push('/welcome');
+      navigate('/welcome');
       return;
     }
     updateAttendance(attendanceTarget);
@@ -790,7 +728,7 @@ const EventDetail: React.FC = () => {
     <AppShell contentWrapperClassName={false} contentClassName="event-detail-content">
           {loading && (
             <div className="flex items-center justify-center py-12">
-              <IonSpinner name="crescent" />
+              <Spinner />
             </div>
           )}
 
@@ -958,7 +896,7 @@ const EventDetail: React.FC = () => {
                     type="button"
                     aria-label="Main"
                     className="inline-flex items-center justify-center text-app-accent"
-                    onClick={() => history.push(mainTabHref)}
+                    onClick={() => navigate(mainTabHref)}
                   >
                     <IconCalendar className="h-5 w-5" />
                   </button>
@@ -967,7 +905,7 @@ const EventDetail: React.FC = () => {
                       type="button"
                       aria-label="Create event"
                       className="inline-flex items-center justify-center text-white/75 transition-colors hover:text-white"
-                      onClick={() => history.push('/tabs/create-event')}
+                      onClick={() => navigate('/tabs/create-event')}
                     >
                       <IconPlus className="h-5 w-5" />
                     </button>
@@ -976,7 +914,7 @@ const EventDetail: React.FC = () => {
                       type="button"
                       aria-label="Discover"
                       className="inline-flex items-center justify-center text-white/75 transition-colors hover:text-white"
-                      onClick={() => history.push('/tabs/discover')}
+                      onClick={() => navigate('/tabs/discover')}
                     >
                       <IconCompass className="h-5 w-5" />
                     </button>
@@ -985,7 +923,7 @@ const EventDetail: React.FC = () => {
                     type="button"
                     aria-label="Map"
                     className="inline-flex items-center justify-center text-white/75 transition-colors hover:text-white"
-                    onClick={() => history.push('/tabs/map')}
+                    onClick={() => navigate('/tabs/map')}
                   >
                     <IconMap className="h-5 w-5" />
                   </button>
@@ -993,7 +931,7 @@ const EventDetail: React.FC = () => {
                     type="button"
                     aria-label="Profile"
                     className="inline-flex items-center justify-center text-white/75 transition-colors hover:text-white"
-                    onClick={() => history.push(profileTabHref)}
+                    onClick={() => navigate(profileTabHref)}
                   >
                     <IconUser className="h-5 w-5" />
                   </button>
@@ -1001,8 +939,8 @@ const EventDetail: React.FC = () => {
               </div>
             </>
           )}
-        <IonModal isOpen={showAddMoments} onDidDismiss={() => setShowAddMoments(false)}>
-          <IonContent fullscreen>
+        <Modal isOpen={showAddMoments} onDidDismiss={() => setShowAddMoments(false)} title="Add moments">
+          <Content fullscreen>
             <div className="min-h-full bg-app-bg p-5">
               <div className="flex items-center justify-between gap-4">
                 <h2 className="font-display text-lg font-bold text-white">Add moments</h2>
@@ -1106,8 +1044,8 @@ const EventDetail: React.FC = () => {
                 Add more
               </button>
             </div>
-          </IonContent>
-        </IonModal>
+          </Content>
+        </Modal>
 
         <ShareSheet isOpen={showShare} onClose={() => setShowShare(false)} link={shareUrl} />
 

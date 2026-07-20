@@ -30,8 +30,7 @@
 
 html,
 body,
-#root,
-ion-app {
+#root {
   height: 100%;
 }
 
@@ -136,36 +135,6 @@ body {
   height: 100% !important;
 }
 
-/* Ionic tab bar styles (kept, not migrated to Tailwind) */
-ion-tab-bar.app-tab-bar {
-  --background: rgba(12, 15, 22, 0.95);
-  margin: 10px 16px calc(10px + var(--ion-safe-area-bottom, 0px));
-  border-radius: 24px;
-  padding: 10px 6px;
-  height: 64px;
-}
-
-ion-tab-button {
-  --color: #7c8798;
-  --color-selected: var(--app-ink);
-  --padding-top: 6px;
-  --padding-bottom: 6px;
-  --padding-start: 10px;
-  --padding-end: 10px;
-  border-radius: 16px;
-}
-
-ion-tab-button::part(native) {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: center;
-}
-
-ion-tab-button.tab-selected {
-  --background: rgba(255, 107, 74, 0.2);
-}
-
 .tab-icon {
   width: 20px;
   height: 20px;
@@ -188,28 +157,4 @@ ion-tab-button.tab-selected {
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   border: 0;
-}
-
-/* Ionic modal styles for sheets (kept) */
-ion-modal.share-sheet::part(content) {
-  border-radius: 24px 24px 0 0;
-  background: var(--app-surface);
-}
-
-ion-modal.share-sheet::part(backdrop) {
-  background: rgba(3, 6, 12, 0.7);
-}
-
-ion-modal.gate-sheet::part(content) {
-  border-radius: 24px 24px 0 0;
-  background: var(--app-surface);
-}
-
-ion-modal.gate-sheet::part(backdrop) {
-  background: rgba(3, 6, 12, 0.7);
-}
-
-/* Content background */
-ion-content {
-  --background: radial-gradient(circle at 30% 0%, #1b2232 0%, var(--app-bg) 55%, #0a0d14 100%);
 }
