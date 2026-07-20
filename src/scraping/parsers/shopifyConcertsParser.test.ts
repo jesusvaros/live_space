@@ -37,4 +37,24 @@ describe('mapShopifyConcert', () => {
   it('rejects products without a dated concert title', () => {
     expect(mapShopifyConcert({ id: 3, title: 'Entrada genérica', handle: 'entrada' }, source)).toBeNull();
   });
+
+  it('keeps volatile Shopify timestamps out of the staging payload', () => {
+    const product = {
+      id: 4,
+      title: 'TORO - VIERNES 06 NOVIEMBRE A LAS 20H',
+      handle: 'toro-viernes-06-noviembre-a-las-20h',
+      updated_at: '2026-07-21T00:14:00+02:00',
+      variants: [{ updated_at: '2026-07-21T00:14:00+02:00' }],
+    };
+    const event = mapShopifyConcert(product, source);
+
+    expect(event?.rawPayload).toEqual({
+      id: 4,
+      title: 'TORO - VIERNES 06 NOVIEMBRE A LAS 20H',
+      handle: 'toro-viernes-06-noviembre-a-las-20h',
+      body_html: undefined,
+      product_type: undefined,
+      tags: undefined,
+    });
+  });
 });
