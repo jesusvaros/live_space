@@ -67,13 +67,24 @@ export const upsertArtists = async (
         name: artist.displayName,
         artist_type: detectArtistType(artist.displayName),
         normalized_name: artist.normalizedName,
-        country_code: 'ES',
+        // A Spanish event does not imply that the performer is Spanish.
+        country_code: 'ZZ',
         status: 'published',
       })
       .select(ARTIST_SELECT)
       .single();
 
     if (error) {
+      if (error.code === '23505') {
+        const concurrentMatch = await dedupeArtist(supabase, artist);
+        if (concurrentMatch.match) {
+          rows.push(concurrentMatch.match);
+          logger.info('Reused artist created by concurrent scraper item', {
+            artistId: concurrentMatch.match.id,
+          });
+          continue;
+        }
+      }
       throw error;
     }
 

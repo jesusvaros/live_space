@@ -13,11 +13,11 @@ Fecha de la última actualización: **18 de julio de 2026**.
 - La interfaz incluye descubrimiento, agenda, mapa, feed, perfiles de artista y
   sala, detalle de evento, subida, QR y pantallas administrativas.
 - El proyecto remoto Supabase `live-space-pilot` está creado en París
-  (`eu-west-3`) sobre el plan Free. Las dos migraciones canónicas están aplicadas:
-  existen 24 tablas públicas y las 24 tienen RLS activada.
-- La base local cuenta con configuración, cuatro migraciones canónicas, RLS,
+  (`eu-west-3`) sobre el plan Free. Las seis migraciones canónicas aplicadas
+  mantienen 25 tablas públicas y RLS en todas ellas.
+- La base local cuenta con configuración, seis migraciones canónicas, RLS,
   cuotas de media, modelos de lectura y Edge Functions de firma/webhook. Las
-  cuatro migraciones están aplicadas en el piloto remoto. Falta ejecutar el reset real porque
+  seis migraciones están aplicadas y registradas en el piloto remoto. Falta ejecutar el reset real porque
   Docker no está disponible en esta máquina durante la revisión.
 - Las funciones `cloudinary-sign-upload` y `cloudinary-webhook` están desplegadas.
   La firma exige JWT; el webhook no exige JWT de Supabase, pero valida la firma y
@@ -31,9 +31,11 @@ Fecha de la última actualización: **18 de julio de 2026**.
   de evento, Feed, Perfil, Upload y administración ya usan el contrato canónico o
   sus modelos de lectura. No quedan accesos al bucket `media` ni nombres de claves
   foráneas heredadas en el cliente.
-- Hay un prototipo de ingesta con fuentes, ejecuciones, staging, normalización,
-  deduplicación y parsers genéricos. Aún requiere fixtures por fuente, control de
-  confianza y operación prolongada en staging.
+- La ingesta dispone de fuentes, ejecuciones, staging, normalización y
+  deduplicación. Hay 18 fuentes piloto registradas y cuatro operativas: Siroco,
+  Sala Apolo, Sala El Sol y Razzmatazz. Los parsers oficiales han publicado ya
+  12 conciertos, 3 salas y 13 artistas; las otras 14 fuentes siguen pendientes de
+  parser específico.
 
 ## Deuda heredada
 
@@ -78,7 +80,7 @@ emails, sesiones y tokens.
 | Recurso | Estado al 18 de julio de 2026 |
 | --- | --- |
 | Supabase | `live-space-pilot`, París, Free, Data API sin exposición automática de tablas |
-| Base remota | 4 migraciones aplicadas; 24/24 tablas públicas con RLS |
+| Base remota | 6 migraciones aplicadas y registradas; 25/25 tablas públicas con RLS |
 | Auth | email/contraseña, confirmación de email, registro activo, anónimo desactivado |
 | Edge Functions | firma de subida y webhook desplegados; peticiones no autorizadas rechazadas |
 | Cloudinary | entorno `Live Space Pilot` reutilizado por el límite de un entorno del plan Free |

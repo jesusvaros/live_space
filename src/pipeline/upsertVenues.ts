@@ -76,6 +76,19 @@ export const upsertVenue = async (
     .single();
 
   if (error) {
+    if (error.code === '23505') {
+      const concurrentMatch = await dedupeVenue(supabase, venue);
+      if (concurrentMatch.match) {
+        logger.info('Reused venue created by concurrent scraper item', {
+          venueId: concurrentMatch.match.id,
+        });
+        return {
+          row: concurrentMatch.match,
+          created: false,
+          updated: false,
+        };
+      }
+    }
     throw error;
   }
 

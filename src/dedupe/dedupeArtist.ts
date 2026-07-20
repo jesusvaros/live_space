@@ -19,7 +19,7 @@ export const dedupeArtist = async (
     .from('artists')
     .select(ARTIST_SELECT)
     .eq('normalized_name', artist.normalizedName)
-    .eq('country_code', 'ES')
+    .eq('country_code', 'ZZ')
     .limit(5);
 
   if (exactError) {
@@ -47,7 +47,7 @@ export const dedupeArtist = async (
     .from('artists')
     .select(ARTIST_SELECT)
     .ilike('normalized_name', `${prefix}%`)
-    .eq('country_code', 'ES')
+    .eq('country_code', 'ZZ')
     .limit(100);
 
   if (candidateError) {

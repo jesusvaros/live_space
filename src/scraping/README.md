@@ -116,6 +116,7 @@ No se requiere ninguna clave de IA para el piloto.
 
 ## Parsers iniciales
 
+- `json-ld-agenda`: prioridad para eventos Schema.org en JSON-LD y grafos `@graph`.
 - `generic-agenda`: parser tolerante para listados HTML genericos.
 - `wordpress-generic`: pensado para webs WordPress y layouts tipo The Events Calendar.
 - `single-event-page`: para fuentes que exponen un unico evento o landing de detalle.
@@ -135,6 +136,11 @@ Cada fuente puede afinar selectores via `scrape_sources.metadata`, por ejemplo:
   "citySelector": ".city"
 }
 ```
+
+El catálogo piloto mantiene inactivas las fuentes sin parser validado. Para
+activar una nueva fuente, registra la revisión y valida una sonda real del parser.
+PostgreSQL rechazará la activación si no
+existen `terms_reviewed_at` y `metadata.fixtureVerified = true`.
 
 ## Normalizacion y dedupe
 

@@ -3,6 +3,11 @@ import type { Page } from 'playwright';
 export type SourceType = 'venue' | 'festival' | 'promoter' | 'directory';
 
 export type ParserKey =
+  | 'apolo-agenda'
+  | 'events-manager-calendar'
+  | 'json-ld-agenda'
+  | 'razzmatazz-agenda'
+  | 'siroco-agenda'
   | 'generic-agenda'
   | 'wordpress-generic'
   | 'single-event-page'
@@ -34,6 +39,8 @@ export type ScrapeSourceMetadata = {
   citySelector?: string;
   nextButtonSelector?: string;
   officialWebsite?: string;
+  termsReviewStatus?: 'pending' | 'approved' | 'rejected';
+  fixtureVerified?: boolean;
   [key: string]: unknown;
 };
 
@@ -46,6 +53,7 @@ export type ScrapeSource = {
   country_code: string;
   parser_key: ParserKey;
   frequency: string;
+  terms_reviewed_at?: string | null;
   is_active: boolean;
   metadata: ScrapeSourceMetadata;
   created_at?: string;

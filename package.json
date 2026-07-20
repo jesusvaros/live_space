@@ -22,7 +22,8 @@
     "scrape:build": "tsc -p tsconfig.scraper.json",
     "scrape:weekly": "npm run scrape:build && node dist-scraper/scripts/runWeeklyScrape.js",
     "scrape:process": "npm run scrape:build && node dist-scraper/scripts/processPendingStaging.js",
-    "scrape:seed": "npm run scrape:build && node dist-scraper/scripts/seedSources.js"
+    "scrape:seed": "npm run scrape:build && node dist-scraper/scripts/seedSources.js",
+    "scrape:probe": "npm run scrape:build && node dist-scraper/scripts/probeSources.js"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.1",

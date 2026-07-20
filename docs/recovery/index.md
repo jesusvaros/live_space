@@ -36,16 +36,20 @@ python3 tools/recovery/inventory.py \
    8 objetos registrados.
 6. Revisar manualmente artistas y salas: nombre, slug, localidad, enlaces e imagen.
 7. Correlacionar objetos y entradas ZIP por hash, no por nombre de fichero.
-8. Colocar los ocho contenidos únicos en `live-space/pilot/quarantine/`; no hacer
-   públicos los cinco duplicados ni conservar copias innecesarias.
-9. Promover un catálogo o recurso únicamente cuando tenga propietario, entidad,
+8. Extraer una única copia local por checksum con
+   `tools/recovery/extract_unique_media.py`. La herramienta verifica el SHA-256
+   del archivo, tamaños y extensiones, y no reutiliza rutas heredadas.
+9. Registrar los ocho checksums en `recovered_media_quarantine`; no subir ni
+   publicar ningún binario todavía.
+10. Promover un catálogo o recurso únicamente cuando tenga propietario, entidad,
    permiso/licencia y procedencia verificables.
-10. Importar mediante migración/seed versionado al proyecto nuevo, reconciliar y
+11. Importar mediante migración/seed versionado al proyecto nuevo, reconciliar y
     borrar de forma segura la instancia y los exports temporales.
 
 ## Qué se importa
 
-- Candidatos revisados de artistas y salas, con IDs nuevos y tabla de mapeo local.
+- Diez artistas y ocho salas como candidatos `review`, conservando el UUID antiguo
+  únicamente dentro de `external_ids` como procedencia. No se consideran publicados.
 - Media única aprobada, subida mediante el flujo normal de Cloudinary y registrada
   con checksum, licencia, propietario y relación.
 - No se reusan URLs antiguas como fuente canónica.
@@ -67,3 +71,17 @@ cluster. Los usuarios históricos crean o recuperan una cuenta nueva.
 La suma de `promovido + cuarentena + duplicado descartado` debe explicar las 13
 entradas y los 8 contenidos únicos. El informe final registra conteos y hashes,
 nunca PII ni rutas originales.
+
+## Estado de ejecución
+
+- El inventario fue reproducido y los conteos reconciliados.
+- Los ocho binarios únicos se extrajeron dos veces de forma idempotente en el
+  directorio local ignorado `recovery-work/quarantine`.
+- Los tres vídeos cumplen el máximo de 75 MB, pero uno dura aproximadamente 48 s
+  y supera el límite de 45 s del piloto; permanece bloqueado además de no tener
+  propietario/licencia verificados.
+- La migración `20260718000300_recovered_catalog.sql` está aplicada y registrada
+  en el historial remoto. La reconciliación devuelve 10 artistas, 8 salas y 8
+  registros de cuarentena; el rol anónimo no puede leer la cuarentena ni ve los
+  candidatos con estado `review`.
+- No se han importado perfiles, usuarios Auth, sesiones, contraseñas ni tokens.

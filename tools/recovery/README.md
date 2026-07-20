@@ -38,3 +38,19 @@ psql --set ON_ERROR_STOP=1 "$ISOLATED_RECOVERY_DATABASE_URL" \
 
 The SQL intentionally fails if the audited legacy counts change. It never
 selects from any table in the `auth` schema.
+
+## Extract the audited unique media set
+
+This command creates exactly one local quarantined file per audited checksum.
+It never reuses legacy object paths and refuses any archive drift:
+
+```bash
+python3 tools/recovery/extract_unique_media.py \
+  --storage /path/to/project.storage.zip \
+  --inventory docs/recovery/inventory-2026-07-17.json \
+  --output recovery-work/quarantine
+```
+
+Running it twice must return the same eight checksums without producing another
+copy. The output directory is ignored by Git and remains private until ownership,
+event association and license are approved.
