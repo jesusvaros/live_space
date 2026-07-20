@@ -117,6 +117,7 @@ No se requiere ninguna clave de IA para el piloto.
 ## Parsers iniciales
 
 - `json-ld-agenda`: prioridad para eventos Schema.org en JSON-LD y grafos `@graph`.
+- `movistar-arena-agenda`: listado oficial Schema.org filtrado a conciertos; interpreta fecha y hora desde la URL canónica tras la recarga intermedia del sitio.
 - `generic-agenda`: parser tolerante para listados HTML genericos.
 - `wordpress-generic`: pensado para webs WordPress y layouts tipo The Events Calendar.
 - `single-event-page`: para fuentes que exponen un unico evento o landing de detalle.

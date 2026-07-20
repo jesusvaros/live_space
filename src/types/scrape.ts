@@ -7,6 +7,7 @@ export type ParserKey =
   | 'events-manager-calendar'
   | 'elementor-agenda'
   | 'json-ld-agenda'
+  | 'movistar-arena-agenda'
   | 'razzmatazz-agenda'
   | 'siroco-agenda'
   | 'tribe-events-api'
