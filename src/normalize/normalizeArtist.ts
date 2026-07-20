@@ -42,9 +42,11 @@ const detectSplitPattern = (value: string): { parts: SplitResult[]; ambiguous: b
     };
   }
 
-  const genericSeparators = [' + ', ' / ', ' & ', ',', ' x ', ' vs ', ' b2b '];
+  // Ampersands and commas are common inside real artist names (Jesse & Joy,
+  // Earth, Wind & Fire), so they are not safe deterministic split points.
+  const genericSeparators = [' + ', ' / ', ' x ', ' vs ', ' b2b '];
   for (const separator of genericSeparators) {
-    if (!value.toLowerCase().includes(separator.trim())) {
+    if (!value.toLowerCase().includes(separator.toLowerCase())) {
       continue;
     }
 

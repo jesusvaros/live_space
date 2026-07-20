@@ -8,6 +8,7 @@ export type ParserKey =
   | 'json-ld-agenda'
   | 'razzmatazz-agenda'
   | 'siroco-agenda'
+  | 'tribe-events-api'
   | 'generic-agenda'
   | 'wordpress-generic'
   | 'single-event-page'

@@ -121,6 +121,7 @@ No se requiere ninguna clave de IA para el piloto.
 - `wordpress-generic`: pensado para webs WordPress y layouts tipo The Events Calendar.
 - `single-event-page`: para fuentes que exponen un unico evento o landing de detalle.
 - `resident-advisor-like`: para directorios/event cards con patrones cercanos a RA.
+- `tribe-events-api`: API REST pública de The Events Calendar; activa para La Riviera.
 
 Cada fuente puede afinar selectores via `scrape_sources.metadata`, por ejemplo:
 

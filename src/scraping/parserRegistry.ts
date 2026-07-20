@@ -7,6 +7,7 @@ import { residentAdvisorLikeParser } from './parsers/residentAdvisorLikeParser.j
 import { razzmatazzAgendaParser } from './parsers/razzmatazzAgendaParser.js';
 import { singleEventPageParser } from './parsers/singleEventPageParser.js';
 import { sirocoAgendaParser } from './parsers/sirocoAgendaParser.js';
+import { tribeEventsApiParser } from './parsers/tribeEventsApiParser.js';
 import { wordpressGenericParser } from './parsers/wordpressGenericParser.js';
 
 const parserRegistry: Record<ParserKey, VenueParser> = {
@@ -19,6 +20,7 @@ const parserRegistry: Record<ParserKey, VenueParser> = {
   'resident-advisor-like': residentAdvisorLikeParser,
   'razzmatazz-agenda': razzmatazzAgendaParser,
   'siroco-agenda': sirocoAgendaParser,
+  'tribe-events-api': tribeEventsApiParser,
 };
 
 export const getParser = (key: ParserKey): VenueParser => {

@@ -19,6 +19,7 @@ const source = (
   options: {
     parserKey?: ParserKey;
     ready?: boolean;
+    structuredDataVerified?: boolean;
   } = {}
 ): SeedSource => ({
   source_type: 'venue',
@@ -30,6 +31,7 @@ const source = (
     officialWebsite,
     termsReviewStatus: options.ready ? 'approved' : 'pending',
     fixtureVerified: options.ready ?? false,
+    structuredDataVerified: options.structuredDataVerified ?? false,
   },
   terms_reviewed_at: options.ready ? '2026-07-18T00:00:00.000Z' : null,
   is_active: options.ready ?? false,
@@ -37,7 +39,13 @@ const source = (
 
 export const seedSources: SeedSource[] = [
   source('Movistar Arena', 'https://www.movistararena.es/', 'Madrid', 'https://www.movistararena.es/'),
-  source('La Riviera', 'https://salariviera.com/', 'Madrid', 'https://salariviera.com/'),
+  source(
+    'La Riviera',
+    'https://salariviera.com/conciertossalariviera/',
+    'Madrid',
+    'https://salariviera.com/',
+    { parserKey: 'tribe-events-api', ready: true, structuredDataVerified: true }
+  ),
   source('Sala El Sol', 'https://salaelsol.com/agenda/', 'Madrid', 'https://salaelsol.com/', {
     parserKey: 'events-manager-calendar',
     ready: true,

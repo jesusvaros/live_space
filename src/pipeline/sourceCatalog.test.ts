@@ -10,9 +10,10 @@ describe('pilot source catalog', () => {
     expect(seedSources.every((source) => source.source_type === 'venue')).toBe(true);
   });
 
-  it('activates only the first three sources with reviewed robots and live parser probes', () => {
+  it('activates only sources with reviewed terms and live parser probes', () => {
     const active = seedSources.filter((source) => source.is_active);
     expect(active.map((source) => source.name).sort()).toEqual([
+      'La Riviera',
       'Razzmatazz',
       'Sala Apolo',
       'Sala El Sol',

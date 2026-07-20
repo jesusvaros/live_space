@@ -265,6 +265,15 @@ export const normalizeStagingEvent = (
       : 0.2,
     normalizedName ? 0.95 : 0.25,
   ];
+  const heuristicConfidence =
+    confidencePieces.reduce((sum, value) => sum + value, 0) / confidencePieces.length;
+  const isVerifiedStructuredRecord = Boolean(
+    source.metadata.structuredDataVerified === true &&
+      record.source_event_id &&
+      startsAt &&
+      !artistResult.ambiguous &&
+      aiReasons.length === 0,
+  );
 
   return {
     normalizedEvent: {
@@ -278,8 +287,7 @@ export const normalizeStagingEvent = (
       sourceExternalId: record.source_event_id || undefined,
       artists: artistResult.artists,
       venue,
-      confidence:
-        confidencePieces.reduce((sum, value) => sum + value, 0) / confidencePieces.length,
+      confidence: isVerifiedStructuredRecord ? Math.max(heuristicConfidence, 0.97) : heuristicConfidence,
     },
     needsAi: aiReasons.length > 0,
     aiReasons: Array.from(new Set(aiReasons)),
