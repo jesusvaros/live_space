@@ -70,9 +70,13 @@ export const fetchSource = async (
       // Some official venue sites set a short-lived cookie from an interstitial
       // and use a meta refresh to return to the requested page. Wait for that
       // navigation before inspecting the real agenda.
-      if ((await page.locator('meta[http-equiv="refresh" i]').count()) > 0) {
+      for (let refreshAttempt = 0; refreshAttempt < 3; refreshAttempt += 1) {
+        if ((await page.locator('meta[http-equiv="refresh" i]').count()) === 0) break;
         sourceLogger.info('Waiting for source interstitial refresh');
-        await page.waitForTimeout(4_000);
+        await page.waitForEvent('framenavigated', {
+          predicate: (frame) => frame === page.mainFrame(),
+          timeout: 10_000,
+        });
         await page.waitForLoadState('domcontentloaded', { timeout: 10_000 }).catch(() => undefined);
       }
 

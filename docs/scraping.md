@@ -32,8 +32,9 @@ original o hash, parser/versión y campos extraídos. Las fechas se interpretan 
 `Europe/Madrid` y se almacenan con zona horaria.
 
 El catálogo piloto contiene 18 fuentes oficiales versionadas (10 de Madrid y 8
-de Barcelona). Ocho están operativas: Jamboree, La Riviera, Movistar Arena, Sala
-Apolo, Sala But, Siroco, Sala El Sol y Razzmatazz. Las demás se crean con `is_active = false` y
+de Barcelona). Nueve están operativas: Independance Club, Jamboree, La Riviera,
+Movistar Arena, Sala Apolo, Sala But, Siroco, Sala El Sol y Razzmatazz. Las demás
+se crean con `is_active = false` y
 `termsReviewStatus = pending`. La activación se hace individualmente cuando la
 revisión está registrada y una sonda real del parser devuelve datos coherentes.
 Una restricción de PostgreSQL
@@ -41,7 +42,7 @@ impide además guardar `is_active = true` si falta `terms_reviewed_at` o
 `metadata.fixtureVerified = true`.
 
 Los parsers operativos cubren JSON-LD, Events Manager, la agenda Schema.org de
-Movistar Arena, la API oficial de The
+Movistar Arena, el catálogo Shopify de Independance Club, la API oficial de The
 Events Calendar usada por La Riviera y Jamboree, las tarjetas Elementor de Sala
 But, el HTML de Siroco, la agenda de Apolo y el SSR de Nuxt usado por Razzmatazz.
 `json-ld-agenda` extrae eventos Schema.org,
@@ -50,7 +51,7 @@ duplicados por URL canónica. Las webs sin JSON-LD permanecerán inactivas hasta
 disponer de un parser y selectores propios; el parser HTML genérico no constituye
 por sí solo autorización para activar una fuente.
 
-Estado remoto del 20 de julio de 2026: 249 conciertos publicados, 7 salas y 239
+Estado remoto del 21 de julio de 2026: 253 conciertos publicados, 8 salas y 243
 artistas. La Riviera aportó 87 conciertos publicados de 88 detectados; el cartel
 `Editors + Big Sleep` permanece en revisión por contener varios artistas. Los
 candidatos que mezclan promotor, festival o actividad no musical también se
@@ -60,6 +61,8 @@ publicó 121, dejó 55 ambiguos en revisión y rechazó 16 sin artista verificab
 las actividades de discoteca quedan excluidas por categoría.
 Movistar Arena detectó 30 conciertos en su listado oficial filtrado: publicó 27
 y conservó 3 títulos ambiguos para revisión humana.
+Independance Club detectó 11 productos etiquetados como conciertos: publicó 4 y
+conservó 7 carteles largos o ambiguos para revisión.
 
 ## Confianza y deduplicación
 

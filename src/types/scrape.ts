@@ -10,6 +10,7 @@ export type ParserKey =
   | 'movistar-arena-agenda'
   | 'razzmatazz-agenda'
   | 'siroco-agenda'
+  | 'shopify-concerts'
   | 'tribe-events-api'
   | 'generic-agenda'
   | 'wordpress-generic'
