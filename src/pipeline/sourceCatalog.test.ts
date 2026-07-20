@@ -15,6 +15,7 @@ describe('pilot source catalog', () => {
     expect(active.map((source) => source.name).sort()).toEqual([
       'Jamboree',
       'La Riviera',
+      'Movistar Arena',
       'Razzmatazz',
       'Sala Apolo',
       'Sala But',

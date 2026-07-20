@@ -4,6 +4,7 @@ import { eventsManagerCalendarParser } from './parsers/eventsManagerCalendarPars
 import { elementorAgendaParser } from './parsers/elementorAgendaParser.js';
 import { genericAgendaParser } from './parsers/genericAgendaParser.js';
 import { jsonLdAgendaParser } from './parsers/jsonLdAgendaParser.js';
+import { movistarArenaAgendaParser } from './parsers/movistarArenaAgendaParser.js';
 import { residentAdvisorLikeParser } from './parsers/residentAdvisorLikeParser.js';
 import { razzmatazzAgendaParser } from './parsers/razzmatazzAgendaParser.js';
 import { singleEventPageParser } from './parsers/singleEventPageParser.js';
@@ -16,6 +17,7 @@ const parserRegistry: Record<ParserKey, VenueParser> = {
   'events-manager-calendar': eventsManagerCalendarParser,
   'elementor-agenda': elementorAgendaParser,
   'json-ld-agenda': jsonLdAgendaParser,
+  'movistar-arena-agenda': movistarArenaAgendaParser,
   'generic-agenda': genericAgendaParser,
   'wordpress-generic': wordpressGenericParser,
   'single-event-page': singleEventPageParser,

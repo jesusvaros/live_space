@@ -40,7 +40,13 @@ const source = (
 });
 
 export const seedSources: SeedSource[] = [
-  source('Movistar Arena', 'https://www.movistararena.es/', 'Madrid', 'https://www.movistararena.es/'),
+  source(
+    'Movistar Arena',
+    'https://www.movistararena.es/programacion/?cat%5B%5D=1',
+    'Madrid',
+    'https://www.movistararena.es/',
+    { parserKey: 'movistar-arena-agenda', ready: true, structuredDataVerified: true }
+  ),
   source(
     'La Riviera',
     'https://salariviera.com/conciertossalariviera/',

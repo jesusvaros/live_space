@@ -67,6 +67,15 @@ export const fetchSource = async (
         timeout: 45_000,
       });
 
+      // Some official venue sites set a short-lived cookie from an interstitial
+      // and use a meta refresh to return to the requested page. Wait for that
+      // navigation before inspecting the real agenda.
+      if ((await page.locator('meta[http-equiv="refresh" i]').count()) > 0) {
+        sourceLogger.info('Waiting for source interstitial refresh');
+        await page.waitForTimeout(4_000);
+        await page.waitForLoadState('domcontentloaded', { timeout: 10_000 }).catch(() => undefined);
+      }
+
       if (source.metadata.waitForSelector && typeof source.metadata.waitForSelector === 'string') {
         await page.waitForSelector(source.metadata.waitForSelector, { timeout: 10_000 }).catch(() => undefined);
       }
