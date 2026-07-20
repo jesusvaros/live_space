@@ -20,6 +20,7 @@ const source = (
     parserKey?: ParserKey;
     ready?: boolean;
     structuredDataVerified?: boolean;
+    categoryAllowlist?: string[];
   } = {}
 ): SeedSource => ({
   source_type: 'venue',
@@ -32,6 +33,7 @@ const source = (
     termsReviewStatus: options.ready ? 'approved' : 'pending',
     fixtureVerified: options.ready ?? false,
     structuredDataVerified: options.structuredDataVerified ?? false,
+    categoryAllowlist: options.categoryAllowlist ?? [],
   },
   terms_reviewed_at: options.ready ? '2026-07-18T00:00:00.000Z' : null,
   is_active: options.ready ?? false,
@@ -81,6 +83,11 @@ export const seedSources: SeedSource[] = [
   source('Upload', 'https://uploadbarcelona.com/', 'Barcelona', 'https://uploadbarcelona.com/'),
   source('La Nau', 'https://lanau.com/', 'Barcelona', 'https://lanau.com/'),
   source('Luz de Gas', 'https://luzdegas.com/', 'Barcelona', 'https://luzdegas.com/'),
-  source('Jamboree', 'https://jamboreejazz.com/', 'Barcelona', 'https://jamboreejazz.com/'),
+  source('Jamboree', 'https://jamboreejazz.com/agenda/', 'Barcelona', 'https://jamboreejazz.com/', {
+    parserKey: 'tribe-events-api',
+    ready: true,
+    structuredDataVerified: true,
+    categoryAllowlist: ['Concert'],
+  }),
   source('Wolf Barcelona', 'https://wolfbarcelona.com/', 'Barcelona', 'https://wolfbarcelona.com/'),
 ];

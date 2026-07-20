@@ -256,6 +256,9 @@ export const normalizeStagingEvent = (
   if (eventType === 'festival') {
     aiReasons.push('festival-like-title');
   }
+  if (eventType === 'session') {
+    aiReasons.push('session-like-title');
+  }
 
   const confidencePieces = [
     startsAt ? 1 : 0.35,
