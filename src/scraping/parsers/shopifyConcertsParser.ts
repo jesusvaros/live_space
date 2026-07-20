@@ -60,7 +60,17 @@ export const mapShopifyConcert = (
     venueName: source.name,
     city: source.city ?? undefined,
     artistNames: [artistFromTitle(title)],
-    rawPayload: product,
+    // Shopify refreshes product/variant `updated_at` values on reads. Keeping
+    // only catalog fields makes the staging hash stable while preserving the
+    // official content needed for provenance and change detection.
+    rawPayload: {
+      id: product.id,
+      title: product.title,
+      handle: product.handle,
+      body_html: product.body_html,
+      product_type: product.product_type,
+      tags: product.tags,
+    },
   };
 };
 

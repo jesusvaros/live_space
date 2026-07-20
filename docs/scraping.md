@@ -62,7 +62,8 @@ las actividades de discoteca quedan excluidas por categoría.
 Movistar Arena detectó 30 conciertos en su listado oficial filtrado: publicó 27
 y conservó 3 títulos ambiguos para revisión humana.
 Independance Club detectó 11 productos etiquetados como conciertos: publicó 4 y
-conservó 7 carteles largos o ambiguos para revisión.
+conservó 7 carteles largos o ambiguos para revisión. Su payload omite los campos
+`updated_at` que Shopify modifica durante las lecturas para mantener hashes estables.
 
 ## Confianza y deduplicación
 
