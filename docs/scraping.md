@@ -53,8 +53,10 @@ duplicados por URL canónica. Las webs sin JSON-LD permanecerán inactivas hasta
 disponer de un parser y selectores propios; el parser HTML genérico no constituye
 por sí solo autorización para activar una fuente.
 
-Estado remoto del 21 de julio de 2026: 268 conciertos publicados, 9 salas y 258
-artistas. La Riviera aportó 87 conciertos publicados de 88 detectados; el cartel
+Estado remoto del 21 de julio de 2026: 268 conciertos publicados, 28 salas y 258
+artistas. Diecinueve salas proceden del primer descubrimiento automático con
+evidencia fuerte de OpenStreetMap; otras 36 observaciones permanecen como
+candidatas. La Riviera aportó 87 conciertos publicados de 88 detectados; el cartel
 `Editors + Big Sleep` permanece en revisión por contener varios artistas. Los
 candidatos que mezclan promotor, festival o actividad no musical también se
 retienen para evitar perfiles falsos. Sala But aportó sus dos próximas fechas y
@@ -82,6 +84,32 @@ la taxonomía `Concierto` y el recinto `Luz de Gas` excluye fiestas y Sala B.
 Los factores de puntuación deben ser explicables: identificador externo, URL,
 fecha/hora, sala normalizada, localidad, artistas y similitud de título. Nunca se
 publica a partir de una puntuación opaca.
+
+## Descubrimiento y ciclo de vida de salas
+
+El workflow `discover-venues.yml` recorre semanalmente 54 ciudades españolas.
+Obtiene la caja geográfica de cada ciudad, consulta instancias públicas de
+Overpass con fallback y conserva el identificador y las etiquetas originales de
+OpenStreetMap. La etiqueta `amenity=music_venue`, con nombre y ubicación, tiene
+confianza 0,97 y puede crear una sala publicada. `live_music=yes` y los auditorios
+se conservan como candidatos hasta cruzarlos con programación oficial.
+
+Si una sala confirmada dispone de web oficial se crea también una fuente inactiva
+en la cola de implementación. Nunca se activa solo por descubrimiento: primero se
+debe reconocer el motor, localizar la agenda, revisar condiciones y verificar un
+fixture. Redes sociales no se convierten en fuentes de scraping.
+
+Cada captura completa pone `consecutive_misses` a cero. Una candidata ausente
+durante tres descubrimientos pasa a `inactive_review` y abre una alerta; no se
+borra ni se archiva automáticamente. Un resultado vacío o una ciudad fallida se
+rechaza como snapshot y no incrementa ausencias.
+
+El watcher diario registra una identidad estable por concierto y distingue un
+cambio real de una agenda vacía o una caída de conteo superior al 70 %. Dos
+ausencias consecutivas en capturas fiables abren revisión. Dos fallos de fuente
+consecutivos marcan la fuente como rota. Ninguno cancela eventos automáticamente.
+La primera ejecución real inicializó 351 observaciones; nueve fuentes quedaron
+saludables y una agenda vacía quedó degradada con alerta abierta.
 
 ## Enriquecimiento
 

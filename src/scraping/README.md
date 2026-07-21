@@ -2,6 +2,12 @@
 
 Scraper modular para conciertos en Espana con flujo `scrape_sources -> scrape_runs -> staging_events -> venue_places / artists / events / event_artists`.
 
+El catálogo de salas se amplía con `npm run venues:discover`. El worker conserva
+evidencia y ciclo de vida en `venue_discovery_candidates`, promociona únicamente
+`amenity=music_venue` de alta confianza y prepara webs oficiales como fuentes
+inactivas. `sourceWatcher` observa a diario fuentes y eventos sin interpretar una
+captura vacía como cierre o cancelación.
+
 ## Arquitectura
 
 El pipeline vive en `src/` y se separa por responsabilidad:

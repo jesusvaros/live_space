@@ -2,7 +2,7 @@
 
 Las duraciones son orientativas; las puertas de salida deciden el avance.
 
-## Progreso a 18 de julio de 2026
+## Progreso a 21 de julio de 2026
 
 - Recuperación e inventario: completados sin extraer datos sensibles.
 - CI, typecheck, lint, tests, app y wiki: verdes.
@@ -20,6 +20,10 @@ Las duraciones son orientativas; las puertas de salida deciden el avance.
 - Scraping: piloto limitado a Madrid/Barcelona y sin IA de pago; diez fuentes
   oficiales se ejecutan diariamente en GitHub Actions. La primera ejecución manual
   desde `main` terminó sin errores y confirmó la idempotencia del pipeline.
+- Descubrimiento nacional: worker semanal preparado para 54 ciudades, con 55
+  candidatos observados en la primera prueba de Madrid, Barcelona y Valencia, 19
+  salas nuevas confirmadas y 17 webs en cola de parser. El watcher diario registra
+  cambios, fuentes rotas y ausencias consecutivas sin cancelar automáticamente.
 
 ## Fase 0 — Recuperación y línea base
 
@@ -86,6 +90,10 @@ tiendas cubiertos.
 Una ciudad no se activa por calendario: debe cumplir los mismos umbrales del
 piloto. Al 70 % de cualquier cuota se revisa capacidad; al 80 % se limita la
 operación antes de generar cargos.
+
+El inventario nacional de salas sí puede adelantarse a la activación comercial:
+el descubridor recorre las capitales cada semana, pero las agendas y la
+autopublicación de conciertos se habilitan fuente a fuente según calidad.
 
 ## Registro de deuda
 

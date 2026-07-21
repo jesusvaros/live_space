@@ -5,6 +5,7 @@ import type { RawScrapedEvent, ScrapeSource } from '../types/scrape.js';
 import { createDeterministicHash } from '../utils/hash.js';
 import { Logger } from '../utils/logger.js';
 import { runWithConcurrency } from '../utils/promisePool.js';
+import { recordFailedSnapshot, recordSuccessfulSnapshot } from './sourceWatcher.js';
 
 export type ScrapeSourcesSummary = {
   sourceCount: number;
@@ -115,6 +116,8 @@ export const scrapeSources = async (logger = new Logger(env.logLevel)): Promise<
         }
       }
 
+      const watchAssessment = await recordSuccessfulSnapshot(supabase, source, items);
+
       const { error: finishError } = await supabase
         .from('scrape_runs')
         .update({
@@ -135,6 +138,8 @@ export const scrapeSources = async (logger = new Logger(env.logLevel)): Promise<
 
       sourceLogger.info('Scrape run completed', {
         rawCount: items.length,
+        watchStatus: watchAssessment.status,
+        snapshotTrustworthy: watchAssessment.trustworthy,
       });
     } catch (sourceError) {
       errorCount += 1;
@@ -147,6 +152,9 @@ export const scrapeSources = async (logger = new Logger(env.logLevel)): Promise<
           finished_at: new Date().toISOString(),
         })
         .eq('id', scrapeRun.id);
+      await recordFailedSnapshot(supabase, source, sourceError).catch((watchError) => {
+        sourceLogger.error('Failed to update source watcher state', watchError);
+      });
     }
   });
 

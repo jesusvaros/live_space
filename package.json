@@ -23,7 +23,8 @@
     "scrape:weekly": "npm run scrape:build && node dist-scraper/scripts/runWeeklyScrape.js",
     "scrape:process": "npm run scrape:build && node dist-scraper/scripts/processPendingStaging.js",
     "scrape:seed": "npm run scrape:build && node dist-scraper/scripts/seedSources.js",
-    "scrape:probe": "npm run scrape:build && node dist-scraper/scripts/probeSources.js"
+    "scrape:probe": "npm run scrape:build && node dist-scraper/scripts/probeSources.js",
+    "venues:discover": "npm run scrape:build && node dist-scraper/scripts/discoverVenues.js"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.1",
