@@ -1,6 +1,6 @@
 # Estado actual
 
-Fecha de la última actualización: **18 de julio de 2026**.
+Fecha de la última actualización: **21 de julio de 2026**.
 
 ## Código
 
@@ -13,11 +13,11 @@ Fecha de la última actualización: **18 de julio de 2026**.
 - La interfaz incluye descubrimiento, agenda, mapa, feed, perfiles de artista y
   sala, detalle de evento, subida, QR y pantallas administrativas.
 - El proyecto remoto Supabase `live-space-pilot` está creado en París
-  (`eu-west-3`) sobre el plan Free. Las seis migraciones canónicas aplicadas
-  mantienen 25 tablas públicas y RLS en todas ellas.
-- La base local cuenta con configuración, seis migraciones canónicas, RLS,
+  (`eu-west-3`) sobre el plan Free. Las siete migraciones canónicas aplicadas
+  mantienen 30 tablas públicas y RLS en todas ellas.
+- La base local cuenta con configuración, siete migraciones canónicas, RLS,
   cuotas de media, modelos de lectura y Edge Functions de firma/webhook. Las
-  seis migraciones están aplicadas y registradas en el piloto remoto. Falta ejecutar el reset real porque
+  siete migraciones están aplicadas y registradas en el piloto remoto. Falta ejecutar el reset real porque
   Docker no está disponible en esta máquina durante la revisión.
 - Las funciones `cloudinary-sign-upload` y `cloudinary-webhook` están desplegadas.
   La firma exige JWT; el webhook no exige JWT de Supabase, pero valida la firma y
@@ -35,7 +35,7 @@ Fecha de la última actualización: **18 de julio de 2026**.
   deduplicación. Hay 18 fuentes piloto registradas y diez operativas:
   Independance Club, Jamboree, La Riviera, Movistar Arena, Siroco, Sala Apolo,
   Sala But, Sala El Sol, Luz de Gas y Razzmatazz. Los parsers oficiales han
-  publicado 268 conciertos, 9 salas y 258 artistas; las otras 8
+  publicado 268 conciertos y 258 artistas; las otras 8
   fuentes siguen pendientes de parser específico. Jamboree filtra exclusivamente
   conciertos: publicó 121, retuvo 55 candidatos ambiguos y rechazó 16 sin artista.
   Movistar Arena añadió 27 conciertos y dejó 3 candidatos en revisión.
@@ -43,6 +43,14 @@ Fecha de la última actualización: **18 de julio de 2026**.
   para revisión.
   Luz de Gas añadió 15 conciertos; sus fiestas y la programación de Sala B se
   excluyen mediante taxonomías oficiales.
+- El descubridor de salas y el watcher de cambios están desplegados en base de
+  datos. La primera captura de Madrid, Barcelona y Valencia produjo 55 candidatos,
+  confirmó 19 salas con evidencia `amenity=music_venue` y elevó el catálogo a 28
+  salas publicadas. Diecisiete webs oficiales nuevas están en la cola inactiva de
+  implementación de parser. La ejecución repetida de Madrid produjo cero altas.
+  El watcher ya observó 351 identidades de concierto: nueve fuentes quedaron
+  saludables y Sala El Sol quedó degradada por devolver una agenda vacía, sin
+  cancelar ni marcar como ausentes sus eventos.
 
 ## Deuda heredada
 
@@ -84,10 +92,10 @@ emails, sesiones y tokens.
 
 ## Infraestructura remota del piloto
 
-| Recurso | Estado al 18 de julio de 2026 |
+| Recurso | Estado al 21 de julio de 2026 |
 | --- | --- |
 | Supabase | `live-space-pilot`, París, Free, Data API sin exposición automática de tablas |
-| Base remota | 6 migraciones aplicadas y registradas; 25/25 tablas públicas con RLS |
+| Base remota | 7 migraciones aplicadas y registradas; 30/30 tablas públicas con RLS |
 | Auth | email/contraseña, confirmación de email, registro activo, anónimo desactivado |
 | Edge Functions | firma de subida y webhook desplegados; peticiones no autorizadas rechazadas |
 | Cloudinary | entorno `Live Space Pilot` reutilizado por el límite de un entorno del plan Free |
