@@ -101,8 +101,8 @@ fixture. Redes sociales no se convierten en fuentes de scraping.
 
 Cada captura completa pone `consecutive_misses` a cero. Una candidata ausente
 durante tres descubrimientos pasa a `inactive_review` y abre una alerta; no se
-borra ni se archiva automáticamente. Un resultado vacío o una ciudad fallida se
-rechaza como snapshot y no incrementa ausencias.
+borra ni se archiva automáticamente. Una respuesta válida sin resultados cuenta
+como snapshot; un timeout, error HTTP o respuesta inválida no incrementa ausencias.
 
 El watcher diario registra una identidad estable por concierto y distingue un
 cambio real de una agenda vacía o una caída de conteo superior al 70 %. Dos

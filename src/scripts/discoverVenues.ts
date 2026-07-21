@@ -197,10 +197,6 @@ const discoverScope = async (scope: string) => {
 
   try {
     const candidates = await fetchCandidates(scope);
-    if (candidates.length === 0) {
-      throw new Error(`Discovery returned zero candidates for ${scope}; snapshot rejected`);
-    }
-
     const { data: previous, error: previousError } = await supabase
       .from('venue_discovery_candidates')
       .select('id,provider_id,lifecycle_status,consecutive_misses,promoted_venue_place_id')
