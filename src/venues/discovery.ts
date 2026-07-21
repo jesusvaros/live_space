@@ -106,3 +106,9 @@ export const parseOsmCandidates = (scope: string, elements: OsmElement[]): Venue
 
 export const candidateSnapshotHash = (candidates: VenueCandidate[]): string =>
   createDeterministicHash(candidates.map(({ provider_id, name, evidence_type }) => ({ provider_id, name, evidence_type })));
+
+export const isDiscoveryBatchFailure = (
+  errorCount: number,
+  totalCount: number,
+  maxFailureRate = 0.25,
+): boolean => totalCount > 0 && errorCount / totalCount > maxFailureRate;

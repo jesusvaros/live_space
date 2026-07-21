@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildOverpassQuery, parseOsmCandidates } from './discovery';
+import { buildOverpassQuery, isDiscoveryBatchFailure, parseOsmCandidates } from './discovery';
 
 describe('venue discovery', () => {
   it('keeps strong and weak live-music evidence separate', () => {
@@ -28,5 +28,11 @@ describe('venue discovery', () => {
 
   it('accepts an empty provider snapshot as a valid candidate list', () => {
     expect(parseOsmCandidates('Sevilla', [])).toEqual([]);
+  });
+
+  it('fails a batch only when provider errors exceed the allowed rate', () => {
+    expect(isDiscoveryBatchFailure(1, 54)).toBe(false);
+    expect(isDiscoveryBatchFailure(13, 54)).toBe(false);
+    expect(isDiscoveryBatchFailure(14, 54)).toBe(true);
   });
 });
