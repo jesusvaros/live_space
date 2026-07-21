@@ -4,6 +4,7 @@ import { Logger } from '../utils/logger.js';
 import {
   buildOverpassQuery,
   candidateSnapshotHash,
+  isDiscoveryBatchFailure,
   parseOsmCandidates,
   type OsmElement,
   type BoundingBox,
@@ -20,6 +21,11 @@ const scopes = (process.env.VENUE_DISCOVERY_SCOPES || 'Madrid,Barcelona')
   .split(',')
   .map((scope) => scope.trim())
   .filter(Boolean);
+const configuredFailureRate = Number(process.env.VENUE_DISCOVERY_MAX_FAILURE_RATE || '0.25');
+const maxFailureRate =
+  Number.isFinite(configuredFailureRate) && configuredFailureRate >= 0 && configuredFailureRate <= 1
+    ? configuredFailureRate
+    : 0.25;
 
 const pilotBoundingBoxes: Record<string, BoundingBox> = {
   Madrid: [40.312, -3.889, 40.643, -3.518],
@@ -299,7 +305,14 @@ const run = async () => {
       logger.error('Venue discovery scope failed', error, { scope });
     }
   }
-  if (errorCount > 0) throw new Error(`${errorCount} venue discovery scopes failed`);
+  logger.info('Venue discovery batch completed', {
+    scopeCount: scopes.length,
+    errorCount,
+    maxFailureRate,
+  });
+  if (isDiscoveryBatchFailure(errorCount, scopes.length, maxFailureRate)) {
+    throw new Error(`${errorCount} of ${scopes.length} venue discovery scopes failed`);
+  }
 };
 
 run().catch((error) => {

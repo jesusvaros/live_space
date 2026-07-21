@@ -103,6 +103,8 @@ Cada captura completa pone `consecutive_misses` a cero. Una candidata ausente
 durante tres descubrimientos pasa a `inactive_review` y abre una alerta; no se
 borra ni se archiva automáticamente. Una respuesta válida sin resultados cuenta
 como snapshot; un timeout, error HTTP o respuesta inválida no incrementa ausencias.
+Los fallos aislados quedan registrados y se reintentan en la siguiente ejecución;
+el job nacional falla si más del 25 % de las ciudades no puede consultarse.
 
 El watcher diario registra una identidad estable por concierto y distingue un
 cambio real de una agenda vacía o una caída de conteo superior al 70 %. Dos
