@@ -25,4 +25,8 @@ describe('venue discovery', () => {
     expect(query).toContain('(40.31,-3.89,40.64,-3.51)');
     expect(query).not.toContain('area.searchArea');
   });
+
+  it('accepts an empty provider snapshot as a valid candidate list', () => {
+    expect(parseOsmCandidates('Sevilla', [])).toEqual([]);
+  });
 });
