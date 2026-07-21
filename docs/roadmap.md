@@ -17,7 +17,7 @@ Las duraciones son orientativas; las puertas de salida deciden el avance.
 - Navegación anónima: agenda, Explorar, Mapa y Momentos verificados en navegador;
   Crear y Perfil permanecen protegidos. Se corrigió un bucle de render del estado
   inicial y los seis recorridos E2E pasan en móvil y escritorio.
-- Scraping: piloto limitado a Madrid/Barcelona y sin IA de pago; nueve fuentes
+- Scraping: piloto limitado a Madrid/Barcelona y sin IA de pago; diez fuentes
   oficiales se ejecutan diariamente en GitHub Actions. La primera ejecución manual
   desde `main` terminó sin errores y confirmó la idempotencia del pipeline.
 

@@ -16,6 +16,7 @@ describe('pilot source catalog', () => {
       'Independance Club',
       'Jamboree',
       'La Riviera',
+      'Luz de Gas',
       'Movistar Arena',
       'Razzmatazz',
       'Sala Apolo',

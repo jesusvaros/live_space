@@ -119,6 +119,7 @@ No se requiere ninguna clave de IA para el piloto.
 - `json-ld-agenda`: prioridad para eventos Schema.org en JSON-LD y grafos `@graph`.
 - `movistar-arena-agenda`: listado oficial Schema.org filtrado a conciertos; interpreta fecha y hora desde la URL canónica tras la recarga intermedia del sitio.
 - `shopify-concerts`: colección pública de productos etiquetados como conciertos; activa para Independance Club y separada de sus sesiones nocturnas.
+- `luz-de-gas-calendar`: cruza el calendario con las taxonomías WordPress oficiales para incluir solo conciertos del recinto principal.
 - `generic-agenda`: parser tolerante para listados HTML genericos.
 - `wordpress-generic`: pensado para webs WordPress y layouts tipo The Events Calendar.
 - `single-event-page`: para fuentes que exponen un unico evento o landing de detalle.

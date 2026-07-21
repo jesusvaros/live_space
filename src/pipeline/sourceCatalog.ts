@@ -89,7 +89,11 @@ export const seedSources: SeedSource[] = [
   source('Sidecar', 'https://sidecar.es/', 'Barcelona', 'https://sidecar.es/'),
   source('Upload', 'https://uploadbarcelona.com/', 'Barcelona', 'https://uploadbarcelona.com/'),
   source('La Nau', 'https://lanau.com/', 'Barcelona', 'https://lanau.com/'),
-  source('Luz de Gas', 'https://luzdegas.com/', 'Barcelona', 'https://luzdegas.com/'),
+  source('Luz de Gas', 'https://luzdegas.com/', 'Barcelona', 'https://luzdegas.com/', {
+    parserKey: 'luz-de-gas-calendar',
+    ready: true,
+    structuredDataVerified: true,
+  }),
   source('Jamboree', 'https://jamboreejazz.com/agenda/', 'Barcelona', 'https://jamboreejazz.com/', {
     parserKey: 'tribe-events-api',
     ready: true,
