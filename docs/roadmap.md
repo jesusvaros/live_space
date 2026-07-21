@@ -20,9 +20,9 @@ Las duraciones son orientativas; las puertas de salida deciden el avance.
 - Scraping: piloto limitado a Madrid/Barcelona y sin IA de pago; diez fuentes
   oficiales se ejecutan diariamente en GitHub Actions. La primera ejecución manual
   desde `main` terminó sin errores y confirmó la idempotencia del pipeline.
-- Descubrimiento nacional: worker semanal preparado para 54 ciudades, con 55
-  candidatos observados en la primera prueba de Madrid, Barcelona y Valencia, 19
-  salas nuevas confirmadas y 17 webs en cola de parser. El watcher diario registra
+- Descubrimiento nacional: worker semanal activo para 54 ciudades; la primera
+  pasada completó 54/54, observó 86 candidatos, confirmó 25 salas y dejó 19 webs
+  en cola de parser. El watcher diario registra
   cambios, fuentes rotas y ausencias consecutivas sin cancelar automáticamente.
 
 ## Fase 0 — Recuperación y línea base

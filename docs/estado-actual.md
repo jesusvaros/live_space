@@ -44,9 +44,9 @@ Fecha de la última actualización: **21 de julio de 2026**.
   Luz de Gas añadió 15 conciertos; sus fiestas y la programación de Sala B se
   excluyen mediante taxonomías oficiales.
 - El descubridor de salas y el watcher de cambios están desplegados en base de
-  datos. La primera captura de Madrid, Barcelona y Valencia produjo 55 candidatos,
-  confirmó 19 salas con evidencia `amenity=music_venue` y elevó el catálogo a 28
-  salas publicadas. Diecisiete webs oficiales nuevas están en la cola inactiva de
+  datos. La primera pasada nacional procesó 54/54 ciudades, produjo 86 candidatos,
+  confirmó 25 salas con evidencia `amenity=music_venue` y elevó el catálogo a 34
+  salas publicadas. Diecinueve webs oficiales nuevas están en la cola inactiva de
   implementación de parser. La ejecución repetida de Madrid produjo cero altas.
   El watcher ya observó 351 identidades de concierto: nueve fuentes quedaron
   saludables y Sala El Sol quedó degradada por devolver una agenda vacía, sin
