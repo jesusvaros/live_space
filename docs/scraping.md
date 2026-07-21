@@ -53,9 +53,9 @@ duplicados por URL canónica. Las webs sin JSON-LD permanecerán inactivas hasta
 disponer de un parser y selectores propios; el parser HTML genérico no constituye
 por sí solo autorización para activar una fuente.
 
-Estado remoto del 21 de julio de 2026: 268 conciertos publicados, 28 salas y 258
-artistas. Diecinueve salas proceden del primer descubrimiento automático con
-evidencia fuerte de OpenStreetMap; otras 36 observaciones permanecen como
+Estado remoto del 21 de julio de 2026: 268 conciertos publicados, 34 salas y 258
+artistas. Veinticinco salas proceden del primer descubrimiento automático con
+evidencia fuerte de OpenStreetMap; otras 61 observaciones permanecen como
 candidatas. La Riviera aportó 87 conciertos publicados de 88 detectados; el cartel
 `Editors + Big Sleep` permanece en revisión por contener varios artistas. Los
 candidatos que mezclan promotor, festival o actividad no musical también se
@@ -112,6 +112,8 @@ ausencias consecutivas en capturas fiables abren revisión. Dos fallos de fuente
 consecutivos marcan la fuente como rota. Ninguno cancela eventos automáticamente.
 La primera ejecución real inicializó 351 observaciones; nueve fuentes quedaron
 saludables y una agenda vacía quedó degradada con alerta abierta.
+La primera pasada nacional completó 54/54 ciudades en 4 minutos y 9 segundos,
+registró 86 observaciones y dejó 19 webs oficiales en cola de parser.
 
 ## Enriquecimiento
 
