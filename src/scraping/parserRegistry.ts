@@ -4,6 +4,7 @@ import { eventsManagerCalendarParser } from './parsers/eventsManagerCalendarPars
 import { elementorAgendaParser } from './parsers/elementorAgendaParser.js';
 import { genericAgendaParser } from './parsers/genericAgendaParser.js';
 import { jsonLdAgendaParser } from './parsers/jsonLdAgendaParser.js';
+import { linkedEventCardsParser } from './parsers/linkedEventCardsParser.js';
 import { luzDeGasCalendarParser } from './parsers/luzDeGasCalendarParser.js';
 import { movistarArenaAgendaParser } from './parsers/movistarArenaAgendaParser.js';
 import { residentAdvisorLikeParser } from './parsers/residentAdvisorLikeParser.js';
@@ -19,6 +20,7 @@ const parserRegistry: Record<ParserKey, VenueParser> = {
   'events-manager-calendar': eventsManagerCalendarParser,
   'elementor-agenda': elementorAgendaParser,
   'json-ld-agenda': jsonLdAgendaParser,
+  'linked-event-cards': linkedEventCardsParser,
   'luz-de-gas-calendar': luzDeGasCalendarParser,
   'movistar-arena-agenda': movistarArenaAgendaParser,
   'generic-agenda': genericAgendaParser,

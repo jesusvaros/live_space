@@ -1,6 +1,6 @@
 # Estado actual
 
-Fecha de la última actualización: **21 de julio de 2026**.
+Fecha de la última actualización: **22 de julio de 2026**.
 
 ## Código
 
@@ -32,11 +32,11 @@ Fecha de la última actualización: **21 de julio de 2026**.
   sus modelos de lectura. No quedan accesos al bucket `media` ni nombres de claves
   foráneas heredadas en el cliente.
 - La ingesta dispone de fuentes, ejecuciones, staging, normalización y
-  deduplicación. Hay 18 fuentes piloto registradas y diez operativas:
+  deduplicación. Hay 18 fuentes piloto versionadas y 13 operativas:
   Independance Club, Jamboree, La Riviera, Movistar Arena, Siroco, Sala Apolo,
-  Sala But, Sala El Sol, Luz de Gas y Razzmatazz. Los parsers oficiales han
-  publicado 268 conciertos y 258 artistas; las otras 8
-  fuentes siguen pendientes de parser específico. Jamboree filtra exclusivamente
+  Sala But, Sala El Sol, Luz de Gas, Razzmatazz, Fun House, Sala Clamores y Sala
+  Wagon. Los parsers oficiales han publicado 270 conciertos y 270 artistas.
+  Jamboree filtra exclusivamente
   conciertos: publicó 121, retuvo 55 candidatos ambiguos y rechazó 16 sin artista.
   Movistar Arena añadió 27 conciertos y dejó 3 candidatos en revisión.
   Independance Club añadió 4 conciertos y conservó 7 títulos largos o ambiguos
@@ -51,6 +51,12 @@ Fecha de la última actualización: **21 de julio de 2026**.
   El watcher ya observó 351 identidades de concierto: nueve fuentes quedaron
   saludables y Sala El Sol quedó degradada por devolver una agenda vacía, sin
   cancelar ni marcar como ausentes sus eventos.
+- El auto-sondeo de las 19 webs descubiertas clasificó tres fuentes reproducibles,
+  15 que requieren parser específico y una no compatible. Las tres reproducibles
+  ya están activas. Su primera captura añadió 51 candidatos a staging: 50 esperan
+  revisión de artista/título y uno se rechazó. El alta queda auditada mediante el
+  comando `scrape:approve-probed`; el sondeo semanal nunca activa una fuente que
+  no haya sido revisada.
 
 ## Deuda heredada
 

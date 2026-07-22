@@ -76,6 +76,17 @@ const buildMadridDate = (
   return new Date(seed.getTime() - offset);
 };
 
+const isValidCalendarDate = (year: number, month: number, day: number): boolean => {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return false;
+  if (month < 0 || month > 11 || day < 1 || day > 31) return false;
+  const candidate = new Date(Date.UTC(year, month, day));
+  return (
+    candidate.getUTCFullYear() === year &&
+    candidate.getUTCMonth() === month &&
+    candidate.getUTCDate() === day
+  );
+};
+
 const parseTime = (value: string): { hour: number; minute: number } => {
   const timeMatch = value.match(/(\d{1,2})[:.h](\d{2})/i);
   if (timeMatch) {
@@ -119,6 +130,7 @@ export const parseDateTextToIso = (
     const day = Number(monthNameMatch[1]);
     const month = MONTHS[monthNameMatch[2].toLowerCase()];
     const year = monthNameMatch[3] ? Number(monthNameMatch[3]) : referenceDate.getUTCFullYear();
+    if (!isValidCalendarDate(year, month, day)) return null;
     let parsed = buildMadridDate(year, month, day, hour, minute);
     if (!monthNameMatch[3] && parsed.getTime() < referenceDate.getTime() - 7 * 24 * 60 * 60 * 1000) {
       parsed = buildMadridDate(year + 1, month, day, hour, minute);
@@ -136,6 +148,7 @@ export const parseDateTextToIso = (
     if (year < 100) {
       year += 2000;
     }
+    if (!isValidCalendarDate(year, month, day)) return null;
 
     let parsed = buildMadridDate(year, month, day, hour, minute);
     if (!numericMatch[3] && parsed.getTime() < referenceDate.getTime() - 7 * 24 * 60 * 60 * 1000) {
