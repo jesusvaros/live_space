@@ -1,17 +1,17 @@
 import type { RawScrapedEvent, VenueParser } from '../../types/scrape.js';
 
-const DETAIL_LINK = /\/(?:eventos?|events?|conciertos?|concerts?)\//i;
+const DETAIL_LINK = /\/(?:eventos?|events?|conciertos?|concerts?)\/[^/?#]+/i;
 
 export const linkedEventCardsParser: VenueParser = {
   key: 'linked-event-cards',
   canHandle: (_url, html) => {
-    const matches = html.match(/href=["'][^"']*\/(?:eventos?|events?|conciertos?|concerts?)\//gi);
+    const matches = html.match(/href=["'][^"']*\/(?:eventos?|events?|conciertos?|concerts?)\/[^"'/?#]+/gi);
     return (matches || []).length >= 2;
   },
   parseListPage: async (page, source) =>
     page.evaluate(
       ({ sourceUrl, venueName, city }) => {
-        const detailLink = /\/(?:eventos?|events?|conciertos?|concerts?)\//i;
+        const detailLink = /\/(?:eventos?|events?|conciertos?|concerts?)\/[^/?#]+/i;
         const dateSignal =
           /(?:\b\d{1,2}[/. -]\d{1,2}(?:[/. -]\d{2,4})?\b)|(?:\b\d{1,2}\s+(?:de\s+)?(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?=\s|\d|$))/i;
         const clean = (value: string | null | undefined) => value?.replace(/\s+/g, ' ').trim() || '';
@@ -25,7 +25,7 @@ export const linkedEventCardsParser: VenueParser = {
           } catch {
             continue;
           }
-          if (!detailLink.test(url.pathname) || seen.has(url.toString())) continue;
+          if (!detailLink.test(url.pathname) || url.hash || seen.has(url.toString())) continue;
 
           let root: HTMLElement | null = anchor.closest('article, li, [class*="event" i], [class*="card" i]');
           let cursor = anchor.parentElement;
@@ -35,7 +35,7 @@ export const linkedEventCardsParser: VenueParser = {
             cursor = cursor.parentElement;
           }
           const text = clean(root?.textContent || anchor.parentElement?.textContent);
-          if (!dateSignal.test(text)) continue;
+          if (!dateSignal.test(text) || text.length > 2_000) continue;
 
           const titleCandidates = Array.from(
             root?.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, p, [class*="title" i]') || [],
@@ -81,7 +81,8 @@ export const linkedEventCardsParser: VenueParser = {
 
 export const isLinkedEventDetailUrl = (url: string): boolean => {
   try {
-    return DETAIL_LINK.test(new URL(url).pathname);
+    const parsed = new URL(url);
+    return !parsed.hash && DETAIL_LINK.test(parsed.pathname);
   } catch {
     return false;
   }
