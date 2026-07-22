@@ -20,6 +20,11 @@ describe('Madrid event dates', () => {
       '2027-01-10T19:00:00.000Z',
     );
   });
+
+  it('rejects incomplete or impossible numeric dates instead of normalizing overflow', () => {
+    expect(parseDateTextToIso('Viernes 11 20:30')).toBeNull();
+    expect(parseDateTextToIso('32 julio 2026 20:30')).toBeNull();
+  });
 });
 
 describe('verified structured events', () => {

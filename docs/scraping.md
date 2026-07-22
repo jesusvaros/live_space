@@ -32,9 +32,10 @@ original o hash, parser/versión y campos extraídos. Las fechas se interpretan 
 `Europe/Madrid` y se almacenan con zona horaria.
 
 El catálogo piloto contiene 18 fuentes oficiales versionadas (10 de Madrid y 8
-de Barcelona). Diez están operativas: Independance Club, Jamboree, La Riviera,
+de Barcelona). Trece están operativas: Independance Club, Jamboree, La Riviera,
 Luz de Gas, Movistar Arena, Sala Apolo, Sala But, Siroco, Sala El Sol y
-Razzmatazz. Las demás
+Razzmatazz, más Fun House, Sala Clamores y Sala Wagon, incorporadas por el
+descubridor nacional. Las demás
 se crean con `is_active = false` y
 `termsReviewStatus = pending`. La activación se hace individualmente cuando la
 revisión está registrada y una sonda real del parser devuelve datos coherentes.
@@ -113,7 +114,26 @@ consecutivos marcan la fuente como rota. Ninguno cancela eventos automáticament
 La primera ejecución real inicializó 351 observaciones; nueve fuentes quedaron
 saludables y una agenda vacía quedó degradada con alerta abierta.
 La primera pasada nacional completó 54/54 ciudades en 4 minutos y 9 segundos,
-registró 86 observaciones y dejó 19 webs oficiales en cola de parser.
+registró 86 observaciones y dejó 19 webs oficiales en cola de parser. Un sondeo
+automático posterior localiza enlaces de agenda, prueba motores conocidos y hace
+dos lecturas para verificar que el resultado sea reproducible. El primer lote
+clasificó 3 fuentes como listas, 15 como necesitadas de parser específico y 1
+como no compatible. Después de revisar sus agendas públicas y `robots.txt`, se
+activaron Fun House, Sala Clamores y Sala Wagon con el parser reutilizable
+`linked-event-cards`.
+
+El comando `npm run scrape:auto-probe` actualiza la clasificación técnica de las
+fuentes descubiertas que siguen inactivas. No las activa por sí solo. Tras revisar
+una fuente, `APPROVED_SOURCE_NAMES=... SOURCE_REVIEW_NOTE=... npm run
+scrape:approve-probed` valida que el sondeo sea reproducible y conserva la
+evidencia de activación. El workflow semanal ejecuta descubrimiento y sondeo; el
+watcher diario se ocupa de las fuentes que ya están activas.
+
+La primera captura de las tres fuentes nuevas produjo 51 candidatos: 30 de
+Clamores, 18 de Wagon y 3 de Fun House. Cincuenta permanecen en revisión porque
+los títulos de algunas tarjetas mezclan artista, género o texto promocional; uno
+de Wagon fue rechazado por no contener artista. No se elevó artificialmente la
+confianza para publicar datos dudosos.
 
 ## Enriquecimiento
 

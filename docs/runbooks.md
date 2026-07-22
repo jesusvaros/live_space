@@ -71,6 +71,22 @@ export, cifrado, subida o prueba genera alerta y no elimina la última copia bue
 4. Actualizar parser y fixture en PR con prueba de regresión.
 5. Reprocesar staging, revisar diferencias y reactivar tras dos ejecuciones verdes.
 
+## Incorporar una sala descubierta
+
+1. Ejecutar `npm run scrape:auto-probe`; el sondeo prueba agenda, parser y dos
+   lecturas deterministas sin activar la fuente.
+2. Revisar la muestra guardada en `metadata.autoProbe`, la agenda pública,
+   condiciones aplicables y `robots.txt`.
+3. Activar solo las fuentes aprobadas con
+   `APPROVED_SOURCE_NAMES="Sala A,Sala B" SOURCE_REVIEW_NOTE="..." npm run
+   scrape:approve-probed`.
+4. Ejecutar `npm run scrape:weekly` y comprobar conteos por fuente en staging.
+5. Mantener en revisión los títulos que mezclen artista, festival, género o texto
+   promocional; añadir un parser específico antes de automatizar su publicación.
+
+El comando de aprobación falla antes de mutar datos si una fuente no tiene dos
+lecturas coherentes o no está marcada como lista para revisión.
+
 ## Incidente de media o cuota
 
 1. Pausar firmas nuevas; la lectura pública sigue disponible si es segura.

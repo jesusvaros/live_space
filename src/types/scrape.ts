@@ -7,6 +7,7 @@ export type ParserKey =
   | 'events-manager-calendar'
   | 'elementor-agenda'
   | 'json-ld-agenda'
+  | 'linked-event-cards'
   | 'luz-de-gas-calendar'
   | 'movistar-arena-agenda'
   | 'razzmatazz-agenda'
@@ -46,6 +47,18 @@ export type ScrapeSourceMetadata = {
   officialWebsite?: string;
   termsReviewStatus?: 'pending' | 'approved' | 'rejected';
   fixtureVerified?: boolean;
+  autoProbe?: {
+    status: 'ready_for_review' | 'needs_parser' | 'unreachable' | 'unsupported';
+    parserKey?: ParserKey;
+    agendaUrl?: string;
+    eventCount: number;
+    confidence: number;
+    fingerprint?: string;
+    deterministic: boolean;
+    reason: string;
+    sample: Array<{ title?: string; dateText?: string; startsAt?: string | null; url?: string }>;
+    probedAt?: string;
+  };
   [key: string]: unknown;
 };
 
