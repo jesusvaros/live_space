@@ -65,6 +65,7 @@ export const assessProbeEvents = (
   const futureEvents = events.filter((event) => {
     const title = event.title?.replace(/\s+/g, ' ').trim() || '';
     if (title.length < 3 || title.length > 180 || !/\p{L}{2}/u.test(title)) return false;
+    if ((event.dateText?.length || 0) > 2_000) return false;
     if (/^(?:programaci[oó]n|agenda|calendario)(?:\s+\w+){0,3}$/i.test(title)) return false;
     if (/\.(?:png|jpe?g|gif|webp|svg|pdf)(?:[?#]|$)/i.test(event.sourceEventUrl || '')) return false;
     const parsed = event.startsAt || parseDateTextToIso(event.dateText, now);

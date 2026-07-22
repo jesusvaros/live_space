@@ -50,4 +50,16 @@ describe('automatic venue source probing', () => {
     };
     expect(assessProbeEvents([post], 'wordpress-generic', new Date('2026-07-22T00:00:00Z')).isViable).toBe(false);
   });
+
+  it('rejects a whole archive page mistaken for an event card', () => {
+    const archive: RawScrapedEvent = {
+      sourceUrl: 'https://sala.example/eventos',
+      sourceEventUrl: 'https://sala.example/eventos/#main',
+      title: 'Una noticia del archivo',
+      startsAt: '2026-12-01T20:00:00+01:00',
+      dateText: 'Contenido de archivo '.repeat(150),
+      rawPayload: {},
+    };
+    expect(assessProbeEvents([archive], 'linked-event-cards', new Date('2026-07-22T00:00:00Z')).isViable).toBe(false);
+  });
 });
