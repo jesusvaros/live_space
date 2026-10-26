@@ -33,6 +33,36 @@ describe('Madrid event dates', () => {
   });
 });
 
+describe('staging date reference', () => {
+  it('resolves undated text against the capture date, not the processing date', () => {
+    const source = {
+      id: 'source',
+      source_type: 'venue',
+      name: 'Jamboree',
+      base_url: 'https://jamboreejazz.com/',
+      city: 'Barcelona',
+      country_code: 'ES',
+      parser_key: 'generic-agenda',
+      frequency: 'daily',
+      is_active: true,
+      metadata: {},
+    } satisfies ScrapeSource;
+    const record = {
+      source_event_id: null,
+      extracted_title: 'Camille Jackson',
+      extracted_date_text: '8 septiembre 20:30',
+      extracted_starts_at: null,
+      extracted_venue_name: 'Jamboree',
+      extracted_city: 'Barcelona',
+      extracted_artist_names: ['Camille Jackson'],
+      raw_payload: {},
+      created_at: '2026-08-29T04:20:00.000Z',
+    } as StagingEventRecord;
+
+    expect(normalizeStagingEvent(record, source).normalizedEvent.startsAt).toBe('2026-09-08T18:30:00.000Z');
+  });
+});
+
 describe('verified structured events', () => {
   it('auto-publish confidence applies only to complete, unambiguous official records', () => {
     const source = {
