@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Content, Modal, Spinner } from '../components/ui/AppPrimitives';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Event, PostWithSetlist, Profile, VenuePlace, EventSetlistEntry, Artist } from '../lib/types';
 import { clearCached } from '../lib/requestCache';
@@ -16,6 +16,7 @@ import ShareSheet from '../components/ShareSheet';
 import { IconBookmark, IconBookmarkFilled, IconCalendar, IconCompass, IconMap, IconPlus, IconTicket, IconUser } from '../components/icons';
 import { fetchEventCardById } from '../data/eventQueries';
 import { createConfiguredCloudinaryMediaProvider, uploadEventPost } from '../media';
+import { useRouteEntityId } from '../hooks/useRouteEntityId';
 
 type EventDetailData = Event & {
   organizer?: Profile | null;
@@ -31,7 +32,7 @@ const EventDetail: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const locationState = location.state as EventDetailLocationState | null;
-  const { id = '' } = useParams<{ id: string }>();
+  const id = useRouteEntityId() || '';
   const { user } = useAuth();
   const { activeWorkspace } = useWorkspace();
   const [event, setEvent] = useState<EventDetailData | null>(null);

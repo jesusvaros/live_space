@@ -168,6 +168,7 @@ const AppRoutes = () => {
       <Routes>
         <Route path="/welcome" element={<WelcomeRoute />} />
         <Route path="/event/:id" element={deferredPage(<EventDetail />)} />
+        <Route path="/concierto/:slug" element={deferredPage(<EventDetail />)} />
         <Route path="/profile/:id" element={<ProfileDetail />} />
         <Route path="/post/:id" element={<PostDetail />} />
         <Route path="/discover" element={<Navigate to="/tabs/discover" replace />} />
@@ -209,6 +210,20 @@ const AppRoutes = () => {
           <Route path="artist/:id" element={<ArtistProfile />} />
           <Route path="venue/:id" element={<VenueDetail />} />
           <Route index element={<Navigate to={mainTabHref} replace />} />
+        </Route>
+        <Route
+          element={(
+            <TabsLayout
+              mainTabHref={mainTabHref}
+              profileTabHref={profileTabHref}
+              isArtistWorkspace={isArtistWorkspace}
+            />
+          )}
+        >
+          <Route path="sala/:slug" element={<VenueDetail />} />
+          <Route path="artista/:slug" element={<ArtistProfile />} />
+          <Route path="madrid/conciertos/*" element={<Events />} />
+          <Route path="barcelona/conciertos/*" element={<Events />} />
         </Route>
         <Route path="/" element={<Navigate to={loading ? '/welcome' : mainTabHref} replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />

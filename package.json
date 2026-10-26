@@ -6,6 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "web:prerender": "vite build && npm run scrape:build && node dist-scraper/scripts/buildPublicSite.js",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.scraper.json",
     "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
     "test": "vitest run",

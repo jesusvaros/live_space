@@ -21,7 +21,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          WORKFLOWS: scrape-weekly.yml discover-venues.yml backup-weekly.yml keepalive.yml
+          WORKFLOWS: scrape-weekly.yml discover-venues.yml backup-weekly.yml publish-web.yml keepalive.yml
         run: |
           set -euo pipefail
           for wf in $WORKFLOWS; do
