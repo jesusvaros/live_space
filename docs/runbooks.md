@@ -63,6 +63,15 @@ el dump cifrado y el manifiesto durante 14 días.
 Un backup no está validado hasta haber demostrado una restauración. Fallo de
 export, cifrado, subida o prueba genera alerta y no elimina la última copia buena.
 
+## Keepalive de crons
+
+GitHub desactiva los workflows programados de un repositorio público tras 60 días
+sin actividad (ocurrió el 21-sep-2026: el scrape no corrió hasta el 25-oct).
+`keepalive.yml` llama a la API `enable` de cada workflow programado los días 1 y
+15 de cada mes, sin commits ni acciones de terceros, y falla si alguno no queda
+`active`. Al añadir un workflow con `schedule`, incluirlo en `WORKFLOWS`.
+Comprobación manual: `gh api repos/jesusvaros/live_space/actions/workflows`.
+
 ## Fuente de scraping rota
 
 1. Suspender autopublicación de la fuente, no las demás.
