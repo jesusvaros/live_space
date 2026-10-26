@@ -15,6 +15,14 @@ describe('venue discovery', () => {
     expect(candidates[1]).toMatchObject({ name: 'Sala Uno', confidence: 0.97, lifecycle_status: 'ready_for_probe', website_url: 'https://salauno.es' });
   });
 
+  it('drops hijacked former venue domains so they are never stored or probed', () => {
+    const [candidate] = parseOsmCandidates('Madrid', [
+      { type: 'node', id: 4, tags: { name: 'Sala Lemon', amenity: 'music_venue', website: 'https://www.salalemon.com/' } },
+    ]);
+
+    expect(candidate).toMatchObject({ website_url: null, lifecycle_status: 'discovered' });
+  });
+
   it('builds a scoped administrative-area query', () => {
     expect(buildOverpassQuery('Barcelona')).toContain('["name"="Barcelona"]');
     expect(buildOverpassQuery('Barcelona')).toContain('["amenity"="music_venue"]');

@@ -78,6 +78,14 @@ publica a partir de una puntuación opaca.
 
 ## Descubrimiento y ciclo de vida de salas
 
+Los datos verificados a mano viven en `src/venues/curation.ts` y se aplican con
+`npm run venues:curate` (simulación por defecto, `-- --apply` escribe):
+dirección, código postal y coordenadas de las salas con scraper, y la lista de
+dominios antiguos secuestrados (BarCo, Sala Lemon, El Junco, Taboó, Café
+Populart, Wah Wah Club). Esas salas pierden `website_url`, pasan a `review` y su
+fuente queda inactiva con `metadata.hijackedDomain`. El descubrimiento de OSM y
+los scrapers solo rellenan campos vacíos y nunca guardan un dominio secuestrado.
+
 El workflow `discover-venues.yml` recorre semanalmente 54 ciudades españolas,
 repartidas en cinco shards independientes para permanecer dentro del límite de
 ejecución.

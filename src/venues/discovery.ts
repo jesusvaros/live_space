@@ -1,4 +1,5 @@
 import { createDeterministicHash } from '../utils/hash.js';
+import { isHijackedWebsite } from './curation.js';
 
 export type OsmElement = {
   type: 'node' | 'way' | 'relation';
@@ -79,7 +80,7 @@ export const parseOsmCandidates = (scope: string, elements: OsmElement[]): Venue
     if (!name || !signal) continue;
 
     const providerId = `${element.type}/${element.id}`;
-    const website = absoluteWebsite(tags);
+    const website = isHijackedWebsite(absoluteWebsite(tags)) ? null : absoluteWebsite(tags);
     const address = [tags['addr:street'], tags['addr:housenumber']].filter(Boolean).join(' ') || null;
     unique.set(providerId, {
       provider: 'openstreetmap',

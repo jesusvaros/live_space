@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { dedupeVenue } from '../dedupe/dedupeVenue.js';
 import type { NormalizedVenue, VenueRow } from '../types/domain.js';
 import { Logger } from '../utils/logger.js';
+import { isHijackedWebsite } from '../venues/curation.js';
 
 export type UpsertVenueResult = {
   row: VenueRow;
@@ -24,7 +25,11 @@ export const upsertVenue = async (
     if (!match.match.normalized_name && venue.normalizedName) {
       updates.normalized_name = venue.normalizedName;
     }
-    if (!match.match.website_url && (venue.websiteUrl || venue.sourceUrl)) {
+    if (
+      !match.match.website_url &&
+      (venue.websiteUrl || venue.sourceUrl) &&
+      !isHijackedWebsite(venue.websiteUrl || venue.sourceUrl)
+    ) {
       updates.website_url = venue.websiteUrl || venue.sourceUrl;
     }
     if ((!match.match.city || match.match.city === 'Unknown') && venue.city) {

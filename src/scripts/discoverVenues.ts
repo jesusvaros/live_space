@@ -81,12 +81,14 @@ const fetchCandidates = async (scope: string): Promise<VenueCandidate[]> => {
   throw lastError || new Error('No Overpass endpoint is configured');
 };
 
+const VENUE_PROMOTION_SELECT = 'id,external_ids,status,address,website_url,latitude,longitude';
+
 const promoteStrongCandidate = async (candidate: VenueCandidate, candidateId: string) => {
   if (candidate.confidence < 0.95) return false;
 
   const { data: osmMatch, error: osmError } = await supabase
     .from('venue_places')
-    .select('id,external_ids,status')
+    .select(VENUE_PROMOTION_SELECT)
     .contains('external_ids', { openstreetmap: candidate.provider_id })
     .limit(1)
     .maybeSingle();
@@ -96,7 +98,7 @@ const promoteStrongCandidate = async (candidate: VenueCandidate, candidateId: st
   if (!venue) {
     const { data: nameMatch, error: nameError } = await supabase
       .from('venue_places')
-      .select('id,external_ids,status')
+      .select(VENUE_PROMOTION_SELECT)
       .eq('normalized_name', candidate.normalized_name)
       .eq('city', candidate.city)
       .eq('country_code', 'ES')
@@ -108,14 +110,16 @@ const promoteStrongCandidate = async (candidate: VenueCandidate, candidateId: st
   }
 
   if (venue) {
+    // OSM only fills gaps: hand-curated addresses and cleared websites stay.
+    const hasCoordinates = venue.latitude !== null && venue.longitude !== null;
     const { error } = await supabase
       .from('venue_places')
       .update({
         city: candidate.city,
-        address: candidate.address || undefined,
-        website_url: candidate.website_url || undefined,
-        latitude: candidate.latitude,
-        longitude: candidate.longitude,
+        address: venue.address ? undefined : candidate.address || undefined,
+        website_url: venue.website_url ? undefined : candidate.website_url || undefined,
+        latitude: hasCoordinates ? undefined : candidate.latitude,
+        longitude: hasCoordinates ? undefined : candidate.longitude,
         external_ids: { ...(venue.external_ids || {}), openstreetmap: candidate.provider_id },
       })
       .eq('id', venue.id);
@@ -136,7 +140,7 @@ const promoteStrongCandidate = async (candidate: VenueCandidate, candidateId: st
         external_ids: { openstreetmap: candidate.provider_id },
         status: 'published',
       })
-      .select('id,external_ids,status')
+      .select(VENUE_PROMOTION_SELECT)
       .single();
     if (error) throw error;
     venue = data;

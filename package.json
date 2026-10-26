@@ -27,7 +27,8 @@
     "scrape:auto-probe": "npm run scrape:build && node dist-scraper/scripts/autoProbeDiscoveredSources.js",
     "scrape:approve-probed": "npm run scrape:build && node dist-scraper/scripts/approveAutoProbedSources.js",
     "scrape:maintenance": "npm run scrape:build && node dist-scraper/scripts/runScraperMaintenance.js",
-    "venues:discover": "npm run scrape:build && node dist-scraper/scripts/discoverVenues.js"
+    "venues:discover": "npm run scrape:build && node dist-scraper/scripts/discoverVenues.js",
+    "venues:curate": "npm run scrape:build && node dist-scraper/scripts/curateVenues.js"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.1",
