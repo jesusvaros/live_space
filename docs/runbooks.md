@@ -74,14 +74,17 @@ Comprobación manual: `gh api repos/jesusvaros/live_space/actions/workflows`.
 
 ## Web pública (Cloudflare Pages)
 
-`npm run web:prerender` hace `vite build` y genera en `dist/` una página
+La web pública no contiene la app (ver [Web pública y landings](./landing.md)).
+`npm run web:prerender` construye el sitio (`site:build`) y genera en `dist-site/` una página
 estática por concierto futuro (`/concierto/<slug>-<uuid>/`), sala publicada
 (`/sala/…`) y artista con conciertos (`/artista/…`), más
 `/{madrid,barcelona}/conciertos/{,hoy/,esta-semana/}` y `/festival/<slug>/`. Cada página lleva title,
 description, canonical, Open Graph y JSON-LD (`MusicEvent`, `MusicVenue`,
 `MusicGroup`, `ItemList`). También genera `sitemap.xml`, `robots.txt`,
-`_redirects` (301 desde las URL con UUID y fallback SPA) y `_headers`. Solo usa
-la clave anon. La SPA monta encima con `createRoot`. Capacitor no cambia.
+`_redirects` (301 desde las URL con UUID, 302 de las rutas antiguas de la app a
+`/`), `404.html` y `_headers`. Solo usa la clave anon. Las fichas son HTML sin
+JavaScript; solo la landing y las de festival cargan el bundle del sitio.
+Capacitor sigue usando `dist/` y no cambia.
 
 `publish-web.yml` publica tras cada scrape y a las 23:05 UTC; se salta si faltan
 los secretos. Alta, una sola vez:
@@ -94,8 +97,8 @@ los secretos. Alta, una sola vez:
 4. Supabase → Auth → URL Configuration: añadir el dominio.
 5. Search Console: dar de alta el dominio y enviar `sitemap.xml`. Fijar el
    dominio definitivo antes, para no perder la indexación.
-6. Opcional: variable del repo `VITE_CONTACT_EMAIL` para el botón «Pide tu QR»
-   de las [landings](./landing.md).
+6. Opcionales: variables del repo `VITE_CONTACT_EMAIL` (botón «Pide tu QR») y,
+   cuando la app esté publicada, `VITE_ANDROID_URL` y `VITE_IOS_URL`.
 
 ## Fuente de scraping rota
 

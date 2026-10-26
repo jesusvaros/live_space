@@ -2,9 +2,9 @@
 
 ## Recorridos principales
 
-La navegación móvil tiene Inicio, Explorar, Crear, Momentos y Perfil. Escritorio
-presenta los mismos destinos en una barra lateral o cabecera, sin cambiar URLs ni
-permisos. La ruta nunca decide si una capacidad es «profesional»; lo decide RLS y
+La app (Android e iOS) tiene Inicio, Explorar, Crear, Momentos y Perfil. No hay
+versión web de la app: la web pública solo capta instalaciones
+([Web pública y landings](./landing.md)). La ruta nunca decide si una capacidad es «profesional»; lo decide RLS y
 la membresía activa.
 
 | Área | Pantallas existentes | Objetivo de reconstrucción |
@@ -19,10 +19,9 @@ la membresía activa.
 
 ## Paridad
 
-Las apps añaden cámara, galería, QR, push, deep links y segundo plano. La web
-móvil usa APIs del navegador cuando están disponibles. Escritorio amplía los
-formularios, drag-and-drop y acciones masivas. Esas diferencias no eliminan
-ningún recorrido social o profesional.
+Android e iOS comparten todos los recorridos y usan cámara, galería, QR, push,
+deep links y segundo plano. Las diferencias de plataforma no eliminan ningún
+recorrido social o profesional.
 
 ## Estados obligatorios
 

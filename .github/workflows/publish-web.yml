@@ -30,6 +30,8 @@ jobs:
       VITE_MAP_STYLE_URL: https://tiles.openfreemap.org/styles/liberty
       PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://livespace.pages.dev' }}
       VITE_CONTACT_EMAIL: ${{ vars.VITE_CONTACT_EMAIL }}
+      VITE_ANDROID_URL: ${{ vars.VITE_ANDROID_URL }}
+      VITE_IOS_URL: ${{ vars.VITE_IOS_URL }}
 
     steps:
       - name: Check Cloudflare configuration
@@ -68,4 +70,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=livespace --branch=main
+          command: pages deploy dist-site --project-name=livespace --branch=main

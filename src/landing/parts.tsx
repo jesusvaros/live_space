@@ -3,10 +3,16 @@ import { Link } from 'react-router-dom';
 import { IconQrCode } from '../components/icons';
 import type { LandingPhoto } from './photos';
 import { PHONE_SHOTS } from './photos';
+import { ANDROID_URL, HAS_STORE_LINKS, IOS_URL, joinWaitlist, type JoinResult } from './waitlist';
 import './landing.css';
 
-export const UPLOAD_PATH = '/tabs/upload';
-export const AGENDA_PATH = '/tabs/events';
+// The site only sells the app: every call to action ends at #descargar.
+export const DOWNLOAD_ANCHOR = '#descargar';
+// Static agenda pages from the prerender; plain links, they are not SPA routes.
+export const AGENDA_LINKS = [
+  { href: '/madrid/conciertos/', label: 'Conciertos en Madrid' },
+  { href: '/barcelona/conciertos/', label: 'Conciertos en Barcelona' },
+];
 
 const env = (import.meta as any).env || {};
 // Without a contact address the venue/festival call to action shows no button.
@@ -15,7 +21,7 @@ export const CONTACT_EMAIL: string = env.VITE_CONTACT_EMAIL || '';
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-export const UploadIcon: React.FC<{ className?: string }> = ({ className }) => (
+export const DownloadIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg
     className={className}
     width="20"
@@ -28,7 +34,7 @@ export const UploadIcon: React.FC<{ className?: string }> = ({ className }) => (
     strokeLinejoin="round"
     aria-hidden="true"
   >
-    <path d="M12 16V4M6 10l6-6 6 6M5 20h14" />
+    <path d="M12 4v12M6 10l6 6 6-6M5 20h14" />
   </svg>
 );
 
@@ -43,18 +49,14 @@ export const LiveDot: React.FC<{ className?: string }> = ({ className = 'h-2.5 w
   <span className={`ls-pulse inline-block shrink-0 rounded-full ${className}`} aria-hidden="true" />
 );
 
-export const PrimaryCta: React.FC<{ to: string; children: React.ReactNode; className?: string }> = ({
-  to,
-  children,
-  className = '',
-}) => (
-  <Link
-    to={to}
+export const PrimaryCta: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
+  <a
+    href={DOWNLOAD_ANCHOR}
     className={`inline-flex min-h-14 items-center justify-center gap-2.5 rounded-full bg-[var(--ls-accent)] px-7 text-lg font-semibold text-[#0d0e12] no-underline transition-transform hover:-translate-y-0.5 ${className}`}
   >
-    <UploadIcon />
+    <DownloadIcon />
     {children}
-  </Link>
+  </a>
 );
 
 export const LandingHeader: React.FC<{ partner?: string }> = ({ partner }) => (
@@ -70,19 +72,104 @@ export const LandingHeader: React.FC<{ partner?: string }> = ({ partner }) => (
       ) : null}
     </Link>
     <nav aria-label="Principal" className="flex flex-wrap items-center gap-1">
-      <Link to={AGENDA_PATH} className="hidden px-3.5 py-3 font-medium text-[var(--ls-ink)] no-underline sm:inline-block">
+      <a href={AGENDA_LINKS[0].href} className="hidden px-3.5 py-3 font-medium text-[var(--ls-ink)] no-underline sm:inline-block">
         Conciertos
-      </Link>
-      <Link
-        to={UPLOAD_PATH}
+      </a>
+      <a
+        href={DOWNLOAD_ANCHOR}
         className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--ls-accent)] px-5 font-semibold text-[#0d0e12] no-underline"
       >
-        <UploadIcon className="h-[18px] w-[18px]" />
-        Sube tu vídeo
-      </Link>
+        <DownloadIcon className="h-[18px] w-[18px]" />
+        Descárgate la app
+      </a>
     </nav>
   </header>
 );
+
+const StoreButton: React.FC<{ href: string; store: string }> = ({ href, store }) => (
+  <a
+    href={href}
+    rel="noopener"
+    className="inline-flex min-h-14 flex-col justify-center rounded-2xl bg-[#0d0e12] px-6 text-[var(--ls-ink)] no-underline"
+  >
+    <span className="text-xs text-[#a6a39c]">Descárgala en</span>
+    <span className="font-display text-lg font-bold">{store}</span>
+  </a>
+);
+
+const JOIN_MESSAGES: Record<JoinResult, string> = {
+  joined: 'Listo. Te avisamos en cuanto salga.',
+  invalid: 'Revisa el email, parece que falta algo.',
+  error: 'No hemos podido apuntarte. Prueba otra vez en un rato.',
+};
+
+// Store buttons once the app is published (VITE_ANDROID_URL / VITE_IOS_URL);
+// until then, a waitlist form. `source` records which page signed them up.
+export const DownloadCta: React.FC<{ source: string; tone?: 'dark' | 'accent' }> = ({ source, tone = 'dark' }) => {
+  const [email, setEmail] = React.useState('');
+  const [status, setStatus] = React.useState<'idle' | 'sending' | JoinResult>('idle');
+  const inputId = React.useId();
+
+  if (HAS_STORE_LINKS) {
+    return (
+      <div className="flex flex-wrap gap-3">
+        {ANDROID_URL ? <StoreButton href={ANDROID_URL} store="Google Play" /> : null}
+        {IOS_URL ? <StoreButton href={IOS_URL} store="App Store" /> : null}
+      </div>
+    );
+  }
+
+  const onSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setStatus('sending');
+    setStatus(await joinWaitlist(email, source));
+  };
+
+  const onAccent = tone === 'accent';
+  if (status === 'joined') {
+    return <p className="text-lg font-semibold" role="status">{JOIN_MESSAGES.joined}</p>;
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="flex w-full max-w-[34rem] flex-col gap-2.5" noValidate>
+      <label htmlFor={inputId} className={`text-sm ${onAccent ? 'text-[#0d0e12]' : 'text-[var(--ls-muted)]'}`}>
+        Sale pronto para Android y iPhone. Déjanos tu email y te avisamos.
+      </label>
+      <div className="flex flex-wrap gap-2.5">
+        <input
+          id={inputId}
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          required
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          placeholder="tu@email.com"
+          className={`min-h-14 min-w-0 flex-[1_1_220px] rounded-full border-[1.5px] px-5 text-base outline-none focus:ring-2 ${
+            onAccent
+              ? 'border-[#0d0e12] bg-[var(--ls-paper)] text-[#0d0e12] focus:ring-[#0d0e12]/30'
+              : 'border-[rgba(243,239,231,0.35)] bg-[rgba(13,14,18,0.6)] text-[var(--ls-ink)] placeholder:text-[#a6a39c] focus:ring-[var(--ls-accent)]/40'
+          }`}
+        />
+        <button
+          type="submit"
+          disabled={status === 'sending'}
+          className={`inline-flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-full border-0 px-7 text-lg font-semibold disabled:opacity-60 ${
+            onAccent ? 'bg-[#0d0e12] text-[var(--ls-ink)]' : 'bg-[var(--ls-accent)] text-[#0d0e12]'
+          }`}
+        >
+          <DownloadIcon />
+          {status === 'sending' ? 'Enviando…' : 'Avísame'}
+        </button>
+      </div>
+      {status === 'invalid' || status === 'error' ? (
+        <p role="alert" className={`text-sm ${onAccent ? 'text-[#0d0e12]' : 'text-[#ffb4a0]'}`}>
+          {JOIN_MESSAGES[status]}
+        </p>
+      ) : null}
+    </form>
+  );
+};
 
 // Two rows of fan photos drifting in opposite directions. Each list is
 // rendered twice so the -50% translate loops seamlessly.
@@ -188,8 +275,9 @@ export const LandingFooter: React.FC<{ lead?: string }> = ({ lead = 'Live Space 
     <div className="mx-auto flex max-w-[1280px] flex-wrap justify-between gap-4 px-5 py-8 text-[15px] text-[#a6a39c] md:px-8">
       <span>{lead}</span>
       <nav aria-label="Pie" className="flex flex-wrap gap-5">
-        <Link to={AGENDA_PATH} className="text-[var(--ls-muted)]">Conciertos</Link>
-        <Link to={UPLOAD_PATH} className="text-[var(--ls-muted)]">Subir vídeo</Link>
+        {AGENDA_LINKS.map((link) => (
+          <a key={link.href} href={link.href} className="text-[var(--ls-muted)]">{link.label}</a>
+        ))}
       </nav>
     </div>
   </footer>

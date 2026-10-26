@@ -1,19 +1,42 @@
-# Landings
+# Web pública y landings
 
-Las landings venden una sola cosa: **subir fotos y vídeos del concierto**. La
-agenda y las entradas son secundarias. El diseño de referencia está en el
-lienzo «Landing Live Space» (claude.ai, privado del propietario).
+No hay versión web de la app: la app solo existe en Android e iOS. La web
+pública existe para una cosa, **que la gente instale la app**, y vende subir
+fotos y vídeos del concierto. El diseño de referencia está en el lienzo
+«Landing Live Space» (claude.ai, privado del propietario).
 
-## Rutas
+## Dos builds separados
 
-| Ruta | Página | Quién la ve |
-| --- | --- | --- |
-| `/` | `src/pages/Landing.tsx` | Web sin sesión. Con sesión, o en las apps nativas, `/` redirige a la agenda como antes. |
-| `/festival/<slug>/` | `src/pages/FestivalLanding.tsx` | Todos. Un slug desconocido redirige a `/`. |
-| cualquier otra ruta desconocida | — | Redirige a la agenda (`/tabs/events`), no a la landing. |
+| Build | Comando | Salida | Contenido |
+| --- | --- | --- | --- |
+| App | `npm run build` | `dist/` | La app completa; la empaqueta Capacitor. No incluye la landing. |
+| Web pública | `npm run web:prerender` | `dist-site/` | Landing, landings de festival y fichas estáticas. No incluye la app. |
 
-Las dos se cargan en diferido (chunk propio), así que la app no carga su CSS,
-sus fuentes ni sus fotos.
+`npm run site:dev` sirve la web en `http://localhost:3001` y `npm run dev` la app
+en el 3000. La web tiene su propia entrada (`site.html` → `src/landing/main.tsx`,
+configuración `vite.site.config.ts`) y sus imágenes en `site-public/`.
+
+## Rutas de la web
+
+| Ruta | Qué es |
+| --- | --- |
+| `/` | Landing (`src/landing/pages/Landing.tsx`). |
+| `/festival/<slug>/` | Landing de festival (`src/landing/pages/FestivalLanding.tsx`), prerenderizada. |
+| `/concierto/…`, `/sala/…`, `/artista/…`, `/{madrid,barcelona}/conciertos/…` | Fichas en HTML estático, sin JavaScript, con foto, datos, JSON-LD y el bloque «¿Vas a ir? Grábalo y súbelo» con el botón de descarga. Estilos en `site-public/landing/fichas.css`. |
+| Rutas antiguas de la app (`/tabs/*`, `/welcome`, `/upload`…) | 302 a `/`. Las URL con UUID de concierto, sala o artista van con 301 a su ficha. |
+| Cualquier otra | `404.html`. |
+
+## Descargar la app y lista de espera
+
+Todos los botones llevan a la sección `#descargar`. Mientras la app no esté en
+las tiendas, el bloque de descarga es un formulario de **lista de espera**: guarda
+el email en `public.waitlist_signups` con la página de origen (`landing-hero`,
+`landing-descargar`, `festival:<slug>`). La tabla solo admite inserciones
+anónimas; nadie la puede leer salvo `service_role`. Un email repetido cuenta como
+apuntado.
+
+Cuando haya enlaces de tienda, se definen `VITE_ANDROID_URL` y `VITE_IOS_URL` y
+el formulario se sustituye por los botones de Google Play y App Store.
 
 ## Reglas de contenido
 
@@ -21,8 +44,9 @@ sus fuentes ni sus fotos.
   salas, y sin cifras de catálogo que caduquen.
 - Un festival solo aparece en **su** landing, creada desde la plantilla.
 - Poco texto: titular, una frase y el botón. El resto lo cuentan las fotos.
-- El botón principal siempre es subir (`/tabs/upload`, que pide sesión si no la
-  hay). Nunca «Entradas».
+- El botón principal siempre es descargar la app (o apuntarse a la lista de
+  espera). Nunca «Entradas»; en las fichas, el enlace oficial del concierto es
+  texto secundario («Más información y entradas»).
 - La línea de tiempo («La noche, canción a canción») y el móvil que sube clips
   son ilustraciones: los nombres «Canción 7» o «El bis» y los recuentos de clips
   son de ejemplo y no salen de la base de datos.
@@ -42,14 +66,18 @@ Landing general, de arriba abajo:
 5. **«¿Te perdiste el bis? Alguien lo grabó.»**: franja de foto con botón.
 6. **Salas y festivales**: «Pon un QR. El público hace el resto.» y botón
    «Pide tu QR».
+7. **«Llévatelo en el bolsillo.»** (`#descargar`): lista de espera o botones de
+   tienda.
 
 Landing de festival: portada «¿Estuviste en [festival]?» con lugar y fechas,
-galería, cartel (solo si hay `lineup`), franja «Busca el QR en el recinto» con
-la dirección de la página y botón de contacto para organizadores.
+galería, cartel (solo si hay `lineup`) y bloque «Descárgate la app y súbelo»
+con lista de espera, la dirección de la página para el QR del recinto y botón de
+contacto para organizadores.
 
 Piezas compartidas en `src/landing/parts.tsx`: cabecera (con co-marca para
-festivales), botón principal, galería, móvil animado, QR decorativo, botón de
-contacto y pie.
+festivales), botón de descarga, bloque de descarga/lista de espera
+(`DownloadCta`, con `src/landing/waitlist.ts`), galería, móvil animado, QR
+decorativo, botón de contacto y pie.
 
 ## Añadir un festival
 
@@ -67,7 +95,7 @@ contacto y pie.
    }
    ```
 
-2. La foto de portada va en `public/landing/` con licencia comprobada (ver
+2. La foto de portada va en `site-public/landing/` con licencia comprobada (ver
    abajo). Mientras no haya una del festival, usa `/landing/festival-multitud.jpg`.
 3. PR. Al publicar, el prerender crea `/festival/<slug>/` con title,
    description y entrada en `sitemap.xml`.
@@ -86,7 +114,7 @@ Tipografías solo de landing: Archivo (titulares estrechos) e IBM Plex Mono
 
 ## Fotos y licencias
 
-Todas las fotos de `public/landing/` son **CC0** (subidas a Unsplash y copiadas
+Todas las fotos de `site-public/landing/` son **CC0** (subidas a Unsplash y copiadas
 en Wikimedia Commons): uso comercial sin permiso ni atribución. La URL de origen
 de cada una está en `src/landing/photos.ts` (campo `source`). No son fotos de
 festivales concretos.
@@ -99,18 +127,24 @@ escrito del autor. Una foto nueva entra con su URL de origen y su licencia en
 
 | Variable | Uso |
 | --- | --- |
-| `VITE_CONTACT_EMAIL` | Dirección del botón «Pide tu QR» / «¿Organizas…?». Si está vacía, el botón no aparece. En el despliegue es una variable del repo (`vars.VITE_CONTACT_EMAIL`). |
+| `VITE_CONTACT_EMAIL` | Dirección del botón «Pide tu QR» / «¿Organizas…?». Si está vacía, el botón no aparece. |
+| `VITE_ANDROID_URL`, `VITE_IOS_URL` | Enlaces de Google Play y App Store. Con alguno definido, la lista de espera se sustituye por los botones de tienda. |
+
+En el despliegue son variables del repo (`vars.*`) que lee `publish-web.yml`.
 | `PUBLIC_SITE_URL` | Dominio para canonical y sitemap del prerender. |
 
 ## SEO
 
-`index.html` lleva el título y la descripción de la landing, que sirve `/`. No
-se prerenderiza `/`, porque `dist/index.html` es también el fallback de la SPA
-para cualquier ruta; sí aparece en `sitemap.xml`. Las páginas de festival se
-prerenderizan en `buildPublicSite.ts`.
+`site.html` lleva el título y la descripción de la landing, que sirve `/` y no
+se prerenderiza; sí aparece en `sitemap.xml`. Las fichas y las páginas de
+festival se generan en `buildPublicSite.ts` con canonical, Open Graph y JSON-LD.
+`robots.txt` lo permite todo: en la web ya no hay rutas privadas.
 
 ## Pendiente
 
-- Dominio definitivo y `VITE_CONTACT_EMAIL`.
+- Aplicar la migración `20261026000100_waitlist_signups.sql` en Supabase (cambio
+  de RLS: lo aprueba una persona). Hasta entonces el formulario responde «No
+  hemos podido apuntarte».
+- Dominio definitivo, `VITE_CONTACT_EMAIL` y, al publicar, los enlaces de tienda.
 - Fotos propias de cada festival para su portada.
 - QR real (escaneable) en la franja de festival; ahora es un icono.

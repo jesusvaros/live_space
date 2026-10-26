@@ -23,5 +23,5 @@ válidos; buscadores y redes sociales no son fuentes de licencia. Sin prueba se 
 placeholder. Los ocho objetos heredados permanecen en cuarentena hasta demostrar
 propietario, relación y derechos.
 
-Las fotos de las landings (`public/landing/`) son CC0 y su origen está en
-`src/landing/photos.ts`; ver [Landings](./landing.md#fotos-y-licencias).
+Las fotos de las landings (`site-public/landing/`) son CC0 y su origen está en
+`src/landing/photos.ts`; ver [Web pública y landings](./landing.md#fotos-y-licencias).

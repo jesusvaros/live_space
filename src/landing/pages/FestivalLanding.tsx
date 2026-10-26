@@ -1,17 +1,17 @@
 import React from 'react';
 import { Navigate, useParams } from 'react-router-dom';
-import { festivalBySlug, festivalPath } from '../landing/festivals';
+import { festivalBySlug, festivalPath } from '../festivals';
 import {
   ContactButton,
+  DownloadCta,
   LandingFooter,
   LandingHeader,
   LiveDot,
   PhotoMarquee,
   PrimaryCta,
   QrTile,
-  UPLOAD_PATH,
-} from '../landing/parts';
-import { MARQUEE_A, MARQUEE_B } from '../landing/photos';
+} from '../parts';
+import { MARQUEE_A, MARQUEE_B } from '../photos';
 
 // Festival landing at /festival/:slug, one per entry in src/landing/festivals.ts.
 // Same structure for every festival; only the config changes.
@@ -44,11 +44,9 @@ const FestivalLanding: React.FC = () => {
             ¿Estuviste en <span className="text-[var(--ls-accent)]">{festival.name}</span>?
           </h1>
           <p className="max-w-[32rem] text-[21px] text-[#dedad2]">
-            Sube lo que grabaste. Cada concierto del cartel tiene su página.
+            Sube lo que grabaste desde la app. Cada concierto del cartel tiene su página.
           </p>
-          <PrimaryCta to={UPLOAD_PATH} className="self-start">
-            Sube lo que grabaste
-          </PrimaryCta>
+          <PrimaryCta className="self-start">Descárgate la app</PrimaryCta>
         </div>
       </section>
 
@@ -72,11 +70,12 @@ const FestivalLanding: React.FC = () => {
         </section>
       ) : null}
 
-      <section className="bg-[var(--ls-accent)] text-[#0d0e12]">
+      <section id="descargar" className="bg-[var(--ls-accent)] text-[#0d0e12]">
         <div className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-12 px-5 py-16 md:px-8 md:py-20">
-          <div className="flex min-w-0 flex-[1_1_520px] flex-col gap-4">
-            <h2 className="ls-display text-[clamp(52px,7vw,104px)]">Busca el QR en el recinto.</h2>
-            {shareUrl ? <p className="ls-mono break-all text-xl font-semibold">o entra en {shareUrl}</p> : null}
+          <div className="flex min-w-0 flex-[1_1_520px] flex-col gap-5">
+            <h2 className="ls-display text-[clamp(52px,7vw,104px)]">Descárgate la app y súbelo.</h2>
+            <DownloadCta source={`festival:${festival.slug}`} tone="accent" />
+            {shareUrl ? <p className="ls-mono break-all text-base font-semibold">En el recinto, busca el QR o entra en {shareUrl}</p> : null}
             <ContactButton subject={`${festival.name} en Live Space`} tone="dark">
               ¿Organizas {festival.name}?
             </ContactButton>
