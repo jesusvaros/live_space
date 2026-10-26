@@ -47,5 +47,13 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Live Space usa tu ubicación para enseñarte los conciertos cercanos en el mapa.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Live Space usa la cámara para grabar y subir momentos del concierto y escanear el QR de la sala.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Live Space accede a tus fotos y vídeos para que elijas qué subir del concierto.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Live Space guarda en tu galería las fotos que hagas desde la app.</string>
 </dict>
 </plist>

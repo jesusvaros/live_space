@@ -4,9 +4,15 @@ import L from 'leaflet';
 import * as maplibregl from 'maplibre-gl';
 import '@maplibre/maplibre-gl-leaflet';
 import 'maplibre-gl/dist/maplibre-gl.css';
+// MapLibre 6 loads its worker from a sibling file that the Vite build does
+// not copy; bundle it and point MapLibre at it, or the vector map fails with
+// "Worker failed to load" (seen in the Android WebView).
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
+
+maplibregl.setWorkerUrl(maplibreWorkerUrl);
 
 const DEFAULT_STYLE_URL = (import.meta as any).env?.VITE_MAP_STYLE_URL
-  || 'https://tiles.openfreemap.org/styles/liberty/style.json';
+  || 'https://tiles.openfreemap.org/styles/liberty';
 
 const DEFAULT_ATTRIBUTION =
   'Leaflet | OpenFreeMap © OpenMapTiles Data from OpenStreetMap';
@@ -46,7 +52,12 @@ const MapLibreLayer = ({ styleUrl, attribution }: MapLibreLayerProps) => {
       return undefined;
     }
 
+    // MapLibre emits 'error' for any failed tile, glyph or sprite. Only give
+    // up on the vector style if it never finishes loading.
+    let loaded = false;
     let handleLoad: (() => void) | null = null;
+    let handleError: ((event?: { sourceId?: string; tile?: unknown }) => void) | null = null;
+    let loadTimer: ReturnType<typeof setTimeout> | null = null;
     try {
       vectorLayer = factory({
         style: styleUrl || DEFAULT_STYLE_URL,
@@ -58,19 +69,39 @@ const MapLibreLayer = ({ styleUrl, attribution }: MapLibreLayerProps) => {
       if (maplibreMap) {
         (map as any)._maplibreMap = maplibreMap;
       }
-      handleLoad = () => maplibreMap?.resize?.();
+      handleLoad = () => {
+        loaded = true;
+        if (loadTimer) clearTimeout(loadTimer);
+        maplibreMap?.resize?.();
+      };
+      handleError = (event) => {
+        // Tile/source errors (sourceId set) are routine; a style error before
+        // load means the vector map cannot work.
+        if (!loaded && !event?.sourceId && !event?.tile) {
+          console.warn('MapLibre style failed, falling back to raster.', (event as any)?.error?.message);
+          addRasterFallback();
+        }
+      };
       if (maplibreMap?.on) {
-        maplibreMap.on('error', addRasterFallback);
+        maplibreMap.on('error', handleError);
         maplibreMap.on('load', handleLoad);
       }
+      loadTimer = setTimeout(() => {
+        if (loaded) return;
+        console.warn('MapLibre style did not load in time, falling back to raster.');
+        addRasterFallback();
+      }, 12_000);
     } catch (error) {
       console.warn('MapLibre GL failed, falling back to raster.', error);
       addRasterFallback();
     }
 
     return () => {
+      if (loadTimer) clearTimeout(loadTimer);
       if (maplibreMap?.off) {
-        maplibreMap.off('error', addRasterFallback);
+        if (handleError) {
+          maplibreMap.off('error', handleError);
+        }
         if (handleLoad) {
           maplibreMap.off('load', handleLoad);
         }

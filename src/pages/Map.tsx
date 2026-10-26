@@ -18,9 +18,12 @@ import { useQuery } from '../shared/hooks/useQuery';
 import { fetchEventCards } from '../data/eventQueries';
 import { mapVenue } from '../data/canonicalMappers';
 
-const defaultCenter: [number, number] = [37.3891, -5.9845];
-const defaultZoom = 15;
-const mapViewKey = 'live_space.map.view';
+// Puerta del Sol: the pilot's agenda is Madrid and Barcelona.
+const defaultCenter: [number, number] = [40.4168, -3.7038];
+const defaultZoom = 13;
+const nearbyZoom = 14;
+// v2: earlier builds saved a Seville default view that hid the pilot's concerts.
+const mapViewKey = 'live_space.map.view.v2';
 
 const readStoredView = () => {
   if (typeof window === 'undefined') return null;
@@ -68,10 +71,8 @@ const Map: React.FC = () => {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [visibleItems, setVisibleItems] = useState<{ type: 'event' | 'venue'; id: string }[]>([]);
   const activeSelection = activeIndex !== null ? visibleItems[activeIndex] : null;
-  const [center, setCenter] = useState<[number, number]>(defaultCenter);
-  const [zoom, setZoom] = useState(defaultZoom);
-  const [initialViewApplied, setInitialViewApplied] = useState(false);
-  const [locationRequested, setLocationRequested] = useState(false);
+  // Leaflet owns the view after mount; React only seeds it once.
+  const [initialView] = useState(() => readStoredView());
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   
@@ -239,56 +240,28 @@ const Map: React.FC = () => {
     userEngagementQuery.data?.followedIds,
   ]);
 
+  // First visit (no saved view): centre on the visitor if they allow it.
   useEffect(() => {
-    const stored = readStoredView();
-    if (stored && !initialViewApplied) {
-      setCenter(stored.center);
-      setZoom(stored.zoom);
-      setInitialViewApplied(true);
-    }
-  }, [initialViewApplied]);
-
-  useEffect(() => {
-    if (!navigator.geolocation || locationRequested || !initialViewApplied) return;
-    setLocationRequested(true);
+    if (!mapInstance || initialView || !navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      position => {
-        setCenter([position.coords.latitude, position.coords.longitude]);
-      },
+      position => mapInstance.setView([position.coords.latitude, position.coords.longitude], nearbyZoom),
       () => undefined,
-      { enableHighAccuracy: true, timeout: 5000 }
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 10 * 60 * 1000 }
     );
-  }, [initialViewApplied, locationRequested]);
+  }, [mapInstance, initialView]);
 
   useEffect(() => {
     if (!mapInstance) return;
     mapInstance.invalidateSize();
     const handleMove = () => {
       const mapCenter = mapInstance.getCenter();
-      const mapZoom = mapInstance.getZoom();
-      const nextCenter: [number, number] = [mapCenter.lat, mapCenter.lng];
-      setCenter(nextCenter);
-      setZoom(mapZoom);
-      persistView(nextCenter, mapZoom);
+      persistView([mapCenter.lat, mapCenter.lng], mapInstance.getZoom());
     };
     mapInstance.on('moveend', handleMove);
-    mapInstance.on('zoomend', handleMove);
     return () => {
       mapInstance.off('moveend', handleMove);
-      mapInstance.off('zoomend', handleMove);
     };
   }, [mapInstance]);
-
-  useEffect(() => {
-    if (!mapInstance) return;
-    const current = mapInstance.getCenter();
-    const currentZoom = mapInstance.getZoom();
-    const [lat, lng] = center;
-    const latDiff = Math.abs(current.lat - lat);
-    const lngDiff = Math.abs(current.lng - lng);
-    if (currentZoom === zoom && latDiff < 1e-7 && lngDiff < 1e-7) return;
-    mapInstance.setView(center, zoom, { animate: true });
-  }, [center, zoom, mapInstance]);
 
   useEffect(() => {
     if (!mapInstance) return;
@@ -591,8 +564,8 @@ const Map: React.FC = () => {
         </div>
         <div className="relative">
           <MapContainer
-            center={center}
-            zoom={zoom}
+            center={initialView?.center ?? defaultCenter}
+            zoom={initialView?.zoom ?? defaultZoom}
             style={{ height: 'calc(100vh - 60px)', width: '100%' }}
             className="rounded-none [&_.leaflet-container]:rounded-none [&_.leaflet-pane]:z-0 [&_.leaflet-marker-pane]:z-[500] [&_.leaflet-overlay-pane]:z-[400] [&_.leaflet-popup-pane]:z-[600]"
             zoomControl={false}
