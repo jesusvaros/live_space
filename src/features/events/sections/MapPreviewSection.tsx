@@ -33,7 +33,7 @@ const MapPreviewSection: React.FC<MapPreviewSectionProps> = ({ center, pins, onO
   const mapCenter: [number, number] = useMemo(() => {
     if (center) return [center.lat, center.lng];
     if (pins.length > 0) return [pins[0].lat, pins[0].lng];
-    return [37.3891, -5.9845];
+    return [40.4168, -3.7038]; // Madrid: the pilot city
   }, [center, pins]);
 
   return (
