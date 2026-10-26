@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { NormalizedEvent } from '../types/domain';
-import { decideByConfidence } from './confidenceDecision';
+import { decideByConfidence, type DecisionContext } from './confidenceDecision';
 
 const eventAt = (confidence: number): NormalizedEvent => ({
   canonicalName: 'Zahara en La Riviera',
@@ -55,5 +55,27 @@ describe('deterministic staging decisions', () => {
       reviewStatus: 'rejected',
       shouldPublish: false,
     });
+  });
+
+  it('applies source context: past and non-music rejected, trusted sources approved from 0.90', () => {
+    const context: DecisionContext = {
+      structuredDataVerified: true,
+      sourceEventId: 'evt-1',
+      explicitDate: true,
+      now: new Date('2026-09-01T00:00:00Z'),
+    };
+
+    expect(decideByConfidence(eventAt(0.92), context)).toMatchObject({
+      reviewStatus: 'approved',
+      reasons: ['trusted-source-rule'],
+    });
+    expect(decideByConfidence(eventAt(0.92), { ...context, explicitDate: false }).reviewStatus).toBe('pending');
+    expect(decideByConfidence(eventAt(0.99), { ...context, now: new Date('2026-11-01T00:00:00Z') })).toMatchObject({
+      reviewStatus: 'rejected',
+      reasons: ['past-event'],
+    });
+    expect(
+      decideByConfidence({ ...eventAt(0.99), canonicalName: 'Real Madrid - Liga Endesa Jornada 7' }, context),
+    ).toMatchObject({ reviewStatus: 'rejected', reasons: ['non-music'] });
   });
 });

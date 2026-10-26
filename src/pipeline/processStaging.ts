@@ -6,7 +6,11 @@ import type { AiExtractionPayload, NormalizedEvent } from '../types/domain.js';
 import type { ScrapeSource, StagingEventRecord } from '../types/scrape.js';
 import { Logger } from '../utils/logger.js';
 import { runWithConcurrency } from '../utils/promisePool.js';
-import { decideByConfidence } from './confidenceDecision.js';
+import {
+  buildDecisionContext,
+  decideByConfidence,
+  type ConfidenceDecision,
+} from './confidenceDecision.js';
 import { upsertArtists } from './upsertArtists.js';
 import { upsertEventArtists } from './upsertEventArtists.js';
 import { upsertEvent } from './upsertEvents.js';
@@ -103,23 +107,38 @@ const isNormalizedEvent = (value: unknown): value is NormalizedEvent => {
   );
 };
 
+const STAGING_PAGE_SIZE = 1000;
+
+// PostgREST caps responses at 1,000 rows. Filtering in memory let 1,000
+// already-normalized pending rows fill that window and starve every newer
+// row (nothing was normalized from 29-Aug to 25-Oct), so the filter runs in
+// the query and the result is paged.
+const fetchProcessableStaging = async (
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+): Promise<StagingEventRecord[]> => {
+  const rows: StagingEventRecord[] = [];
+  for (let from = 0; ; from += STAGING_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('staging_events')
+      .select(STAGING_SELECT)
+      .is('published_event_id', null)
+      .or('review_status.eq.approved,and(review_status.eq.pending,normalized_payload.is.null)')
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, from + STAGING_PAGE_SIZE - 1);
+    if (error) throw error;
+    const page = (data || []) as StagingEventRecord[];
+    rows.push(...page);
+    if (page.length < STAGING_PAGE_SIZE) return rows;
+  }
+};
+
 export const processPendingStaging = async (
   logger = new Logger(env.logLevel),
 ): Promise<ProcessStagingSummary> => {
   const supabase = getSupabaseAdmin();
   const rootLogger = logger.child({ pipeline: 'processStaging' });
-  const { data, error } = await supabase
-    .from('staging_events')
-    .select(STAGING_SELECT)
-    .is('published_event_id', null)
-    .in('review_status', ['pending', 'approved'])
-    .order('created_at', { ascending: true });
-  if (error) throw error;
-
-  const candidateRows = (data || []) as StagingEventRecord[];
-  const pendingRows = candidateRows.filter(
-    (row) => row.review_status === 'approved' || row.normalized_payload === null,
-  );
+  const pendingRows = await fetchProcessableStaging(supabase);
   if (pendingRows.length === 0) {
     rootLogger.info('No processable staging rows found');
     return {
@@ -161,8 +180,10 @@ export const processPendingStaging = async (
       if (!source) throw new Error(`Missing scrape source ${row.source_id}`);
 
       let normalizedEvent: NormalizedEvent;
+      let decision: ConfidenceDecision;
       if (row.review_status === 'approved' && isNormalizedEvent(row.normalized_payload)) {
         normalizedEvent = row.normalized_payload;
+        decision = decideByConfidence(normalizedEvent);
       } else {
         const heuristic = normalizeStagingEvent(row, source);
         normalizedEvent = heuristic.normalizedEvent;
@@ -186,7 +207,7 @@ export const processPendingStaging = async (
           normalizedEvent = mergeAiExtraction(normalizedEvent, aiPayload, source);
         }
 
-        const decision = decideByConfidence(normalizedEvent);
+        decision = decideByConfidence(normalizedEvent, buildDecisionContext(row, source));
         const { error: decisionError } = await supabase
           .from('staging_events')
           .update({
@@ -217,7 +238,6 @@ export const processPendingStaging = async (
         }
       }
 
-      const decision = decideByConfidence(normalizedEvent);
       if (decision.reviewStatus === 'rejected') {
         await supabase
           .from('staging_events')

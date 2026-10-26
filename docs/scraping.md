@@ -65,12 +65,31 @@ su nuevo HTML. Su listado mezcla algunos partidos aunque esté filtrado por
 ## Confianza y deduplicación
 
 - `>= 0,95`: autopublicar solo si fecha, sala y artista son coherentes.
+- `0,90–0,94` de fuente con `structuredDataVerified`, `source_event_id`, año
+  explícito o fecha estructurada y tipo `concert`: autopublicar
+  (`trusted-source-rule`).
 - `0,75–0,94`: revisión humana.
+- Fecha pasada o título no musical (`liga endesa`, `jornada N`, `cineclub`…):
+  rechazar.
 - `< 0,75`: retener con motivos visibles.
 - Fusión automática: coincidencia única `>= 0,97`; el resto se revisa.
 - Una ausencia no cancela; dos ejecuciones consecutivas abren revisión.
 - Los eventos pasados se archivan, nunca se borran por el scraper.
 - Repetir una ejecución produce los mismos IDs y cero duplicados.
+
+El `raw_hash` de staging cubre solo los campos extraídos, no el `payload` del
+parser, para que contadores volátiles no creen una fila por evento y día. Las
+fechas sin año se resuelven contra `created_at` de la fila. El procesado pide a
+la base solo las filas pendientes sin normalizar o aprobadas, paginando de 1.000
+en 1.000.
+
+`npm run scrape:triage` limpia la cola con las reglas R1–R6 (simulación por
+defecto; `-- --apply` escribe, `-- --with-r6` incluye R6 y `-- --list` imprime
+lo aprobado y lo que queda en revisión): R1 clave ya publicada y R2 copia
+antigua de una clave pendiente → `merged`; R3 pasada y R4 no musical →
+`rejected`; R5 regla de fuente fiable y R6 sesión o festival de un solo artista
+(nunca la serie propia de la sala) → `approved`. Las filas que quedan en revisión
+reciben la normalización anclada a su captura.
 
 Los factores de puntuación deben ser explicables: identificador externo, URL,
 fecha/hora, sala normalizada, localidad, artistas y similitud de título. Nunca se

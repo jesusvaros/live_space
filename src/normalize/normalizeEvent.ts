@@ -262,7 +262,13 @@ export const normalizeStagingEvent = (
     typeof rawPayload.description === 'string' ? rawPayload.description : undefined,
   );
   const artistResult = normalizeArtistNames(record.extracted_artist_names, title);
-  const startsAt = record.extracted_starts_at || parseDateTextToIso(record.extracted_date_text || description || title);
+  // Undated texts ("8 septiembre") resolve against the capture date, not the
+  // processing date, so reprocessing an old row never jumps it a year ahead.
+  const capturedAt = record.created_at ? new Date(record.created_at) : new Date();
+  const referenceDate = Number.isNaN(capturedAt.getTime()) ? new Date() : capturedAt;
+  const startsAt =
+    record.extracted_starts_at ||
+    parseDateTextToIso(record.extracted_date_text || description || title, referenceDate);
   const venue = normalizeVenue({
     name: record.extracted_venue_name || source.name,
     city: record.extracted_city || source.city,

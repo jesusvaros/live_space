@@ -38,13 +38,27 @@ describe('canonical staging rows', () => {
     expect(first).not.toHaveProperty('source_event_url');
   });
 
-  it('generates a new hash when the source payload changes', () => {
+  it('generates a new hash when an extracted field changes', () => {
     const first = buildStagingRow(source, 'run-1', event);
     const changed = buildStagingRow(source, 'run-2', {
       ...event,
-      rawPayload: { html: '<article>Zahara - cambio de hora</article>' },
+      dateText: '10 octubre 2026 21:00',
     });
 
     expect(changed.raw_hash).not.toBe(first.raw_hash);
+  });
+
+  it('ignores volatile parser payload when hashing', () => {
+    const first = buildStagingRow(source, 'run-1', {
+      ...event,
+      rawPayload: { categories: [{ name: 'Jazz', count: 484 }] },
+    });
+    const recount = buildStagingRow(source, 'run-2', {
+      ...event,
+      rawPayload: { categories: [{ name: 'Jazz', count: 485 }] },
+    });
+
+    expect(recount.raw_hash).toBe(first.raw_hash);
+    expect(recount.raw_payload.payload).toEqual({ categories: [{ name: 'Jazz', count: 485 }] });
   });
 });

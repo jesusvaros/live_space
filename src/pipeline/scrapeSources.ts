@@ -34,12 +34,17 @@ export const buildStagingRow = (
     payload: event.rawPayload,
   };
 
+  // The parser payload carries volatile counters (e.g. category counts) that
+  // changed daily and created a new staging row per event and day, so the
+  // hash covers only the extracted fields.
+  const { payload: _payload, ...hashedFields } = rawPayload;
+
   return {
     scrape_run_id: scrapeRunId,
     source_id: source.id,
     source_url: sourceUrl,
     raw_payload: rawPayload,
-    raw_hash: createDeterministicHash(rawPayload),
+    raw_hash: createDeterministicHash(hashedFields),
     source_event_id: event.sourceEventId || null,
     extracted_title: event.title || null,
     extracted_date_text: event.dateText || null,
