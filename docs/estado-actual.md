@@ -74,6 +74,29 @@ Fecha de la última actualización: **26 de octubre de 2026**.
 - El catálogo inicial es muy pequeño y no contiene vídeos registrados en la tabla
   pública heredada, aunque el archivo de Storage sí conserva media en cuarentena.
 
+## Auditoría funcional en navegador — 26 de octubre de 2026
+
+La aplicación se recorrió con el backend remoto real, primero en viewport móvil y
+después en escritorio. El catálogo anónimo carga y permite navegar por artistas,
+salas y conciertos, pero el producto todavía no está listo para una beta pública.
+
+| Área | Resultado observado | Prioridad |
+| --- | --- | --- |
+| Inicio | Carga artistas y salas con conciertos; la cabecera reserva demasiado espacio vacío cuando no hay imagen | Media |
+| Explorar | Artistas y salas aparecen, pero casi todos carecen de fotografía y algunos nombres de artista contienen el título de gira o del evento | Alta |
+| Sala | Un error de RLS al contar seguidores hacía que una sala existente apareciera como inexistente. Corregido para que agenda, social y momentos fallen de forma independiente | Crítica, corregida |
+| Agenda de sala | Se mostraba también todo el histórico en una lista muy larga. Ahora la ficha solicita solo conciertos desde el inicio del día actual | Alta, corregida |
+| Evento | La ficha abre y enlaza artista/sala, pero la ausencia de carteles deja una cabecera casi vacía | Alta |
+| Mapa | Renderiza teselas y algunos marcadores, pero parte centrado en Sevilla y al abandonarlo puede entrar en un bucle de render (`Maximum update depth exceeded`) que deja el mapa visible bajo otra URL | Crítica |
+| Momentos | No hay media publicada; la pantalla queda vacía sin explicación ni llamada a crear el primer momento | Alta |
+| Crear y Perfil | Redirigen correctamente a acceso para anónimos; el recorrido autenticado, firma Cloudinary, confirmación de webhook y gestión profesional aún debe probarse con una cuenta de ensayo | Crítica antes de beta |
+| Escritorio | El layout es esencialmente la versión móvil estirada y conserva la navegación inferior; falta la barra lateral/cabecera y una densidad de contenido propia de escritorio | Alta |
+| Marca e idioma | Conviven `SpacioMusical`, `Live Space`, español e inglés en la misma experiencia | Media |
+
+Orden recomendado: reparar el bucle del mapa, crear cuenta de ensayo y verificar
+los recorridos autenticados, completar carteles/fotos con licencia, corregir la
+resolución de artistas, diseñar el shell de escritorio y añadir estados vacíos.
+
 ## Evidencia recuperada
 
 | Fuente | Evidencia segura |

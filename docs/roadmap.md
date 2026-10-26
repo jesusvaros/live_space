@@ -2,7 +2,7 @@
 
 Las duraciones son orientativas; las puertas de salida deciden el avance.
 
-## Progreso a 21 de julio de 2026
+## Progreso a 26 de octubre de 2026
 
 - Recuperación e inventario: completados sin extraer datos sensibles.
 - CI, typecheck, lint, tests, app y wiki: verdes.
@@ -15,8 +15,10 @@ Las duraciones son orientativas; las puertas de salida deciden el avance.
   setlists migrados; carteles y momentos usan firma Cloudinary y confirmación del
   webhook. Feed, Perfil, Upload y Admin ya usan los modelos canónicos compartidos.
 - Navegación anónima: agenda, Explorar, Mapa y Momentos verificados en navegador;
-  Crear y Perfil permanecen protegidos. Se corrigió un bucle de render del estado
-  inicial y los seis recorridos E2E pasan en móvil y escritorio.
+  Crear y Perfil permanecen protegidos. Los recorridos automatizados pasan, pero
+  la auditoría manual detectó un bucle de render al abandonar el mapa que la suite
+  no cubre todavía. La ficha de sala ya no desaparece cuando falla el contador
+  social y limita la agenda visible a conciertos actuales y futuros.
 - Scraping: piloto limitado a Madrid/Barcelona y sin IA de pago; diez fuentes
   oficiales se ejecutan diariamente en GitHub Actions. La primera ejecución manual
   desde `main` terminó sin errores y confirmó la idempotencia del pipeline.
