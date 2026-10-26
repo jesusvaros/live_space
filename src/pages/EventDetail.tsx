@@ -658,9 +658,8 @@ const EventDetail: React.FC = () => {
     }
   };
 
-  const shareUrl = event
-    ? `${window.location.origin}/event/${event.id}${event.qr_token ? `?token=${event.qr_token}` : ''}`
-    : '';
+  // Public link only: the QR upload token must never travel in a shared URL.
+  const shareUrl = event ? `${window.location.origin}/event/${event.id}` : '';
   const now = new Date();
   const isPastEvent = eventStart
     ? eventEnd
