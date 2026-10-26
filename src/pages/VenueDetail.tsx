@@ -49,25 +49,48 @@ const VenueDetail: React.FC = () => {
 
         const mappedVenue = mapVenue(venueData);
         const venueSubjectId = mappedVenue.subject_id ?? null;
-        const eventsData = await fetchEventCards({ venueId: mappedVenue.id });
-
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
         setVenue(mappedVenue);
-        setEvents(eventsData as VenueEvent[]);
 
-        if (venueSubjectId) {
-          const [count, following] = await Promise.all([
-            socialService.getFollowersCount(venueSubjectId),
-            user && currentUserProfile?.subject_id 
-              ? socialService.isFollowing(currentUserProfile.subject_id, venueSubjectId)
-              : Promise.resolve(false)
-          ]);
+        const [eventsResult, socialResult] = await Promise.allSettled([
+          fetchEventCards({ venueId: mappedVenue.id, startIso: startOfToday.toISOString() }),
+          venueSubjectId
+            ? Promise.all([
+                socialService.getFollowersCount(venueSubjectId),
+                user && currentUserProfile?.subject_id
+                  ? socialService.isFollowing(currentUserProfile.subject_id, venueSubjectId)
+                  : Promise.resolve(false),
+              ])
+            : Promise.resolve([0, false] as const),
+        ]);
+
+        const eventsData =
+          eventsResult.status === 'fulfilled' ? (eventsResult.value as VenueEvent[]) : [];
+        setEvents(eventsData);
+
+        if (eventsResult.status === 'rejected') {
+          console.warn('Failed to load venue events', eventsResult.reason);
+        }
+
+        if (socialResult.status === 'fulfilled') {
+          const [count, following] = socialResult.value;
           setFollowersCount(count);
           setIsFollowing(following);
+        } else {
+          console.warn('Failed to load venue social data', socialResult.reason);
+          setFollowersCount(0);
+          setIsFollowing(false);
         }
 
         const eventIds = eventsData.map(event => event.id);
         if (eventIds.length > 0) {
-          setMoments((await fetchPostCards({ eventIds })).slice(0, 18) as PostWithSetlist[]);
+          try {
+            setMoments((await fetchPostCards({ eventIds })).slice(0, 18) as PostWithSetlist[]);
+          } catch (momentsError) {
+            console.warn('Failed to load venue moments', momentsError);
+            setMoments([]);
+          }
         } else {
           setMoments([]);
         }
@@ -187,7 +210,7 @@ const VenueDetail: React.FC = () => {
                 <section className="space-y-3">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Events</p>
-                    <p className="mt-1 text-sm text-white/55">All shows hosted here.</p>
+                    <p className="mt-1 text-sm text-white/55">Upcoming shows hosted here.</p>
                   </div>
                   {events.length === 0 ? (
                     <p className="text-sm text-white/55">No events here yet.</p>
