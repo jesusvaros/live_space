@@ -7,6 +7,17 @@ import { Logger } from '../utils/logger.js';
 const EVENT_SELECT =
   'id,name,normalized_name,venue_place_id,starts_at,source_url,source_id,source_external_id';
 
+// Only facts the source states overwrite the event; an empty capture never
+// clears a ticket link or prices set earlier.
+export const offerUpdates = (event: NormalizedEvent): Record<string, unknown> => {
+  const updates: Record<string, unknown> = {};
+  if (event.offer?.ticketUrl) updates.ticket_url = event.offer.ticketUrl;
+  if (event.offer?.priceTiers.length) updates.price_tiers = event.offer.priceTiers;
+  if (event.offer?.isFree) updates.is_free = true;
+  if (event.offer?.endsAt) updates.ends_at = event.offer.endsAt;
+  return updates;
+};
+
 export type UpsertEventResult = {
   row: EventRow;
   created: boolean;
@@ -43,6 +54,7 @@ export const upsertEvent = async (
     if (event.description) {
       updates.description = event.description;
     }
+    Object.assign(updates, offerUpdates(event));
     if (Object.keys(updates).length === 0) {
       return {
         row: match.match,
@@ -88,8 +100,10 @@ export const upsertEvent = async (
       city,
       starts_at: event.startsAt,
       genres: [],
-      is_free: false,
-      price_tiers: [],
+      is_free: event.offer?.isFree ?? false,
+      price_tiers: event.offer?.priceTiers ?? [],
+      ticket_url: event.offer?.ticketUrl ?? null,
+      ends_at: event.offer?.endsAt ?? null,
       status: 'published',
       published_at: new Date().toISOString(),
     })

@@ -62,6 +62,18 @@ cambios de estructura; Movistar Arena volvió a 71 conciertos después de adapta
 su nuevo HTML. Su listado mezcla algunos partidos aunque esté filtrado por
 `Conciertos`, por lo que el parser los descarta explícitamente.
 
+## Entradas, precio y hora de fin
+
+`src/normalize/extractOffer.ts` saca del `payload` del parser el enlace de venta
+(`website` de tribe-events, `ticketUrl` de Elementor, la página del producto en
+Shopify), los precios (`cost_details`, variantes de Shopify, importes en euros
+del texto de la tarjeta), `is_free` y `ends_at` (solo duraciones de 30 min a
+12 h). `upsertEvent` los guarda en `ticket_url`, `price_tiers`, `is_free` y
+`ends_at`; una captura vacía nunca borra un dato anterior. Para eventos ya
+publicados: `npm run events:backfill-offers` (simulación; `-- --apply` escribe).
+A 26-oct, 154 de 196 eventos recientes tienen enlace de venta; ninguna fuente
+activa publica precio salvo Clamores en texto y Shopify en variantes.
+
 ## Confianza y deduplicación
 
 - `>= 0,95`: autopublicar solo si fecha, sala y artista son coherentes.

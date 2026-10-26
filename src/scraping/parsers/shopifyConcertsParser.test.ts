@@ -55,6 +55,7 @@ describe('mapShopifyConcert', () => {
       body_html: undefined,
       product_type: undefined,
       tags: undefined,
+      prices: [],
     });
   });
 });
