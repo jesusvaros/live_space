@@ -55,5 +55,16 @@
 	<string>Live Space accede a tus fotos y vídeos para que elijas qué subir del concierto.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Live Space guarda en tu galería las fotos que hagas desde la app.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.livespace.app.auth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.livespace.app</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

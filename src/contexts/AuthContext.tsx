@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import { authRedirectUrl } from '../auth/nativeAuth';
 import { AuthError, User } from '@supabase/supabase-js';
 import { supabase } from '../api';
 import { Profile, AuthState } from '../lib/types';
@@ -241,6 +242,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       email, 
       password,
       options: {
+        emailRedirectTo: authRedirectUrl('/welcome'),
         data: {
           username: data.username || null,
           display_name: data.displayName || null,
@@ -253,7 +255,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const sendPasswordReset = async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset`,
+      redirectTo: authRedirectUrl('/reset'),
     });
     return { error };
   };

@@ -100,6 +100,32 @@ los secretos. Alta, una sola vez:
 6. Opcionales: variables del repo `VITE_CONTACT_EMAIL` (botón «Pide tu QR») y,
    cuando la app esté publicada, `VITE_ANDROID_URL` y `VITE_IOS_URL`.
 
+## Acceso: Google, Apple y enlaces de email
+
+La pantalla de acceso (`src/pages/Welcome.tsx`) muestra «Continuar con Apple» y
+«Continuar con Google» solo si el proveedor está activado en Supabase (lo lee de
+`/auth/v1/settings`). En la app, Supabase devuelve al usuario a
+`com.livespace.app://auth/callback`, que Android (`AndroidManifest.xml`) e iOS
+(`Info.plist`, `CFBundleURLTypes`) abren en la app; `src/app/AuthDeepLinks.tsx`
+guarda la sesión. Lo mismo vale para confirmar el email y cambiar la contraseña.
+
+Alta, una sola vez (son secretos: lo hace una persona):
+
+1. Supabase → Auth → URL Configuration → Redirect URLs: añadir
+   `com.livespace.app://auth/callback`.
+2. Google Cloud Console → APIs y servicios → Credenciales → ID de cliente OAuth
+   de tipo «Aplicación web», con URI de redirección
+   `https://<proyecto>.supabase.co/auth/v1/callback`. Copiar ID y secreto en
+   Supabase → Auth → Providers → Google y activarlo.
+3. Apple Developer → Identifiers: activar «Sign in with Apple» en el App ID
+   `com.livespace.app`; crear un Services ID con el dominio de Supabase y la
+   misma URL de retorno; crear una clave «Sign in with Apple» (.p8). En Supabase
+   → Providers → Apple: Services ID como client ID y el secreto generado con la
+   clave. El secreto caduca a los 6 meses: anotar la fecha y renovarlo.
+4. App Store exige ofrecer Apple si se ofrece Google: activar los dos a la vez.
+5. Probar en el emulador o el móvil: entrar con cada proveedor, cerrar sesión,
+   confirmar un alta por email y cambiar una contraseña desde el enlace.
+
 ## Fuente de scraping rota
 
 1. Suspender autopublicación de la fuente, no las demás.
