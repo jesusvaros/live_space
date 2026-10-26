@@ -28,34 +28,44 @@ const run = async () => {
   );
   const counts: Record<string, number> = {};
   await runWithConcurrency(sources, Math.min(env.scraperConcurrency, 2), async (source) => {
-    const result = await autoProbeSource(source, logger.child({ sourceId: source.id, sourceName: source.name }));
-    counts[result.status] = (counts[result.status] || 0) + 1;
-    const metadata = source.metadata as ScrapeSourceMetadata;
-    const { error: updateError } = await supabase
-      .from('scrape_sources')
-      .update({
-        parser_key: result.parserKey || source.parser_key,
-        metadata: {
-          ...metadata,
-          fixtureVerified: result.status === 'ready_for_review',
-          autoProbe: {
-            ...result,
-            probedAt: new Date().toISOString(),
+    try {
+      const result = await autoProbeSource(source, logger.child({ sourceId: source.id, sourceName: source.name }));
+      counts[result.status] = (counts[result.status] || 0) + 1;
+      const metadata = source.metadata as ScrapeSourceMetadata;
+      const { error: updateError } = await supabase
+        .from('scrape_sources')
+        .update({
+          parser_key: result.parserKey || source.parser_key,
+          metadata: {
+            ...metadata,
+            fixtureVerified: result.status === 'ready_for_review',
+            autoProbe: {
+              ...result,
+              probedAt: new Date().toISOString(),
+            },
           },
-        },
-      })
-      .eq('id', source.id);
-    if (updateError) throw updateError;
-    logger.info('Auto-probe source completed', {
-      sourceName: source.name,
-      status: result.status,
-      parserKey: result.parserKey,
-      eventCount: result.eventCount,
-      confidence: result.confidence,
-    });
+        })
+        .eq('id', source.id);
+      if (updateError) throw updateError;
+      logger.info('Auto-probe source completed', {
+        sourceName: source.name,
+        status: result.status,
+        parserKey: result.parserKey,
+        eventCount: result.eventCount,
+        confidence: result.confidence,
+      });
+    } catch (probeError) {
+      counts.error = (counts.error || 0) + 1;
+      logger.error('Auto-probe source failed without aborting the batch', probeError, {
+        sourceName: source.name,
+      });
+    }
   });
 
   logger.info('Auto-probe batch completed', { sourceCount: sources.length, counts });
+  if (sources.length > 0 && counts.error === sources.length) {
+    throw new Error('Every source in the auto-probe batch failed');
+  }
 };
 
 run().catch((error) => {

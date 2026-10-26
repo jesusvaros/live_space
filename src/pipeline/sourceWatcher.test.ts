@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { assessSnapshot, sourceEventKey } from './sourceWatcher';
+import { assessSnapshot, isPastObservation, sourceEventKey } from './sourceWatcher';
 
 describe('source watcher decisions', () => {
   it('does not treat an empty or collapsed snapshot as proof that events disappeared', () => {
@@ -19,5 +19,13 @@ describe('source watcher decisions', () => {
       rawPayload: {},
     };
     expect(sourceEventKey(event)).toBe(sourceEventKey({ ...event }));
+  });
+
+  it('only ends observations with valid dates before the maintenance instant', () => {
+    const now = new Date('2026-10-26T12:00:00.000Z');
+    expect(isPastObservation('2026-10-25T22:00:00.000Z', now)).toBe(true);
+    expect(isPastObservation('2026-10-27T22:00:00.000Z', now)).toBe(false);
+    expect(isPastObservation(null, now)).toBe(false);
+    expect(isPastObservation('not-a-date', now)).toBe(false);
   });
 });

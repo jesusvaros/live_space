@@ -11,7 +11,44 @@ permissions:
 jobs:
   discover:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: central
+            scopes: "Madrid,Toledo,Guadalajara,Cuenca,Ciudad Real,Ávila,Segovia,Soria,Salamanca,Zamora,Palencia"
+          - shard: mediterranean
+            scopes: "Barcelona,Valencia,Alicante,Murcia,Tarragona,Lleida,Girona,Castellón de la Plana,Palma,Albacete,Almería"
+          - shard: north
+            scopes: "Bilbao,Vitoria-Gasteiz,San Sebastián,Pamplona,Logroño,Santander,Oviedo,Gijón,A Coruña,Lugo,Santiago de Compostela"
+          - shard: south
+            scopes: "Sevilla,Málaga,Córdoba,Granada,Cádiz,Jaén,Huelva,Badajoz,Cáceres,Ceuta,Melilla"
+          - shard: remainder
+            scopes: "Zaragoza,Valladolid,Vigo,Ourense,Pontevedra,León,Teruel,Huesca,Santa Cruz de Tenerife,Las Palmas de Gran Canaria"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Discover and reconcile venues (${{ matrix.shard }})
+        run: npm run venues:discover
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          VENUE_DISCOVERY_SCOPES: ${{ matrix.scopes }}
+          SCRAPER_TIMEOUT_MS: "30000"
+
+  probe:
+    needs: discover
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,13 +61,6 @@ jobs:
         run: npm ci
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
-      - name: Discover and reconcile venues
-        run: npm run venues:discover
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          VENUE_DISCOVERY_SCOPES: "Madrid,Barcelona,Valencia,Sevilla,Zaragoza,Málaga,Murcia,Palma,Bilbao,Alicante,Córdoba,Valladolid,Vigo,Gijón,A Coruña,Granada,Vitoria-Gasteiz,Oviedo,Pamplona,Santander,San Sebastián,Salamanca,Logroño,Badajoz,Huelva,Lleida,Tarragona,León,Cádiz,Jaén,Ourense,Girona,Lugo,Santiago de Compostela,Cáceres,Guadalajara,Toledo,Pontevedra,Palencia,Zamora,Ávila,Segovia,Soria,Cuenca,Teruel,Huesca,Ciudad Real,Albacete,Almería,Castellón de la Plana,Santa Cruz de Tenerife,Las Palmas de Gran Canaria,Ceuta,Melilla"
-          SCRAPER_TIMEOUT_MS: "30000"
       - name: Probe newly discovered venue websites
         run: npm run scrape:auto-probe
         env:

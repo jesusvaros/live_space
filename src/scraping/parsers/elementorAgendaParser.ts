@@ -17,6 +17,16 @@ const MONTHS: Record<string, number> = {
   OCT: 10,
   NOV: 11,
   DIC: 12,
+  ENERO: 1,
+  FEBRERO: 2,
+  MARZO: 3,
+  ABRIL: 4,
+  AGOSTO: 8,
+  SEPTIEMBRE: 9,
+  SETIEMBRE: 9,
+  OCTUBRE: 10,
+  NOVIEMBRE: 11,
+  DICIEMBRE: 12,
 };
 
 export const parseElementorAgendaDate = (value: string): string | null => {

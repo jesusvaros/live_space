@@ -36,3 +36,13 @@ test('allows anonymous discovery while protecting creation', async ({ page }) =>
   await expect(page.getByRole('heading', { name: 'Sign In' })).toBeVisible();
   expect(renderErrors.filter(message => message.includes('Maximum update depth'))).toEqual([]);
 });
+
+test('loads the anonymous map without runtime errors', async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
+
+  await page.goto('/tabs/map');
+
+  await expect(page.locator('.leaflet-container')).toBeVisible();
+  expect(pageErrors).toEqual([]);
+});

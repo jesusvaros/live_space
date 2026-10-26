@@ -13,7 +13,7 @@ export const linkedEventCardsParser: VenueParser = {
       ({ sourceUrl, venueName, city }) => {
         const detailLink = /\/(?:eventos?|events?|conciertos?|concerts?)\/[^/?#]+/i;
         const dateSignal =
-          /(?:\b\d{1,2}[/. -]\d{1,2}(?:[/. -]\d{2,4})?\b)|(?:\b\d{1,2}\s+(?:de\s+)?(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?=\s|\d|$))/i;
+          /(?:\b\d{1,2}[/. -]\d{1,2}(?:[/. -]\d{2,4})?\b)|(?:\b\d{1,2}\s+(?:(?:lun|mar|mi[eé]|jue|vie|s[aá]b|dom)\s+)?(?:de\s+)?(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre|ene|feb|mar|abr|may|jun|jul|ago|sep|sept|oct|nov|dic)(?=\s|\d|$))/i;
         const clean = (value: string | null | undefined) => value?.replace(/\s+/g, ' ').trim() || '';
         const events: RawScrapedEvent[] = [];
         const seen = new Set<string>();
