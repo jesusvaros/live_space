@@ -13,6 +13,7 @@ import { Spinner } from './components/ui/AppPrimitives';
 import { useAuth } from './contexts/AuthContext';
 import { useWorkspace } from './contexts/WorkspaceContext';
 import AppBackHandler from './app/AppBackHandler';
+import AuthDeepLinks from './app/AuthDeepLinks';
 import Welcome from './pages/Welcome';
 import Feed from './pages/Feed';
 import Events from './pages/Events';
@@ -165,6 +166,7 @@ const AppRoutes = () => {
   return (
     <>
       <AppBackHandler mainTabPath={mainTabHref} />
+      <AuthDeepLinks />
       <Routes>
         <Route path="/welcome" element={<WelcomeRoute />} />
         <Route path="/event/:id" element={deferredPage(<EventDetail />)} />

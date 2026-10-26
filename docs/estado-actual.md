@@ -91,7 +91,7 @@ salas y conciertos, pero el producto todavía no está listo para una beta públ
 | Momentos | No hay media publicada; la pantalla queda vacía sin explicación ni llamada a crear el primer momento | Alta |
 | Crear y Perfil | Redirigen correctamente a acceso para anónimos; el recorrido autenticado, firma Cloudinary, confirmación de webhook y gestión profesional aún debe probarse con una cuenta de ensayo | Crítica antes de beta |
 | Escritorio | El layout es esencialmente la versión móvil estirada y conserva la navegación inferior; falta la barra lateral/cabecera y una densidad de contenido propia de escritorio | Alta |
-| Marca e idioma | Conviven `SpacioMusical`, `Live Space`, español e inglés en la misma experiencia | Media |
+| Marca e idioma | Conviven `SpacioMusical`, `Live Space`, español e inglés en la misma experiencia. El acceso ya está rediseñado en español con la marca Live Space (26 de octubre); el resto de pantallas sigue igual | Media |
 
 Orden recomendado: reparar el bucle del mapa, crear cuenta de ensayo y verificar
 los recorridos autenticados, completar carteles/fotos con licencia, corregir la

@@ -3,10 +3,10 @@ import { expect, test } from '@playwright/test';
 test('shows the shared sign-in experience', async ({ page }) => {
   await page.goto('/welcome');
 
-  await expect(page.getByRole('heading', { name: 'Live Space' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Sign In' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Lo grabaste/ })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Entrar' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByLabel('Email')).toBeVisible();
-  await expect(page.getByLabel('Password')).toBeVisible();
+  await expect(page.getByLabel('Contraseña')).toBeVisible();
 });
 
 test('keeps unknown routes inside the public app', async ({ page }) => {
@@ -33,7 +33,7 @@ test('allows anonymous discovery while protecting creation', async ({ page }) =>
 
   await page.goto('/tabs/upload');
   await expect(page).toHaveURL(/\/welcome$/);
-  await expect(page.getByRole('heading', { name: 'Sign In' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Entrar' })).toBeVisible();
   expect(renderErrors.filter(message => message.includes('Maximum update depth'))).toEqual([]);
 });
 
