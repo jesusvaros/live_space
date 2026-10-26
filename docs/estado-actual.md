@@ -65,7 +65,7 @@ Fecha de la última actualización: **26 de octubre de 2026**.
   proyecto nuevo.
 - Los backups incluyen datos de Auth que no se restaurarán: cuentas, sesiones,
   tokens y contraseñas quedan expresamente fuera de la migración.
-- TypeScript, lint, las pruebas unitarias, 6 smoke tests E2E responsive, build de
+- TypeScript, lint, las pruebas unitarias, 8 smoke tests E2E responsive, build de
   aplicación y build de documentación pasan y están conectados a CI. Aún faltan
   la matriz de tests RLS, fixtures por fuente y pruebas completas de subida.
 - El audit de producción está limpio. VitePress 1.6.4 arrastra tres avisos solo de
