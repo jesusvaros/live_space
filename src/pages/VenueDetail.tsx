@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Spinner } from '../components/ui/AppPrimitives';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Event, Profile, VenuePlace, PostWithSetlist, Artist } from '../lib/types';
 import { socialService } from '../services/social.service';
@@ -10,6 +10,7 @@ import EventPosterTile from '../features/events/components/EventPosterTile';
 import { mapVenue } from '../data/canonicalMappers';
 import { fetchEventCards } from '../data/eventQueries';
 import { fetchPostCards } from '../data/postQueries';
+import { useRouteEntityId } from '../hooks/useRouteEntityId';
 
 type VenueEvent = Event & {
   organizer?: Profile | null;
@@ -18,7 +19,7 @@ type VenueEvent = Event & {
 };
 
 const VenueDetail: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const id = useRouteEntityId();
   const navigate = useNavigate();
   const { user, profile: currentUserProfile } = useAuth();
   

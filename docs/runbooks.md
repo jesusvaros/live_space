@@ -72,6 +72,29 @@ sin actividad (ocurrió el 21-sep-2026: el scrape no corrió hasta el 25-oct).
 `active`. Al añadir un workflow con `schedule`, incluirlo en `WORKFLOWS`.
 Comprobación manual: `gh api repos/jesusvaros/live_space/actions/workflows`.
 
+## Web pública (Cloudflare Pages)
+
+`npm run web:prerender` hace `vite build` y genera en `dist/` una página
+estática por concierto futuro (`/concierto/<slug>-<uuid>/`), sala publicada
+(`/sala/…`) y artista con conciertos (`/artista/…`), más
+`/{madrid,barcelona}/conciertos/{,hoy/,esta-semana/}`. Cada página lleva title,
+description, canonical, Open Graph y JSON-LD (`MusicEvent`, `MusicVenue`,
+`MusicGroup`, `ItemList`). También genera `sitemap.xml`, `robots.txt`,
+`_redirects` (301 desde las URL con UUID y fallback SPA) y `_headers`. Solo usa
+la clave anon. La SPA monta encima con `createRoot`. Capacitor no cambia.
+
+`publish-web.yml` publica tras cada scrape y a las 23:05 UTC; se salta si faltan
+los secretos. Alta, una sola vez:
+
+1. Cloudflare → Workers & Pages → crear el proyecto Pages `livespace` (direct upload).
+2. Token API con permiso «Cloudflare Pages: Edit».
+3. Secretos del repo `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID`
+   (`VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` ya existen). Con dominio
+   propio, variable `PUBLIC_SITE_URL`.
+4. Supabase → Auth → URL Configuration: añadir el dominio.
+5. Search Console: dar de alta el dominio y enviar `sitemap.xml`. Fijar el
+   dominio definitivo antes, para no perder la indexación.
+
 ## Fuente de scraping rota
 
 1. Suspender autopublicación de la fuente, no las demás.

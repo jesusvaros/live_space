@@ -1,0 +1,70 @@
+name: Publish public web
+
+# Rebuilds the prerendered agenda after each daily scrape and shortly after
+# midnight in Madrid, so /hoy and /esta-semana never show a stale day.
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Daily concert scraping"]
+    types: [completed]
+  schedule:
+    - cron: "5 23 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-web
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      VITE_MAP_STYLE_URL: https://tiles.openfreemap.org/styles/liberty
+      PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://livespace.pages.dev' }}
+
+    steps:
+      - name: Check Cloudflare configuration
+        id: configured
+        shell: bash
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Publish skipped: configure CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID."
+          fi
+
+      - name: Checkout
+        if: steps.configured.outputs.ready == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        if: steps.configured.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.configured.outputs.ready == 'true'
+        run: npm ci
+
+      - name: Build and prerender
+        if: steps.configured.outputs.ready == 'true'
+        run: npm run web:prerender
+
+      - name: Deploy to Cloudflare Pages
+        if: steps.configured.outputs.ready == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=livespace --branch=main

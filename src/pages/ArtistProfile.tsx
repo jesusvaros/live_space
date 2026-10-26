@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Spinner } from '../components/ui/AppPrimitives';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { PostWithSetlist } from '../lib/types';
 import AppShell from '../components/AppShell';
@@ -16,6 +16,7 @@ import MomentsSection from '../components/artist/MomentsSection';
 import AboutSection from '../components/artist/AboutSection';
 import { fetchEventCards } from '../data/eventQueries';
 import { fetchPostCards } from '../data/postQueries';
+import { useRouteEntityId } from '../hooks/useRouteEntityId';
 
 type ArtistProfileProps = {
   artistId?: string;
@@ -23,7 +24,7 @@ type ArtistProfileProps = {
 };
 
 const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => {
-  const { id: routeId } = useParams<{ id: string }>();
+  const routeId = useRouteEntityId();
   const id = artistId || routeId;
   const navigate = useNavigate();
   const { managedEntities, activeWorkspace } = useWorkspace();
