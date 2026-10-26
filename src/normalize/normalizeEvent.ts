@@ -1,5 +1,6 @@
 import type { AiExtractionPayload, NormalizedArtist, NormalizedEvent, EventType } from '../types/domain.js';
 import type { ScrapeSource, StagingEventRecord } from '../types/scrape.js';
+import { extractOffer } from './extractOffer.js';
 import { normalizeArtistNames } from './normalizeArtist.js';
 import { cleanupDisplayText, hasExcessiveNoise, normalizeForMatching } from './normalizeText.js';
 import { normalizeVenue } from './normalizeVenue.js';
@@ -321,6 +322,7 @@ export const normalizeStagingEvent = (
       eventType,
       sourceUrl: record.source_url || source.base_url,
       sourceExternalId: record.source_event_id || undefined,
+      offer: extractOffer(record.raw_payload, record.source_url, startsAt),
       artists: artistResult.artists,
       venue,
       confidence: isVerifiedStructuredRecord ? Math.max(heuristicConfidence, 0.97) : heuristicConfidence,

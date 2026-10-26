@@ -18,6 +18,13 @@ export type NormalizedVenue = {
   confidence: number;
 };
 
+export type EventOffer = {
+  ticketUrl?: string;
+  priceTiers: Array<{ label: string; price: number }>;
+  isFree: boolean;
+  endsAt?: string;
+};
+
 export type NormalizedEvent = {
   canonicalName: string;
   normalizedName: string;
@@ -27,6 +34,7 @@ export type NormalizedEvent = {
   eventType: EventType;
   sourceUrl?: string;
   sourceExternalId?: string;
+  offer?: EventOffer;
   artists: NormalizedArtist[];
   venue: NormalizedVenue;
   confidence: number;

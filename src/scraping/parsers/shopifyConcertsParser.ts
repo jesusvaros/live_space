@@ -7,6 +7,7 @@ type ShopifyProduct = {
   body_html?: string;
   product_type?: string;
   tags?: string[];
+  variants?: Array<{ price?: string; updated_at?: string }>;
 };
 
 type ShopifyProductsResponse = {
@@ -70,6 +71,7 @@ export const mapShopifyConcert = (
       body_html: product.body_html,
       product_type: product.product_type,
       tags: product.tags,
+      prices: (product.variants || []).map((variant) => variant.price).filter(Boolean),
     },
   };
 };

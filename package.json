@@ -23,6 +23,7 @@
     "scrape:weekly": "npm run scrape:build && node dist-scraper/scripts/runWeeklyScrape.js",
     "scrape:process": "npm run scrape:build && node dist-scraper/scripts/processPendingStaging.js",
     "scrape:triage": "npm run scrape:build && node dist-scraper/scripts/triageStaging.js",
+    "events:backfill-offers": "npm run scrape:build && node dist-scraper/scripts/backfillEventOffers.js",
     "scrape:seed": "npm run scrape:build && node dist-scraper/scripts/seedSources.js",
     "scrape:probe": "npm run scrape:build && node dist-scraper/scripts/probeSources.js",
     "scrape:auto-probe": "npm run scrape:build && node dist-scraper/scripts/autoProbeDiscoveredSources.js",
