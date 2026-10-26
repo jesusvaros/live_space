@@ -77,7 +77,7 @@ Comprobación manual: `gh api repos/jesusvaros/live_space/actions/workflows`.
 `npm run web:prerender` hace `vite build` y genera en `dist/` una página
 estática por concierto futuro (`/concierto/<slug>-<uuid>/`), sala publicada
 (`/sala/…`) y artista con conciertos (`/artista/…`), más
-`/{madrid,barcelona}/conciertos/{,hoy/,esta-semana/}`. Cada página lleva title,
+`/{madrid,barcelona}/conciertos/{,hoy/,esta-semana/}` y `/festival/<slug>/`. Cada página lleva title,
 description, canonical, Open Graph y JSON-LD (`MusicEvent`, `MusicVenue`,
 `MusicGroup`, `ItemList`). También genera `sitemap.xml`, `robots.txt`,
 `_redirects` (301 desde las URL con UUID y fallback SPA) y `_headers`. Solo usa
@@ -94,6 +94,8 @@ los secretos. Alta, una sola vez:
 4. Supabase → Auth → URL Configuration: añadir el dominio.
 5. Search Console: dar de alta el dominio y enviar `sitemap.xml`. Fijar el
    dominio definitivo antes, para no perder la indexación.
+6. Opcional: variable del repo `VITE_CONTACT_EMAIL` para el botón «Pide tu QR»
+   de las [landings](./landing.md).
 
 ## Fuente de scraping rota
 

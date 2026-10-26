@@ -25,6 +25,7 @@ disponibles en todos los formatos, adaptadas al tamaño de pantalla.
 | --- | --- |
 | Entender qué existe y qué falta | [Estado actual](./estado-actual.md) |
 | Revisar recorridos, pantallas y paridad | [Producto y pantallas](./producto.md) |
+| Cambiar la landing o añadir un festival | [Landings](./landing.md) |
 | Comprender componentes y flujo de datos | [Arquitectura](./arquitectura.md) |
 | Consultar entidades y relaciones | [Modelo de datos](./modelo-datos.md) |
 | Verificar o recuperar los backups heredados | [Recuperación](./recovery/index.md) |

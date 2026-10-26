@@ -22,3 +22,6 @@ atribución y momento de captura. Wikimedia Commons y press kits con permiso son
 válidos; buscadores y redes sociales no son fuentes de licencia. Sin prueba se usa
 placeholder. Los ocho objetos heredados permanecen en cuarentena hasta demostrar
 propietario, relación y derechos.
+
+Las fotos de las landings (`public/landing/`) son CC0 y su origen está en
+`src/landing/photos.ts`; ver [Landings](./landing.md#fotos-y-licencias).

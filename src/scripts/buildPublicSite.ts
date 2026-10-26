@@ -5,6 +5,7 @@ import path from 'node:path';
 
 import { createClient } from '@supabase/supabase-js';
 
+import { FESTIVALS, festivalPath } from '../landing/festivals.js';
 import { eventJsonLd, itemListJsonLd, placeJsonLd, type SeoArtist, type SeoEvent, type SeoVenue } from '../seo/jsonLd.js';
 import { PUBLIC_CITIES, publicPath } from '../seo/slug.js';
 
@@ -310,6 +311,25 @@ const run = async () => {
     }
   }
 
+  for (const festival of FESTIVALS) {
+    const pagePath = festivalPath(festival);
+    const where = festival.dates ? `${festival.place}, ${festival.dates}` : festival.place;
+    pages.push({
+      path: pagePath,
+      title: `¿Estuviste en ${festival.name}? Sube tus vídeos · Live Space`,
+      description: `Sube tus fotos y vídeos de ${festival.name} (${where}). Cada concierto del cartel tiene su página en Live Space.`.slice(0, 300),
+      body: [
+        `<main>`,
+        `<h1>¿Estuviste en ${escapeHtml(festival.name)}?</h1>`,
+        `<p>${escapeHtml(where)}</p>`,
+        `<p>Sube lo que grabaste. Cada concierto del cartel tiene su página.</p>`,
+        festival.lineup?.length ? `<ul>${festival.lineup.map((band) => `<li>${escapeHtml(band)}</li>`).join('')}</ul>` : '',
+        `</main>`,
+      ].join(''),
+      jsonLd: [],
+    });
+  }
+
   for (const page of pages) renderPage(page);
 
   const lastmod = new Date().toISOString();
@@ -318,6 +338,8 @@ const run = async () => {
     [
       '<?xml version="1.0" encoding="UTF-8"?>',
       '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+      // The landing is the SPA shell itself (dist/index.html), so it is listed but not prerendered.
+      `  <url><loc>${escapeHtml(`${SITE_URL}/`)}</loc><lastmod>${lastmod}</lastmod></url>`,
       ...pages.map((page) => `  <url><loc>${escapeHtml(`${SITE_URL}${page.path}`)}</loc><lastmod>${lastmod}</lastmod></url>`),
       '</urlset>',
       '',

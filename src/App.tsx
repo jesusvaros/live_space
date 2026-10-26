@@ -1,4 +1,5 @@
 import React from 'react';
+import { Capacitor } from '@capacitor/core';
 import {
   BrowserRouter,
   Navigate,
@@ -29,6 +30,8 @@ const CreateEventPage = React.lazy(() => import('./pages/CreateEvent'));
 const EventDetail = React.lazy(() => import('./pages/EventDetail'));
 const Map = React.lazy(() => import('./pages/Map'));
 const Upload = React.lazy(() => import('./pages/Upload'));
+const Landing = React.lazy(() => import('./pages/Landing'));
+const FestivalLanding = React.lazy(() => import('./pages/FestivalLanding'));
 
 const deferredPage = (page: React.ReactNode) => (
   <React.Suspense
@@ -75,6 +78,17 @@ const WelcomeRoute = () => {
     );
   }
   return user ? <Navigate to="/tabs/events" replace /> : <Welcome />;
+};
+
+// "/" is the public landing on the web for visitors without a session; the
+// native apps and signed-in users go straight to the agenda as before.
+const RootRoute: React.FC<{ mainTabHref: string }> = ({ mainTabHref }) => {
+  const { user, loading } = useAuth();
+  if (Capacitor.isNativePlatform()) {
+    return <Navigate to={loading ? '/welcome' : mainTabHref} replace />;
+  }
+  if (user && !loading) return <Navigate to={mainTabHref} replace />;
+  return deferredPage(<Landing />);
 };
 
 const ProfileRoute: React.FC<{
@@ -225,7 +239,8 @@ const AppRoutes = () => {
           <Route path="madrid/conciertos/*" element={<Events />} />
           <Route path="barcelona/conciertos/*" element={<Events />} />
         </Route>
-        <Route path="/" element={<Navigate to={loading ? '/welcome' : mainTabHref} replace />} />
+        <Route path="/festival/:slug" element={deferredPage(<FestivalLanding />)} />
+        <Route path="/" element={<RootRoute mainTabHref={mainTabHref} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
