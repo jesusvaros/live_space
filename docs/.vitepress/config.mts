@@ -20,6 +20,7 @@ export default defineConfig({
           { text: 'Inicio', link: '/' },
           { text: 'Estado actual', link: '/estado-actual' },
           { text: 'Producto y pantallas', link: '/producto' },
+          { text: 'Landings', link: '/landing' },
           { text: 'Diseño y componentes', link: '/diseno' },
           { text: 'Arquitectura', link: '/arquitectura' },
           { text: 'Modelo de datos', link: '/modelo-datos' },

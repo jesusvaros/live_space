@@ -29,6 +29,7 @@ jobs:
       VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
       VITE_MAP_STYLE_URL: https://tiles.openfreemap.org/styles/liberty
       PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://livespace.pages.dev' }}
+      VITE_CONTACT_EMAIL: ${{ vars.VITE_CONTACT_EMAIL }}
 
     steps:
       - name: Check Cloudflare configuration
