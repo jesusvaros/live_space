@@ -164,7 +164,16 @@ export const runStagingTriage = async ({
   // Rows that stay in human review keep their status but get the
   // capture-anchored normalization so the daily run does not redo it.
   const writes = plan.actions.filter((action) => action.rule || action.normalizedEvent);
-  for (const action of writes) {
+  const merged = writes.filter((action) => !action.normalizedEvent).map((action) => action.id);
+  for (let from = 0; from < merged.length; from += 200) {
+    const { error } = await supabase
+      .from('staging_events')
+      .update({ review_status: 'merged', processing_error: null })
+      .in('id', merged.slice(from, from + 200))
+      .eq('review_status', 'pending');
+    if (error) throw error;
+  }
+  for (const action of writes.filter((item) => item.normalizedEvent)) {
     const { error } = await supabase
       .from('staging_events')
       .update({
