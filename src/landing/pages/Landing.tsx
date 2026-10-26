@@ -1,8 +1,8 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import {
-  AGENDA_PATH,
+  AGENDA_LINKS,
   ContactButton,
+  DownloadCta,
   LandingFooter,
   LandingHeader,
   LiveDot,
@@ -10,12 +10,12 @@ import {
   PhotoMarquee,
   PrimaryCta,
   QrTile,
-  UPLOAD_PATH,
-} from '../landing/parts';
-import { MARQUEE_A, MARQUEE_B, PHOTOS } from '../landing/photos';
+} from '../parts';
+import { MARQUEE_A, MARQUEE_B, PHOTOS } from '../photos';
 
-// Public web landing at "/". Generic on purpose: no festival, band or venue
-// names here; festivals get their own page (FestivalLanding).
+// Public site landing at "/". Its only job is getting the app installed.
+// Generic on purpose: no festival, band or venue names; festivals get their
+// own page (FestivalLanding).
 
 const STEPS = [
   { n: '01', title: 'Escanea el QR', photo: PHOTOS.phoneUp },
@@ -60,15 +60,7 @@ const Landing: React.FC = () => (
           <p className="max-w-[30rem] text-[21px] text-[#dedad2]">
             Tus fotos y vídeos del concierto, ordenados por canción.
           </p>
-          <div className="flex flex-wrap gap-3">
-            <PrimaryCta to={UPLOAD_PATH}>Sube tu vídeo</PrimaryCta>
-            <a
-              href="#noche"
-              className="inline-flex min-h-14 items-center rounded-full border-[1.5px] border-[rgba(243,239,231,0.5)] px-7 text-lg font-semibold text-[var(--ls-ink)] no-underline"
-            >
-              Ver cómo queda
-            </a>
-          </div>
+          <DownloadCta source="landing-hero" />
         </div>
         <div className="flex min-w-0 flex-[1_1_320px] justify-center">
           <PhoneMock />
@@ -145,7 +137,7 @@ const Landing: React.FC = () => (
         <h2 className="ls-display max-w-[52rem] text-[clamp(56px,7.4vw,112px)]">
           ¿Te perdiste el bis? <span className="text-[var(--ls-accent)]">Alguien lo grabó.</span>
         </h2>
-        <PrimaryCta to={UPLOAD_PATH}>Sube el tuyo</PrimaryCta>
+        <PrimaryCta>Descárgate la app</PrimaryCta>
       </div>
     </section>
 
@@ -163,9 +155,24 @@ const Landing: React.FC = () => (
           Cada noche tuya, con su página y lo que grabó la gente.
         </p>
         <ContactButton subject="Quiero un QR de Live Space">Pide tu QR</ContactButton>
-        <Link to={AGENDA_PATH} className="self-start text-[var(--ls-muted)]">
+        <a href={AGENDA_LINKS[0].href} className="self-start text-[var(--ls-muted)]">
           Ver la agenda de conciertos
-        </Link>
+        </a>
+      </div>
+    </section>
+
+    <section id="descargar" className="bg-[var(--ls-accent)] text-[#0d0e12]">
+      <div className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-12 px-5 py-16 md:px-8 md:py-20">
+        <div className="flex min-w-0 flex-[1_1_520px] flex-col gap-6">
+          <h2 className="ls-display text-[clamp(56px,7vw,104px)]">Llévatelo en el bolsillo.</h2>
+          <DownloadCta source="landing-descargar" tone="accent" />
+        </div>
+        <img
+          src={PHOTOS.screenFrontRow.src}
+          alt={PHOTOS.screenFrontRow.alt}
+          loading="lazy"
+          className="ls-float h-[360px] w-[200px] flex-none rounded-[34px] border-[8px] border-[#0d0e12] object-cover shadow-[0_30px_60px_rgba(13,14,18,0.35)]"
+        />
       </div>
     </section>
 

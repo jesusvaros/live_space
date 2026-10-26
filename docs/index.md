@@ -1,13 +1,13 @@
 # Wiki de Live Space
 
 Live Space es una plataforma audiovisual y responsive para descubrir conciertos,
-seguir artistas y salas, y conservar momentos creados por fans. Web, Android e
-iOS comparten el producto; las herramientas profesionales y de moderación están
-disponibles en todos los formatos, adaptadas al tamaño de pantalla.
+seguir artistas y salas, y conservar momentos creados por fans. La app existe
+solo en Android e iOS; la web pública es una landing con fichas estáticas cuyo
+objetivo es que la gente instale la app (ver [Web pública y landings](./landing.md)).
 
 ## Principios
 
-- **Un producto:** mismas rutas, permisos y capacidades en web y apps.
+- **Un producto:** mismas rutas, permisos y capacidades en Android e iOS; la web solo capta instalaciones.
 - **Procedencia primero:** ningún evento o recurso de catálogo se publica sin
   fuente, momento de captura y trazabilidad.
 - **Privacidad y seguridad por defecto:** RLS, mínimo privilegio, secretos fuera
@@ -25,7 +25,7 @@ disponibles en todos los formatos, adaptadas al tamaño de pantalla.
 | --- | --- |
 | Entender qué existe y qué falta | [Estado actual](./estado-actual.md) |
 | Revisar recorridos, pantallas y paridad | [Producto y pantallas](./producto.md) |
-| Cambiar la landing o añadir un festival | [Landings](./landing.md) |
+| Cambiar la web pública o añadir un festival | [Web pública y landings](./landing.md) |
 | Comprender componentes y flujo de datos | [Arquitectura](./arquitectura.md) |
 | Consultar entidades y relaciones | [Modelo de datos](./modelo-datos.md) |
 | Verificar o recuperar los backups heredados | [Recuperación](./recovery/index.md) |

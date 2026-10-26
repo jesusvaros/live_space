@@ -23,6 +23,7 @@ node_modules
 /build
 /dist
 /dist-scraper
+/dist-site
 
 # generated recovery and scraper artifacts
 /recovery-work

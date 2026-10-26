@@ -1,6 +1,6 @@
 import '../config/loadEnv.js';
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { createClient } from '@supabase/supabase-js';
@@ -9,12 +9,13 @@ import { FESTIVALS, festivalPath } from '../landing/festivals.js';
 import { eventJsonLd, itemListJsonLd, placeJsonLd, type SeoArtist, type SeoEvent, type SeoVenue } from '../seo/jsonLd.js';
 import { PUBLIC_CITIES, publicPath } from '../seo/slug.js';
 
-// Prerenders the public agenda into dist/ after `vite build`: one static page
-// per upcoming concert, venue and artist plus city listings, each with title,
-// description, canonical, Open Graph and JSON-LD. The SPA mounts over it.
+// Prerenders the public website into dist-site/ after `npm run site:build`.
+// The site has no app: concert, venue, artist and city pages are plain static
+// HTML (title, description, canonical, Open Graph, JSON-LD) that push the
+// visitor to install the app; festival pages reuse the landing bundle.
 // Uses only the anon key; RLS limits it to published rows.
 
-const DIST = path.resolve(process.env.PUBLIC_SITE_DIST || 'dist');
+const DIST = path.resolve(process.env.PUBLIC_SITE_DIST || 'dist-site');
 const SITE_URL = (process.env.PUBLIC_SITE_URL || 'https://livespace.pages.dev').replace(/\/+$/, '');
 const TIME_ZONE = 'Europe/Madrid';
 
@@ -60,17 +61,32 @@ const venueLine = (venue: SeoVenue) =>
 
 type Page = {
   path: string;
+  // 'landing' pages mount the landing bundle; the rest are static HTML.
+  kind?: 'static' | 'landing';
   title: string;
   description: string;
   body: string;
   jsonLd: unknown[];
 };
 
-const template = readFileSync(path.join(DIST, 'index.html'), 'utf8');
+// Vite emits the site entry as site.html; Cloudflare serves index.html at "/".
+if (existsSync(path.join(DIST, 'site.html'))) renameSync(path.join(DIST, 'site.html'), path.join(DIST, 'index.html'));
+const landingTemplate = readFileSync(path.join(DIST, 'index.html'), 'utf8');
 
-const renderPage = (page: Page) => {
+// CC0 photos from site-public/landing, picked per page so fichas are not bare text.
+const FICHA_PHOTOS = [
+  'multitud-escenario', 'concierto-en-casa', 'saxo-jazz', 'bateria-luces', 'humo-manos', 'cantante',
+  'guitarrista-rojo-azul', 'primera-fila-bn', 'manos-luz-azul', 'banda-joven', 'banda-focos-azules', 'guitarrista-barba',
+];
+const fichaPhoto = (pagePath: string) => {
+  let hash = 0;
+  for (const char of pagePath) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  return `/landing/${FICHA_PHOTOS[hash % FICHA_PHOTOS.length]}.jpg`;
+};
+
+const headTags = (page: Page) => {
   const canonical = `${SITE_URL}${page.path}`;
-  const head = [
+  return [
     `<link rel="canonical" href="${escapeHtml(canonical)}" />`,
     `<meta property="og:type" content="website" />`,
     `<meta property="og:site_name" content="Live Space" />`,
@@ -81,20 +97,62 @@ const renderPage = (page: Page) => {
     `<meta name="twitter:card" content="summary" />`,
     ...page.jsonLd.map((item) => `<script type="application/ld+json">${jsonForScript(item)}</script>`),
   ].join('\n    ');
+};
 
-  const html = template
-    .replace(/<title>[\s\S]*?<\/title>/, `<title>${escapeHtml(page.title)}</title>`)
-    .replace(
-      /<meta name="description"[^>]*>/,
-      `<meta name="description" content="${escapeHtml(page.description)}" />`,
-    )
-    .replace('</head>', `    ${head}\n  </head>`)
-    .replace('<div id="root"></div>', `<div id="root">${page.body}</div>`);
-
-  const directory = path.join(DIST, page.path);
+const writePage = (pagePath: string, html: string) => {
+  const directory = path.join(DIST, pagePath);
   mkdirSync(directory, { recursive: true });
   writeFileSync(path.join(directory, 'index.html'), html);
 };
+
+const renderLandingPage = (page: Page) =>
+  landingTemplate
+    .replace(/<title>[\s\S]*?<\/title>/, `<title>${escapeHtml(page.title)}</title>`)
+    .replace(/<meta name="description"[^>]*>/, `<meta name="description" content="${escapeHtml(page.description)}" />`)
+    .replace('</head>', `    ${headTags(page)}\n  </head>`)
+    .replace('<div id="root"></div>', `<div id="root">${page.body}</div>`);
+
+const BRAND_MARK =
+  '<svg width="26" height="26" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12" fill="none" stroke="#ff5b2e" stroke-width="2.5"/><circle cx="14" cy="14" r="4.5" fill="#ff5b2e"/></svg>';
+
+const staticShell = (title: string, description: string, head: string, inner: string, photo?: string) => `<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0d0e12" />
+    <title>${escapeHtml(title)}</title>
+    <meta name="description" content="${escapeHtml(description)}" />
+    <link rel="stylesheet" href="/landing/fichas.css" />
+    ${head}
+  </head>
+  <body>
+    <header class="bar">
+      <a class="brand" href="/">${BRAND_MARK}<span>Live Space</span></a>
+      <a class="btn" href="/#descargar">Descárgate la app</a>
+    </header>
+    ${photo ? `<div class="photo"><img src="${photo}" alt="" /></div>` : ''}
+    ${inner}
+    <aside class="cta">
+      <h2>¿Vas a ir? Grábalo y súbelo.</h2>
+      <p>Con la app de Live Space tus fotos y vídeos del concierto quedan ordenados por canción.</p>
+      <a class="btn" href="/#descargar">Descárgate la app</a>
+    </aside>
+    <footer class="foot">
+      <span>Live Space · los conciertos, contados por el público.</span>
+      <nav><a href="/madrid/conciertos/">Conciertos en Madrid</a><a href="/barcelona/conciertos/">Conciertos en Barcelona</a></nav>
+    </footer>
+  </body>
+</html>
+`;
+
+const renderPage = (page: Page) =>
+  writePage(
+    page.path,
+    page.kind === 'landing'
+      ? renderLandingPage(page)
+      : staticShell(page.title, page.description, headTags(page), page.body, fichaPhoto(page.path)),
+  );
 
 const fetchCatalogue = async () => {
   const since = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
@@ -196,7 +254,7 @@ const run = async () => {
         lineup ? `<p>Cartel: ${lineup}</p>` : '',
         price ? `<p>${escapeHtml(price)}</p>` : '',
         event.ticket_url
-          ? `<p><a href="${escapeHtml(event.ticket_url)}" rel="noopener nofollow">Entradas</a></p>`
+          ? `<p><a href="${escapeHtml(event.ticket_url)}" rel="noopener nofollow">Más información y entradas</a></p>`
           : '',
         event.description ? `<p>${escapeHtml(event.description.slice(0, 600))}</p>` : '',
         `</main>`,
@@ -327,6 +385,7 @@ const run = async () => {
         `</main>`,
       ].join(''),
       jsonLd: [],
+      kind: 'landing',
     });
   }
 
@@ -338,32 +397,31 @@ const run = async () => {
     [
       '<?xml version="1.0" encoding="UTF-8"?>',
       '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-      // The landing is the SPA shell itself (dist/index.html), so it is listed but not prerendered.
+      // The landing is the site bundle's own index.html, so it is listed but not prerendered.
       `  <url><loc>${escapeHtml(`${SITE_URL}/`)}</loc><lastmod>${lastmod}</lastmod></url>`,
       ...pages.map((page) => `  <url><loc>${escapeHtml(`${SITE_URL}${page.path}`)}</loc><lastmod>${lastmod}</lastmod></url>`),
       '</urlset>',
       '',
     ].join('\n'),
   );
+  writeFileSync(path.join(DIST, 'robots.txt'), ['User-agent: *', 'Allow: /', `Sitemap: ${SITE_URL}/sitemap.xml`, ''].join('\n'));
+  // Cloudflare Pages: legacy UUID URLs move to their static page; old app
+  // routes (the app is no longer on the web) go to the landing. Anything else
+  // gets 404.html. Festival landings are SPA routes of the site bundle.
+  const appRoutes = ['/tabs/*', '/event/*', '/artist/*', '/venue/*', '/welcome', '/reset', '/upload', '/create-event', '/profile/*', '/post/*', '/admin', '/admin/*', '/discover'];
   writeFileSync(
-    path.join(DIST, 'robots.txt'),
-    [
-      'User-agent: *',
-      'Allow: /',
-      'Disallow: /tabs/',
-      'Disallow: /admin',
-      'Disallow: /profile/',
-      'Disallow: /welcome',
-      'Disallow: /reset',
-      'Disallow: /upload',
-      'Disallow: /create-event',
-      `Sitemap: ${SITE_URL}/sitemap.xml`,
-      '',
-    ].join('\n'),
+    path.join(DIST, '_redirects'),
+    [...redirects, ...appRoutes.map((route) => `${route} / 302`), ''].join('\n'),
   );
-  // Cloudflare Pages: legacy UUID URLs move to the canonical page, then the
-  // SPA fallback serves every other client-side route.
-  writeFileSync(path.join(DIST, '_redirects'), [...redirects, '/* /index.html 200', ''].join('\n'));
+  writeFileSync(
+    path.join(DIST, '404.html'),
+    staticShell(
+      'Página no encontrada · Live Space',
+      'Esta página no existe.',
+      '<meta name="robots" content="noindex" />',
+      '<main><h1>Esta página no existe.</h1><p><a href="/">Volver a Live Space</a></p></main>',
+    ),
+  );
   writeFileSync(
     path.join(DIST, '_headers'),
     [
