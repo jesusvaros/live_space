@@ -241,7 +241,7 @@ const AppRoutes = () => {
         </Route>
         <Route path="/festival/:slug" element={deferredPage(<FestivalLanding />)} />
         <Route path="/" element={<RootRoute mainTabHref={mainTabHref} />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to={mainTabHref} replace />} />
       </Routes>
 
       {loading && !user ? (

@@ -10,6 +10,7 @@ lienzo «Landing Live Space» (claude.ai, privado del propietario).
 | --- | --- | --- |
 | `/` | `src/pages/Landing.tsx` | Web sin sesión. Con sesión, o en las apps nativas, `/` redirige a la agenda como antes. |
 | `/festival/<slug>/` | `src/pages/FestivalLanding.tsx` | Todos. Un slug desconocido redirige a `/`. |
+| cualquier otra ruta desconocida | — | Redirige a la agenda (`/tabs/events`), no a la landing. |
 
 Las dos se cargan en diferido (chunk propio), así que la app no carga su CSS,
 sus fuentes ni sus fotos.
