@@ -43,9 +43,9 @@ Una restricción de PostgreSQL
 impide además guardar `is_active = true` si falta `terms_reviewed_at` o
 `metadata.fixtureVerified = true`.
 
-Los parsers operativos cubren JSON-LD, Events Manager, la agenda Schema.org de
-Movistar Arena, el catálogo Shopify de Independance Club, la API y taxonomías de
-Luz de Gas, la API oficial de The
+Los parsers operativos cubren JSON-LD, Events Manager, las tarjetas HTML y el
+Schema.org de respaldo de Movistar Arena, el catálogo Shopify de Independance
+Club, la API y taxonomías de Luz de Gas, la API oficial de The
 Events Calendar usada por La Riviera y Jamboree, las tarjetas Elementor de Sala
 But, el HTML de Siroco, la agenda de Apolo y el SSR de Nuxt usado por Razzmatazz.
 `json-ld-agenda` extrae eventos Schema.org,
@@ -54,23 +54,13 @@ duplicados por URL canónica. Las webs sin JSON-LD permanecerán inactivas hasta
 disponer de un parser y selectores propios; el parser HTML genérico no constituye
 por sí solo autorización para activar una fuente.
 
-Estado remoto del 21 de julio de 2026: 268 conciertos publicados, 34 salas y 258
-artistas. Veinticinco salas proceden del primer descubrimiento automático con
-evidencia fuerte de OpenStreetMap; otras 61 observaciones permanecen como
-candidatas. La Riviera aportó 87 conciertos publicados de 88 detectados; el cartel
-`Editors + Big Sleep` permanece en revisión por contener varios artistas. Los
-candidatos que mezclan promotor, festival o actividad no musical también se
-retienen para evitar perfiles falsos. Sala But aportó sus dos próximas fechas y
-su parser descarta el histórico ya vencido. Jamboree detectó 192 conciertos:
-publicó 121, dejó 55 ambiguos en revisión y rechazó 16 sin artista verificable;
-las actividades de discoteca quedan excluidas por categoría.
-Movistar Arena detectó 30 conciertos en su listado oficial filtrado: publicó 27
-y conservó 3 títulos ambiguos para revisión humana.
-Independance Club detectó 11 productos etiquetados como conciertos: publicó 4 y
-conservó 7 carteles largos o ambiguos para revisión. Su payload omite los campos
-`updated_at` que Shopify modifica durante las lecturas para mantener hashes estables.
-Luz de Gas detectó y publicó 15 conciertos futuros. El cruce entre su calendario,
-la taxonomía `Concierto` y el recinto `Luz de Gas` excluye fiestas y Sala B.
+Estado remoto del 26 de octubre de 2026: 292 conciertos publicados, 133 futuros,
+34 salas publicadas y 276 artistas publicados. La captura de verificación leyó
+493 entradas de 13 fuentes y terminó con cero errores. Los 13 watchers quedaron
+saludables. Fun House, Sala But, Sala El Sol y Razzmatazz se repararon tras sus
+cambios de estructura; Movistar Arena volvió a 71 conciertos después de adaptar
+su nuevo HTML. Su listado mezcla algunos partidos aunque esté filtrado por
+`Conciertos`, por lo que el parser los descarta explícitamente.
 
 ## Confianza y deduplicación
 
@@ -88,7 +78,9 @@ publica a partir de una puntuación opaca.
 
 ## Descubrimiento y ciclo de vida de salas
 
-El workflow `discover-venues.yml` recorre semanalmente 54 ciudades españolas.
+El workflow `discover-venues.yml` recorre semanalmente 54 ciudades españolas,
+repartidas en cinco shards independientes para permanecer dentro del límite de
+ejecución.
 Obtiene la caja geográfica de cada ciudad, consulta instancias públicas de
 Overpass con fallback y conserva el identificador y las etiquetas originales de
 OpenStreetMap. La etiqueta `amenity=music_venue`, con nombre y ubicación, tiene
@@ -111,8 +103,12 @@ El watcher diario registra una identidad estable por concierto y distingue un
 cambio real de una agenda vacía o una caída de conteo superior al 70 %. Dos
 ausencias consecutivas en capturas fiables abren revisión. Dos fallos de fuente
 consecutivos marcan la fuente como rota. Ninguno cancela eventos automáticamente.
-La primera ejecución real inicializó 351 observaciones; nueve fuentes quedaron
-saludables y una agenda vacía quedó degradada con alerta abierta.
+La tarea `scrape:maintenance`, ejecutada incluso cuando una captura falla, cierra
+runs de descubrimiento que lleven más de dos horas atascados. También resuelve
+alertas cuando la fecha ya pasó o, si la fuente no daba fecha estructurada, tras
+30 días de ausencia continuada. Las observaciones pasan a `ended`; no se borran.
+La recuperación del 26 de octubre cerró tres runs atascados y 444 alertas
+históricas antes de dejar las 13 fuentes activas saludables.
 La primera pasada nacional completó 54/54 ciudades en 4 minutos y 9 segundos,
 registró 86 observaciones y dejó 19 webs oficiales en cola de parser. Un sondeo
 automático posterior localiza enlaces de agenda, prueba motores conocidos y hace
@@ -126,8 +122,10 @@ El comando `npm run scrape:auto-probe` actualiza la clasificación técnica de l
 fuentes descubiertas que siguen inactivas. No las activa por sí solo. Tras revisar
 una fuente, `APPROVED_SOURCE_NAMES=... SOURCE_REVIEW_NOTE=... npm run
 scrape:approve-probed` valida que el sondeo sea reproducible y conserva la
-evidencia de activación. El workflow semanal ejecuta descubrimiento y sondeo; el
-watcher diario se ocupa de las fuentes que ya están activas.
+evidencia de activación. El workflow semanal ejecuta el descubrimiento en
+paralelo y después el sondeo en un job separado; un error de una web queda
+registrado sin abortar las restantes. El watcher diario se ocupa de las fuentes
+que ya están activas.
 
 La primera captura de las tres fuentes nuevas produjo 51 candidatos: 30 de
 Clamores, 18 de Wagon y 3 de Fun House. Cincuenta permanecen en revisión porque

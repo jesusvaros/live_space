@@ -38,3 +38,10 @@ jobs:
           SCRAPER_TIMEOUT_MS: "30000"
           ENABLE_AI_NORMALIZATION: "false"
           SCRAPER_CITY_ALLOWLIST: "Madrid,Barcelona"
+
+      - name: Resolve obsolete watcher alerts
+        if: always()
+        run: npm run scrape:maintenance
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

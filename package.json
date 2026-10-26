@@ -26,6 +26,7 @@
     "scrape:probe": "npm run scrape:build && node dist-scraper/scripts/probeSources.js",
     "scrape:auto-probe": "npm run scrape:build && node dist-scraper/scripts/autoProbeDiscoveredSources.js",
     "scrape:approve-probed": "npm run scrape:build && node dist-scraper/scripts/approveAutoProbedSources.js",
+    "scrape:maintenance": "npm run scrape:build && node dist-scraper/scripts/runScraperMaintenance.js",
     "venues:discover": "npm run scrape:build && node dist-scraper/scripts/discoverVenues.js"
   },
   "dependencies": {

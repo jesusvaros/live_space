@@ -194,6 +194,19 @@ const promoteStrongCandidate = async (candidate: VenueCandidate, candidateId: st
 };
 
 const discoverScope = async (scope: string) => {
+  const supersededAt = new Date().toISOString();
+  const { error: staleRunError } = await supabase
+    .from('venue_discovery_runs')
+    .update({
+      status: 'error',
+      finished_at: supersededAt,
+      error_message: 'Superseded by a newer discovery attempt after an interrupted worker.',
+    })
+    .eq('provider', 'openstreetmap')
+    .eq('scope', scope)
+    .eq('status', 'running');
+  if (staleRunError) throw staleRunError;
+
   const { data: run, error: runError } = await supabase
     .from('venue_discovery_runs')
     .insert({ provider: 'openstreetmap', scope, status: 'running' })

@@ -1,6 +1,6 @@
 # Estado actual
 
-Fecha de la última actualización: **22 de julio de 2026**.
+Fecha de la última actualización: **26 de octubre de 2026**.
 
 ## Código
 
@@ -35,22 +35,23 @@ Fecha de la última actualización: **22 de julio de 2026**.
   deduplicación. Hay 18 fuentes piloto versionadas y 13 operativas:
   Independance Club, Jamboree, La Riviera, Movistar Arena, Siroco, Sala Apolo,
   Sala But, Sala El Sol, Luz de Gas, Razzmatazz, Fun House, Sala Clamores y Sala
-  Wagon. Los parsers oficiales han publicado 270 conciertos y 270 artistas.
-  Jamboree filtra exclusivamente
-  conciertos: publicó 121, retuvo 55 candidatos ambiguos y rechazó 16 sin artista.
-  Movistar Arena añadió 27 conciertos y dejó 3 candidatos en revisión.
-  Independance Club añadió 4 conciertos y conservó 7 títulos largos o ambiguos
-  para revisión.
-  Luz de Gas añadió 15 conciertos; sus fiestas y la programación de Sala B se
-  excluyen mediante taxonomías oficiales.
+  Wagon. La base remota conserva 292 conciertos publicados, 133 futuros, 276
+  artistas publicados y 34 salas publicadas. La captura real del 26 de octubre
+  leyó 493 entradas de las 13 fuentes sin errores y dejó todos sus watchers en
+  estado saludable. Movistar Arena aportó 71 conciertos y el parser excluyó los
+  partidos de baloncesto que su filtro oficial mezcla en el HTML.
 - El descubridor de salas y el watcher de cambios están desplegados en base de
   datos. La primera pasada nacional procesó 54/54 ciudades, produjo 86 candidatos,
   confirmó 25 salas con evidencia `amenity=music_venue` y elevó el catálogo a 34
   salas publicadas. Diecinueve webs oficiales nuevas están en la cola inactiva de
   implementación de parser. La ejecución repetida de Madrid produjo cero altas.
-  El watcher ya observó 351 identidades de concierto: nueve fuentes quedaron
-  saludables y Sala El Sol quedó degradada por devolver una agenda vacía, sin
-  cancelar ni marcar como ausentes sus eventos.
+  El descubrimiento nacional se divide ahora en cinco shards para evitar el
+  timeout de GitHub Actions. El sondeo de webs se ejecuta después en un job
+  separado, y un fallo individual no invalida los resultados de las demás
+  fuentes. El mantenimiento diario cierra ejecuciones abandonadas y resuelve
+  alertas de eventos pasados o indeterminados que llevan 30 días sin reaparecer;
+  no borra eventos ni observaciones. En la ejecución de recuperación resolvió
+  444 alertas históricas y cerró tres runs atascados.
 - El auto-sondeo de las 19 webs descubiertas clasificó tres fuentes reproducibles,
   15 que requieren parser específico y una no compatible. Las tres reproducibles
   ya están activas. Su primera captura añadió 51 candidatos a staging: 50 esperan
@@ -64,7 +65,7 @@ Fecha de la última actualización: **22 de julio de 2026**.
   proyecto nuevo.
 - Los backups incluyen datos de Auth que no se restaurarán: cuentas, sesiones,
   tokens y contraseñas quedan expresamente fuera de la migración.
-- TypeScript, lint, 44 pruebas unitarias, 6 smoke tests E2E responsive, build de
+- TypeScript, lint, las pruebas unitarias, 6 smoke tests E2E responsive, build de
   aplicación y build de documentación pasan y están conectados a CI. Aún faltan
   la matriz de tests RLS, fixtures por fuente y pruebas completas de subida.
 - El audit de producción está limpio. VitePress 1.6.4 arrastra tres avisos solo de
@@ -98,7 +99,7 @@ emails, sesiones y tokens.
 
 ## Infraestructura remota del piloto
 
-| Recurso | Estado al 21 de julio de 2026 |
+| Recurso | Estado al 26 de octubre de 2026 |
 | --- | --- |
 | Supabase | `live-space-pilot`, París, Free, Data API sin exposición automática de tablas |
 | Base remota | 7 migraciones aplicadas y registradas; 30/30 tablas públicas con RLS |
@@ -107,6 +108,7 @@ emails, sesiones y tokens.
 | Cloudinary | entorno `Live Space Pilot` reutilizado por el límite de un entorno del plan Free |
 | Presets | `live_space_user_media`, `live_space_professional_media` y `live_space_catalog_media`, todos firmados |
 | Webhook | eventos `Upload` hacia `cloudinary-webhook`, firmado con la clave dedicada |
+| Vercel | Live Space no registra despliegues en Vercel; la cuota compartida llena procede de otros proyectos del equipo |
 
 Pendientes humanos: rotar la contraseña de base de datos generada durante el alta,
 guardarla en el gestor del propietario, registrar el dominio público cuando exista

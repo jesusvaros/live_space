@@ -43,6 +43,14 @@ const dedupeRawItems = (items: RawScrapedEvent[]): RawScrapedEvent[] => {
   return deduped;
 };
 
+export const sourcePageFailureReason = (status: number | undefined, html: string): string | null => {
+  if (status && status >= 400) return `Source returned HTTP ${status}`;
+  if (/performing security verification|cf-chl-|just a moment/i.test(html)) {
+    return 'Source returned an anti-bot challenge instead of its agenda';
+  }
+  return null;
+};
+
 export const fetchSource = async (
   source: ScrapeSource,
   logger: Logger
@@ -62,7 +70,7 @@ export const fetchSource = async (
     },
     async (page) => {
       sourceLogger.info('Opening source page');
-      await page.goto(source.base_url, {
+      const response = await page.goto(source.base_url, {
         waitUntil: 'domcontentloaded',
         timeout: 45_000,
       });
@@ -87,6 +95,8 @@ export const fetchSource = async (
       await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => undefined);
 
       const html = await page.content();
+      const pageFailure = sourcePageFailureReason(response?.status(), html);
+      if (pageFailure) throw new Error(pageFailure);
       if (!parser.canHandle(source.base_url, html)) {
         sourceLogger.warn('Parser does not confidently match page HTML; continuing with configured parser');
       }

@@ -24,6 +24,19 @@ const MONTHS: Record<string, number> = {
   octubre: 9,
   noviembre: 10,
   diciembre: 11,
+  ene: 0,
+  feb: 1,
+  mar: 2,
+  abr: 3,
+  may: 4,
+  jun: 5,
+  jul: 6,
+  ago: 7,
+  sep: 8,
+  sept: 8,
+  oct: 9,
+  nov: 10,
+  dic: 11,
   january: 0,
   february: 1,
   march: 2,
@@ -123,7 +136,7 @@ export const parseDateTextToIso = (
 
   const monthNameMatch = value
     .toLowerCase()
-    .match(/(\d{1,2})\s*(?:de)?\s*(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre|january|february|march|april|june|july|august|october|november|december)(?:\s*(?:de)?\s*(\d{4}))?/i);
+    .match(/(\d{1,2})\s*(?:(?:lun|mar|mi[eé]|jue|vie|s[aá]b|dom)\s*)?(?:de)?\s*(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre|ene|feb|mar|abr|may|jun|jul|ago|sep|sept|oct|nov|dic|january|february|march|april|june|july|august|october|november|december)(?:\s*(?:de)?\s*(\d{4}))?/i);
 
   if (monthNameMatch) {
     const { hour, minute } = parseTime(value);

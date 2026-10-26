@@ -18,6 +18,12 @@ export const sourceEventKey = (event: RawScrapedEvent): string =>
     venueName: event.venueName || null,
   });
 
+export const isPastObservation = (startsAt: string | null, now = new Date()): boolean => {
+  if (!startsAt) return false;
+  const timestamp = Date.parse(startsAt);
+  return Number.isFinite(timestamp) && timestamp < now.getTime();
+};
+
 export const assessSnapshot = (
   currentCount: number,
   previousCount: number,
@@ -128,13 +134,22 @@ export const recordSuccessfulSnapshot = async (
 
     for (const observation of known || []) {
       if (seen.has(observation.event_key)) continue;
-      if (observation.starts_at && new Date(observation.starts_at) < now) {
+      if (isPastObservation(observation.starts_at, now)) {
         const { error: endError } = await supabase
           .from('source_event_observations')
           .update({ status: 'ended' })
           .eq('source_id', source.id)
           .eq('event_key', observation.event_key);
         if (endError) throw endError;
+
+        const { error: alertResolutionError } = await supabase
+          .from('scrape_watch_alerts')
+          .update({ status: 'resolved', resolved_at: timestamp })
+          .eq('source_id', source.id)
+          .eq('event_key', observation.event_key)
+          .eq('alert_type', 'event_missing')
+          .eq('status', 'open');
+        if (alertResolutionError) throw alertResolutionError;
         continue;
       }
 
