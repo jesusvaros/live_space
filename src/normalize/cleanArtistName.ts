@@ -13,6 +13,10 @@
 //     titles, years, "& Friends") are removed.
 //  6. Collaborations are split on i/y/amb/meets/feat/with/con, "/" and "&"
 //     between two full names; bands such as "Ciro y los Persas" stay whole.
+//     Bills are split too: "A + B + C", "A, B y C", support acts after
+//     "Teloneros:" / "Invitados:" / "(support: …)", the line-up after a
+//     series or promoter label ("Radar Joven: A + B") and "Doble concierto:".
+//     The headliner always comes first.
 //  7. ALL-CAPS names get a display title case that keeps acronyms.
 //  8. Results are de-duplicated ("&" and "and" count as the same).
 //  9. Parsers without a performer field run their title through these rules
@@ -46,6 +50,8 @@ const NOT_ARTIST_PATTERNS: RegExp[] = [
   /\bapadrinad[oa]\b/i,
   /\bjam session\b/i,
   /^(?:open mic|karaoke)\b/i,
+  // "Mujeres + Invitados": guests without a name are not a performer.
+  /^(?:invitad[oa]s?|convidat?s?|(?:special )?guests?|y m[aá]s|and more|sorpresa)$/i,
 ];
 
 const SERIES_PREFIX_RE = /^(?:cicle|ciclo|cycle|the jazz room|viatge pel jazz|serie|series)\b[^:]*:\s*/i;
@@ -130,6 +136,14 @@ const splitCollaborations = (value: string): string[] => {
         merged.push(piece);
       }
     }
+    // "Ginebras, Repion y Cariño": a Spanish/Catalan list ends in y/i, so
+    // the commas before it separate names too. "Earth, Wind & Fire" ends in
+    // "&" and never reaches this branch.
+    const conjunction = part.match(CONJUNCTION_SPLIT_RE)?.[0].trim();
+    if (conjunction && /^(?:y|Y|i)$/.test(conjunction) && merged.length >= 2 && merged[0].includes(',')) {
+      const listed = merged[0].split(/,\s+/).map(collapse);
+      if (listed.every((name) => /^[A-ZÀ-Ý0-9]/.test(name))) return [...listed, ...merged.slice(1)];
+    }
     return merged;
   });
 
@@ -189,6 +203,22 @@ const splitSubtitle = (value: string): { head: string; extraArtists: string[]; t
   return { head, extraArtists: [], tourName: tail };
 };
 
+// "Triángulo de Amor Bizarro. Teloneros: Rufus T. Firefly",
+// "Hinds (support: Las Odio)", "Carolina Durante con invitados: Sexy Zebras".
+const SUPPORT_MARKER_RE =
+  /\s*[.,;(]?\s*(?:\+\s*|con\s+|amb\s+)?(?:teloner[oa]s?|support(?:ing)?(?:\s+acts?)?|soporte|invitad[oa]s?|convidat?s?|special\s+guests?|opening(?:\s+acts?)?|apertura|acompañad[oa]s?\s+de)\s*:\s*/i;
+const BILL_PREFIX_RE =
+  /^(?:(?:doble|triple|cu[aá]druple)\s+(?:concierto|concert|cartel|bolo)|(?:concierto|concert|cartel)\s+(?:doble|triple))\s*[:\-–—]?\s*/i;
+
+const splitSupportActs = (value: string): { head: string; support: string[] } => {
+  const match = value.match(SUPPORT_MARKER_RE);
+  if (!match || match.index === undefined || match.index === 0) return { head: value, support: [] };
+  const head = collapse(value.slice(0, match.index));
+  const rest = collapse(value.slice(match.index + match[0].length).replace(/\)\s*$/, ''));
+  if (!head || !rest) return { head: value, support: [] };
+  return { head, support: rest.split(/\s+\+\s+|,\s+|\s+(?:y|i|and|&)\s+(?=[A-ZÀ-Ý])/).map(collapse).filter(Boolean) };
+};
+
 // Rule 3 and the generic "Head: rest" form.
 const splitColon = (value: string): { names: string[] | null; text: string; tourName: string | null } => {
   const prefixed = value.match(SERIES_PREFIX_RE);
@@ -203,9 +233,12 @@ const splitColon = (value: string): { names: string[] | null; text: string; tour
   const left = collapse(value.slice(0, colon));
   const right = collapse(value.slice(colon + 1));
   if (!right) return { names: null, text: left, tourName: null };
-  // "Oremi Afrojazz: Roman Filiu, Noslen Ortega i Gastón Joya" names the
-  // line-up after the colon.
-  if (looksLikeNameList(right) && !CONJUNCTION_SPLIT_RE.test(left)) return { names: null, text: right, tourName: left };
+  // "Oremi Afrojazz: Roman Filiu, Noslen Ortega i Gastón Joya" and
+  // "Radar Joven: Joaquín Fénix + La Niña Paracaídas" name the line-up after
+  // the colon.
+  if ((looksLikeNameList(right) || /\s\+\s/.test(right)) && !CONJUNCTION_SPLIT_RE.test(left)) {
+    return { names: null, text: right, tourName: left };
+  }
   return { names: null, text: left, tourName: right };
 };
 
@@ -226,23 +259,27 @@ export const cleanArtistName = (raw: string | null | undefined): ArtistNameClean
   if (!input) return { names: [], tourName: null, reason: 'empty' };
   if (isNotArtist(input)) return { names: [], tourName: null, reason: 'not-artist' };
 
-  const colon = splitColon(input);
+  const { head: billHead, support } = splitSupportActs(input.replace(BILL_PREFIX_RE, ''));
+
+  const colon = splitColon(billHead);
   if (colon.names) return { names: [], tourName: null, reason: 'not-artist' };
 
   const subtitle = splitSubtitle(colon.text);
   const tourName = subtitle.tourName ?? colon.tourName;
 
-  const heads = [subtitle.head, ...subtitle.extraArtists];
+  // Headliner first, then the rest of the bill in the order printed.
+  const heads = [subtitle.head, ...subtitle.extraArtists, ...support].flatMap((head) =>
+    head.split(/\s+\+\s+/).map(collapse).filter(Boolean),
+  );
   const names: string[] = [];
   for (const head of heads) {
+    // "Manolo Uvi presenta Únete al Commando 9mm" loses only its own
+    // presentation, not the rest of the bill.
     const decorated = stripDecorations(head);
     const withoutFriends = stripFriends(decorated);
     if (!withoutFriends) continue;
     for (const part of splitCollaborations(withoutFriends)) {
-      // "+" bills stay together so normalizeArtist marks them ambiguous for
-      // review; each side still loses its decorations ("Crystal Chains Live").
-      const cleaned = part.split(/\s+\+\s+/).map(stripDecorations).filter(Boolean).join(' + ');
-      if (cleaned && !isNotArtist(cleaned)) names.push(cleaned);
+      if (part && !isNotArtist(part)) names.push(part);
     }
   }
 

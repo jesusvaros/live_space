@@ -89,10 +89,11 @@ describe('verified structured events', () => {
     } as StagingEventRecord;
 
     expect(normalizeStagingEvent(record, source).normalizedEvent.confidence).toBe(0.97);
+    // A "+" bill is split into its artists, headliner first.
     expect(normalizeStagingEvent({
       ...record,
       extracted_artist_names: ['Editors + Big Sleep'],
-    }, source).normalizedEvent.confidence).toBeLessThan(0.95);
+    }, source).normalizedEvent.artists.map((artist) => artist.displayName)).toEqual(['Editors', 'Big Sleep']);
     expect(normalizeStagingEvent({
       ...record,
       extracted_title: 'Jamboree Jam Session',

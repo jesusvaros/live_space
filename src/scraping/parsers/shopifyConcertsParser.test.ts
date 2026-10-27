@@ -26,12 +26,12 @@ describe('mapShopifyConcert', () => {
     });
   });
 
-  it('keeps multi-artist bills ambiguous for human review', () => {
+  it('splits multi-artist bills, headliner first', () => {
     expect(mapShopifyConcert({
       id: 2,
       title: 'ARPAVIEJAS + SUZIO 13 - SABADO 24 DE OCTUBRE A LAS 19H',
       handle: 'arpaviejas-suzio-13',
-    }, source)?.artistNames).toEqual(['ARPAVIEJAS + SUZIO 13']);
+    }, source)?.artistNames).toEqual(['ARPAVIEJAS', 'SUZIO 13']);
   });
 
   it('rejects products without a dated concert title', () => {
