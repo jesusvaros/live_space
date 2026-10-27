@@ -40,9 +40,9 @@ const DiscoverSection: React.FC<DiscoverSectionProps> = ({
   return (
     <section className="space-y-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">Discover</p>
-        <h3 className="mt-2 font-display text-xl font-bold text-white">Artists & venues</h3>
-        <p className="mt-1 text-sm text-white/65">Follow to keep them close.</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">Descubre</p>
+        <h3 className="mt-2 font-display text-xl font-bold text-white">Artistas y salas</h3>
+        <p className="mt-1 text-sm text-white/65">Síguelos para no perderles la pista.</p>
       </div>
 
       {loading ? (
@@ -53,17 +53,17 @@ const DiscoverSection: React.FC<DiscoverSectionProps> = ({
         <div className="space-y-6">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">Artists</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">Artistas</p>
               <button
                 type="button"
                 className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/80 transition-colors hover:text-white"
                 onClick={() => navigate('/tabs/discover', { state: { initialTab: 'artists' } })}
               >
-                Explore
+                Explorar
               </button>
             </div>
             {suggestedArtists.length === 0 ? (
-              <p className="text-sm text-white/55">No suggestions yet.</p>
+              <p className="text-sm text-white/55">Aún no hay sugerencias.</p>
             ) : (
               <div className="space-y-2">
                 {suggestedArtists.slice(0, 6).map(artist => {
@@ -100,7 +100,7 @@ const DiscoverSection: React.FC<DiscoverSectionProps> = ({
                         onClick={() => onToggleFollowSubject(artist.subject_id)}
                         disabled={!canFollow}
                       >
-                        {isFollowing ? 'Following' : 'Follow'}
+                        {isFollowing ? 'Siguiendo' : 'Seguir'}
                       </button>
                     </div>
                   );
@@ -111,17 +111,17 @@ const DiscoverSection: React.FC<DiscoverSectionProps> = ({
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">Venues</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">Salas</p>
               <button
                 type="button"
                 className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/80 transition-colors hover:text-white"
                 onClick={() => navigate('/tabs/discover', { state: { initialTab: 'venues' } })}
               >
-                Explore
+                Explorar
               </button>
             </div>
             {suggestedVenues.length === 0 ? (
-              <p className="text-sm text-white/55">No suggestions yet.</p>
+              <p className="text-sm text-white/55">Aún no hay sugerencias.</p>
             ) : (
               <div className="space-y-2">
                 {suggestedVenues.slice(0, 6).map(venue => {
@@ -151,7 +151,7 @@ const DiscoverSection: React.FC<DiscoverSectionProps> = ({
                         onClick={() => onToggleFollowSubject(venue.subject_id)}
                         disabled={!canFollow}
                       >
-                        {isFollowing ? 'Following' : 'Follow'}
+                        {isFollowing ? 'Siguiendo' : 'Seguir'}
                       </button>
                     </div>
                   );

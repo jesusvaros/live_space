@@ -15,7 +15,7 @@ const DiscoverSearchBar: React.FC<DiscoverSearchBarProps> = ({ value, placeholde
           <input
             type="search"
             value={value}
-            placeholder={placeholder || 'Search artists or venues'}
+            placeholder={placeholder || 'Busca artistas o salas'}
             onChange={e => onChange(e.target.value)}
             className="w-full bg-transparent text-sm text-white placeholder:text-white/40 focus:outline-none"
           />
@@ -25,7 +25,7 @@ const DiscoverSearchBar: React.FC<DiscoverSearchBarProps> = ({ value, placeholde
               onClick={onClear}
               className="shrink-0 rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/80"
             >
-              Clear
+              Borrar
             </button>
           )}
         </div>

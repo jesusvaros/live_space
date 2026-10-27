@@ -223,8 +223,10 @@ const Map: React.FC = () => {
 
   useEffect(() => {
     if (!user?.id) {
-      setFollowedEventIds(new Set());
-      setAttendanceStatusByEventId({});
+      // Keep the same objects when already empty: the query's initialData is a
+      // fresh literal every render, so replacing them here looped forever.
+      setFollowedEventIds(prev => (prev.size ? new Set() : prev));
+      setAttendanceStatusByEventId(prev => (Object.keys(prev).length ? {} : prev));
       return;
     }
     if (followPendingEventIds.size > 0 || attendancePendingEventIds.size > 0) return;
@@ -482,7 +484,7 @@ const Map: React.FC = () => {
           <div className="flex flex-col gap-2 rounded-2xl bg-black/85 p-3">
             <input
               type="search"
-              placeholder="Search shows"
+              placeholder="Busca conciertos"
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="w-full rounded-xl bg-white/15 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
@@ -519,7 +521,7 @@ const Map: React.FC = () => {
             />
             {selectedArtists.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-xs text-white">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/60">Artist</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/60">Artista</span>
                 {selectedArtists.map(artist => (
                   <div
                     key={artist.id}

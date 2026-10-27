@@ -16,7 +16,7 @@ const AdminCreateArtist: React.FC = () => {
 
   const handleCreateArtist = async () => {
     if (!artistName.trim()) {
-      setArtistMessage({ type: 'error', text: 'Artist name is required' });
+      setArtistMessage({ type: 'error', text: 'El nombre del artista es obligatorio' });
       return;
     }
 
@@ -38,13 +38,13 @@ const AdminCreateArtist: React.FC = () => {
         external_links: {}
       });
 
-      setArtistMessage({ type: 'success', text: 'Artist created successfully' });
+      setArtistMessage({ type: 'success', text: 'Artista creado' });
       setArtistName('');
       setArtistCity('');
       setArtistGenres('');
       setArtistType('solo');
     } catch (error: any) {
-      setArtistMessage({ type: 'error', text: error.message || 'Failed to create artist' });
+      setArtistMessage({ type: 'error', text: error.message || 'No se pudo crear el artista' });
     } finally {
       setArtistLoading(false);
     }
@@ -54,7 +54,7 @@ const AdminCreateArtist: React.FC = () => {
     return (
       <Page>
         <Content className="p-4">
-          <div className="flex h-full items-center justify-center text-app-light/60">Access Denied. Admin only.</div>
+          <div className="flex h-full items-center justify-center text-app-light/60">Acceso denegado. Solo para admins.</div>
         </Content>
       </Page>
     );
@@ -62,7 +62,7 @@ const AdminCreateArtist: React.FC = () => {
 
   return (
     <AppShell
-      headerProps={{ title: 'Create Artist', showBack: true }}
+      headerProps={{ title: 'Crear artista', showBack: true }}
       headerPlacement="outside"
       contentClassName="p-4"
       contentFullscreen={false}
@@ -71,19 +71,19 @@ const AdminCreateArtist: React.FC = () => {
       <div className="mx-auto max-w-2xl space-y-6 py-6">
         <AdminActionsNav active="artist" />
 
-          <p className="text-sm text-app-light/70">Create an artist entity so you can publish and assign access.</p>
+          <p className="text-sm text-app-light/70">Crea un artista para poder publicar y asignar accesos.</p>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <input
               type="text"
-              placeholder="Artist name *"
+              placeholder="Nombre del artista *"
               value={artistName}
               onChange={(e) => setArtistName(e.target.value)}
               className="w-full rounded-xl border border-white/10 bg-white/5 p-4 text-app-light outline-none focus:border-app-ink/50"
             />
             <input
               type="text"
-              placeholder="City"
+              placeholder="Ciudad"
               value={artistCity}
               onChange={(e) => setArtistCity(e.target.value)}
               className="w-full rounded-xl border border-white/10 bg-white/5 p-4 text-app-light outline-none focus:border-app-ink/50"
@@ -94,11 +94,11 @@ const AdminCreateArtist: React.FC = () => {
               className="w-full rounded-xl border border-white/10 bg-white/5 p-4 text-app-light outline-none focus:border-app-ink/50"
             >
               <option value="solo">Solo</option>
-              <option value="band">Band</option>
+              <option value="band">Banda</option>
             </select>
             <input
               type="text"
-              placeholder="Genres (comma separated)"
+              placeholder="Géneros (separados por comas)"
               value={artistGenres}
               onChange={(e) => setArtistGenres(e.target.value)}
               className="w-full rounded-xl border border-white/10 bg-white/5 p-4 text-app-light outline-none focus:border-app-ink/50 sm:col-span-2"
@@ -116,7 +116,7 @@ const AdminCreateArtist: React.FC = () => {
               onClick={handleCreateArtist}
               className="flex w-full items-center justify-center rounded-2xl bg-white/10 py-4 font-bold text-app-light shadow-lg shadow-white/10 transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
             >
-              {artistLoading ? <Spinner /> : 'Create Artist'}
+              {artistLoading ? <Spinner /> : 'Crear artista'}
             </button>
           </div>
       </div>

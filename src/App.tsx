@@ -15,16 +15,16 @@ import { useWorkspace } from './contexts/WorkspaceContext';
 import AppBackHandler from './app/AppBackHandler';
 import AuthDeepLinks from './app/AuthDeepLinks';
 import Welcome from './pages/Welcome';
-import Feed from './pages/Feed';
 import Events from './pages/Events';
-import Profile from './pages/Profile';
-import Discover from './pages/Discover';
-import ResetPassword from './pages/ResetPassword';
-import ProfileDetail from './pages/ProfileDetail';
-import ArtistProfile from './pages/ArtistProfile';
-import PostDetail from './pages/PostDetail';
-import VenueDetail from './pages/VenueDetail';
 
+const Feed = React.lazy(() => import('./pages/Feed'));
+const Profile = React.lazy(() => import('./pages/Profile'));
+const Discover = React.lazy(() => import('./pages/Discover'));
+const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
+const ProfileDetail = React.lazy(() => import('./pages/ProfileDetail'));
+const ArtistProfile = React.lazy(() => import('./pages/ArtistProfile'));
+const PostDetail = React.lazy(() => import('./pages/PostDetail'));
+const VenueDetail = React.lazy(() => import('./pages/VenueDetail'));
 const Admin = React.lazy(() => import('./pages/Admin'));
 const CreateEventPage = React.lazy(() => import('./pages/CreateEvent'));
 const EventDetail = React.lazy(() => import('./pages/EventDetail'));
@@ -115,7 +115,7 @@ const TabsLayout: React.FC<TabsLayoutProps> = ({
   return (
     <div className="flex h-dvh min-h-0 flex-col bg-app-bg text-white">
       <div className="min-h-0 flex-1 overflow-hidden">
-        <Outlet />
+        {deferredPage(<Outlet />)}
       </div>
       <nav
         className="z-[2000] grid shrink-0 grid-cols-5 gap-1 border-t border-white/10 bg-[#0b0b0d]/95 px-2 pb-[calc(8px+env(safe-area-inset-bottom,0px))] pt-2 backdrop-blur"
@@ -167,69 +167,71 @@ const AppRoutes = () => {
     <>
       <AppBackHandler mainTabPath={mainTabHref} />
       <AuthDeepLinks />
-      <Routes>
-        <Route path="/welcome" element={<WelcomeRoute />} />
-        <Route path="/event/:id" element={deferredPage(<EventDetail />)} />
-        <Route path="/concierto/:slug" element={deferredPage(<EventDetail />)} />
-        <Route path="/profile/:id" element={<ProfileDetail />} />
-        <Route path="/post/:id" element={<PostDetail />} />
-        <Route path="/discover" element={<Navigate to="/tabs/discover" replace />} />
-        <Route path="/artist/:id" element={<LegacyEntityRedirect type="artist" />} />
-        <Route path="/venue/:id" element={<LegacyEntityRedirect type="venue" />} />
-        <Route path="/admin" element={<RequireAuth>{deferredPage(<Admin />)}</RequireAuth>} />
-        <Route path="/admin/grants" element={<Navigate to="/admin" replace />} />
-        <Route path="/admin/create-artist" element={<Navigate to="/admin" replace />} />
-        <Route path="/admin/create-venue" element={<Navigate to="/admin" replace />} />
-        <Route path="/admin/access-grants" element={<Navigate to="/admin" replace />} />
-        <Route path="/reset" element={<ResetPassword />} />
-        <Route path="/create-event" element={<RequireAuth><CreateEventRedirect /></RequireAuth>} />
-        <Route path="/upload" element={<RequireAuth><Navigate to="/tabs/upload" replace /></RequireAuth>} />
-        <Route
-          path="/tabs"
-          element={(
-            <TabsLayout
-              mainTabHref={mainTabHref}
-              profileTabHref={profileTabHref}
-              isArtistWorkspace={isArtistWorkspace}
-            />
-          )}
-        >
-          <Route path="feed" element={<Feed />} />
-          <Route path="mySpace" element={<Feed />} />
-          <Route path="create-event" element={<RequireAuth>{deferredPage(<CreateEventPage />)}</RequireAuth>} />
-          <Route path="upload" element={<RequireAuth>{deferredPage(<Upload />)}</RequireAuth>} />
-          <Route path="map" element={deferredPage(<Map />)} />
-          <Route path="discover" element={<Discover />} />
-          <Route path="events" element={<Events />} />
+      <React.Suspense fallback={<div className="h-dvh bg-app-bg" />}>
+        <Routes>
+          <Route path="/welcome" element={<WelcomeRoute />} />
+          <Route path="/event/:id" element={deferredPage(<EventDetail />)} />
+          <Route path="/concierto/:slug" element={deferredPage(<EventDetail />)} />
+          <Route path="/profile/:id" element={<ProfileDetail />} />
+          <Route path="/post/:id" element={<PostDetail />} />
+          <Route path="/discover" element={<Navigate to="/tabs/discover" replace />} />
+          <Route path="/artist/:id" element={<LegacyEntityRedirect type="artist" />} />
+          <Route path="/venue/:id" element={<LegacyEntityRedirect type="venue" />} />
+          <Route path="/admin" element={<RequireAuth>{deferredPage(<Admin />)}</RequireAuth>} />
+          <Route path="/admin/grants" element={<Navigate to="/admin" replace />} />
+          <Route path="/admin/create-artist" element={<Navigate to="/admin" replace />} />
+          <Route path="/admin/create-venue" element={<Navigate to="/admin" replace />} />
+          <Route path="/admin/access-grants" element={<Navigate to="/admin" replace />} />
+          <Route path="/reset" element={<ResetPassword />} />
+          <Route path="/create-event" element={<RequireAuth><CreateEventRedirect /></RequireAuth>} />
+          <Route path="/upload" element={<RequireAuth><Navigate to="/tabs/upload" replace /></RequireAuth>} />
           <Route
-            path="profile"
-            element={<RequireAuth><ProfileRoute
-              activeArtistId={activeArtistId}
-              activeVenueId={activeVenueId}
-              workspaceType={activeWorkspace?.type}
-            /></RequireAuth>}
-          />
-          <Route path="artist/:id" element={<ArtistProfile />} />
-          <Route path="venue/:id" element={<VenueDetail />} />
-          <Route index element={<Navigate to={mainTabHref} replace />} />
-        </Route>
-        <Route
-          element={(
-            <TabsLayout
-              mainTabHref={mainTabHref}
-              profileTabHref={profileTabHref}
-              isArtistWorkspace={isArtistWorkspace}
+            path="/tabs"
+            element={(
+              <TabsLayout
+                mainTabHref={mainTabHref}
+                profileTabHref={profileTabHref}
+                isArtistWorkspace={isArtistWorkspace}
+              />
+            )}
+          >
+            <Route path="feed" element={<Feed />} />
+            <Route path="mySpace" element={<Feed />} />
+            <Route path="create-event" element={<RequireAuth>{deferredPage(<CreateEventPage />)}</RequireAuth>} />
+            <Route path="upload" element={<RequireAuth>{deferredPage(<Upload />)}</RequireAuth>} />
+            <Route path="map" element={deferredPage(<Map />)} />
+            <Route path="discover" element={<Discover />} />
+            <Route path="events" element={<Events />} />
+            <Route
+              path="profile"
+              element={<RequireAuth><ProfileRoute
+                activeArtistId={activeArtistId}
+                activeVenueId={activeVenueId}
+                workspaceType={activeWorkspace?.type}
+              /></RequireAuth>}
             />
-          )}
-        >
-          <Route path="sala/:slug" element={<VenueDetail />} />
-          <Route path="artista/:slug" element={<ArtistProfile />} />
-          <Route path="madrid/conciertos/*" element={<Events />} />
-          <Route path="barcelona/conciertos/*" element={<Events />} />
-        </Route>
-        <Route path="/" element={<Navigate to={loading ? '/welcome' : mainTabHref} replace />} />
-        <Route path="*" element={<Navigate to={mainTabHref} replace />} />
-      </Routes>
+            <Route path="artist/:id" element={<ArtistProfile />} />
+            <Route path="venue/:id" element={<VenueDetail />} />
+            <Route index element={<Navigate to={mainTabHref} replace />} />
+          </Route>
+          <Route
+            element={(
+              <TabsLayout
+                mainTabHref={mainTabHref}
+                profileTabHref={profileTabHref}
+                isArtistWorkspace={isArtistWorkspace}
+              />
+            )}
+          >
+            <Route path="sala/:slug" element={<VenueDetail />} />
+            <Route path="artista/:slug" element={<ArtistProfile />} />
+            <Route path="madrid/conciertos/*" element={<Events />} />
+            <Route path="barcelona/conciertos/*" element={<Events />} />
+          </Route>
+          <Route path="/" element={<Navigate to={loading ? '/welcome' : mainTabHref} replace />} />
+          <Route path="*" element={<Navigate to={mainTabHref} replace />} />
+        </Routes>
+      </React.Suspense>
 
       {loading && !user ? (
         <div className="pointer-events-none fixed inset-0 z-[5000] flex items-center justify-center bg-black/35 backdrop-blur">

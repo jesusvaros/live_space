@@ -24,9 +24,9 @@ export const calculateDistanceKm = (lat1: number, lng1: number, lat2: number, ln
 export const formatDate = (iso: string) => {
   const date = new Date(iso);
   try {
-    return new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric' }).format(date);
+    return new Intl.DateTimeFormat('es-ES', { weekday: 'short', month: 'short', day: 'numeric' }).format(date);
   } catch {
-    return date.toLocaleDateString();
+    return date.toLocaleDateString('es-ES');
   }
 };
 

@@ -49,7 +49,7 @@ const Feed: React.FC = () => {
         await loadPosts(0, true, true);
       } catch (err) {
         setHasMore(false);
-        setError('Could not load the feed. Check your Supabase connection.');
+        setError('No se pudo cargar el feed. Revisa tu conexión.');
       } finally {
         setLoading(false);
       }
@@ -64,7 +64,7 @@ const Feed: React.FC = () => {
       setPage(0);
       loadPosts(0, true, true).catch(() => {
         setHasMore(false);
-        setError('Could not load the feed. Check your Supabase connection.');
+        setError('No se pudo cargar el feed. Revisa tu conexión.');
       });
     }
   }, [loading, posts.length]);
@@ -78,7 +78,7 @@ const Feed: React.FC = () => {
       setPage(nextPage);
     } catch (err) {
       setHasMore(false);
-      setError('Could not load more posts.');
+      setError('No se pudieron cargar más publicaciones.');
     } finally {
       setLoadingMore(false);
     }
@@ -104,11 +104,11 @@ const Feed: React.FC = () => {
     <AppShell>
       <div className="flex flex-col gap-6 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
         <header className="space-y-2">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Moments</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Momentos</p>
           <h2 className="font-display text-3xl font-bold text-white">
-            {profile?.primary_city ? `Tonight in ${profile.primary_city}` : 'Tonight'}
+            {profile?.primary_city ? `Esta noche en ${profile.primary_city}` : 'Esta noche'}
           </h2>
-          <p className="text-sm text-white/55">Relive what people lived.</p>
+          <p className="text-sm text-white/55">Revive lo que vivió la gente.</p>
         </header>
 
         {loading ? (
@@ -118,13 +118,45 @@ const Feed: React.FC = () => {
         ) : (
           <div className="space-y-4">
             {error && <p className="text-sm text-rose-400">{error}</p>}
+            {!error && posts.length === 0 && (
+              <div className="relative -mx-4 overflow-hidden">
+                <img src="/fotos/manos-luz-azul.jpg" alt="" className="h-[52vh] min-h-[340px] w-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-app-bg via-app-bg/60 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 flex flex-col gap-3 p-5">
+                  <h3 className="font-display text-3xl font-bold leading-tight text-white">
+                    Aún no hay momentos.
+                    <br />
+                    <span className="text-app-accent">Sé el primero.</span>
+                  </h3>
+                  <p className="max-w-xs text-sm text-white/70">
+                    Graba en tu próximo concierto y súbelo: aparecerá aquí, en su canción.
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      className="rounded-full bg-app-accent px-5 py-2.5 text-sm font-semibold text-white"
+                      onClick={() => navigate('/tabs/upload')}
+                    >
+                      Subir un momento
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-full border border-white/20 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white/90"
+                      onClick={() => navigate('/tabs/events')}
+                    >
+                      Ver conciertos
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             {posts.map(post => {
               const username =
                 (post.profiles as any)?.username
                   ? `@${(post.profiles as any).username}`
-                  : (post.profiles as any)?.display_name || 'Anonymous';
-              const title = post.caption || post.events?.name || 'Relive the moment';
-              const subtitle = `${post.events?.city || 'Unknown'} · ${new Date(post.created_at).toLocaleDateString()}`;
+                  : (post.profiles as any)?.display_name || 'Anónimo';
+              const title = post.caption || post.events?.name || 'Revive el momento';
+              const subtitle = `${post.events?.city || 'Desconocido'} · ${new Date(post.created_at).toLocaleDateString('es-ES')}`;
               const poster = post.thumbnail_url || post.events?.cover_image_url || null;
               return (
                 <button

@@ -104,10 +104,10 @@ const Profile: React.FC = () => {
 
   const editModalTitle =
     editTarget === 'artist'
-      ? 'Edit artist profile'
+      ? 'Editar perfil de artista'
       : editTarget === 'venue'
-        ? 'Edit venue profile'
-        : 'Edit profile';
+        ? 'Editar perfil de sala'
+        : 'Editar perfil';
 
   useEffect(() => {
     setIsManagementMode(Boolean(activeEntity));
@@ -207,7 +207,7 @@ const Profile: React.FC = () => {
       setArtistEvents(data.artistEvents);
       setVenueEvents(data.venueEvents);
     } catch (err) {
-      setError('Could not load profile data. Check your Supabase connection.');
+      setError('No se ha podido cargar tu perfil. Revisa tu conexión.');
       setPosts([]);
       setLikedEvents([]);
       setAttendedEvents([]);
@@ -338,7 +338,7 @@ const Profile: React.FC = () => {
 
     if (profile?.role === 'venue' && user && selectedVenuePlaceId) {
       if (!venueName.trim() || !venueCity.trim()) {
-        setFormError('Venue name and city are required.');
+        setFormError('El nombre de la sala y la ciudad son obligatorios.');
         setSaving(false);
         return;
       }
@@ -365,7 +365,7 @@ const Profile: React.FC = () => {
 
     await refreshProfile();
     await loadProfileData(true);
-    setMessage('Profile updated.');
+    setMessage('Perfil actualizado.');
     closeEditModal();
     setSaving(false);
   };
@@ -378,7 +378,7 @@ const Profile: React.FC = () => {
       await signOut();
       navigate('/welcome', { replace: true });
     } catch (err) {
-      setFormError('Sign out failed. Check your Supabase connection.');
+      setFormError('No se ha podido cerrar sesión. Revisa tu conexión.');
     } finally {
       setSigningOut(false);
     }
@@ -386,9 +386,9 @@ const Profile: React.FC = () => {
 
   // Get tab label based on user role
   const getAttendedTabLabel = () => {
-    if (profile?.role === 'artist') return 'Concerts';
-    if (profile?.role === 'venue') return 'Events';
-    return 'Attended';
+    if (profile?.role === 'artist') return 'Conciertos';
+    if (profile?.role === 'venue') return 'Eventos';
+    return 'Asistidos';
   };
 
   const getAttendedTabIcon = () => {
@@ -428,8 +428,8 @@ const Profile: React.FC = () => {
       return artistEvents.length === 0 ? (
         renderEmptyState(
           IconPlay,
-          'No shows yet',
-          'Your upcoming and past shows will appear here.'
+          'Aún no hay conciertos',
+          'Aquí verás tus próximos conciertos y los pasados.'
         )
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -450,8 +450,8 @@ const Profile: React.FC = () => {
       return venueEvents.length === 0 ? (
         renderEmptyState(
           IconCalendar,
-          'No venue events yet',
-          'Published nights at your venue will appear here.'
+          'Tu sala aún no tiene eventos',
+          'Aquí aparecerán las noches que publiques en tu sala.'
         )
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -472,8 +472,8 @@ const Profile: React.FC = () => {
       return likedEvents.length === 0 ? (
         renderEmptyState(
           IconHeart,
-          'No saved events yet',
-          'When you save shows, they will appear here.'
+          'Aún no has guardado eventos',
+          'Cuando guardes conciertos, aparecerán aquí.'
         )
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -493,8 +493,8 @@ const Profile: React.FC = () => {
       return attendedEvents.length === 0 ? (
         renderEmptyState(
           getAttendedTabIcon(),
-          'No attended history yet',
-          'Concerts you attend will build your timeline here.'
+          'Aún no has ido a ningún concierto',
+          'Los conciertos a los que vayas irán formando tu historial aquí.'
         )
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -514,8 +514,8 @@ const Profile: React.FC = () => {
     return posts.length === 0 ? (
       renderEmptyState(
         IconPlay,
-        'No moments yet',
-        'Upload your first moment after a show and it will appear here.'
+        'Aún no hay momentos',
+        'Sube tu primer momento después de un concierto y aparecerá aquí.'
       )
     ) : (
       <div className="grid grid-cols-3 gap-2">
@@ -531,7 +531,7 @@ const Profile: React.FC = () => {
                 <source src={post.media_url} />
               </video>
             ) : (
-              <img src={post.media_url} alt={post.caption || 'Moment'} className="h-full w-full object-cover" />
+              <img src={post.media_url} alt={post.caption || 'Momento'} className="h-full w-full object-cover" />
             )}
           </button>
         ))}
@@ -547,7 +547,7 @@ const Profile: React.FC = () => {
                 <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(155deg,rgba(255,107,74,0.2)_0%,rgba(255,107,74,0.08)_38%,rgba(9,13,22,0.95)_100%)] p-4 shadow-[0_18px_42px_rgba(2,6,13,0.35)]">
                   <button
                     type="button"
-                    aria-label="Edit profile"
+                    aria-label="Editar perfil"
                     className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white/80 transition hover:bg-white/15 hover:text-white"
                     onClick={openContextualEditModal}
                   >
@@ -557,34 +557,34 @@ const Profile: React.FC = () => {
                     <div className="h-20 w-20 overflow-hidden rounded-2xl border border-white/20 bg-white/10">
                       <img
                         src={profile?.avatar_url || `https://picsum.photos/seed/${profile?.id}/120/120`}
-                        alt="Profile avatar"
+                        alt="Foto de perfil"
                         className="h-full w-full object-cover"
                       />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/65">
-                        Personal profile
+                        Perfil personal
                       </p>
                       <h2 className="mt-2 line-clamp-1 font-display text-2xl font-bold text-white">
-                        {profile?.username ? `@${profile.username}` : profile?.display_name || 'You'}
+                        {profile?.username ? `@${profile.username}` : profile?.display_name || 'Tú'}
                       </h2>
                       <p className="mt-1 text-sm text-white/60">
-                        {profile?.primary_city || 'Set your city to improve recommendations'}
+                        {profile?.primary_city || 'Añade tu ciudad para mejorar las recomendaciones'}
                       </p>
                     </div>
                   </div>
                   <div className="mt-4 grid grid-cols-3 gap-2">
                     <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-center">
                       <p className="text-lg font-bold text-white">{posts.length}</p>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/55">Moments</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/55">Momentos</p>
                     </div>
                     <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-center">
                       <p className="text-lg font-bold text-white">{likedEvents.length}</p>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/55">Saved</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/55">Guardados</p>
                     </div>
                     <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-center">
                       <p className="text-lg font-bold text-white">{attendedEvents.length}</p>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/55">Attended</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/55">Asistidos</p>
                     </div>
                   </div>
                 </div>
@@ -595,7 +595,7 @@ const Profile: React.FC = () => {
               <div className="relative flex items-center gap-4 animate-fade-up motion-reduce:animate-none">
                 <button
                   type="button"
-                  aria-label="Edit profile"
+                  aria-label="Editar perfil"
                   className="absolute right-0 top-0 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white/80 transition hover:bg-white/15 hover:text-white"
                   onClick={openContextualEditModal}
                 >
@@ -610,7 +610,7 @@ const Profile: React.FC = () => {
                           : activeEntity.venue?.photos?.[0] || `https://picsum.photos/seed/venue-${activeEntity.subject_id}/120/120`
                         : profile?.avatar_url || `https://picsum.photos/seed/${profile?.id}/120/120`
                     }
-                    alt="Profile avatar"
+                    alt="Foto de perfil"
                     className="h-full w-full object-cover"
                   />
                 </div>
@@ -620,10 +620,10 @@ const Profile: React.FC = () => {
                       ? activeEntity.type === 'artist'
                         ? activeEntity.artist?.name
                         : activeEntity.venue?.name
-                      : profile?.display_name || profile?.username || 'Your profile'}
+                      : profile?.display_name || profile?.username || 'Tu perfil'}
                   </h2>
                   <p className="text-sm text-white/55">
-                    {activeEntity ? (activeEntity.type === 'artist' ? 'Managed artist' : 'Managed venue') : ''}
+                    {activeEntity ? (activeEntity.type === 'artist' ? 'Artista que gestionas' : 'Sala que gestionas') : ''}
                   </p>
                 </div>
                 <div className="mr-10 flex flex-col gap-2">
@@ -633,7 +633,7 @@ const Profile: React.FC = () => {
                       className="bg-white/10 px-3 py-1.5 text-xs font-semibold text-white"
                       onClick={() => navigate(`/tabs/artist/${(activeEntity.artist as any).id || (activeEntity.artist as any).artist_id}`)}
                     >
-                      View profile
+                      Ver perfil
                     </button>
                   )}
                   {activeEntity?.type === 'venue' && activeEntity.venue?.id && (
@@ -642,7 +642,7 @@ const Profile: React.FC = () => {
                       className="bg-white/10 px-3 py-1.5 text-xs font-semibold text-white"
                       onClick={() => navigate(`/tabs/venue/${(activeEntity.venue as any).id || (activeEntity.venue as any).venue_place_id}`)}
                     >
-                      View profile
+                      Ver perfil
                     </button>
                   )}
                 </div>
@@ -674,7 +674,7 @@ const Profile: React.FC = () => {
               <div
                 className="space-y-3 rounded-2xl bg-white/5 p-4 [animation-delay:160ms]"
               >
-                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Artist links</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Enlaces del artista</p>
                 <div className="space-y-2 text-sm text-white/80">
                   {linkWebsite && (
                     <a
@@ -714,7 +714,7 @@ const Profile: React.FC = () => {
               <div
                 className="space-y-3 rounded-2xl bg-white/5 p-4 [animation-delay:160ms]"
               >
-                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Venue details</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Datos de la sala</p>
                 <div className="space-y-2 text-sm text-white/80">
                   {(displayVenue.address || profile.primary_city) && (
                     <p>{displayVenue.address || profile.primary_city}</p>
@@ -737,7 +737,7 @@ const Profile: React.FC = () => {
                         key={`${url}-${index}`}
                         className="h-24 w-40 flex-shrink-0 overflow-hidden rounded-2xl bg-black/30"
                       >
-                        <img src={url} alt="Venue" className="h-full w-full object-cover" />
+                        <img src={url} alt="Sala" className="h-full w-full object-cover" />
                       </div>
                     ))}
                   </div>
@@ -756,7 +756,7 @@ const Profile: React.FC = () => {
                 onClick={() => setSelectedTab('moments')}
               >
                 <IconPlay className="h-4 w-4" />
-                Moments
+                Momentos
               </button>
               <button
                 type="button"
@@ -776,7 +776,7 @@ const Profile: React.FC = () => {
                 onClick={() => setSelectedTab('liked')}
               >
                 <IconHeart className="h-4 w-4" />
-                Liked
+                Guardados
               </button>
             </div>
 
@@ -796,11 +796,11 @@ const Profile: React.FC = () => {
               disabled={signingOut}
             >
               <IconLogout className="h-4 w-4" />
-              {signingOut ? 'Signing out...' : 'Log out'}
+              {signingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
             </button>
       </div>
 
-      <Modal isOpen={showEdit} onDidDismiss={closeEditModal} title="Edit profile">
+      <Modal isOpen={showEdit} onDidDismiss={closeEditModal} title="Editar perfil">
         <Content fullscreen>
           <div className="min-h-full bg-app-bg p-5">
             <div className="flex items-center justify-between gap-4">
@@ -810,7 +810,7 @@ const Profile: React.FC = () => {
                 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
                 onClick={closeEditModal}
               >
-                Close
+                Cerrar
               </button>
             </div>
 
@@ -824,7 +824,7 @@ const Profile: React.FC = () => {
                 }`}
                 onClick={() => setEditModalTab('config')}
               >
-                Config
+                Ajustes
               </button>
               <button
                 type="button"
@@ -835,7 +835,7 @@ const Profile: React.FC = () => {
                 }`}
                 onClick={() => setEditModalTab('logout')}
               >
-                Logout
+                Salir
               </button>
               <button
                 type="button"
@@ -854,7 +854,7 @@ const Profile: React.FC = () => {
               <div className="mt-6 space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
                 <label className="flex flex-col gap-2">
                   <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                    Display name
+                    Nombre visible
                   </span>
                   <input
                     value={displayName}
@@ -864,7 +864,7 @@ const Profile: React.FC = () => {
                 </label>
                 <label className="flex flex-col gap-2">
                   <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                    Username
+                    Usuario
                   </span>
                   <input
                     value={username}
@@ -874,7 +874,7 @@ const Profile: React.FC = () => {
                 </label>
                 <label className="flex flex-col gap-2">
                   <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                    Primary city
+                    Ciudad principal
                   </span>
                   <input
                     value={primaryCity}
@@ -895,17 +895,17 @@ const Profile: React.FC = () => {
                 {isDev && (
                   <label className="flex flex-col gap-2">
                     <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                      Role (dev)
+                      Rol (dev)
                     </span>
                     <select
                       value={role}
                       onChange={e => setRole(e.target.value as ProfileRole)}
                       className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/15"
                     >
-                      <option value="user">User</option>
-                      <option value="artist">Artist</option>
-                      <option value="venue">Venue</option>
-                      <option value="label">Label</option>
+                      <option value="user">Usuario</option>
+                      <option value="artist">Artista</option>
+                      <option value="venue">Sala</option>
+                      <option value="label">Sello</option>
                     </select>
                     <span className="text-xs text-white/60">
                       Solo para testing. En prod queda bloqueado.
@@ -914,16 +914,16 @@ const Profile: React.FC = () => {
                 )}
                 {profile?.role === 'artist' && (
                   <div className="space-y-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Artist links</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Enlaces del artista</p>
                     <label className="flex flex-col gap-2">
                       <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                        Website
+                        Web
                       </span>
                       <input
                         value={linkWebsite}
                         onChange={e => setLinkWebsite(e.target.value)}
                         className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                        placeholder="https://your-site.com"
+                        placeholder="https://tu-web.com"
                       />
                     </label>
                     <label className="flex flex-col gap-2">
@@ -934,7 +934,7 @@ const Profile: React.FC = () => {
                         value={linkInstagram}
                         onChange={e => setLinkInstagram(e.target.value)}
                         className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                        placeholder="https://instagram.com/you"
+                        placeholder="https://instagram.com/tu_usuario"
                       />
                     </label>
                     <label className="flex flex-col gap-2">
@@ -953,17 +953,17 @@ const Profile: React.FC = () => {
 
                 {profile?.role === 'venue' && (
                   <div className="space-y-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Venue management</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Gestión de la sala</p>
                     {managedEntities.filter(e => e.type === 'venue').length === 0 ? (
                       <p className="text-sm text-white/60">
-                        No managed venue place yet. Create or claim a venue to edit its details.
+                        Aún no gestionas ninguna sala. Crea o reclama una sala para editar sus datos.
                       </p>
                     ) : (
                       <>
                         {managedEntities.filter(e => e.type === 'venue').length > 1 && (
                           <label className="flex flex-col gap-2">
                             <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                              Managed venue
+                              Sala que gestionas
                             </span>
                             <select
                               value={selectedVenuePlaceId || ''}
@@ -982,40 +982,40 @@ const Profile: React.FC = () => {
                         )}
                         <label className="flex flex-col gap-2">
                           <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                            Venue name
+                            Nombre de la sala
                           </span>
                           <input
                             value={venueName}
                             onChange={e => setVenueName(e.target.value)}
                             className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                            placeholder="Venue name"
+                            placeholder="Nombre de la sala"
                           />
                         </label>
                         <label className="flex flex-col gap-2">
                           <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                            City
+                            Ciudad
                           </span>
                           <input
                             value={venueCity}
                             onChange={e => setVenueCity(e.target.value)}
                             className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                            placeholder="City"
+                            placeholder="Ciudad"
                           />
                         </label>
                         <label className="flex flex-col gap-2">
                           <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                            Venue type
+                            Tipo de sala
                           </span>
                           <input
                             value={venueType}
                             onChange={e => setVenueType(e.target.value)}
                             className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                            placeholder="Club, hall, theatre..."
+                            placeholder="Club, sala, teatro..."
                           />
                         </label>
                         <label className="flex flex-col gap-2">
                           <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                            Capacity
+                            Aforo
                           </span>
                           <input
                             value={venueCapacity}
@@ -1026,30 +1026,30 @@ const Profile: React.FC = () => {
                         </label>
                         <label className="flex flex-col gap-2">
                           <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                            Address
+                            Dirección
                           </span>
                           <input
                             value={venueAddress}
                             onChange={e => setVenueAddress(e.target.value)}
                             className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                            placeholder="Street address"
+                            placeholder="Calle y número"
                           />
                         </label>
                         <label className="flex flex-col gap-2">
                           <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                            Website
+                            Web
                           </span>
                           <input
                             value={venueWebsite}
                             onChange={e => setVenueWebsite(e.target.value)}
                             className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                            placeholder="https://venue-site.com"
+                            placeholder="https://web-de-la-sala.com"
                           />
                         </label>
                         <div className="grid grid-cols-2 gap-3">
                           <label className="flex flex-col gap-2">
                             <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                              Latitude
+                              Latitud
                             </span>
                             <input
                               value={venueLatitude}
@@ -1059,7 +1059,7 @@ const Profile: React.FC = () => {
                           </label>
                           <label className="flex flex-col gap-2">
                             <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                              Longitude
+                              Longitud
                             </span>
                             <input
                               value={venueLongitude}
@@ -1070,13 +1070,13 @@ const Profile: React.FC = () => {
                         </div>
                         <label className="flex flex-col gap-2">
                           <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                            Venue photos (URLs)
+                            Fotos de la sala (URLs)
                           </span>
                           <textarea
                             value={venuePhotos}
                             onChange={e => setVenuePhotos(e.target.value)}
                             className="min-h-[96px] w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-                            placeholder="One URL per line"
+                            placeholder="Una URL por línea"
                           />
                         </label>
                       </>
@@ -1093,14 +1093,14 @@ const Profile: React.FC = () => {
                   onClick={handleSave}
                   disabled={saving}
                 >
-                  {saving ? 'Saving...' : 'Save changes'}
+                  {saving ? 'Guardando...' : 'Guardar cambios'}
                 </button>
                 <button
                   type="button"
                   className="inline-flex w-full items-center justify-center rounded-xl border border-white/20 px-4 py-3 text-sm font-semibold text-white/75 transition hover:text-white"
                   onClick={closeEditModal}
                 >
-                  Cancel
+                  Cancelar
                 </button>
               </div>
             )}
@@ -1118,7 +1118,7 @@ const Profile: React.FC = () => {
                   disabled={signingOut}
                 >
                   <IconLogout className="h-4 w-4" />
-                  {signingOut ? 'Signing out...' : 'Log out'}
+                  {signingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
                 </button>
               </div>
             )}

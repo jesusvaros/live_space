@@ -13,7 +13,7 @@ export const useLastKnownLocation = () => {
 
   const requestLocation = useCallback(() => {
     if (!navigator.geolocation) {
-      setError('Location is not supported on this device.');
+      setError('Este dispositivo no permite la ubicación.');
       return;
     }
     setLoading(true);
@@ -27,7 +27,7 @@ export const useLastKnownLocation = () => {
       },
       () => {
         setLoading(false);
-        setError('Enable location to see concerts near you.');
+        setError('Activa la ubicación para ver conciertos cerca de ti.');
       },
       { enableHighAccuracy: true, timeout: 5000 }
     );

@@ -38,7 +38,7 @@ const QrScannerPage: React.FC = () => {
       // Validate event ID format (UUID)
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       if (!uuidRegex.test(eventId)) {
-        throw new Error('Invalid event QR code');
+        throw new Error('El QR no corresponde a ningún evento');
       }
 
       // Check if event exists
@@ -49,7 +49,7 @@ const QrScannerPage: React.FC = () => {
         .single();
 
       if (eventError || !eventData) {
-        throw new Error('Event not found');
+        throw new Error('Evento no encontrado');
       }
 
       // Mark user as "going" to the event
@@ -73,7 +73,7 @@ const QrScannerPage: React.FC = () => {
       // Navigate to event page
       navigate(`/event/${eventId}`);
     } catch (err: any) {
-      setError(err?.message || 'Failed to process QR code');
+      setError(err?.message || 'No se pudo leer el código QR');
     } finally {
       setLoading(false);
     }
@@ -83,16 +83,16 @@ const QrScannerPage: React.FC = () => {
     <AppShell>
       <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
         <div className="text-center">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Scan</p>
-          <h2 className="mt-2 font-display text-2xl font-bold text-white">Event check-in</h2>
-          <p className="mt-2 text-sm text-white/55">Scan an event QR code to check in.</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Escanear</p>
+          <h2 className="mt-2 font-display text-2xl font-bold text-white">Check-in del evento</h2>
+          <p className="mt-2 text-sm text-white/55">Escanea el QR del evento para hacer check-in.</p>
         </div>
 
         {loading && (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <Spinner />
-              <p className="mt-4 text-sm text-white/55">Checking in...</p>
+              <p className="mt-4 text-sm text-white/55">Haciendo check-in…</p>
             </div>
           </div>
         )}
@@ -106,20 +106,20 @@ const QrScannerPage: React.FC = () => {
         {error && <p className="mt-4 text-sm text-rose-400">{error}</p>}
 
         <div className="mt-6 text-center">
-          <p className="text-xs text-white/55">Point your camera at the event QR code.</p>
+          <p className="text-xs text-white/55">Apunta la cámara al QR del evento.</p>
         </div>
 
         {canCreateEvent && (
           <div className="mt-8 space-y-3 bg-white/5 p-4 text-left">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Organizing?</p>
-            <h3 className="mt-2 font-display text-lg font-bold text-white">Create an event</h3>
-            <p className="mt-2 text-sm text-white/55">Add the event first, then share moments in the timeline.</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">¿Organizas?</p>
+            <h3 className="mt-2 font-display text-lg font-bold text-white">Crea un evento</h3>
+            <p className="mt-2 text-sm text-white/55">Primero añade el evento y luego comparte momentos en la línea de tiempo.</p>
             <button
               type="button"
               className="mt-4 inline-flex w-full items-center justify-center bg-white/10 px-4 py-3 text-sm font-semibold text-white"
               onClick={() => navigate('/create-event', { state: { from: '/tabs/qr-scanner' } })}
             >
-              Create event
+              Crear evento
             </button>
           </div>
         )}

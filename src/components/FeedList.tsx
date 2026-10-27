@@ -24,7 +24,7 @@ const FeedList: React.FC = () => {
               </p>
             </div>
           </div>
-          <img src={`https://picsum.photos/seed/${post.id}/300/200`} alt="event" className="rounded-2xl" />
+          <img src={`https://picsum.photos/seed/${post.id}/300/200`} alt="evento" className="rounded-2xl" />
           <h3 className="font-display text-lg text-slate-50">{post.title}</h3>
         </div>
       ))}

@@ -85,7 +85,7 @@ export const getSuggestedArtists = async (options?: { location?: { lat: number; 
     }
     const ids = topArtistIdsFromEvents(nearEvents);
     const items = await fetchArtistsByIds(ids);
-    if (items.length > 0) sections.push({ key: 'trending_near_you', title: 'Trending near you', items });
+    if (items.length > 0) sections.push({ key: 'trending_near_you', title: 'Tendencia cerca de ti', items });
   }
 
   const weekEvents = events.filter(event => {
@@ -94,7 +94,7 @@ export const getSuggestedArtists = async (options?: { location?: { lat: number; 
   });
   const weekIds = topArtistIdsFromEvents(weekEvents);
   const weekItems = await fetchArtistsByIds(weekIds);
-  if (weekItems.length > 0) sections.push({ key: 'popular_this_week', title: 'Popular this week', items: weekItems });
+  if (weekItems.length > 0) sections.push({ key: 'popular_this_week', title: 'Populares esta semana', items: weekItems });
 
   const recentArtists = await cached(
     'discover:artists:recent',
@@ -111,7 +111,7 @@ export const getSuggestedArtists = async (options?: { location?: { lat: number; 
   );
   const recentArtistsWithPosters = await withArtistRecentPosters(recentArtists);
   if (recentArtistsWithPosters.length > 0) {
-    sections.push({ key: 'recently_active', title: 'Recently active', items: recentArtistsWithPosters });
+    sections.push({ key: 'recently_active', title: 'Activos hace poco', items: recentArtistsWithPosters });
   }
 
   const seen = new Set<string>();

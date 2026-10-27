@@ -33,12 +33,12 @@ const ResetPassword: React.FC = () => {
     setMessage('');
 
     if (!password || password.length < 6) {
-      setError('Password must be at least 6 characters.');
+      setError('La contraseña debe tener al menos 6 caracteres.');
       return;
     }
 
     if (password !== confirm) {
-      setError('Passwords do not match.');
+      setError('Las contraseñas no coinciden.');
       return;
     }
 
@@ -48,7 +48,7 @@ const ResetPassword: React.FC = () => {
       return;
     }
 
-    setMessage('Password updated. You can sign in now.');
+    setMessage('Contraseña actualizada. Ya puedes entrar.');
   };
 
   return (
@@ -56,7 +56,7 @@ const ResetPassword: React.FC = () => {
       <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
         {!ready && (
           <p className="text-sm text-white/70">
-            Open the reset link from your email to continue.
+            Abre el enlace de recuperación de tu email para continuar.
           </p>
         )}
 
@@ -64,7 +64,7 @@ const ResetPassword: React.FC = () => {
           <div className="space-y-4 rounded-2xl bg-white/5 p-4">
             <label className="flex flex-col gap-2">
               <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                New password
+                Nueva contraseña
               </span>
               <input
                 type="password"
@@ -76,7 +76,7 @@ const ResetPassword: React.FC = () => {
             </label>
             <label className="flex flex-col gap-2">
               <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                Confirm password
+                Confirma la contraseña
               </span>
               <input
                 type="password"
@@ -91,7 +91,7 @@ const ResetPassword: React.FC = () => {
               className="inline-flex w-full items-center justify-center rounded-2xl bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15"
               onClick={handleUpdate}
             >
-              Update password
+              Cambiar contraseña
             </button>
           </div>
         )}
@@ -104,7 +104,7 @@ const ResetPassword: React.FC = () => {
           className="inline-flex w-full items-center justify-center px-4 py-2 text-sm font-semibold text-white/70 transition hover:text-white"
           onClick={() => navigate('/welcome', { replace: true })}
         >
-          Back to sign in
+          Volver a entrar
         </button>
       </div>
     </AppShell>

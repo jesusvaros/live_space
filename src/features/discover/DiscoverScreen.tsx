@@ -47,7 +47,7 @@ const DiscoverScreen: React.FC = () => {
     const result = await toggleFollowSubject(subjectId);
     if (!result.ok && result.reason === 'network') {
       presentToast({
-        message: "Couldn't follow. Try again.",
+        message: 'No se pudo seguir. Inténtalo de nuevo.',
         duration: 2000,
         position: 'top',
       });
@@ -55,8 +55,8 @@ const DiscoverScreen: React.FC = () => {
   };
 
   const headerSubtitle = useMemo(() => {
-    if (tab === 'artists') return 'Follow the ones you’ve seen live.';
-    return 'Follow the rooms you return to.';
+    if (tab === 'artists') return 'Sigue a los que has visto en directo.';
+    return 'Sigue las salas a las que siempre vuelves.';
   }, [tab]);
 
   return (
@@ -66,16 +66,16 @@ const DiscoverScreen: React.FC = () => {
 
       <div className="relative z-10 flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
         <header className="rounded-2xl border border-white/10 bg-[linear-gradient(140deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02)_55%,rgba(255,107,74,0.08))] p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/65">Discover</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/65">Descubre</p>
           <h2 className="mt-2 font-display text-3xl font-bold text-white">
-            {tab === 'artists' ? 'Artists' : 'Venues'}
+            {tab === 'artists' ? 'Artistas' : 'Salas'}
           </h2>
           <p className="mt-1 text-sm text-white/65">{headerSubtitle}</p>
         </header>
 
         <DiscoverSearchBar
           value={query}
-          placeholder="Search artists or venues"
+          placeholder="Busca artistas o salas"
           onChange={setQuery}
           onClear={() => setQuery('')}
         />
@@ -90,9 +90,9 @@ const DiscoverScreen: React.FC = () => {
               {isSearching ? (
                 artists.length === 0 ? (
                   <DiscoverEmptyState
-                    title={`No results for "${debouncedQuery.trim()}"`}
-                    description="Try a different spelling or search by city."
-                    actionLabel="Clear search"
+                    title={`Sin resultados para "${debouncedQuery.trim()}"`}
+                    description="Prueba con otra ortografía o busca por ciudad."
+                    actionLabel="Borrar búsqueda"
                     onAction={() => setQuery('')}
                   />
                 ) : (
@@ -112,8 +112,8 @@ const DiscoverScreen: React.FC = () => {
                 )
               ) : suggestedArtistSections.length === 0 ? (
                 <DiscoverEmptyState
-                  title="No artist suggestions yet"
-                  description="Search by name to find an artist."
+                  title="Aún no hay artistas sugeridos"
+                  description="Busca por nombre para encontrar un artista."
                 />
               ) : (
                 <SuggestedSectionList
@@ -139,9 +139,9 @@ const DiscoverScreen: React.FC = () => {
               {isSearching ? (
                 venues.length === 0 ? (
                   <DiscoverEmptyState
-                    title={`No results for "${debouncedQuery.trim()}"`}
-                    description="Try a different spelling or search by city."
-                    actionLabel="Clear search"
+                    title={`Sin resultados para "${debouncedQuery.trim()}"`}
+                    description="Prueba con otra ortografía o busca por ciudad."
+                    actionLabel="Borrar búsqueda"
                     onAction={() => setQuery('')}
                   />
                 ) : (
@@ -161,8 +161,8 @@ const DiscoverScreen: React.FC = () => {
                 )
               ) : suggestedVenueSections.length === 0 ? (
                 <DiscoverEmptyState
-                  title="No venue suggestions yet"
-                  description="Search by name to find a venue."
+                  title="Aún no hay salas sugeridas"
+                  description="Busca por nombre para encontrar una sala."
                 />
               ) : (
                 <SuggestedSectionList

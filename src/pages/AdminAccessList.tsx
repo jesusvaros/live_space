@@ -65,7 +65,7 @@ const AdminAccessList: React.FC = () => {
         if (err) throw err;
         setRows((data || []) as unknown as AccessRow[]);
       } catch (e: any) {
-        setError(e.message || 'Failed to load access grants');
+        setError(e.message || 'No se pudieron cargar los accesos');
       } finally {
         setLoading(false);
       }
@@ -80,7 +80,7 @@ const AdminAccessList: React.FC = () => {
     return (
       <Page>
         <Content className="p-4">
-          <div className="flex h-full items-center justify-center text-app-light/60">Access Denied. Admin only.</div>
+          <div className="flex h-full items-center justify-center text-app-light/60">Acceso denegado. Solo para admins.</div>
         </Content>
       </Page>
     );
@@ -103,7 +103,7 @@ const AdminAccessList: React.FC = () => {
 
   return (
     <AppShell
-      headerProps={{ title: 'Access Grants', showBack: true }}
+      headerProps={{ title: 'Accesos', showBack: true }}
       headerPlacement="outside"
       contentClassName="p-4"
       contentFullscreen={false}
@@ -114,13 +114,13 @@ const AdminAccessList: React.FC = () => {
 
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-app-light/70">Granted Accesses</h2>
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-app-light/70">Accesos concedidos</h2>
               {loading && <Spinner />}
             </div>
             {error && <div className="mt-3 rounded-xl bg-red-500/10 p-3 text-sm text-red-300">{error}</div>}
             {!loading && !error && rows.length === 0 && (
               <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-app-light/70">
-                No access grants found.
+                No hay accesos concedidos.
               </div>
             )}
 
@@ -146,7 +146,7 @@ const AdminAccessList: React.FC = () => {
                     </div>
                     <div>
                       <div className="text-sm font-semibold text-app-light">
-                        {row.admin?.display_name || row.admin?.username || 'Unknown admin'}
+                        {row.admin?.display_name || row.admin?.username || 'Admin desconocido'}
                       </div>
                       <div className="text-xs uppercase tracking-widest text-app-light/50">{row.role}</div>
                     </div>
@@ -154,7 +154,7 @@ const AdminAccessList: React.FC = () => {
                   <div className="text-right">
                     <div className="text-sm font-semibold text-app-light">{renderEntityLabel(row)}</div>
                     <div className="text-xs text-app-light/60">
-                      {row.entity?.type ? row.entity.type.toUpperCase() : 'Entity'} {renderEntityMeta(row) && `· ${renderEntityMeta(row)}`}
+                      {row.entity?.type === 'artist' ? 'ARTISTA' : row.entity?.type === 'venue' ? 'SALA' : row.entity?.type ? row.entity.type.toUpperCase() : 'Entidad'} {renderEntityMeta(row) && `· ${renderEntityMeta(row)}`}
                     </div>
                   </div>
                 </div>

@@ -72,9 +72,9 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
     <section className="h-full space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/60">Artists</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/60">Artistas</p>
           <p className="mt-1 text-sm text-white/65">
-            {profileRole === 'artist' ? 'Add yourself and other artists to your event.' : 'Add multiple artists to your event.'}
+            {profileRole === 'artist' ? 'Añádete a ti y a otros artistas al evento.' : 'Añade uno o varios artistas al evento.'}
           </p>
         </div>
         <button
@@ -82,7 +82,7 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
           className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-white/80 transition-colors hover:text-white"
           onClick={toggleArtistMode}
         >
-          {artistMode === 'existing' ? 'Add New' : 'Use Existing'}
+          {artistMode === 'existing' ? 'Nuevo artista' : 'Usar existente'}
         </button>
       </div>
 
@@ -94,7 +94,7 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
               </svg>
               <input
                 className="w-full bg-transparent text-sm text-white placeholder:text-white/40 focus:outline-none"
-                placeholder="Search artists"
+                placeholder="Busca artistas"
                 value={artistSearch}
                 onChange={e => onArtistSearchChange(e.target.value)}
               />
@@ -103,19 +103,19 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
             {artistsLoading && (
               <div className="flex items-center gap-3 text-sm text-white/70">
                 <Spinner />
-                Searching artists...
+                Buscando artistas...
               </div>
             )}
 
             {!artistsLoading && artistSearch.trim() !== '' && artistSearchCount === 0 && (
               <p className="text-sm text-white/60">
-                No artists found for &quot;{artistSearch.trim()}&quot;. The band does not exist yet.
+                No hay artistas para &quot;{artistSearch.trim()}&quot;. Ese grupo aún no existe.
               </p>
             )}
 
             {!artistsLoading && artists.length === 0 && artistSearch.trim() === '' && (
               <p className="h-[250px] rounded-xl border border-white/10 bg-white/[0.02] p-4 text-sm text-white/60">
-                No artists found. Switch to &quot;New artist&quot; to add one.
+                No hay artistas. Pulsa &quot;Nuevo artista&quot; para añadir uno.
               </p>
             )}
 
@@ -126,19 +126,19 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
               {selectedArtists.length > 0 && (
                 <div className="space-y-2 flex-shrink-0">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                    Selected Artists ({selectedArtists.length})
+                    Artistas seleccionados ({selectedArtists.length})
                   </p>
                 <div className="space-y-2">
                   {selectedArtists.map(artist => (
                       <div key={artist.id} className="flex items-center justify-between gap-3 rounded-xl border border-app-accent/30 bg-app-accent/10 p-3">
                         <div>
                           <p className="text-sm font-semibold text-white">
-                            {artist.display_name || artist.username || 'Artist'}
+                            {artist.display_name || artist.username || 'Artista'}
                             {profileRole === 'artist' && (artist.display_name === profileName || artist.username === profileName) && (
-                              <span className="ml-2 text-xs text-white/60">(You)</span>
+                              <span className="ml-2 text-xs text-white/60">(Tú)</span>
                             )}
                           </p>
-                          <p className="text-xs text-white/60">Artist</p>
+                          <p className="text-xs text-white/60">Artista</p>
                         </div>
                         {artist.avatar_url ? (
                           <img
@@ -152,7 +152,7 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
                           className="inline-flex items-center justify-center rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-xs font-semibold text-white/80 transition hover:bg-white/15 hover:text-white"
                           onClick={() => toggleArtist(artist.id)}
                         >
-                          Remove
+                          Quitar
                         </button>
                       </div>
                     ))}
@@ -187,13 +187,13 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
                         {/* Artist Info */}
                         <div className="flex-1 min-w-0">
                           <h3 className="mb-1 text-sm font-semibold text-white">
-                            {artist.display_name || artist.username || 'Artist'}
+                            {artist.display_name || artist.username || 'Artista'}
                             {profileRole === 'artist' && (artist.display_name === profileName || artist.username === profileName) && (
-                              <span className="ml-2 text-xs text-white/60">(You)</span>
+                              <span className="ml-2 text-xs text-white/60">(Tú)</span>
                             )}
                           </h3>
                           <p className="text-xs text-white/60">
-                            Artist
+                            Artista
                           </p>
                           <button
                             type="button"
@@ -203,7 +203,7 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
                               setPreviewArtist(artist);
                             }}
                           >
-                            View profile
+                            Ver perfil
                           </button>
                         </div>
                         
@@ -223,8 +223,8 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
                 <div className="flex flex-shrink-0 items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
                   <p className="text-sm text-white">
                     {artists.length === 0
-                      ? 'No matching artists. Try a different search or add a new artist.'
-                      : 'Select artists to continue'}
+                      ? 'No hay coincidencias. Prueba otra búsqueda o añade un artista nuevo.'
+                      : 'Elige artistas para continuar'}
                   </p>
                 </div>
               )}
@@ -235,25 +235,25 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
         <div className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
           <label className="flex flex-col gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-              Artist name
+              Nombre del artista
             </span>
             <input
               className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
               value={newArtistName}
               onChange={e => setNewArtistName(e.target.value)}
-              placeholder="Artist name"
+              placeholder="Nombre del artista"
             />
           </label>
           <label className="flex flex-col gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Username</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Usuario</span>
             <input
               className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
               value={newArtistUsername}
               onChange={e => setNewArtistUsername(e.target.value)}
-              placeholder="Username"
+              placeholder="Usuario"
             />
           </label>
-          <p className="text-xs text-white/60">Note: You can assign a user to this artist later.</p>
+          <p className="text-xs text-white/60">Nota: puedes asignar un usuario a este artista más tarde.</p>
         </div>
       )}
       <Modal
@@ -262,13 +262,13 @@ const CreateEventArtistStep: React.FC<CreateEventArtistStepProps> = ({
       >
         <Content fullscreen>
           <div className="flex items-center justify-between gap-4 border-b border-white/10 bg-app-bg px-5 py-4">
-            <h2 className="font-display text-lg font-bold text-white">Artist profile</h2>
+            <h2 className="font-display text-lg font-bold text-white">Perfil del artista</h2>
             <button
               type="button"
               className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/15"
               onClick={() => setPreviewArtist(null)}
             >
-              Close
+              Cerrar
             </button>
           </div>
           {previewArtist && <ArtistProfile artistId={previewArtist.id} embedded />}

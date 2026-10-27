@@ -51,14 +51,14 @@ const AdminGrants: React.FC = () => {
         selectedEntity.id,
         'admin'
       );
-      setMessage({ type: 'success', text: 'Access granted successfully' });
+      setMessage({ type: 'success', text: 'Acceso concedido' });
       // Reset form
       setSelectedUser(null);
       setSelectedEntity(null);
       setUserQuery('');
       setEntityQuery('');
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || 'Failed to grant access' });
+      setMessage({ type: 'error', text: error.message || 'No se pudo conceder el acceso' });
     } finally {
       setLoading(false);
     }
@@ -69,7 +69,7 @@ const AdminGrants: React.FC = () => {
       <Page>
         <Content className="p-4">
           <div className="flex h-full items-center justify-center text-app-light/60">
-            Access Denied. Admin only.
+            Acceso denegado. Solo para admins.
           </div>
         </Content>
       </Page>
@@ -78,7 +78,7 @@ const AdminGrants: React.FC = () => {
 
   return (
     <AppShell
-      headerProps={{ title: 'Admin Grants', showBack: true }}
+      headerProps={{ title: 'Accesos de admin', showBack: true }}
       headerPlacement="outside"
       contentClassName="p-4"
       contentFullscreen={false}
@@ -89,16 +89,16 @@ const AdminGrants: React.FC = () => {
 
           <section className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-app-light/70">Grant Access</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-app-light/70">Conceder acceso</h3>
             </div>
-            <p className="text-sm text-app-light/70">Grant a user access to manage an artist or venue.</p>
+            <p className="text-sm text-app-light/70">Da acceso a un usuario para gestionar un artista o una sala.</p>
 
             <div className="space-y-3">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-app-light/50">Find User</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-app-light/50">Buscar usuario</h4>
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Search by username or display name..."
+                  placeholder="Busca por usuario o nombre visible..."
                   value={userQuery}
                   onChange={(e) => setUserQuery(e.target.value)}
                   className="w-full rounded-xl border border-white/10 bg-white/5 p-4 text-app-light outline-none focus:border-app-ink/50"
@@ -129,32 +129,32 @@ const AdminGrants: React.FC = () => {
               </div>
               {selectedUser && (
                 <div className="flex items-center justify-between rounded-xl bg-app-ink/10 p-3">
-                  <span className="text-sm text-app-ink">Selected: <strong>{selectedUser.username}</strong></span>
-                  <button onClick={() => setSelectedUser(null)} className="text-xs text-app-ink hover:underline">Clear</button>
+                  <span className="text-sm text-app-ink">Seleccionado: <strong>{selectedUser.username}</strong></span>
+                  <button onClick={() => setSelectedUser(null)} className="text-xs text-app-ink hover:underline">Quitar</button>
                 </div>
               )}
             </div>
 
             <div className="space-y-3 pt-2">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-app-light/50">Select Entity</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-app-light/50">Elige artista o sala</h4>
               <div className="flex gap-2 rounded-xl bg-white/5 p-1">
                 <button
                   onClick={() => { setEntityType('artist'); setSelectedEntity(null); setEntityQuery(''); }}
                   className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${entityType === 'artist' ? 'bg-app-ink text-white' : 'text-app-light/60 hover:text-app-light'}`}
                 >
-                  Artist
+                  Artista
                 </button>
                 <button
                   onClick={() => { setEntityType('venue'); setSelectedEntity(null); setEntityQuery(''); }}
                   className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${entityType === 'venue' ? 'bg-app-ink text-white' : 'text-app-light/60 hover:text-app-light'}`}
                 >
-                  Venue
+                  Sala
                 </button>
               </div>
               <div className="relative">
                 <input
                   type="text"
-                  placeholder={`Search for ${entityType}...`}
+                  placeholder={entityType === 'artist' ? 'Busca un artista...' : 'Busca una sala...'}
                   value={entityQuery}
                   onChange={(e) => setEntityQuery(e.target.value)}
                   className="w-full rounded-xl border border-white/10 bg-white/5 p-4 text-app-light outline-none focus:border-app-ink/50"
@@ -185,8 +185,8 @@ const AdminGrants: React.FC = () => {
               </div>
               {selectedEntity && (
                 <div className="flex items-center justify-between rounded-xl bg-app-ink/10 p-3">
-                  <span className="text-sm text-app-ink">Selected: <strong>{selectedEntity.name}</strong></span>
-                  <button onClick={() => setSelectedEntity(null)} className="text-xs text-app-ink hover:underline">Clear</button>
+                  <span className="text-sm text-app-ink">Seleccionado: <strong>{selectedEntity.name}</strong></span>
+                  <button onClick={() => setSelectedEntity(null)} className="text-xs text-app-ink hover:underline">Quitar</button>
                 </div>
               )}
             </div>
@@ -202,7 +202,7 @@ const AdminGrants: React.FC = () => {
                 onClick={handleGrant}
                 className="flex w-full items-center justify-center rounded-2xl bg-app-ink py-4 font-bold text-white shadow-lg shadow-app-ink/20 transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
               >
-                {loading ? <Spinner /> : 'Grant Access'}
+                {loading ? <Spinner /> : 'Conceder acceso'}
               </button>
             </div>
           </section>

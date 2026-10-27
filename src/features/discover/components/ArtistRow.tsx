@@ -34,7 +34,7 @@ const ArtistRow: React.FC<ArtistRowProps> = ({
             >
               <img
                 src={poster}
-                alt={`${artist.name} poster ${index + 1}`}
+                alt={`Cartel ${index + 1} de ${artist.name}`}
                 className="h-full w-full object-cover transition-transform duration-300 group-hover/poster:scale-[1.03]"
                 loading="lazy"
               />
@@ -59,7 +59,7 @@ const ArtistRow: React.FC<ArtistRowProps> = ({
           <div className="min-w-0">
             <p className="font-display text-base font-bold text-white line-clamp-1">{artist.name}</p>
             <p className="mt-0.5 text-xs text-white/55 line-clamp-1">
-              {artist.city || (artist.genres?.length ? artist.genres.slice(0, 2).join(' · ') : 'Artist')}
+              {artist.city || (artist.genres?.length ? artist.genres.slice(0, 2).join(' · ') : 'Artista')}
             </p>
           </div>
         </button>
@@ -77,7 +77,7 @@ const ArtistRow: React.FC<ArtistRowProps> = ({
               : 'border-app-accent/35 bg-app-accent text-white'
           }`}
         >
-          {followLoading ? 'Loading…' : isFollowing ? 'Following' : 'Follow'}
+          {followLoading ? 'Cargando…' : isFollowing ? 'Siguiendo' : 'Seguir'}
         </button>
       </div>
     </article>

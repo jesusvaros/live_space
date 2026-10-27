@@ -117,7 +117,7 @@ const EventDetail: React.FC = () => {
       const data = await fetchEventCardById(id);
 
       if (!data) {
-        setError('Event not found.');
+        setError('No encontramos este evento.');
         setEvent(null);
         return;
       }
@@ -128,7 +128,7 @@ const EventDetail: React.FC = () => {
       const setlistData = await eventService.getEventSetlist(id);
       setSetlist(setlistData);
     } catch (err) {
-      setError('Could not load this event. Check your Supabase connection.');
+      setError('No se ha podido cargar este evento. Revisa tu conexión.');
       setEvent(null);
     } finally {
       setLoading(false);
@@ -169,7 +169,7 @@ const EventDetail: React.FC = () => {
       setSelectedMomentIndex(0);
     } catch (err: any) {
       setBuckets([]);
-      setBucketsError(err?.message || 'Could not load the timeline.');
+      setBucketsError(err?.message || 'No se ha podido cargar la línea de tiempo.');
     } finally {
       setBucketsLoading(false);
     }
@@ -386,7 +386,7 @@ const EventDetail: React.FC = () => {
       if (!profile || seen.has(profile.id)) return;
       list.push({
         id: profile.id,
-        name: profile.display_name || profile.username || 'Unknown',
+        name: profile.display_name || profile.username || 'Desconocido',
         role: profile.role,
       });
       seen.add(profile.id);
@@ -396,7 +396,7 @@ const EventDetail: React.FC = () => {
       if (!artist || seen.has(artist.id)) return;
       list.push({
         id: artist.id,
-        name: artist.name || 'Unknown Artist',
+        name: artist.name || 'Artista desconocido',
         role: 'artist_entity',
       });
       seen.add(artist.id);
@@ -408,7 +408,7 @@ const EventDetail: React.FC = () => {
   }, [event]);
 
   const heroTitle = useMemo(() => {
-    if (!event) return 'Event';
+    if (!event) return 'Evento';
     const artist = event.event_artists?.find(item => item.artist)?.artist;
     if (artist) return artist.name;
     const organizerName =
@@ -423,8 +423,8 @@ const EventDetail: React.FC = () => {
     const venueName =
       event.venue_place?.name ||
       event.address ||
-      'Venue TBA';
-    const timeLabel = new Date(event.starts_at).toLocaleString(undefined, {
+      'Sala por confirmar';
+    const timeLabel = new Date(event.starts_at).toLocaleString('es-ES', {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
@@ -458,10 +458,10 @@ const EventDetail: React.FC = () => {
   };
 
   const formatEntityRole = (role: EventEntity['role']) => {
-    if (role === 'artist' || role === 'artist_entity') return 'Artist';
-    if (role === 'venue') return 'Venue';
-    if (role === 'label') return 'Label';
-    return 'User';
+    if (role === 'artist' || role === 'artist_entity') return 'Artista';
+    if (role === 'venue') return 'Sala';
+    if (role === 'label') return 'Sello';
+    return 'Usuario';
   };
 
   const openFilePicker = () => {
@@ -478,7 +478,7 @@ const EventDetail: React.FC = () => {
     }
 
     if (!event) {
-      setUploadError('Event not found.');
+      setUploadError('No encontramos este evento.');
       return;
     }
 
@@ -540,17 +540,17 @@ const EventDetail: React.FC = () => {
     setUploadSuccess('');
 
     if (!user) {
-      setUploadError('Sign in to upload moments.');
+      setUploadError('Entra para subir momentos.');
       return;
     }
 
     if (!event) {
-      setUploadError('Event not found.');
+      setUploadError('No encontramos este evento.');
       return;
     }
 
     if (momentItems.length === 0) {
-      setUploadError('Select at least one photo or video.');
+      setUploadError('Elige al menos una foto o un vídeo.');
       return;
     }
 
@@ -573,7 +573,7 @@ const EventDetail: React.FC = () => {
       }
 
       await updateAttendance('attended', { force: true });
-      setUploadSuccess('Moments uploaded!');
+      setUploadSuccess('¡Momentos subidos!');
       clearCached(`posts:count:user:${user.id}:event:${event.id}`);
       setMomentItems(prev => {
         prev.forEach(item => URL.revokeObjectURL(item.previewUrl));
@@ -583,7 +583,7 @@ const EventDetail: React.FC = () => {
       loadCounts();
       loadBuckets(mediaFilter);
     } catch (err: any) {
-      setUploadError(err?.message || 'Upload failed. Try again.');
+      setUploadError(err?.message || 'No se ha podido subir. Inténtalo de nuevo.');
     } finally {
       setUploading(false);
     }
@@ -613,7 +613,7 @@ const EventDetail: React.FC = () => {
         setFollowed(true);
       }
     } catch (err: any) {
-      setEngagementError(err?.message || 'Could not update follow state.');
+      setEngagementError(err?.message || 'No se ha podido actualizar el seguimiento.');
     } finally {
       setFollowLoading(false);
     }
@@ -652,7 +652,7 @@ const EventDetail: React.FC = () => {
       setAttendanceStatus(status);
       return true;
     } catch (err: any) {
-      setEngagementError(err?.message || 'Could not update attendance.');
+      setEngagementError(err?.message || 'No se ha podido actualizar la asistencia.');
       return false;
     } finally {
       setAttendanceLoading(false);
@@ -668,7 +668,7 @@ const EventDetail: React.FC = () => {
       : now.getTime() > eventStart.getTime() + 6 * 60 * 60 * 1000
     : false;
   const attendanceTarget: 'going' | 'attended' = isPastEvent ? 'attended' : 'going';
-  const attendanceLabel = isPastEvent ? 'Went' : 'Going';
+  const attendanceLabel = isPastEvent ? 'Fui' : 'Voy';
   const attendanceActive = attendanceStatus === attendanceTarget;
   const baseHeroChipClass = 'relative inline-flex items-center gap-2 overflow-hidden rounded-full border px-3 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-white/90 backdrop-blur-md transition-all duration-200 hover:border-white/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none';
   const neutralHeroChipClass = 'border-white/25 bg-[linear-gradient(145deg,rgba(3,6,12,0.72),rgba(12,18,30,0.82))]';
@@ -761,7 +761,7 @@ const EventDetail: React.FC = () => {
                           <IconBookmark className="h-[19px] w-[19px]" />
                         )}
                       </span>
-                      <span>Follow</span>
+                      <span>Guardar</span>
                     </button>
                     <button
                       type="button"
@@ -793,7 +793,7 @@ const EventDetail: React.FC = () => {
               <div className="relative z-10 -mt-16 rounded-t-[28px] border-t border-white/10 bg-app-bg/95 backdrop-blur-xl sm:-mt-20">
                 <div className="flex flex-col gap-6 p-4 pb-[calc(110px+env(safe-area-inset-bottom,0px))]">
                   <div className="space-y-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/65">Event</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/65">Evento</p>
                     <h1 className="font-display text-3xl font-bold leading-tight text-white sm:text-4xl">{heroTitle}</h1>
                     {heroMeta ? <div className="text-sm text-white/80">{heroMeta}</div> : null}
                     {entities.length > 0 && (
@@ -814,23 +814,23 @@ const EventDetail: React.FC = () => {
 
                   {showReliveBanner && (
                     <div className="rounded-2xl border border-app-accent/30 bg-[linear-gradient(135deg,rgba(255,107,74,0.18),rgba(255,107,74,0.06)_60%,rgba(255,255,255,0.02))] p-4 shadow-[0_8px_18px_rgba(0,0,0,0.18)]">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-app-accent">Relive</p>
-                      <p className="mt-2 font-display text-lg font-bold text-white">Add your moments</p>
-                      <p className="mt-1 text-xs text-white/70">Share what you lived before the memory fades.</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-app-accent">Revívelo</p>
+                      <p className="mt-2 font-display text-lg font-bold text-white">Añade tus momentos</p>
+                      <p className="mt-1 text-xs text-white/70">Comparte lo que viviste antes de que se te olvide.</p>
                       <div className="mt-4 flex items-center gap-2">
                         <button
                           type="button"
                           className="inline-flex flex-1 items-center justify-center rounded-full bg-app-accent px-4 py-2 text-sm font-semibold text-white"
                           onClick={handlePrimaryCtaClick}
                         >
-                          Add your moments
+                          Añade tus momentos
                         </button>
                         <button
                           type="button"
                           className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white"
                           onClick={() => setShowReliveBanner(false)}
                         >
-                          Not now
+                          Ahora no
                         </button>
                       </div>
                     </div>
@@ -841,13 +841,13 @@ const EventDetail: React.FC = () => {
 
                 {setlist.length > 0 && (
                   <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                    <h3 className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">Official setlist</h3>
+                    <h3 className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">Setlist oficial</h3>
                     <div className="mt-3 flex flex-col gap-2">
                       {setlist.map((entry) => (
                         <div key={entry.ordinal} className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.03] px-3 py-2 text-xs">
                           <span className="text-white/80">
                             <span className="mr-2 text-white/45">{entry.ordinal}.</span>
-                            {entry.song_title || 'Unknown Song'}
+                            {entry.song_title || 'Canción desconocida'}
                           </span>
                         </div>
                       ))}
@@ -886,7 +886,7 @@ const EventDetail: React.FC = () => {
                   <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/20">
                     <IconPlus className="h-4 w-4" />
                   </span>
-                  <span>Add moment</span>
+                  <span>Añadir momento</span>
                 </button>
               )}
 
@@ -894,7 +894,7 @@ const EventDetail: React.FC = () => {
                 <div className="grid h-16 grid-cols-4 items-center px-4 pb-[env(safe-area-inset-bottom,0px)]">
                   <button
                     type="button"
-                    aria-label="Main"
+                    aria-label="Inicio"
                     className="inline-flex items-center justify-center text-app-accent"
                     onClick={() => navigate(mainTabHref)}
                   >
@@ -903,7 +903,7 @@ const EventDetail: React.FC = () => {
                   {isArtistWorkspace ? (
                     <button
                       type="button"
-                      aria-label="Create event"
+                      aria-label="Crear evento"
                       className="inline-flex items-center justify-center text-white/75 transition-colors hover:text-white"
                       onClick={() => navigate('/tabs/create-event')}
                     >
@@ -912,7 +912,7 @@ const EventDetail: React.FC = () => {
                   ) : (
                     <button
                       type="button"
-                      aria-label="Discover"
+                      aria-label="Descubrir"
                       className="inline-flex items-center justify-center text-white/75 transition-colors hover:text-white"
                       onClick={() => navigate('/tabs/discover')}
                     >
@@ -921,7 +921,7 @@ const EventDetail: React.FC = () => {
                   )}
                   <button
                     type="button"
-                    aria-label="Map"
+                    aria-label="Mapa"
                     className="inline-flex items-center justify-center text-white/75 transition-colors hover:text-white"
                     onClick={() => navigate('/tabs/map')}
                   >
@@ -929,7 +929,7 @@ const EventDetail: React.FC = () => {
                   </button>
                   <button
                     type="button"
-                    aria-label="Profile"
+                    aria-label="Perfil"
                     className="inline-flex items-center justify-center text-white/75 transition-colors hover:text-white"
                     onClick={() => navigate(profileTabHref)}
                   >
@@ -939,22 +939,22 @@ const EventDetail: React.FC = () => {
               </div>
             </>
           )}
-        <Modal isOpen={showAddMoments} onDidDismiss={() => setShowAddMoments(false)} title="Add moments">
+        <Modal isOpen={showAddMoments} onDidDismiss={() => setShowAddMoments(false)} title="Añadir momentos">
           <Content fullscreen>
             <div className="min-h-full bg-app-bg p-5">
               <div className="flex items-center justify-between gap-4">
-                <h2 className="font-display text-lg font-bold text-white">Add moments</h2>
+                <h2 className="font-display text-lg font-bold text-white">Añadir momentos</h2>
                 <button
                   type="button"
                   className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
                   onClick={() => setShowAddMoments(false)}
                   disabled={uploading}
                 >
-                  Close
+                  Cerrar
                 </button>
               </div>
               {momentItems.length === 0 && (
-                <p className="text-sm text-white/55">Select photos or videos to add moments.</p>
+                <p className="text-sm text-white/55">Elige fotos o vídeos para añadir momentos.</p>
               )}
 
               {momentItems.map(item => (
@@ -976,13 +976,13 @@ const EventDetail: React.FC = () => {
                       <p className="text-sm font-semibold text-white">{item.file.name}</p>
                       <p className="text-xs text-white/55">
                         {item.captureAt
-                          ? item.captureAt.toLocaleString(undefined, {
+                          ? item.captureAt.toLocaleString('es-ES', {
                               month: 'short',
                               day: 'numeric',
                               hour: '2-digit',
                               minute: '2-digit',
                             })
-                          : 'Upload time'}
+                          : 'Hora de subida'}
                       </p>
                     </div>
                     <button
@@ -990,12 +990,12 @@ const EventDetail: React.FC = () => {
                       className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
                       onClick={() => handleRemoveMoment(item.id)}
                     >
-                      Remove
+                      Quitar
                     </button>
                   </div>
                   <label className="flex flex-col gap-2">
                     <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
-                      Captured time
+                      Hora de captura
                     </span>
                     <input
                       type="datetime-local"
@@ -1009,7 +1009,7 @@ const EventDetail: React.FC = () => {
                     className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
                     onClick={() => handleUseUploadTime(item.id)}
                   >
-                    Use upload time
+                    Usar hora de subida
                   </button>
                 </div>
               ))}
@@ -1023,7 +1023,7 @@ const EventDetail: React.FC = () => {
 
               {uploading && (
                 <p className="text-xs text-white/55">
-                  Uploading {uploadProgress.current}/{uploadProgress.total}
+                  Subiendo {uploadProgress.current}/{uploadProgress.total}
                 </p>
               )}
 
@@ -1033,7 +1033,7 @@ const EventDetail: React.FC = () => {
                 onClick={handleUploadMoments}
                 disabled={uploading || momentItems.length === 0}
               >
-                {uploading ? 'Uploading...' : 'Upload moments'}
+                {uploading ? 'Subiendo...' : 'Subir momentos'}
               </button>
               <button
                 type="button"
@@ -1041,7 +1041,7 @@ const EventDetail: React.FC = () => {
                 onClick={openFilePicker}
                 disabled={uploading}
               >
-                Add more
+                Añadir más
               </button>
             </div>
           </Content>

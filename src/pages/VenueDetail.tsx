@@ -96,7 +96,7 @@ const VenueDetail: React.FC = () => {
           setMoments([]);
         }
       } catch (err) {
-        setError('Venue not found.');
+        setError('Sala no encontrada.');
         setVenue(null);
         setEvents([]);
         setMoments([]);
@@ -157,12 +157,12 @@ const VenueDetail: React.FC = () => {
               <img src={(venue.photos || [])[0]} alt={venue.name} className="absolute inset-0 h-full w-full object-cover" />
             ) : null}
             <div className="absolute inset-x-0 bottom-0 bg-black/70 p-5">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Venue</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Sala</p>
               <h1 className="mt-2 font-display text-3xl font-bold text-white">{venue.name}</h1>
               {addressLine && <p className="mt-2 text-sm text-white/70">{addressLine}</p>}
               <div className="mt-3 flex items-center gap-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
-                  {followersCount} followers
+                  {followersCount} seguidores
                 </p>
                 {user && (
                   <button
@@ -173,7 +173,7 @@ const VenueDetail: React.FC = () => {
                       isFollowing ? 'bg-white/10 text-white/80' : 'bg-[#ff6b4a] text-white'
                     }`}
                   >
-                    {followLoading ? <Spinner /> : (isFollowing ? 'Following' : 'Follow')}
+                    {followLoading ? <Spinner /> : (isFollowing ? 'Siguiendo' : 'Seguir')}
                   </button>
                 )}
               </div>
@@ -185,7 +185,7 @@ const VenueDetail: React.FC = () => {
               <section className="-mx-4 flex gap-2 overflow-x-auto pb-1">
                 {(venue.photos || []).slice(1, 8).map((url, index) => (
                   <div key={`${url}-${index}`} className="h-36 w-52 flex-shrink-0 overflow-hidden bg-white/5">
-                    <img src={url} alt={`Venue ${venue.name}`} className="h-full w-full object-cover" />
+                    <img src={url} alt={`Sala ${venue.name}`} className="h-full w-full object-cover" />
                   </div>
                 ))}
               </section>
@@ -193,7 +193,7 @@ const VenueDetail: React.FC = () => {
 
             {(venue.venue_type || venue.capacity) && (
               <p className="text-xs text-white/55">
-                    {venue.venue_type || 'Venue'}{venue.capacity ? ` · ${venue.capacity} cap` : ''}
+                    {venue.venue_type || 'Sala'}{venue.capacity ? ` · aforo ${venue.capacity}` : ''}
                   </p>
                 )}
 
@@ -210,11 +210,11 @@ const VenueDetail: React.FC = () => {
 
                 <section className="space-y-3">
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Events</p>
-                    <p className="mt-1 text-sm text-white/55">Upcoming shows hosted here.</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Eventos</p>
+                    <p className="mt-1 text-sm text-white/55">Próximos conciertos en esta sala.</p>
                   </div>
                   {events.length === 0 ? (
-                    <p className="text-sm text-white/55">No events here yet.</p>
+                    <p className="text-sm text-white/55">Aún no hay eventos aquí.</p>
                   ) : (
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                       {events.map(event => (
@@ -231,11 +231,11 @@ const VenueDetail: React.FC = () => {
 
                 <section className="space-y-3">
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Moments</p>
-                    <p className="mt-1 text-sm text-white/55">Latest media from this room.</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Momentos</p>
+                    <p className="mt-1 text-sm text-white/55">Lo último que se ha subido desde aquí.</p>
                   </div>
                   {moments.length === 0 ? (
-                    <p className="text-sm text-white/55">No memories here yet.</p>
+                    <p className="text-sm text-white/55">Aún no hay momentos aquí.</p>
                   ) : (
                     <div className="-mx-4 grid grid-cols-3 gap-1">
                       {moments.map(moment => (
@@ -252,7 +252,7 @@ const VenueDetail: React.FC = () => {
                           ) : (
                             <img
                               src={moment.media_url}
-                              alt={moment.caption || 'Moment'}
+                              alt={moment.caption || 'Momento'}
                               className="h-full w-full object-cover"
                             />
                           )}
@@ -267,7 +267,7 @@ const VenueDetail: React.FC = () => {
                   className="bg-white/10 px-4 py-3 text-sm font-semibold text-white"
                   onClick={() => navigate(-1)}
                 >
-                  Back
+                  Volver
                 </button>
               </div>
             </>

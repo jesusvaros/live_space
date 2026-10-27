@@ -28,6 +28,6 @@ export const useEventsList = (options: { startIso: string; endIso: string }) => 
   return {
     events: data || EMPTY_EVENTS,
     loading: authLoading || loading,
-    error: error ? 'Could not load events. Check your Supabase connection.' : '',
+    error: error ? 'No se pudieron cargar los eventos. Revisa tu conexión.' : '',
   };
 };

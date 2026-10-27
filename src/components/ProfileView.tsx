@@ -1,7 +1,7 @@
 import React from 'react';
 
 const ProfileView: React.FC = () => {
-  return <div>ProfileView component coming soon...</div>;
+  return <div>Próximamente...</div>;
 };
 
 export default ProfileView;

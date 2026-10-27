@@ -22,7 +22,7 @@ const EventHero: React.FC<EventHeroProps> = ({
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_6%,rgba(255,107,74,0.24),transparent_52%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_12%,rgba(122,167,255,0.18),transparent_54%)]" />
         {coverImageUrl ? (
-          <img src={coverImageUrl} alt="Event cover" className="absolute inset-0 h-full w-full object-cover" />
+          <img src={coverImageUrl} alt="Portada del evento" className="absolute inset-0 h-full w-full object-cover" />
         ) : null}
         <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/62 to-black/24" />
 

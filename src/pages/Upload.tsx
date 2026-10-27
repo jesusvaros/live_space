@@ -42,7 +42,7 @@ const distanceKm = (from: { lat: number; lng: number }, to: { lat: number; lng: 
 };
 
 const formatEventDate = (event: Event) =>
-  new Date(event.starts_at).toLocaleString(undefined, {
+  new Date(event.starts_at).toLocaleString('es-ES', {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -51,9 +51,9 @@ const formatEventDate = (event: Event) =>
   });
 
 const formatMomentTime = (value: Date | null) => {
-  if (!value) return 'Upload time';
-  if (Number.isNaN(value.getTime())) return 'Upload time';
-  return value.toLocaleString(undefined, {
+  if (!value) return 'Hora de subida';
+  if (Number.isNaN(value.getTime())) return 'Hora de subida';
+  return value.toLocaleString('es-ES', {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
@@ -62,12 +62,12 @@ const formatMomentTime = (value: Date | null) => {
 };
 
 const getCaptureLabel = (source: string | null, capturedAt: Date | null) => {
-  if (!capturedAt) return 'Upload time';
+  if (!capturedAt) return 'Hora de subida';
   if (source === 'exif') return 'EXIF';
-  if (source === 'file.lastModified') return 'Device time';
-  if (source === 'video.metadata') return 'Video metadata';
+  if (source === 'file.lastModified') return 'Hora del dispositivo';
+  if (source === 'video.metadata') return 'Metadatos del vídeo';
   if (source === 'manual') return 'Manual';
-  return 'Captured';
+  return 'Capturado';
 };
 
 const Upload: React.FC = () => {
@@ -100,7 +100,7 @@ const Upload: React.FC = () => {
         setEvents((await fetchEventCards({})) as EventWithVenue[]);
       } catch (err) {
         setEvents([]);
-        setEventsError('Could not load events. Check your Supabase connection.');
+        setEventsError('No se pudieron cargar los eventos. Revisa tu conexión.');
       } finally {
         setLoadingEvents(false);
       }
@@ -110,14 +110,14 @@ const Upload: React.FC = () => {
 
   useEffect(() => {
     if (!navigator.geolocation) {
-      setLocationError('Location not available.');
+      setLocationError('Ubicación no disponible.');
       return;
     }
     navigator.geolocation.getCurrentPosition(
       position => {
         setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
       },
-      () => setLocationError('Enable location to see nearby events.'),
+      () => setLocationError('Activa la ubicación para ver eventos cerca.'),
       { enableHighAccuracy: true, timeout: 5000 }
     );
   }, []);
@@ -207,10 +207,10 @@ const Upload: React.FC = () => {
 
     try {
       const data = await fetchEventCardById(eventId);
-      if (!data) throw new Error('Event not found');
+      if (!data) throw new Error('Evento no encontrado');
       handleSelectEvent(data as EventWithVenue);
     } catch {
-      setEventsError('Event not found for that QR code.');
+      setEventsError('No hay ningún evento para ese código QR.');
     }
   };
 
@@ -226,7 +226,7 @@ const Upload: React.FC = () => {
     }
 
     if (!eventId) {
-      setEventsError('Invalid QR code.');
+      setEventsError('Código QR no válido.');
       return;
     }
 
@@ -239,12 +239,12 @@ const Upload: React.FC = () => {
     setUploadSuccess('');
 
     if (!user) {
-      setUploadError('Sign in to upload moments.');
+      setUploadError('Entra para subir momentos.');
       return;
     }
 
     if (!selectedEvent) {
-      setUploadError('Select an event first.');
+      setUploadError('Elige un evento primero.');
       return;
     }
 
@@ -306,12 +306,12 @@ const Upload: React.FC = () => {
     setUploadSuccess('');
 
     if (!user || !selectedEvent) {
-      setUploadError('Sign in and select an event first.');
+      setUploadError('Entra y elige un evento primero.');
       return;
     }
 
     if (momentItems.length === 0) {
-      setUploadError('Select at least one photo or video.');
+      setUploadError('Elige al menos una foto o un vídeo.');
       return;
     }
 
@@ -333,14 +333,14 @@ const Upload: React.FC = () => {
         });
       }
 
-      setUploadSuccess('Moments uploaded!');
+      setUploadSuccess('¡Momentos subidos!');
       setMomentItems(prev => {
         prev.forEach(item => URL.revokeObjectURL(item.previewUrl));
         return [];
       });
       setShowAddMoments(false);
     } catch (err: any) {
-      setUploadError(err?.message || 'Upload failed. Try again.');
+      setUploadError(err?.message || 'No se pudo subir. Inténtalo de nuevo.');
     } finally {
       setUploading(false);
     }
@@ -352,7 +352,7 @@ const Upload: React.FC = () => {
       event={event}
       className={opts?.className}
       title={event.name}
-      subtitle={event.venue_place?.name || event.address || 'Venue'}
+      subtitle={event.venue_place?.name || event.address || 'Sala'}
       kicker={formatEventDate(event)}
       badge={opts?.badge}
       onSelect={selected => handleSelectEvent(selected)}
@@ -363,9 +363,9 @@ const Upload: React.FC = () => {
     <AppShell>
       <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
             <div className="animate-fade-up motion-reduce:animate-none">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-white/60">Add moments</p>
-              <h2 className="mt-2 font-display text-2xl font-bold text-white">What did it feel like?</h2>
-              <p className="mt-2 text-sm text-white/70">Pick the show, then drop your photos and clips.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-white/60">Añade momentos</p>
+              <h2 className="mt-2 font-display text-2xl font-bold text-white">¿Qué se sintió?</h2>
+              <p className="mt-2 text-sm text-white/70">Elige el concierto y sube tus fotos y vídeos.</p>
             </div>
 
           {loadingEvents && (
@@ -383,7 +383,7 @@ const Upload: React.FC = () => {
               <div className="space-y-3">
                 <input
                   type="search"
-                  placeholder="Search events"
+                  placeholder="Busca eventos"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
@@ -393,15 +393,15 @@ const Upload: React.FC = () => {
                   className="inline-flex w-full items-center justify-center rounded-2xl bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15"
                   onClick={() => setShowScanner(true)}
                 >
-                  Scan event QR
+                  Escanear QR del evento
                 </button>
               </div>
 
               {search.trim() ? (
                 <section className="space-y-3">
-                  <h3 className="font-display text-lg font-bold text-white">Search results</h3>
+                  <h3 className="font-display text-lg font-bold text-white">Resultados</h3>
                   {filteredEvents.length === 0 ? (
-                    <p className="text-sm text-white/60">No events match that search.</p>
+                    <p className="text-sm text-white/60">Ningún evento coincide con la búsqueda.</p>
                   ) : (
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                       {filteredEvents.map(event => renderEventTile(event, { className: 'w-full' }))}
@@ -412,14 +412,14 @@ const Upload: React.FC = () => {
                 <>
                   <section className="space-y-3">
                     <div>
-                      <h3 className="font-display text-lg font-bold text-white">Nearby</h3>
+                      <h3 className="font-display text-lg font-bold text-white">Cerca</h3>
                       <p className="text-xs text-white/60">
-                        {userLocation ? 'Closest to you.' : locationError || 'Based on your profile city.'}
+                        {userLocation ? 'Los más cercanos a ti.' : locationError || 'Según la ciudad de tu perfil.'}
                       </p>
                     </div>
                     {nearbyEvents.length === 0 ? (
                       <p className="text-sm text-white/60">
-                        No nearby events yet. Try searching or scanning a QR.
+                        Aún no hay eventos cerca. Prueba a buscar o escanear un QR.
                       </p>
                     ) : (
                       <div className="flex gap-3 overflow-x-auto pb-1">
@@ -434,11 +434,11 @@ const Upload: React.FC = () => {
 
                   <section className="space-y-3">
                     <div>
-                      <h3 className="font-display text-lg font-bold text-white">Upcoming</h3>
-                      <p className="text-xs text-white/60">Shows worth remembering.</p>
+                      <h3 className="font-display text-lg font-bold text-white">Próximos</h3>
+                      <p className="text-xs text-white/60">Conciertos para recordar.</p>
                     </div>
                     {recentEvents.length === 0 ? (
-                      <p className="text-sm text-white/60">No upcoming events yet.</p>
+                      <p className="text-sm text-white/60">Aún no hay próximos eventos.</p>
                     ) : (
                       <div className="flex gap-3 overflow-x-auto pb-1">
                         {recentEvents.map(event => renderEventTile(event))}
@@ -464,7 +464,7 @@ const Upload: React.FC = () => {
                   </p>
                   <h3 className="mt-2 font-display text-xl font-bold text-white">{selectedEvent.name}</h3>
                   <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-white/75">
-                    {selectedEvent.venue_place?.name || selectedEvent.address || 'Venue'} · {formatEventDate(selectedEvent)}
+                    {selectedEvent.venue_place?.name || selectedEvent.address || 'Sala'} · {formatEventDate(selectedEvent)}
                   </p>
                 </div>
               </div>
@@ -476,7 +476,7 @@ const Upload: React.FC = () => {
                     className="inline-flex w-full items-center justify-center rounded-2xl bg-[#ff6b4a] px-4 py-2 text-sm font-semibold text-white"
                     onClick={handleAddMomentsClick}
                   >
-                    Add moments
+                    Añadir momentos
                   </button>
                   <input
                     ref={fileInputRef}
@@ -493,7 +493,7 @@ const Upload: React.FC = () => {
                   className="inline-flex w-full items-center justify-center rounded-2xl bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15"
                   onClick={() => navigate('/welcome')}
                 >
-                  Sign in to upload
+                  Entra para subir
                 </button>
               )}
 
@@ -502,7 +502,7 @@ const Upload: React.FC = () => {
                 className="inline-flex w-full items-center justify-center px-4 py-2 text-sm font-semibold text-white/70 transition hover:text-white"
                 onClick={() => setSelectedEvent(null)}
               >
-                Choose another event
+                Elegir otro evento
               </button>
 
               {uploadError && (
@@ -515,17 +515,17 @@ const Upload: React.FC = () => {
           )}
       </div>
 
-      <Modal isOpen={showScanner} onDidDismiss={() => setShowScanner(false)} title="Scan event QR">
+      <Modal isOpen={showScanner} onDidDismiss={() => setShowScanner(false)} title="Escanear QR del evento">
           <Content fullscreen>
             <div className="flex flex-col gap-4 rounded-3xl bg-app-bg p-5">
               <div className="flex items-center justify-between gap-4">
-                <h2 className="font-display text-lg font-bold text-white">Scan QR</h2>
+                <h2 className="font-display text-lg font-bold text-white">Escanear QR</h2>
                 <button
                   type="button"
                   className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/15"
                   onClick={() => setShowScanner(false)}
                 >
-                  Close
+                  Cerrar
                 </button>
               </div>
               <QrScanner onDetected={handleQrDetected} />
@@ -533,22 +533,22 @@ const Upload: React.FC = () => {
           </Content>
         </Modal>
 
-        <Modal isOpen={showAddMoments} onDidDismiss={() => setShowAddMoments(false)} title="Add moments">
+        <Modal isOpen={showAddMoments} onDidDismiss={() => setShowAddMoments(false)} title="Añadir momentos">
           <Content fullscreen>
             <div className="flex flex-col gap-4 rounded-3xl bg-app-bg p-5">
               <div className="flex items-center justify-between gap-4">
-                <h2 className="font-display text-lg font-bold text-white">Add moments</h2>
+                <h2 className="font-display text-lg font-bold text-white">Añade momentos</h2>
                 <button
                   type="button"
                   className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/15"
                   onClick={() => setShowAddMoments(false)}
                   disabled={uploading}
                 >
-                  Close
+                  Cerrar
                 </button>
               </div>
               {momentItems.length === 0 && (
-                <p className="text-sm text-white/70">Select photos or videos to add moments.</p>
+                <p className="text-sm text-white/70">Elige fotos o vídeos para añadir momentos.</p>
               )}
 
               {momentItems.map(item => {
@@ -579,12 +579,12 @@ const Upload: React.FC = () => {
                         className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/80 transition hover:bg-white/15 hover:text-white"
                         onClick={() => handleRemoveMoment(item.id)}
                       >
-                        Remove
+                        Quitar
                       </button>
                     </div>
                     <label className="flex flex-col gap-2">
                       <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                        Captured time
+                        Hora de captura
                       </span>
                       <input
                         type="datetime-local"
@@ -598,7 +598,7 @@ const Upload: React.FC = () => {
                       className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/80 transition hover:bg-white/15 hover:text-white"
                       onClick={() => handleUseUploadTime(item.id)}
                     >
-                      Use upload time
+                      Usar hora de subida
                     </button>
                   </div>
                 );
@@ -613,7 +613,7 @@ const Upload: React.FC = () => {
 
               {uploading && (
                 <p className="text-xs text-white/60">
-                  Uploading {uploadProgress.current}/{uploadProgress.total}
+                  Subiendo {uploadProgress.current}/{uploadProgress.total}
                 </p>
               )}
 
@@ -623,7 +623,7 @@ const Upload: React.FC = () => {
                 onClick={handleUploadMoments}
                 disabled={uploading || momentItems.length === 0}
               >
-                {uploading ? 'Uploading...' : 'Upload moments'}
+                {uploading ? 'Subiendo…' : 'Subir momentos'}
               </button>
               <button
                 type="button"
@@ -631,7 +631,7 @@ const Upload: React.FC = () => {
                 onClick={handleAddMomentsClick}
                 disabled={uploading}
               >
-                Add more
+                Añadir más
               </button>
             </div>
           </Content>

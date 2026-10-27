@@ -45,9 +45,9 @@ const getEventEnd = (event: EventListItem) => {
 };
 
 const relativeTimeLabel = (hoursSinceEnd: number) => {
-  if (hoursSinceEnd < 24) return 'You attended yesterday';
-  if (hoursSinceEnd < 48) return 'You attended 2 days ago';
-  return 'You attended recently';
+  if (hoursSinceEnd < 24) return 'Estuviste ayer';
+  if (hoursSinceEnd < 48) return 'Estuviste hace 2 días';
+  return 'Estuviste hace poco';
 };
 
 const hasUserMomentsForEvent = async (userId: string, eventId: string) => {

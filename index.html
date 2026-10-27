@@ -3,9 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b0b0d" />
     <title>Live Space</title>
+    <!-- Fonts load without blocking the first paint (the app must open offline too). -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&amp;family=Space+Grotesk:wght@400;500;600;700&amp;display=swap" media="print" onload="this.media='all'" />
   </head>
-  <body>
+  <body style="margin: 0; background: #0b0b0d">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -80,7 +80,7 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({
       const start = new Date(ev.starts_at);
       const end = ev.ends_at ? new Date(ev.ends_at) : new Date(start.getTime() + 6 * 60 * 60 * 1000);
       const isPastEvent = Date.now() > end.getTime();
-      const attendanceLabel = isPastEvent ? 'Went' : 'Going';
+      const attendanceLabel = isPastEvent ? 'Fui' : 'Voy';
       const attendanceStatus: 'going' | 'attended' = isPastEvent ? 'attended' : 'going';
       const isFollowed = followedEventIds?.has(ev.id) ?? false;
       const currentAttendance = attendanceStatusByEventId?.[ev.id] || null;
@@ -106,7 +106,7 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({
               className="flex min-w-0 flex-1 flex-col justify-center cursor-pointer transition-opacity hover:opacity-80"
               onClick={() => navigate(`/event/${ev.id}`)}
             >
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Event</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Evento</p>
               <h3 className="mt-2 font-display text-2xl font-bold text-white leading-tight">{ev.name}</h3>
               {ev.venue_place?.name && (
                 <p className="mt-1 text-sm font-medium text-white/80">{ev.venue_place.name}</p>
@@ -114,7 +114,7 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({
               <p className="mt-1 text-sm text-white/70">{ev.venue_place?.city || ev.city}</p>
               {artists && <p className="mt-2 text-sm text-white/55">{artists}</p>}
               <p className="mt-3 text-sm text-white/55">
-                {new Date(ev.starts_at).toLocaleString(undefined, {
+                {new Date(ev.starts_at).toLocaleString('es-ES', {
                   weekday: 'short',
                   month: 'short',
                   day: 'numeric',
@@ -129,7 +129,7 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({
                 className={`${baseSheetChipClass} ${isFollowed ? followActiveSheetChipClass : neutralSheetChipClass} ${
                   followAnimating ? 'scale-[1.02]' : ''
                 }`}
-                aria-label="Follow event"
+                aria-label="Seguir evento"
                 disabled={followLoading}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -145,7 +145,7 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({
                 <span className={`inline-flex items-center justify-center ${followAnimating ? 'animate-pulse motion-reduce:animate-none' : ''}`}>
                   <IconBookmark className="h-[19px] w-[19px]" />
                 </span>
-                <span>Follow</span>
+                <span>Seguir</span>
               </button>
               <button
                 type="button"
@@ -186,10 +186,10 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({
         className="cursor-pointer transition-opacity hover:opacity-80"
         onClick={() => navigate(`/venue/${venue.id}`)}
       >
-        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Venue</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Sala</p>
         <h3 className="mt-2 font-display text-xl font-bold text-white">{venue.name}</h3>
         <p className="text-sm text-white/70">{venue.city}</p>
-        <p className="mt-2 text-xs font-medium text-white/40">Tap to view venue details</p>
+        <p className="mt-2 text-xs font-medium text-white/40">Toca para ver la sala</p>
       </div>
     );
   };
