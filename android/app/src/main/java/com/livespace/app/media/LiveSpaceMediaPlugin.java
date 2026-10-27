@@ -169,10 +169,11 @@ public class LiveSpaceMediaPlugin extends Plugin {
   public void uploadFileRange(PluginCall call) {
     String path = call.getString("path");
     String url = call.getString("url");
-    Long offset = call.getLong("offset", 0L);
-    Long length = call.getLong("length");
+    // JS numbers arrive as Integer or Double, which PluginCall.getLong rejects.
+    long offset = call.getData().optLong("offset", 0L);
+    long length = call.getData().optLong("length", -1L);
     final String taskId = call.getString("taskId", "");
-    if (path == null || url == null || length == null || offset == null || offset < 0 || length <= 0) {
+    if (path == null || url == null || offset < 0 || length <= 0) {
       call.reject("path, url, offset and length are required");
       return;
     }
