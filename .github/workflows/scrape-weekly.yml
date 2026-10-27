@@ -47,7 +47,7 @@ jobs:
           SCRAPER_CONCURRENCY: "3"
           SCRAPER_TIMEOUT_MS: "30000"
           ENABLE_AI_NORMALIZATION: "false"
-          SCRAPER_CITY_ALLOWLIST: "Madrid,Barcelona"
+          SCRAPER_CITY_ALLOWLIST: "Madrid,Barcelona,Sevilla,Valencia"
 
       - name: Enrich images (event posters, artist photos)
         if: always()

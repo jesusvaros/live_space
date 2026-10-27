@@ -71,7 +71,7 @@ export const env: ScraperEnv = {
     (process.env.LOG_LEVEL as ScraperEnv['logLevel'] | undefined) ||
     (process.env.NODE_ENV === 'development' ? 'debug' : 'info'),
   errorScreenshotDir: process.env.SCRAPER_ERROR_SCREENSHOT_DIR || 'tmp/scraper-errors',
-  cityAllowlist: (process.env.SCRAPER_CITY_ALLOWLIST || 'Madrid,Barcelona')
+  cityAllowlist: (process.env.SCRAPER_CITY_ALLOWLIST || 'Madrid,Barcelona,Sevilla,Valencia')
     .split(',')
     .map((city) => city.trim())
     .filter(Boolean),

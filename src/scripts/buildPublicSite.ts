@@ -140,7 +140,7 @@ const staticShell = (title: string, description: string, head: string, inner: st
     </aside>
     <footer class="foot">
       <span>Live Space · los conciertos, contados por el público.</span>
-      <nav><a href="/madrid/conciertos/">Conciertos en Madrid</a><a href="/barcelona/conciertos/">Conciertos en Barcelona</a></nav>
+      <nav>${Object.entries(PUBLIC_CITIES).map(([slug, name]) => `<a href="/${slug}/conciertos/">Conciertos en ${name}</a>`).join('')}</nav>
     </footer>
   </body>
 </html>
