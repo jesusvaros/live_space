@@ -46,7 +46,9 @@ const dedupeRawItems = (items: RawScrapedEvent[]): RawScrapedEvent[] => {
 
 export const sourcePageFailureReason = (status: number | undefined, html: string): string | null => {
   if (status && status >= 400) return `Source returned HTTP ${status}`;
-  if (/performing security verification|cf-chl-|just a moment/i.test(html)) {
+  // A Turnstile widget inside a contact form ("cf-chl-widget-…") is not a
+  // challenge page; the agenda around it rendered normally.
+  if (/performing security verification|cf-chl-(?!widget)|just a moment/i.test(html)) {
     return 'Source returned an anti-bot challenge instead of its agenda';
   }
   return null;

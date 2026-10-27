@@ -136,4 +136,45 @@ export const seedSources: SeedSource[] = [
     ready: true,
     reviewedAt: LOCAL_SCENE_REVIEW,
   }),
+  // Valencia local scene (agent), reviewed 2026-10-27: public agenda on the
+  // venue's own site and robots.txt allows it. Left out: Sala Moon (domain
+  // parked), Wah Wah (closed, domain is now a blog), Matisse (hand-edited list
+  // without years), Café Mercedes (no concerts published), La Fábrica de Hielo
+  // (robots.txt blocks its calendar views), Spook (large techno club).
+  source('Loco Club', 'https://lococlub.es/', 'Valencia', 'https://lococlub.es/', {
+    parserKey: 'json-ld-bill-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('16 Toneladas', 'https://16toneladas.com/', 'Valencia', 'https://16toneladas.com/', {
+    parserKey: 'sixteen-toneladas-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Black Note Club', 'https://www.blacknoteclub.com/', 'Valencia', 'https://www.blacknoteclub.com/', {
+    parserKey: 'wix-events-warmup',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Sala Repvblicca', 'https://republicca.com/agenda/', 'Valencia', 'https://republicca.com/', {
+    parserKey: 'repvblicca-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Jimmy Glass Jazz Bar', 'https://www.jimmyglassjazz.net/Eventos/', 'Valencia', 'https://www.jimmyglassjazz.net/', {
+    parserKey: 'jimmy-glass-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Radio City', 'https://radiocityvalencia.es/agenda/', 'Valencia', 'https://radiocityvalencia.es/', {
+    parserKey: 'radio-city-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
 ];

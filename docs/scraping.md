@@ -63,6 +63,20 @@ Heliogàbal, Sala Vol, Upload, Meteoro, Honky Tonk, El Intruso y Bóveda necesit
 un parser propio. El Perro de la Parte de Atrás del Coche solo publica en
 Instagram. Las nuevas fuentes entran en la base con `npm run scrape:seed`.
 
+Valencia abre con seis salas de la escena local, todas con agenda propia y
+`robots.txt` que lo permite: Loco Club (`json-ld-bill-agenda`, JSON-LD que
+reparte los carteles "A + B" en artistas), 16 Toneladas (`sixteen-toneladas-agenda`,
+datos Next.js por mes con el line-up ordenado), Black Note Club
+(`wix-events-warmup`, eventos de Wix con fecha ISO), Sala Repvblicca
+(`repvblicca-agenda`, listado JetEngine con scroll infinito), Jimmy Glass
+(`jimmy-glass-agenda`, archivo de Events Manager más el cartel de cada evento) y
+Radio City (`radio-city-agenda`, solo noches en directo; las sesiones DJ se
+descartan). Se quedaron fuera Sala Moon (dominio aparcado), Wah Wah (cerrada),
+Matisse (lista estática sin años), Café Mercedes (sin conciertos publicados),
+La Fábrica de Hielo (su `robots.txt` bloquea el calendario) y Spook (club de
+techno grande). El detector de antibots ya no confunde un widget Turnstile de
+un formulario de contacto (`cf-chl-widget-…`) con una página de desafío.
+
 Estado remoto del 26 de octubre de 2026: 292 conciertos publicados, 133 futuros,
 34 salas publicadas y 276 artistas publicados. La captura de verificación leyó
 493 entradas de 13 fuentes y terminó con cero errores. Los 13 watchers quedaron

@@ -17,7 +17,13 @@ export type ParserKey =
   | 'generic-agenda'
   | 'wordpress-generic'
   | 'single-event-page'
-  | 'resident-advisor-like';
+  | 'resident-advisor-like'
+  | 'json-ld-bill-agenda'
+  | 'sixteen-toneladas-agenda'
+  | 'wix-events-warmup'
+  | 'repvblicca-agenda'
+  | 'jimmy-glass-agenda'
+  | 'radio-city-agenda';
 
 export type RawScrapedEvent = {
   sourceUrl: string;

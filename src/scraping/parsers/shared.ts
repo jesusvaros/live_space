@@ -78,6 +78,39 @@ export const withTitleArtists = (events: RawScrapedEvent[]): RawScrapedEvent[] =
     };
   });
 
+// Pieces of a "+" bill that name no performer: "+ ARTISTA INVITADO",
+// "+ AFTERPARTY BY …", "Concierto + Jam".
+const NON_PERFORMER_BILL_PART_RE =
+  /^(?:artistas?\s+invitad[oa]s?|invitad[oa]s?|guests?|special guests?|jam(?:\s+session)?|dj\s*set|after\s*-?party\b.*|sorpresa)$/i;
+
+// Small venues bill a night as "A + B + C" (headliner first) and often put a
+// series name in front: "CIRCUIT A-BANDA: PERFECTO MISERABLE + DECLIVE". The
+// cleanup rules keep "+" bills whole, so venues without a performer field
+// split them here, piece by piece, keeping the billing order.
+export const billArtistNames = (title: string | null | undefined): string[] => {
+  const text = title?.replace(/\s+/g, ' ').trim();
+  if (!text) return [];
+  const series = text.match(/^[^:+]{2,60}:\s*(.+\s\+\s.+)$/);
+  const bill = series ? series[1] : text;
+  const parts = bill
+    .split(/\s+\+\s+/)
+    .map((part) => part.replace(/\s+concierto$/i, '').trim())
+    .filter((part) => part && !NON_PERFORMER_BILL_PART_RE.test(part));
+  if (parts.length < 2) return artistNamesFromTitle(parts[0] ?? text);
+
+  const seen = new Set<string>();
+  return parts
+    .flatMap((part) => artistNamesFromTitle(part))
+    .filter((name) => {
+      const key = name.toLocaleLowerCase('es');
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+};
+
+export const pause = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
 const dedupeEvents = (events: RawScrapedEvent[]): RawScrapedEvent[] => {
   const seen = new Set<string>();
   const items: RawScrapedEvent[] = [];
