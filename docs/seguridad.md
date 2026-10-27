@@ -15,9 +15,10 @@
 
 - RLS habilitada en todas las tablas expuestas y política explícita por operación.
 - Denegar por defecto: ausencia de política equivale a ausencia de acceso.
-- `service_role`, secretos Cloudinary y contraseñas nunca llegan al bundle ni a
+- `service_role`, secretos Cloudinary y R2 y contraseñas nunca llegan al bundle ni a
   logs, issues, chat o documentación.
 - Firmas de subida con expiración corta, carpeta limitada y parámetros validados.
+  Las URLs prefirmadas de R2 caducan en 1 h y firman tamaño (y tipo).
 - Webhooks validados criptográficamente, idempotentes y resistentes a repetición.
 - Cambios de rol, moderación y fusiones de entidades generan auditoría inmutable.
 - Los logs eliminan tokens, email, IP completa y rutas de Storage con UUID.

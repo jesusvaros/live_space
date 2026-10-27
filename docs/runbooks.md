@@ -3,7 +3,8 @@
 ## Alta de Supabase
 
 **Estado del piloto:** proyecto creado en París sobre Free, migraciones aplicadas,
-24/24 tablas públicas con RLS y dos Edge Functions desplegadas. El token temporal
+24/24 tablas públicas con RLS y dos Edge Functions desplegadas (las de R2,
+`media-r2-sign` y `media-r2-complete`, aún no). El token temporal
 usado para el despliegue se revocó y su archivo temporal se eliminó.
 
 1. Crear `live-space-pilot` en una región europea bajo la cuenta propietaria.
@@ -46,6 +47,53 @@ Cloudinary solo ofreció los roles `Master Admin` o `Media Library User` para la
 clave dedicada. Se usó `Master Admin` porque la firma y administración del piloto
 requieren acceso API; esta limitación se revisará si el proveedor incorpora un rol
 de servicio más granular. La clave no debe reutilizarse fuera del piloto.
+
+## Alta de Cloudflare R2
+
+**Estado:** código listo y desactivado. Sin estos pasos los vídeos siguen en
+Cloudinary. Todo lo que es secreto lo pone una persona (a poner por el humano).
+
+1. Cloudflare → R2 → crear el bucket (p. ej. `live-space-media`) con *location
+   hint* Europa Occidental. Si se elige jurisdicción UE, poner además
+   `R2_JURISDICTION=eu`.
+2. Bucket → Settings → *Custom Domains*: conectar un subdominio propio (p. ej.
+   `media.<dominio>`). No usar `r2.dev` en producción (tiene límite de
+   peticiones). Añadir una regla de caché «Cache Everything» con TTL largo: las
+   claves no se reutilizan.
+3. Bucket → Settings → CORS policy (para web y para subidas desde `File` en la app):
+
+   ```json
+   [
+     {
+       "AllowedOrigins": ["https://<dominio-web>", "http://localhost:5173", "https://localhost", "capacitor://localhost"],
+       "AllowedMethods": ["PUT", "GET", "HEAD"],
+       "AllowedHeaders": ["content-type"],
+       "ExposeHeaders": ["ETag"],
+       "MaxAgeSeconds": 3600
+     }
+   ]
+   ```
+
+4. Bucket → Settings → Object lifecycle rules: abortar subidas multipart
+   incompletas tras 1 día.
+5. R2 → Manage API tokens → crear token «Object Read & Write» limitado a ese
+   bucket. Copiar Access Key ID y Secret Access Key directamente a Supabase.
+6. Secretos de las funciones (Supabase → Edge Functions → Secrets o
+   `supabase secrets set`): `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`,
+   `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_BASE_URL`
+   (`https://media.<dominio>`, sin barra final) y, si aplica, `R2_JURISDICTION`.
+7. Aplicar la migración `20261028020100_media_r2_storage.sql` y desplegar
+   `media-r2-sign` y `media-r2-complete` (`verify_jwt = true`).
+8. Activar: como administrador, `update platform_settings set video_provider =
+   'r2' where singleton;` (o el secreto `VIDEO_PROVIDER=r2`). Volver atrás es
+   poner `cloudinary`; los vídeos ya subidos a R2 siguen funcionando.
+
+**Verificación:** con un usuario de prueba, subir un clip pequeño (PUT único) y
+uno de más de 10 MB (multipart) desde Android, iOS y web; comprobar en R2 la
+clave `v/<aaaa>/<mm>/<uuid>.mp4`, que el MP4 empieza a reproducirse antes de
+descargarse entero, que no lleva GPS (`exiftool`), y en Supabase el
+`media_assets` (`storage_provider = 'r2'`, `pending_review`) y el post. Un PUT con
+otro tamaño debe fallar con 403 y una reserva ajena debe dar 404.
 
 ## Backup semanal
 
@@ -182,7 +230,8 @@ lecturas coherentes o no está marcada como lista para revisión.
 1. Pausar firmas nuevas; la lectura pública sigue disponible si es segura.
 2. Registrar hora, alcance, proveedor y porcentaje de cuota.
 3. Revocar credencial afectada si hay sospecha de filtración.
-4. Verificar Cloudinary contra registros Supabase por `public_id` y checksum.
+4. Verificar Cloudinary contra registros Supabase por `public_id` y checksum, y
+   R2 por `storage_key` (objetos en `v/` sin `media_assets` son huérfanos).
 5. Recuperar huérfanos o marcar faltantes; nunca borrar automáticamente durante
    investigación.
 6. Documentar causa y acción preventiva antes de reanudar.

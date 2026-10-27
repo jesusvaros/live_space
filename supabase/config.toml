@@ -49,5 +49,11 @@ verify_jwt = false
 [functions.social-oembed]
 verify_jwt = true
 
+[functions.media-r2-sign]
+verify_jwt = true
+
+[functions.media-r2-complete]
+verify_jwt = true
+
 [analytics]
 enabled = false
