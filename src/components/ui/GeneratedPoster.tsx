@@ -61,10 +61,11 @@ const GeneratedPoster: React.FC<GeneratedPosterProps> = ({ title, venue, date, c
   const words = title.trim().split(/\s+/);
   const longest = words.reduce((max, word) => Math.max(max, word.length), 0);
   const isHero = variant === 'hero';
-  // Long words shrink so they never break mid-word.
-  const size = variant === 'thumb'
-      ? longest > 8 ? 'text-[9px]' : 'text-[13px]'
-      : longest > 12 ? 'text-[19px]' : longest > 8 ? 'text-[24px]' : 'text-[32px]';
+  // Fit the longest word on one line: Archivo at 68% width is about 0.47em
+  // per capital, so the size follows from the room the variant has.
+  const room = variant === 'thumb' ? 40 : 140;
+  const [min, max] = variant === 'thumb' ? [7, 13] : [14, 32];
+  const fontSize = Math.max(min, Math.min(max, Math.floor(room / (0.47 * Math.max(longest, 1)))));
 
   return (
     <div
@@ -79,7 +80,7 @@ const GeneratedPoster: React.FC<GeneratedPosterProps> = ({ title, venue, date, c
       {/* The hero's page already prints the name over it in big type. */}
       {!isHero ? (
         <div className={`absolute inset-x-0 ${variant === 'thumb' ? 'top-[30%] px-1.5' : 'bottom-3 px-3'}`}>
-          <p className={`font-poster ${size} break-words leading-[0.86] ${variant === 'thumb' ? 'line-clamp-4' : 'line-clamp-5'}`}>{title}</p>
+          <p style={{ fontSize }} className={`font-poster [word-break:keep-all] leading-[0.86] ${variant === 'thumb' ? 'line-clamp-4' : 'line-clamp-5'}`}>{title}</p>
         </div>
       ) : null}
       {!isHero && (venue || date) ? (
