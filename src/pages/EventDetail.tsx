@@ -15,6 +15,8 @@ import Avatar from '../components/ui/Avatar';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
 import { fetchEventCardById } from '../data/eventQueries';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
+import SetlistAttribution from '../components/event/SetlistAttribution';
+import { enableMomentNudges } from '../features/moments/momentNudge';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { EventStatsCard, VenueFeedbackPrompt } from '../features/community';
 
@@ -469,6 +471,8 @@ const EventDetail: React.FC = () => {
           });
         if (insertError) throw insertError;
         setFollowed(true);
+        // Morning-after "¿Subes lo de anoche?" for saved concerts.
+        void enableMomentNudges(user.id);
       }
     } catch (err: any) {
       setEngagementError(err?.message || 'No se ha podido actualizar el seguimiento.');
@@ -505,6 +509,7 @@ const EventDetail: React.FC = () => {
         );
       if (upsertError) throw upsertError;
       setAttendanceStatus(status);
+      if (status === 'going') void enableMomentNudges(user.id);
       return true;
     } catch (err: any) {
       setEngagementError(err?.message || 'No se ha podido actualizar la asistencia.');
@@ -710,6 +715,11 @@ const EventDetail: React.FC = () => {
                     );
                   })}
                 </ol>
+              )}
+              {setlist.some(entry => entry.source === 'setlistfm') && (
+                <div className="px-4">
+                  <SetlistAttribution url={setlist.find(entry => entry.source_url)?.source_url} />
+                </div>
               )}
               {engagementError && <p className="px-4 pt-3 text-sm text-rose-400">{engagementError}</p>}
               <div className="px-4 pt-5 empty:hidden">

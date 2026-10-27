@@ -181,6 +181,17 @@ atribución, URL y fecha de obtención; si falta, se usa placeholder.
 Encontrar un artista en una agenda española no demuestra su nacionalidad: las
 altas sin identidad verificada usan `country_code = ZZ` hasta el enriquecimiento.
 
+## Setlists de setlist.fm
+
+`npm run setlists:fallback` (paso del workflow diario, `continue-on-error`) busca
+en setlist.fm, por artista principal, fecha y ciudad, los conciertos publicados
+que acabaron en los últimos tres días y no tienen setlist. Inserta `songs` y
+`event_setlist_items` con `source = 'setlistfm'` y `source_url`; nunca actualiza
+ni borra, así que un setlist escrito por un gestor (`manual`) no se toca. Respeta
+el límite de 2 peticiones/s y la página del evento enlaza «Setlist: setlist.fm»
+como exigen sus condiciones. La clave va en el secreto `SETLISTFM_API_KEY`; sin
+ella el paso registra una línea y termina. `-- --dry-run` solo registra.
+
 ## Calidad y observabilidad
 
 - Fixture versionado por fuente, sin PII.

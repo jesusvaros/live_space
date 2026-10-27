@@ -4,6 +4,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import androidx.activity.OnBackPressedCallback;
 import com.getcapacitor.BridgeActivity;
+import com.livespace.app.gallery.GalleryScanPlugin;
 
 public class MainActivity extends BridgeActivity {
   private static final String MAIN_ROUTE_PATH = "/tabs/events";
@@ -31,6 +32,8 @@ public class MainActivity extends BridgeActivity {
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
+    // Local plugins must be registered before the bridge starts.
+    registerPlugin(GalleryScanPlugin.class);
     super.onCreate(savedInstanceState);
 
     getOnBackPressedDispatcher().addCallback(

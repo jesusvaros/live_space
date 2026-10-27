@@ -33,6 +33,7 @@
     "scrape:approve-probed": "npm run scrape:build && node dist-scraper/scripts/approveAutoProbedSources.js",
     "scrape:maintenance": "npm run scrape:build && node dist-scraper/scripts/runScraperMaintenance.js",
     "enrich:images": "npm run scrape:build && node dist-scraper/scripts/enrichImages.js",
+    "setlists:fallback": "npm run scrape:build && node dist-scraper/scripts/fillSetlists.js",
     "artists:cleanup": "npm run scrape:build && node dist-scraper/scripts/cleanupArtistNames.js",
     "venues:discover": "npm run scrape:build && node dist-scraper/scripts/discoverVenues.js",
     "venues:curate": "npm run scrape:build && node dist-scraper/scripts/curateVenues.js"
@@ -46,6 +47,7 @@
     "@capacitor/core": "^8.0.1",
     "@capacitor/filesystem": "^8.0.0",
     "@capacitor/ios": "^8.0.1",
+    "@capacitor/local-notifications": "^8.3.1",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-label": "^2.1.8",

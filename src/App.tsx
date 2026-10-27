@@ -13,6 +13,7 @@ import { useAuth } from './contexts/AuthContext';
 import { useWorkspace } from './contexts/WorkspaceContext';
 import AppBackHandler from './app/AppBackHandler';
 import AuthDeepLinks from './app/AuthDeepLinks';
+import MomentNudges from './features/moments/MomentNudges';
 import Welcome from './pages/Welcome';
 import Events from './pages/Events';
 
@@ -29,6 +30,7 @@ const CreateEventPage = React.lazy(() => import('./pages/CreateEvent'));
 const EventDetail = React.lazy(() => import('./pages/EventDetail'));
 const Map = React.lazy(() => import('./pages/Map'));
 const Upload = React.lazy(() => import('./pages/Upload'));
+const SuggestedUpload = React.lazy(() => import('./pages/SuggestedUpload'));
 const GestionEstadisticas = React.lazy(() => import('./pages/GestionEstadisticas'));
 const LicenciaMomentos = React.lazy(() => import('./pages/LicenciaMomentos'));
 const ClaimProfile = React.lazy(() => import('./pages/ClaimProfile'));
@@ -149,6 +151,7 @@ const AppRoutes = () => {
     <>
       <AppBackHandler mainTabPath={mainTabHref} />
       <AuthDeepLinks />
+      <MomentNudges />
       <React.Suspense fallback={<div className="h-dvh bg-app-bg" />}>
         <Routes>
           <Route path="/welcome" element={<WelcomeRoute />} />
@@ -169,6 +172,8 @@ const AppRoutes = () => {
           <Route path="/legal/licencia-momentos" element={deferredPage(<LicenciaMomentos />)} />
           <Route path="/create-event" element={<RequireAuth><CreateEventRedirect /></RequireAuth>} />
           <Route path="/upload" element={<RequireAuth><UploadRedirect /></RequireAuth>} />
+          {/* Morning-after nudge: clips found in the gallery, ready to publish */}
+          <Route path="/subir/sugerido" element={<RequireAuth>{deferredPage(<SuggestedUpload />)}</RequireAuth>} />
           <Route path="/reclamar/:type/:id" element={<RequireAuth>{deferredPage(<ClaimProfile />)}</RequireAuth>} />
           <Route path="/gestion" element={<RequireAuth>{deferredPage(<Management />)}</RequireAuth>} />
           <Route path="/gestion/evento/:id/qr" element={<RequireAuth>{deferredPage(<EventQr />)}</RequireAuth>} />

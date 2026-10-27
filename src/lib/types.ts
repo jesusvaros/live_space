@@ -155,6 +155,9 @@ export interface EventSetlistEntry {
   starts_offset_ms: number | null;
   ends_offset_ms: number | null;
   created_at: string;
+  // 'manual' (managers) or 'setlistfm' (pipeline fallback, needs attribution).
+  source?: string | null;
+  source_url?: string | null;
 }
 
 export interface ManagedEntity {
