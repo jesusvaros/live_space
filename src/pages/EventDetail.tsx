@@ -755,7 +755,7 @@ const EventDetail: React.FC = () => {
                     onClick={() => navigate(`/tabs/venue/${venue.id}`)}
                     className="flex items-center gap-3 rounded-2xl border border-app-line bg-app-surface p-3 text-left"
                   >
-                    <Avatar name={venue.name} src={(venue.photos || [])[0]} rounded="xl" className="h-11 w-11 text-[15px]" />
+                    <Avatar name={venue.name} src={venue.cover_image_url || (venue.photos || [])[0]} kind="venue" badge className="h-11 w-11 text-[15px]" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-display text-[15px] font-bold text-app-ink">{venue.name}</span>
                       <span className="block truncate text-[13px] text-[#c9c5bd]">
@@ -773,7 +773,7 @@ const EventDetail: React.FC = () => {
                     onClick={() => navigate(`/tabs/artist/${artist.id}`)}
                     className="flex items-center gap-3 rounded-2xl border border-app-line bg-app-surface p-3 text-left"
                   >
-                    <Avatar name={artist.name} src={artist.avatar_url} className="h-11 w-11 text-[15px]" />
+                    <Avatar name={artist.name} src={artist.avatar_url} kind="artist" badge className="h-11 w-11 text-[15px]" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-display text-[15px] font-bold text-app-ink">{artist.name}</span>
                       <span className="block truncate text-[13px] text-[#c9c5bd]">
