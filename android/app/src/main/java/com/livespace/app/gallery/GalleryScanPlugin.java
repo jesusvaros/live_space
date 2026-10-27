@@ -129,8 +129,8 @@ public class GalleryScanPlugin extends Plugin {
 
     @PluginMethod
     public void findMedia(PluginCall call) {
-        final Double from = call.getDouble("from");
-        final Double to = call.getDouble("to");
+        final Long from = epochMs(call, "from");
+        final Long to = epochMs(call, "to");
         if (from == null || to == null || to < from) {
             call.reject("from y to son obligatorios", "INVALID_RANGE");
             return;
@@ -146,8 +146,8 @@ public class GalleryScanPlugin extends Plugin {
             try {
                 JSArray assets = new JSArray();
                 int remaining = limit;
-                remaining -= query(false, from.longValue(), to.longValue(), thumbnails, remaining, assets);
-                if (remaining > 0) query(true, from.longValue(), to.longValue(), thumbnails, remaining, assets);
+                remaining -= query(false, from, to, thumbnails, remaining, assets);
+                if (remaining > 0) query(true, from, to, thumbnails, remaining, assets);
                 JSObject result = new JSObject();
                 result.put("assets", assets);
                 call.resolve(result);
@@ -156,6 +156,15 @@ public class GalleryScanPlugin extends Plugin {
                 call.reject("No se pudo leer la galería", "SCAN_FAILED", error);
             }
         });
+    }
+
+    /**
+     * Epoch milliseconds arrive as Long (or Double if fractional); PluginCall's
+     * getDouble ignores Long and getLong ignores Double, so read the raw value.
+     */
+    private static Long epochMs(PluginCall call, String name) {
+        Object value = call.getData().opt(name);
+        return value instanceof Number ? ((Number) value).longValue() : null;
     }
 
     /** Appends matches of one media type and returns how many it added. */
@@ -267,6 +276,7 @@ public class GalleryScanPlugin extends Plugin {
             }
             retriever.setDataSource(getContext(), source);
             String value = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_LOCATION);
+            Logger.debug("GalleryScan", "Video location of " + uri + ": " + value);
             if (value == null) return null;
             Matcher matcher = ISO6709.matcher(value);
             if (!matcher.find()) return null;
@@ -274,7 +284,8 @@ public class GalleryScanPlugin extends Plugin {
             double lng = Double.parseDouble(matcher.group(2));
             if (lat == 0 && lng == 0) return null;
             return new double[] { lat, lng };
-        } catch (Exception ignored) {
+        } catch (Exception error) {
+            Logger.debug("GalleryScan", "No video location for " + uri + ": " + error.getMessage());
             return null;
         } finally {
             try {
