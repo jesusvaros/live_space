@@ -6,9 +6,14 @@ import { requiredEnv } from "./cloudinary.ts";
 export const MULTIPART_THRESHOLD_BYTES = 10 * 1024 * 1024;
 export const MULTIPART_PART_BYTES = 8 * 1024 * 1024;
 export const PRESIGN_TTL_SECONDS = 60 * 60;
+/**
+ * Uploads land under this prefix, which the public domain must not serve (only
+ * v/ is public; see the runbook). media-r2-complete copies a verified object to
+ * its v/ key and deletes the staging copy; a lifecycle rule removes leftovers.
+ */
+export const STAGING_PREFIX = "incoming/";
 /** A started upload can be resumed (re-signed) for this long after reserving. */
 export const RESUME_WINDOW_MS = 24 * 60 * 60 * 1000;
-export const MONTHLY_VIDEO_QUOTA = 10;
 
 export const VIDEO_CONTENT_TYPES: Record<string, string> = {
   "video/mp4": "mp4",
@@ -158,7 +163,7 @@ export const buildUploadPlan = async (
   config: R2Config,
   reservation: Pick<R2Reservation, "storage_key" | "content_type" | "expected_bytes" | "r2_upload_id">,
 ): Promise<UploadPlan> => {
-  const key = reservation.storage_key!;
+  const key = stagingKeyFor(reservation.storage_key!);
   const contentType = reservation.content_type!;
   const totalBytes = reservation.expected_bytes!;
   if (!reservation.r2_upload_id) {
@@ -246,6 +251,19 @@ export const deleteObject = async (config: R2Config, key: string) => {
 
 export const publicUrl = (config: R2Config, key: string) => `${config.publicBaseUrl}/${key}`;
 
+/** v/2026/10/<uuid>.mp4 → incoming/2026/10/<uuid>.mp4 */
+export const stagingKeyFor = (publicKey: string) => publicKey.replace(/^v\//, STAGING_PREFIX);
+
+/** Server-side copy inside the bucket (keeps Content-Type). Returns false on failure. */
+export const copyObject = async (config: R2Config, fromKey: string, toKey: string) => {
+  const response = await client(config).fetch(objectUrl(config, toKey).toString(), {
+    method: "PUT",
+    headers: { "x-amz-copy-source": `/${encodeURIComponent(config.bucket)}/${fromKey}` },
+  });
+  const text = await response.text();
+  return response.ok && !text.includes("<Error>");
+};
+
 export const objectKeyFor = (publicId: string, contentType: string, now = new Date()) => {
   const extension = VIDEO_CONTENT_TYPES[contentType];
   const year = String(now.getUTCFullYear());
@@ -254,32 +272,8 @@ export const objectKeyFor = (publicId: string, contentType: string, now = new Da
 };
 
 /**
- * Same rule as reserve_media_upload(): a reservation counts against the
- * monthly video quota while it is unexpired or consumed and not rejected.
- * Used when an expired R2 reservation is resumed or completed late, so a
- * client cannot collect expired reservations to bypass the quota.
- */
-export const monthlyQuotaAllowsRevival = async (service: SupabaseClient, reservation: R2Reservation) => {
-  const monthStart = new Date();
-  monthStart.setUTCDate(1);
-  monthStart.setUTCHours(0, 0, 0, 0);
-  const nowIso = new Date().toISOString();
-  const { count, error } = await service
-    .from("media_upload_reservations")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", reservation.user_id)
-    .eq("kind", "video")
-    .neq("id", reservation.id)
-    .gte("created_at", monthStart.toISOString())
-    .is("rejected_reason", null)
-    .or(`consumed_at.not.is.null,expires_at.gt."${nowIso}"`);
-  if (error) throw error;
-  return (count ?? 0) < MONTHLY_VIDEO_QUOTA;
-};
-
-/**
  * Loads an R2 reservation for its owner and keeps it alive: an expired one is
- * extended by ten minutes only if the quota still has room. Returns an error
+ * extended by ten minutes only if the quota still has room (revive_r2_reservation). Returns an error
  * message instead when it cannot be used any more.
  */
 export const loadLiveReservation = async (
@@ -304,25 +298,17 @@ export const loadLiveReservation = async (
   }
 
   if (!reservation.consumed_at && Date.parse(reservation.expires_at) <= Date.now()) {
-    const { data: settings, error: settingsError } = await service
-      .from("platform_settings")
-      .select("media_uploads_paused,cloudinary_usage_percent")
-      .eq("singleton", true)
-      .maybeSingle();
-    if (settingsError) throw settingsError;
-    if (settings?.media_uploads_paused || Number(settings?.cloudinary_usage_percent ?? 0) >= 80) {
-      return { error: "Media uploads are temporarily paused", status: 403 };
+    // Locked SQL (same advisory lock as reserve_media_upload): concurrent
+    // revivals cannot all slip under the monthly quota.
+    const { data: expiresAt, error: reviveError } = await service.rpc("revive_r2_reservation", {
+      p_reservation_id: reservation.id,
+    });
+    if (reviveError) {
+      if (reviveError.code === "54000") return { error: "Monthly video upload quota reached", status: 403 };
+      if (reviveError.code === "55000") return { error: reviveError.message, status: 403 };
+      throw reviveError;
     }
-    if (!(await monthlyQuotaAllowsRevival(service, reservation))) {
-      return { error: "Monthly video upload quota reached", status: 403 };
-    }
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-    const { error: updateError } = await service
-      .from("media_upload_reservations")
-      .update({ expires_at: expiresAt })
-      .eq("id", reservation.id);
-    if (updateError) throw updateError;
-    reservation.expires_at = expiresAt;
+    reservation.expires_at = String(expiresAt);
   }
   return { reservation };
 };

@@ -1,4 +1,5 @@
 import { Network, type ConnectionStatus } from '@capacitor/network';
+import { getReuseConsent } from '../features/community/licence';
 import { supabase } from '../lib/supabase';
 import { getConfiguredMediaProvider } from './configured';
 import { isMediaUploadError, MediaUploadError } from './errors';
@@ -7,10 +8,11 @@ import {
   compressMomentVideo,
   deleteNativeFile,
   isNativeMediaAvailable,
+  LiveSpaceMedia,
   readNativeFile,
   type CaptureLocation,
 } from './native';
-import { uploadSessionParts, type R2CompletedPart, type R2MediaProvider, type R2Session, type UploadSource } from './r2';
+import { isR2VideoType, uploadSessionParts, type R2CompletedPart, type R2MediaProvider, type R2Session, type UploadSource } from './r2';
 import type { MediaKind } from './types';
 import { deleteStoredJob, loadStoredJobs, saveStoredJob, type StoredRecord } from './uploadQueueStore';
 import { waitForMediaAssetId } from './uploadPost';
@@ -37,12 +39,16 @@ export type MomentUploadItem = {
   /** A native path from pickMomentVideos() (compressed on the device). */
   nativePath?: string | null;
   eventId: string;
-  /** Song of the setlist the clip belongs to; stored as posts.song_id. */
+  /** Song of the setlist the clip belongs to; its song becomes posts.song_id. */
   setlistItemId?: string | null;
+  /** Catalogue song id, when the caller already knows it (wins over setlistItemId). */
+  songId?: string | null;
+  /** Reuse licence for the artist and venue; defaults to the remembered choice. */
+  allowReuse?: boolean;
   /** When it was recorded; falls back to the file's own capture date. */
   capturedAt?: string | Date | null;
   caption?: string | null;
-  /** Inferred from the file type; native paths are videos. */
+  /** Inferred from the file type, or from the native file itself. */
   kind?: MediaKind;
 };
 
@@ -75,6 +81,8 @@ export type UploadJob = {
   updatedAt: number;
   eventId: string;
   setlistItemId: string | null;
+  songId: string | null;
+  allowReuse: boolean;
   capturedAt: string | null;
   /** From the source file; kept on the device, never uploaded. */
   captureLocation: CaptureLocation | null;
@@ -93,6 +101,8 @@ export type UploadJob = {
   nextAttemptAt: number;
   error: string | null;
   provider: 'r2' | 'cloudinary' | null;
+  /** Cloudinary reservation already uploaded; only its webhook is awaited on retries. */
+  cloudinaryReservationId: string | null;
   r2: {
     reservationId: string;
     key: string;
@@ -125,6 +135,7 @@ type QueueDeps = {
     capturedAt: string | null;
     caption: string | null;
     songId: string | null;
+    allowReuse: boolean;
   }) => Promise<string>;
 };
 
@@ -164,7 +175,7 @@ const toIso = (value: string | Date | null | undefined) => {
 };
 
 /** Error classification: permanent failures are not retried automatically. */
-type Failure = { permanent: boolean; restart: boolean; waitForAuth: boolean; message: string };
+type Failure = { permanent: boolean; restart: boolean; waitForAuth: boolean; longWait?: boolean; message: string };
 
 const classify = (error: unknown): Failure => {
   const fallback = 'No se pudo subir. Lo reintentaremos.';
@@ -180,6 +191,9 @@ const classify = (error: unknown): Failure => {
       case 'file_too_large':
         return { permanent: true, restart: false, waitForAuth: false, message: error.message };
       case 'authorization_failed':
+        if (status === 403 && /paused/i.test(error.message)) {
+          return { permanent: false, restart: false, waitForAuth: false, longWait: true, message: 'Las subidas están en pausa; seguiremos más tarde.' };
+        }
         if (status === 410 || (status === 409 && /part|uploaded/i.test(error.message))) {
           return { permanent: false, restart: true, waitForAuth: false, message: fallback };
         }
@@ -199,6 +213,22 @@ const classify = (error: unknown): Failure => {
   return { permanent: false, restart: false, waitForAuth: false, message: fallback };
 };
 
+const VIDEO_PATH = /\.(mp4|mov|m4v|3gp|webm|mkv)$|\/video\//i;
+const IMAGE_PATH = /\.(jpe?g|png|heic|heif|webp|gif)$|\/images?\//i;
+
+/** Native paths from GalleryScan or pickMomentVideos can be photos or videos. */
+const inferNativeKind = async (path: string): Promise<MediaKind> => {
+  if (VIDEO_PATH.test(path)) return 'video';
+  if (IMAGE_PATH.test(path)) return 'image';
+  if (!isNativeMediaAvailable()) return 'video';
+  try {
+    const info = await LiveSpaceMedia.getVideoInfo({ path });
+    return info.durationSeconds > 0 ? 'video' : 'image';
+  } catch {
+    return 'image';
+  }
+};
+
 export class UploadQueue {
   private jobs: UploadJob[] = [];
   private snapshot: UploadQueueSnapshot;
@@ -210,6 +240,8 @@ export class UploadQueue {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private initPromise: Promise<void> | null = null;
   private active: { id: string; controller: AbortController } | null = null;
+  /** Only this user's jobs are shown and processed (shared devices). */
+  private userId: string | null = null;
 
   constructor(private readonly deps: QueueDeps) {
     this.snapshot = this.buildSnapshot();
@@ -236,7 +268,9 @@ export class UploadQueue {
     await this.init();
     const ownerId = await this.deps.currentUserId();
     if (!ownerId) throw new MediaUploadError('authentication_required', 'Entra en tu cuenta para subir momentos.');
+    this.userId = ownerId;
     const now = Date.now();
+    const defaultReuse = getReuseConsent();
     const created: UploadJob[] = [];
     for (const item of items) {
       const file = item.file ?? null;
@@ -244,7 +278,7 @@ export class UploadQueue {
       if (!file && !nativePath) throw new Error('Each upload needs a file or a nativePath.');
       if (!item.eventId) throw new Error('Each upload needs an eventId.');
       const kind: MediaKind = item.kind ??
-        (file ? (file.type.toLowerCase().startsWith('video/') ? 'video' : 'image') : 'video');
+        (file ? (file.type.toLowerCase().startsWith('video/') ? 'video' : 'image') : await inferNativeKind(nativePath!));
       created.push({
         id: newId(),
         ownerId,
@@ -252,6 +286,8 @@ export class UploadQueue {
         updatedAt: now,
         eventId: item.eventId,
         setlistItemId: item.setlistItemId ?? null,
+        songId: item.songId ?? null,
+        allowReuse: item.allowReuse ?? defaultReuse,
         capturedAt: toIso(item.capturedAt),
         captureLocation: null,
         caption: item.caption?.trim() || null,
@@ -268,6 +304,7 @@ export class UploadQueue {
         nextAttemptAt: 0,
         error: null,
         provider: null,
+        cloudinaryReservationId: null,
         r2: null,
         mediaAssetId: null,
         postId: null,
@@ -372,6 +409,7 @@ export class UploadQueue {
       document.addEventListener('resume', () => this.kick());
     }
     if (typeof window !== 'undefined') window.addEventListener('online', () => this.kick());
+    this.userId = await this.deps.currentUserId().catch(() => null);
 
     this.emit();
     this.kick();
@@ -379,7 +417,7 @@ export class UploadQueue {
 
   private buildSnapshot(): UploadQueueSnapshot {
     return {
-      jobs: this.jobs,
+      jobs: this.jobs.filter((job) => job.ownerId === this.userId),
       wifiOnly: this.wifiOnly,
       online: this.network.connected,
       onCellular: this.network.connectionType === 'cellular',
@@ -419,37 +457,55 @@ export class UploadQueue {
 
   private async loop() {
     this.running = true;
+    // Two tabs share one IndexedDB: only the tab holding the lock uploads.
+    const locks = (globalThis.navigator as Navigator | undefined)?.locks;
     try {
-      for (;;) {
-        this.kickAgain = false;
-        const now = Date.now();
-        const pending = this.jobs.filter((job) => job.status !== 'done' && job.status !== 'failed');
-        if (pending.length === 0) break;
-
-        const waiting: UploadJobStatus | null = !this.network.connected
-          ? 'waiting_network'
-          : this.wifiOnly && this.network.connectionType === 'cellular' ? 'waiting_wifi' : null;
-        if (waiting) {
-          for (const job of pending) {
-            if (job.status !== waiting) this.patch(job.id, { status: waiting });
-          }
-          break;
-        }
-
-        const userId = await this.deps.currentUserId();
-        const ready = pending.filter((job) => job.ownerId === userId && job.nextAttemptAt <= now);
-        if (ready.length === 0) {
-          const next = pending
-            .filter((job) => job.ownerId === userId)
-            .reduce((soonest, job) => Math.min(soonest, job.nextAttemptAt), Number.POSITIVE_INFINITY);
-          if (Number.isFinite(next)) this.timer = setTimeout(this.kick, Math.max(1_000, next - now));
-          break;
-        }
-        await this.process(ready[0].id);
+      if (locks?.request) {
+        await locks.request('ls-upload-queue', { ifAvailable: true }, async (lock) => {
+          if (lock) await this.drain();
+          // Another tab is uploading; look again later in case it closes.
+          else this.timer = setTimeout(this.kick, 30_000);
+        });
+      } else {
+        await this.drain();
       }
     } finally {
       this.running = false;
       if (this.kickAgain) this.kick();
+    }
+  }
+
+  private async drain() {
+    for (;;) {
+      this.kickAgain = false;
+      const now = Date.now();
+      const pending = this.jobs.filter((job) => job.status !== 'done' && job.status !== 'failed');
+      if (pending.length === 0) break;
+
+      const waiting: UploadJobStatus | null = !this.network.connected
+        ? 'waiting_network'
+        : this.wifiOnly && this.network.connectionType === 'cellular' ? 'waiting_wifi' : null;
+      if (waiting) {
+        for (const job of pending) {
+          if (job.status !== waiting) this.patch(job.id, { status: waiting });
+        }
+        break;
+      }
+
+      const userId = await this.deps.currentUserId();
+      if (userId !== this.userId) {
+        this.userId = userId;
+        this.emit();
+      }
+      const ready = pending.filter((job) => job.ownerId === userId && job.nextAttemptAt <= now);
+      if (ready.length === 0) {
+        const next = pending
+          .filter((job) => job.ownerId === userId)
+          .reduce((soonest, job) => Math.min(soonest, job.nextAttemptAt), Number.POSITIVE_INFINITY);
+        if (Number.isFinite(next)) this.timer = setTimeout(this.kick, Math.max(1_000, next - now));
+        break;
+      }
+      await this.process(ready[0].id);
     }
   }
 
@@ -469,14 +525,14 @@ export class UploadQueue {
         if (job.r2) void this.deps.provider().client.abort(job.r2.reservationId).catch(() => undefined);
         this.patch(id, { r2: null, provider: null, loadedBytes: 0 }, true);
       }
-      if (failure.permanent || attempts >= MAX_ATTEMPTS) {
+      if (failure.permanent || (attempts >= MAX_ATTEMPTS && !failure.longWait)) {
         this.patch(id, { status: 'failed', attempts, error: failure.permanent ? failure.message : 'No se pudo subir tras varios intentos.' }, true);
       } else {
         this.patch(id, {
           status: 'retrying',
           attempts,
           error: failure.message,
-          nextAttemptAt: Date.now() + (failure.waitForAuth ? 30_000 : backoffMs(attempts)),
+          nextAttemptAt: Date.now() + (failure.longWait ? 10 * 60_000 : failure.waitForAuth ? 30_000 : backoffMs(attempts)),
         }, true);
       }
       console.warn('Upload failed', job.fileName, error);
@@ -509,7 +565,8 @@ export class UploadQueue {
     // 3. Create the post.
     if (!job.postId) {
       this.patch(id, { status: 'finalizing' });
-      const songId = job.setlistItemId ? await this.deps.resolveSongId(job.setlistItemId).catch(() => null) : null;
+      const songId = job.songId ??
+        (job.setlistItemId ? await this.deps.resolveSongId(job.setlistItemId).catch(() => null) : null);
       const postId = await this.deps.createPost({
         authorId: userId,
         mediaAssetId: job.mediaAssetId!,
@@ -517,6 +574,7 @@ export class UploadQueue {
         capturedAt: job.capturedAt,
         caption: job.caption,
         songId,
+        allowReuse: job.allowReuse !== false,
       });
       job = this.patch(id, { postId }, true)!;
     }
@@ -535,6 +593,12 @@ export class UploadQueue {
       }).catch((error) => {
         throw new MediaUploadError('unsupported_media', 'No se pudo comprimir este vídeo.', { cause: error });
       });
+      if (!this.get(job.id)) {
+        // Removed while compressing.
+        await deleteNativeFile(compressed.path);
+        await deleteNativeFile(compressed.thumbnailPath);
+        throw new MediaUploadError('aborted', 'The media upload was cancelled.');
+      }
       if (compressed.sizeBytes > VIDEO_MAX_BYTES) {
         await deleteNativeFile(compressed.path);
         throw new MediaUploadError('file_too_large', 'El vídeo comprimido supera 75 MB.');
@@ -592,6 +656,7 @@ export class UploadQueue {
       const blob = await readNativeFile(job.nativePath, 'image/jpeg');
       file = new File([blob], job.fileName, { type: blob.type || 'image/jpeg' });
     }
+    if (job.cloudinaryReservationId) return this.deps.waitForAsset(job.cloudinaryReservationId, 'image');
     if (!file) throw new MediaUploadError('unsupported_media', 'No encontramos el archivo de la foto.');
     const result = await this.deps.provider().uploadToCloudinary({
       file,
@@ -601,6 +666,7 @@ export class UploadQueue {
       signal,
       onProgress: (progress) => this.patch(job.id, { loadedBytes: progress.loadedBytes, totalBytes: progress.totalBytes }),
     });
+    this.patch(job.id, { cloudinaryReservationId: result.reservationId }, true);
     return this.deps.waitForAsset(result.reservationId, 'image');
   }
 
@@ -619,8 +685,9 @@ export class UploadQueue {
     let session: R2Session | null = null;
 
     if (!job.provider || (job.provider === 'r2' && !job.r2)) {
-      // Without a measured duration R2 cannot check the 45 s limit: Cloudinary does.
-      const start = prepared.durationSeconds > 0
+      // Without a measured duration R2 cannot check the 45 s limit, and it only
+      // takes mp4/mov/webm: otherwise Cloudinary does the job.
+      const start = prepared.durationSeconds > 0 && isR2VideoType(prepared.contentType)
         ? await provider.startVideo({
           eventId: job.eventId,
           purpose: 'user',
@@ -648,6 +715,7 @@ export class UploadQueue {
     }
 
     if (job.provider === 'cloudinary') {
+      if (job.cloudinaryReservationId) return this.deps.waitForAsset(job.cloudinaryReservationId, 'video');
       const file = await this.videoFile(job);
       const result = await provider.uploadToCloudinary({
         file,
@@ -657,7 +725,8 @@ export class UploadQueue {
         signal,
         onProgress: (progress) => this.patch(job.id, { loadedBytes: progress.loadedBytes, totalBytes: progress.totalBytes }),
       });
-      return this.deps.waitForAsset(result.reservationId, 'video');
+      this.patch(job.id, { cloudinaryReservationId: result.reservationId }, true);
+    return this.deps.waitForAsset(result.reservationId, 'video');
     }
 
     // R2: upload the missing parts, then the poster, then confirm.
@@ -756,6 +825,8 @@ const defaultDeps: QueueDeps = {
         captured_at: input.capturedAt,
         caption: input.caption,
         song_id: input.songId,
+        // Only sent when off: the column defaults to true.
+        ...(input.allowReuse ? {} : { allow_reuse: false }),
       })
       .select('id')
       .single();

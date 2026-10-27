@@ -14,6 +14,7 @@ import {
   RESERVATION_COLUMNS,
   resolveVideoProvider,
   serviceClient,
+  stagingKeyFor,
   VIDEO_CONTENT_TYPES,
 } from "../_shared/r2.ts";
 
@@ -122,7 +123,7 @@ Deno.serve(async (request) => {
 
       const key = objectKeyFor(reservation.cloudinary_public_id, contentType);
       const uploadId = sizeBytes > MULTIPART_THRESHOLD_BYTES
-        ? await createMultipartUpload(config, key, contentType)
+        ? await createMultipartUpload(config, stagingKeyFor(key), contentType)
         : null;
       const { error: updateError } = await service.from("media_upload_reservations").update({
         storage_provider: "r2",
@@ -183,16 +184,22 @@ Deno.serve(async (request) => {
       if (!reservation || reservation.user_id !== userId || reservation.storage_provider !== "r2") {
         return jsonResponse({ error: "Unknown upload reservation" }, 404, cors);
       }
-      if (reservation.consumed_at) return jsonResponse({ aborted: false, completed: !reservation.rejected_reason }, 200, cors);
-      if (reservation.storage_key) {
-        if (reservation.r2_upload_id) await abortMultipartUpload(config, reservation.storage_key, reservation.r2_upload_id);
-        await deleteObject(config, reservation.storage_key);
-      }
-      const { error: updateError } = await service.from("media_upload_reservations").update({
+      // Claim the reservation first: once media-r2-complete has claimed it
+      // (consumed_at set) the upload can no longer be cancelled, and the other
+      // way round complete refuses a rejected reservation.
+      const { data: claimed, error: claimError } = await service.from("media_upload_reservations").update({
         rejected_reason: "cancelled by client",
         consumed_at: new Date().toISOString(),
-      }).eq("id", reservation.id).is("consumed_at", null);
-      if (updateError) throw updateError;
+      }).eq("id", reservation.id).is("consumed_at", null).select("id");
+      if (claimError) throw claimError;
+      if (!claimed || claimed.length === 0) {
+        return jsonResponse({ aborted: false, completed: !reservation.rejected_reason }, 200, cors);
+      }
+      if (reservation.storage_key) {
+        const staging = stagingKeyFor(reservation.storage_key);
+        if (reservation.r2_upload_id) await abortMultipartUpload(config, staging, reservation.r2_upload_id);
+        await deleteObject(config, staging);
+      }
       return jsonResponse({ aborted: true }, 200, cors);
     }
 

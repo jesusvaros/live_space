@@ -173,6 +173,7 @@ const SuggestedUpload: React.FC = () => {
       for (const item of chosen) {
         items.push({
           nativePath: await getUploadPath(item.asset.id),
+          kind: item.asset.kind === 'video' ? 'video' as const : 'image' as const,
           eventId: event.id,
           setlistItemId: songs[item.assetId] ?? undefined,
           capturedAt: item.asset.createdAt,

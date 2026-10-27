@@ -2,6 +2,7 @@ import { corsHeaders, jsonResponse, requireJsonPost } from "../_shared/http.ts";
 import {
   bearerToken,
   completeMultipartUpload,
+  copyObject,
   deleteObject,
   headObject,
   loadLiveReservation,
@@ -9,14 +10,16 @@ import {
   publicUrl,
   readR2Config,
   serviceClient,
+  stagingKeyFor,
   VIDEO_CONTENT_TYPES,
 } from "../_shared/r2.ts";
 
 /**
- * Finishes an R2 upload authorized by media-r2-sign: completes the multipart
- * upload, checks with HEAD that the object exists with the reserved size and
- * type, then records the media asset exactly like cloudinary-webhook does
- * (status pending_review, reservation consumed). Idempotent per reservation.
+ * Finishes an R2 upload authorized by media-r2-sign: claims the reservation,
+ * completes the multipart upload, checks with HEAD that the staging object has
+ * the reserved size and type, copies it to its public v/ key, then records the
+ * media asset exactly like cloudinary-webhook does (status pending_review,
+ * reservation consumed). Idempotent per reservation.
  */
 
 type CompleteRequest = {
@@ -86,10 +89,27 @@ Deno.serve(async (request) => {
     const loaded = await loadLiveReservation(service, body.reservationId, userId);
     if ("error" in loaded) return jsonResponse({ error: loaded.error }, loaded.status, cors);
     const { reservation } = loaded;
-    if (reservation.consumed_at) return jsonResponse({ error: "Upload reservation already used" }, 409, cors);
     const key = reservation.storage_key!;
+    const staging = stagingKeyFor(key);
+
+    // Claim: consumed_at set and not rejected. media-r2-sign abort only cancels
+    // unclaimed reservations, so the two cannot interleave. A retry after a
+    // failure finds it already claimed by this flow and goes on.
+    if (!reservation.consumed_at) {
+      const { error: claimError } = await service.from("media_upload_reservations")
+        .update({ consumed_at: new Date().toISOString() })
+        .eq("id", reservation.id).is("consumed_at", null).is("rejected_reason", null);
+      if (claimError) throw claimError;
+    }
+    const { data: claimedRow, error: claimedError } = await service.from("media_upload_reservations")
+      .select("consumed_at,rejected_reason").eq("id", reservation.id).maybeSingle();
+    if (claimedError) throw claimedError;
+    if (!claimedRow?.consumed_at || claimedRow.rejected_reason) {
+      return jsonResponse({ error: "Upload was cancelled or rejected" }, 409, cors);
+    }
 
     const reject = async (reason: string, status = 422) => {
+      await deleteObject(config, staging).catch((error) => console.error("R2 delete failed", error));
       await deleteObject(config, key).catch((error) => console.error("R2 delete failed", error));
       await service.from("media_upload_reservations").update({
         rejected_reason: reason,
@@ -98,7 +118,9 @@ Deno.serve(async (request) => {
       return jsonResponse({ accepted: false, error: "Upload rejected by pilot limits", reason }, status, cors);
     };
 
-    let head = await headObject(config, key);
+    // A previous attempt may already have copied the object to its public key.
+    const published = await headObject(config, key);
+    let head = published ?? await headObject(config, staging);
     if (!head && reservation.r2_upload_id) {
       const expected = partCount(reservation.expected_bytes ?? 0);
       const parts = (Array.isArray(body.parts) ? body.parts : [])
@@ -107,10 +129,10 @@ Deno.serve(async (request) => {
         .sort((left, right) => left.partNumber - right.partNumber);
       const complete = parts.length === expected && parts.every((part, index) => part.partNumber === index + 1);
       if (!complete) return jsonResponse({ error: "Missing upload parts", expectedParts: expected }, 409, cors);
-      if (!(await completeMultipartUpload(config, key, reservation.r2_upload_id, parts))) {
+      if (!(await completeMultipartUpload(config, staging, reservation.r2_upload_id, parts))) {
         return jsonResponse({ error: "R2 could not assemble the upload parts" }, 409, cors);
       }
-      head = await headObject(config, key);
+      head = await headObject(config, staging);
     }
     if (!head) return jsonResponse({ error: "The file has not been uploaded yet" }, 409, cors);
 
@@ -128,6 +150,11 @@ Deno.serve(async (request) => {
       reasons.push("video exceeds duration limit");
     }
     if (reasons.length > 0) return await reject(reasons.join(", "));
+
+    if (!published) {
+      if (!(await copyObject(config, staging, key))) throw new Error("R2 copy to the public key failed");
+      await deleteObject(config, staging).catch((error) => console.error("R2 staging delete failed", error));
+    }
 
     let thumbnailUrl: string | null = null;
     if (body.thumbnailReservationId && UUID.test(body.thumbnailReservationId)) {

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useUploadQueue } from '../media/useUploadQueue';
 
 type UploadProgressPillProps = {
@@ -5,12 +6,20 @@ type UploadProgressPillProps = {
 };
 
 /**
- * Small status pill for the background upload queue. Renders nothing while
- * the queue is empty. Not mounted anywhere yet: place it in the app shell
- * (e.g. above the tab bar) so uploads stay visible across screens.
+ * Small status pill for the background upload queue, mounted by AppShell.
+ * Renders nothing while the queue is empty; mounting it also resumes the
+ * uploads saved before the app was closed.
  */
 const UploadProgressPill = ({ className }: UploadProgressPillProps) => {
   const { summary, retryAll, clearFinished } = useUploadQueue();
+
+  // "Subidos" stays a few seconds, then the pill goes away.
+  useEffect(() => {
+    if (summary.state !== 'done') return undefined;
+    const timer = setTimeout(() => void clearFinished(), 6_000);
+    return () => clearTimeout(timer);
+  }, [summary.state, clearFinished]);
+
   if (summary.state === 'idle') return null;
 
   const live = summary.total - summary.failed;

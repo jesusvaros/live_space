@@ -58,8 +58,10 @@ Cloudinary. Todo lo que es secreto lo pone una persona (a poner por el humano).
    `R2_JURISDICTION=eu`.
 2. Bucket → Settings → *Custom Domains*: conectar un subdominio propio (p. ej.
    `media.<dominio>`). No usar `r2.dev` en producción (tiene límite de
-   peticiones). Añadir una regla de caché «Cache Everything» con TTL largo: las
-   claves no se reutilizan.
+   peticiones). Añadir una regla de caché «Cache Everything» con TTL largo para
+   `/v/*`: las claves no se reutilizan. Añadir también una regla de seguridad
+   (WAF → Custom rules) que bloquee `starts_with(http.request.uri.path, "/incoming/")`
+   en ese dominio: ahí llegan las subidas antes de verificarse.
 3. Bucket → Settings → CORS policy (para web y para subidas desde `File` en la app):
 
    ```json
@@ -75,14 +77,15 @@ Cloudinary. Todo lo que es secreto lo pone una persona (a poner por el humano).
    ```
 
 4. Bucket → Settings → Object lifecycle rules: abortar subidas multipart
-   incompletas tras 1 día.
+   incompletas tras 1 día y borrar los objetos con prefijo `incoming/` tras 2 días.
 5. R2 → Manage API tokens → crear token «Object Read & Write» limitado a ese
    bucket. Copiar Access Key ID y Secret Access Key directamente a Supabase.
 6. Secretos de las funciones (Supabase → Edge Functions → Secrets o
    `supabase secrets set`): `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`,
    `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_BASE_URL`
    (`https://media.<dominio>`, sin barra final) y, si aplica, `R2_JURISDICTION`.
-7. Aplicar la migración `20261028020100_media_r2_storage.sql` y desplegar
+7. Aplicar la migración `20261028020100_media_r2_storage.sql` (añade también la
+   función `revive_r2_reservation`, solo para `service_role`) y desplegar
    `media-r2-sign` y `media-r2-complete` (`verify_jwt = true`).
 8. Activar: como administrador, `update platform_settings set video_provider =
    'r2' where singleton;` (o el secreto `VIDEO_PROVIDER=r2`). Volver atrás es

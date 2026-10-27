@@ -70,14 +70,14 @@ export const useUploadQueue = () => {
   const queue = getUploadQueue();
   const snapshot = useSyncExternalStore(queue.subscribe, queue.getSnapshot, queue.getSnapshot);
   const summary = useMemo(() => summarizeUploads(snapshot), [snapshot]);
-  return {
-    ...snapshot,
-    summary,
+  // Stable callbacks: safe in effect dependencies.
+  const actions = useMemo(() => ({
     enqueue: queue.enqueue.bind(queue),
     retry: queue.retry.bind(queue),
     retryAll: queue.retryAll.bind(queue),
     remove: queue.remove.bind(queue),
     clearFinished: queue.clearFinished.bind(queue),
     setWifiOnly: queue.setWifiOnly.bind(queue),
-  };
+  }), [queue]);
+  return { ...snapshot, summary, ...actions };
 };

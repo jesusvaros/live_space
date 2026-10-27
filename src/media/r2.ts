@@ -12,6 +12,10 @@ import { extractVideoThumbnail, probeVideo } from './videoProbe';
  * { provider: "cloudinary" } nothing was reserved and the Cloudinary flow runs.
  */
 
+/** Types media-r2-sign accepts; anything else (3gp, m4v…) stays on Cloudinary. */
+export const R2_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'];
+export const isR2VideoType = (contentType: string) => R2_VIDEO_TYPES.includes(contentType.toLowerCase());
+
 export type R2PartPlan = { partNumber: number; url: string; size: number; headers: Record<string, string> };
 
 export type R2UploadPlan =
@@ -436,8 +440,10 @@ export class R2MediaProvider implements MediaProvider {
       if (result.provider === 'cloudinary') this.rememberCloudinary();
       return result;
     } catch (error) {
+      // Only a missing function means "not set up". A network error must not
+      // send the clip to Cloudinary: the caller retries the R2 start instead.
       const notDeployed = error instanceof MediaUploadError &&
-        error.code === 'authorization_failed' && (error.status === 404 || error.status === null);
+        error.code === 'authorization_failed' && error.status === 404;
       if (notDeployed) {
         this.rememberCloudinary();
         return { provider: 'cloudinary' };
@@ -469,8 +475,9 @@ export class R2MediaProvider implements MediaProvider {
 
     const probe = request.durationSeconds ? null : await probeVideo(request.file);
     const durationSeconds = request.durationSeconds ?? probe?.durationSeconds ?? null;
-    // R2 cannot measure the clip; when the browser cannot either, Cloudinary does.
-    if (!durationSeconds) return this.options.cloudinary.upload({ ...request, kind });
+    // R2 cannot measure the clip; when the browser cannot either (or the type is
+    // one R2 does not take), Cloudinary does.
+    if (!durationSeconds || !isR2VideoType(request.file.type || 'video/mp4')) return this.options.cloudinary.upload({ ...request, kind });
     const contentType = request.file.type.toLowerCase() || 'video/mp4';
     const start = await this.startVideo({
       eventId: request.eventId ?? null,

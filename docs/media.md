@@ -50,12 +50,14 @@ Constantes en `src/media/limits.ts`.
 | Paso | Dónde | Qué hace |
 | --- | --- | --- |
 | `start` | `media-r2-sign` | mismas comprobaciones que Cloudinary (`reserve_media_upload`: sesión, términos, pausa/80 %, evento, 10 vídeos/mes); valida tipo, tamaño y duración declarada; devuelve un PUT prefirmado (≤ 10 MB) o URLs prefirmadas de partes de 8 MB (multipart) para `v/<aaaa>/<mm>/<uuid>.mp4` |
-| subida | cliente → R2 | PUT directo; `Content-Length` (y `Content-Type` en el PUT único) van firmados, así que R2 rechaza otro tamaño |
+| subida | cliente → R2 | PUT directo a `incoming/<aaaa>/<mm>/<uuid>.mp4`, prefijo que el dominio público no sirve; `Content-Length` (y `Content-Type` en el PUT único) van firmados, así que R2 rechaza otro tamaño |
 | `resume` | `media-r2-sign` | URLs nuevas (caducan en 1 h) para seguir tras reiniciar; hasta 24 h desde la reserva |
 | póster | Cloudinary | el cliente sube el fotograma como imagen (sin evento) |
-| `complete` | `media-r2-complete` | completa el multipart, hace `HEAD` y exige tamaño exacto y tipo; crea el `media_assets` `pending_review` con `storage_provider = 'r2'` y consume la reserva, igual que el webhook de Cloudinary; idempotente |
-| `abort` | `media-r2-sign` | cancela, borra el objeto y libera el hueco de cuota |
+| `complete` | `media-r2-complete` | reclama la reserva, completa el multipart, hace `HEAD` y exige tamaño exacto y tipo; copia el objeto a `v/…` y borra el de `incoming/`; crea el `media_assets` `pending_review` con `storage_provider = 'r2'` y consume la reserva, igual que el webhook de Cloudinary; idempotente |
+| `abort` | `media-r2-sign` | cancela si `complete` no la ha reclamado, borra el objeto y libera el hueco de cuota |
 
+- Nada se publica sin pasar por `complete`: lo que se suba y no se confirme se
+  queda en `incoming/` y lo borra la regla de ciclo de vida.
 - Una reserva caducada solo se reactiva (`resume`/`complete`) si la cuota
   mensual y la pausa global lo permiten, con la misma regla que la RPC.
 - R2 no analiza el vídeo: la duración es la que midió el cliente (en la app,
@@ -96,7 +98,8 @@ volver la red o al volver la app a primer plano. Opción «solo con wifi»
 borra los temporales. Es «segundo plano» dentro de la app: si el sistema
 suspende la app, la subida sigue al volver.
 
-API para la pantalla de subida (`src/pages/Upload.tsx` no se ha tocado):
+API (la usan `src/pages/Upload.tsx` con `file` y `src/pages/SuggestedUpload.tsx`
+con las rutas de `GalleryScan`):
 
 ```ts
 import { enqueueMomentUploads, isNativeMediaAvailable, pickMomentVideos } from '../media';
@@ -109,7 +112,8 @@ await enqueueMomentUploads([
   ...videos.map((video) => ({
     nativePath: video.path,
     eventId,
-    setlistItemId,            // opcional → posts.song_id
+    setlistItemId,            // opcional → su canción va a posts.song_id
+    // songId,                // o directamente el id de la canción
     capturedAt: video.capturedAt,
   })),
   // Fotos (y vídeos en web) desde <input type="file">:
@@ -122,11 +126,14 @@ await enqueueMomentUploads([
   retry, retryAll, remove, clearFinished }`; `summary.state` es `working`,
   `waiting_wifi`, `waiting_network`, `error`, `done` o `idle`.
 - `<UploadProgressPill />` (`src/components/UploadProgressPill.tsx`): píldora
-  mínima («Subiendo 2 de 5 · 43 %», «Esperando wifi», «Reintentar»). Sin montar:
-  conviene ponerla en el `AppShell` para que se vea en todas las pantallas;
-  montarla (o llamar a `getUploadQueue().init()`) es lo que retoma las subidas
-  pendientes al abrir la app.
-- `enqueueMomentUploads` exige sesión; los trabajos de otro usuario esperan.
+  mínima («Subiendo 2 de 5 · 43 %», «Esperando wifi», «Reintentar»), montada
+  arriba en el `AppShell`; montarla es lo que retoma las subidas pendientes al
+  abrir la app.
+- `nativePath` puede ser foto o vídeo (se deduce del archivo o de `kind`); los
+  vídeos se comprimen en el móvil. La licencia de reutilización sale de la
+  elección recordada (`allowReuse` para fijarla).
+- `enqueueMomentUploads` exige sesión; solo se muestran y suben los trabajos del
+  usuario con sesión. Con dos pestañas abiertas sube solo una (Web Locks).
 
 ### Coste estimado
 
@@ -146,10 +153,10 @@ apenas consumen créditos. Supabase: 2–3 invocaciones de función por vídeo.
 
 ### Pendiente
 
-- Probar en dispositivos reales (Android y iOS) la compresión, el selector y la
-  subida por partes: se ha compilado, no ejecutado.
-- Limpieza periódica de objetos huérfanos (reservas firmadas cuya subida nunca se
-  completó): la regla de ciclo de vida solo aborta multipart incompletos.
+- Android se probó en emulador (compresión de 1080p/60 s a 720p/45 s y 15 MB,
+  `moov` delante, sin GPS, vídeo girado, subida por rangos). Falta un móvil real,
+  iOS en dispositivo (compila para simulador; no se ha ejecutado) y la subida
+  real a R2 con credenciales.
 - Subir el límite de 10 vídeos/mes cuando R2 esté activo (hoy es el mismo).
 
 ## Catálogo
