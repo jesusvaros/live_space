@@ -7,31 +7,26 @@ type DiscoverSearchBarProps = {
   onClear: () => void;
 };
 
-const DiscoverSearchBar: React.FC<DiscoverSearchBarProps> = ({ value, placeholder, onChange, onClear }) => {
-  return (
-    <div className="sticky top-0 z-30 -mx-4 bg-[linear-gradient(180deg,rgba(11,11,13,0.96),rgba(11,11,13,0.78))] px-4 pb-3 pt-2 backdrop-blur-xl">
-      <div className="rounded-2xl border border-white/10 bg-white/[0.04]">
-        <div className="flex items-center gap-3 px-4 py-3">
-          <input
-            type="search"
-            value={value}
-            placeholder={placeholder || 'Busca artistas o salas'}
-            onChange={e => onChange(e.target.value)}
-            className="w-full bg-transparent text-sm text-white placeholder:text-white/40 focus:outline-none"
-          />
-          {value.trim().length > 0 && (
-            <button
-              type="button"
-              onClick={onClear}
-              className="shrink-0 rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/80"
-            >
-              Borrar
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
+const DiscoverSearchBar: React.FC<DiscoverSearchBarProps> = ({ value, placeholder, onChange, onClear }) => (
+  <label className="flex min-h-12 items-center gap-2.5 rounded-full border border-app-line bg-app-surface px-4 text-[#8f8b84]">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" />
+      <path d="M20 20l-3.5-3.5" />
+    </svg>
+    <span className="sr-only">Buscar</span>
+    <input
+      type="search"
+      value={value}
+      placeholder={placeholder || 'Artista o sala'}
+      onChange={event => onChange(event.target.value)}
+      className="min-w-0 flex-1 bg-transparent text-[15px] text-app-ink placeholder:text-[#8f8b84] focus:outline-none"
+    />
+    {value.trim().length > 0 && (
+      <button type="button" onClick={onClear} className="shrink-0 text-xs font-semibold text-[#c9c5bd]">
+        Borrar
+      </button>
+    )}
+  </label>
+);
 
 export default DiscoverSearchBar;

@@ -7,18 +7,16 @@ import AppShell from '../components/AppShell';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import { ArtistProfileArtist, ArtistProfileEvent } from '../components/artist/types';
 import ArtistHero from '../components/artist/ArtistHero';
-import ArtistTabs, { ArtistTabKey } from '../components/artist/ArtistTabs';
-import UpcomingShowsSection from '../components/artist/UpcomingShowsSection';
-import ArtistMapSection from '../components/artist/ArtistMapSection';
-import GallerySection from '../components/artist/GallerySection';
-import PastShowsSection from '../components/artist/PastShowsSection';
-import MomentsSection from '../components/artist/MomentsSection';
 import AboutSection from '../components/artist/AboutSection';
+import ConcertRow from '../components/ui/ConcertRow';
+import MomentGrid from '../components/ui/MomentGrid';
 import { fetchEventCards } from '../data/eventQueries';
 import { fetchPostCards } from '../data/postQueries';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import DetailHeader from '../components/ui/DetailHeader';
+
+type ArtistTab = 'shows' | 'moments' | 'about';
 
 type ArtistProfileProps = {
   artistId?: string;
@@ -37,10 +35,9 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
   const [upcomingShows, setUpcomingShows] = useState<ArtistProfileEvent[]>([]);
   const [pastShows, setPastShows] = useState<ArtistProfileEvent[]>([]);
   const [moments, setMoments] = useState<PostWithSetlist[]>([]);
-  const [gallery, setGallery] = useState<PostWithSetlist[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<ArtistTabKey>('shows');
+  const [activeTab, setActiveTab] = useState<ArtistTab>('shows');
 
   useEffect(() => {
     const loadArtist = async () => {
@@ -94,10 +91,8 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
         if (eventIds.length > 0) {
           const allMoments = (await fetchPostCards({ eventIds })).slice(0, 24) as PostWithSetlist[];
           setMoments(allMoments);
-          setGallery(allMoments.filter(item => item.media_type === 'image').slice(0, 6));
         } else {
           setMoments([]);
-          setGallery([]);
         }
       } catch (err) {
         console.error('Failed to load artist profile', err);
@@ -106,7 +101,6 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
         setUpcomingShows([]);
         setPastShows([]);
         setMoments([]);
-        setGallery([]);
       } finally {
         setLoading(false);
       }
@@ -161,67 +155,101 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
     await toggleFollowSubject(artist.subject_id);
   };
 
+  const tabs: { key: ArtistTab; label: string }[] = [
+    { key: 'shows', label: 'Conciertos' },
+    { key: 'moments', label: 'Momentos' },
+    { key: 'about', label: 'Info' },
+  ];
+
+  const concertSubtitle = (event: ArtistProfileEvent) => {
+    const time = new Date(event.starts_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    return [event.venue_place?.city || event.city, time].filter(Boolean).join(' · ');
+  };
+
   const renderTabContent = () => {
     if (!artist) return null;
 
-    switch (activeTab) {
-      case 'shows':
-        return (
-          <div className="space-y-6">
-            <UpcomingShowsSection
-              events={limitedUpcoming}
-              isManager={isManager}
-              onViewEvent={eventId => navigate(`/event/${eventId}`)}
-              onCreateShow={() => navigate('/create-event', { state: { from: `/tabs/artist/${id}` } })}
-              onOpenMap={handleOpenMap}
-            />
-            <PastShowsSection
-              events={limitedPast}
-              playedCount={playedCount}
-              isManager={isManager}
-              onViewEvent={eventId => navigate(`/event/${eventId}`)}
-              onCreateShow={() => navigate('/create-event', { state: { from: `/tabs/artist/${id}` } })}
-            />
-          </div>
-        );
-      case 'media':
-        return (
-          <div className="space-y-6">
-            <ArtistMapSection
-              hasEvents={upcomingShows.length > 0 || pastShows.length > 0}
-              artistName={artist.name}
-              isManager={isManager}
-              onOpenMap={handleOpenMap}
-              onCreateShow={() => navigate('/create-event', { state: { from: `/tabs/artist/${id}` } })}
-            />
-            <GallerySection
-              gallery={gallery}
-              onSelect={postId => navigate(`/post/${postId}`)}
-              onViewGallery={() => setActiveTab('moments')}
-            />
-          </div>
-        );
-      case 'moments':
-        return (
-          <MomentsSection
-            moments={moments}
-            isManager={isManager}
-            onSelect={postId => navigate(`/post/${postId}`)}
-          />
-        );
-      case 'about':
-      default:
-        return (
-          <AboutSection
-            artist={artist}
-            isManager={isManager}
-            playedCount={playedCount}
-            onCreateShow={() => navigate('/create-event', { state: { from: `/tabs/artist/${id}` } })}
-            onOpenMap={handleOpenMap}
-          />
-        );
+    if (activeTab === 'moments') {
+      return moments.length ? (
+        <MomentGrid moments={moments} columns={3} />
+      ) : (
+        <p className="text-sm text-white/60">Aún nadie ha subido momentos de sus conciertos.</p>
+      );
     }
+
+    if (activeTab === 'about') {
+      return (
+        <AboutSection
+          artist={artist}
+          isManager={isManager}
+          playedCount={playedCount}
+          onCreateShow={() => navigate('/create-event', { state: { from: `/tabs/artist/${id}` } })}
+          onOpenMap={handleOpenMap}
+        />
+      );
+    }
+
+    return (
+      <div className="flex flex-col gap-2">
+        {limitedUpcoming.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-app-line p-4 text-sm text-white/60">
+            No hay conciertos anunciados. Cuando se anuncien, aparecerán aquí.
+          </p>
+        ) : (
+          limitedUpcoming.map(event => (
+            <ConcertRow
+              key={event.id}
+              startsAt={event.starts_at}
+              title={event.venue_place?.name || event.address || 'Sala por confirmar'}
+              subtitle={concertSubtitle(event)}
+              onSelect={() => navigate(`/event/${event.id}`)}
+            />
+          ))
+        )}
+
+        {moments.length > 0 ? (
+          <section className="pt-4">
+            <h2 className="mb-2.5 font-display text-lg font-bold text-app-ink">Lo que grabó el público</h2>
+            <MomentGrid moments={moments} limit={8} />
+          </section>
+        ) : null}
+
+        {limitedPast.length > 0 ? (
+          <section className="flex flex-col gap-2 pt-4">
+            <h2 className="font-display text-lg font-bold text-app-ink">Ya tocó</h2>
+            {limitedPast.map(event => (
+              <ConcertRow
+                key={event.id}
+                startsAt={event.starts_at}
+                title={event.venue_place?.name || event.address || 'Sala'}
+                subtitle={concertSubtitle(event)}
+                onSelect={() => navigate(`/event/${event.id}`)}
+              />
+            ))}
+          </section>
+        ) : null}
+      </div>
+    );
   };
+
+  const tabBar = (
+    <div role="tablist" aria-label="Secciones del artista" className="flex gap-1 rounded-full border border-app-line bg-app-surface p-1">
+      {tabs.map(tab => (
+        <button
+          key={tab.key}
+          type="button"
+          role="tab"
+          aria-selected={activeTab === tab.key}
+          onClick={() => setActiveTab(tab.key)}
+          className={`min-h-10 flex-1 rounded-full text-[13px] font-semibold transition-colors ${
+            activeTab === tab.key ? 'bg-app-line text-app-ink' : 'text-[#a9a59d]'
+          }`}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
 
   if (embedded) {
     return (
@@ -233,7 +261,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
         )}
         {!loading && error && <p className="text-sm text-rose-400">{error}</p>}
         {!loading && artist && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <ArtistHero
               artist={artist}
               isManager={isManager}
@@ -241,7 +269,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
               externalLinks={externalLinks}
               onEdit={() => navigate('/tabs/profile?edit=artist')}
             />
-            <ArtistTabs activeTab={activeTab} onSelect={key => setActiveTab(key)} />
+            {tabBar}
             <div>{renderTabContent()}</div>
           </div>
         )}
@@ -274,13 +302,9 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
             onEdit={() => navigate('/tabs/profile?edit=artist')}
           />
 
-          <div className="relative">
-            <div className="relative flex flex-col gap-6 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
-              <div className="sticky top-[calc(64px+env(safe-area-inset-top,0px))] z-20 -mx-4 border-b border-app-line bg-app-bg/95 px-4 py-2 backdrop-blur-xl">
-                <ArtistTabs activeTab={activeTab} onSelect={key => setActiveTab(key)} />
-              </div>
-              <div>{renderTabContent()}</div>
-            </div>
+          <div className="px-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))] pt-4">
+            {tabBar}
+            <div className="pt-3.5">{renderTabContent()}</div>
           </div>
         </>
       )}

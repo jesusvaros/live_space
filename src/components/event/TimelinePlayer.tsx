@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Spinner } from '../ui/AppPrimitives';
 import { PostWithSetlist } from '../../lib/types';
 import TimelineScrubber, { TimelineBucket } from './TimelineScrubber';
@@ -21,6 +21,10 @@ type TimelinePlayerProps = {
   onFilterChange: (filter: MediaFilter) => void;
   autoAdvance?: boolean;
   onRequestNext?: () => void;
+  // Text over the bottom of the stage ("Suena ahora · 07 ...").
+  renderCaption?: (moment: PostWithSetlist | null) => React.ReactNode;
+  // Chip at the top right of the stage, next to the page's back button.
+  stageChip?: React.ReactNode;
 };
 
 const formatRelative = (seconds: number) => {
@@ -61,6 +65,8 @@ const formatMomentLabel = (moment: PostWithSetlist | null, eventStart: Date | nu
   });
 };
 
+// The concert's moments in time order: a stage with the selected moment, the
+// scrubber over the timeline and the moments that share the same second.
 const TimelinePlayer: React.FC<TimelinePlayerProps> = ({
   buckets,
   selectedBucketIndex,
@@ -76,10 +82,13 @@ const TimelinePlayer: React.FC<TimelinePlayerProps> = ({
   onFilterChange,
   autoAdvance,
   onRequestNext,
+  renderCaption,
+  stageChip,
 }) => {
   const selectedBucket = buckets[selectedBucketIndex] ?? null;
   const selectedMoment = moments[selectedMomentIndex] ?? null;
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [paused, setPaused] = useState(true);
 
   useEffect(() => {
     if (!selectedMoment || selectedMoment.media_type !== 'video') return;
@@ -101,26 +110,88 @@ const TimelinePlayer: React.FC<TimelinePlayerProps> = ({
     [selectedMoment, eventStart]
   );
 
+  const togglePlayback = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.paused) video.play().catch(() => {});
+    else video.pause();
+  };
+
   return (
-    <section className="flex flex-col gap-4">
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/60">Cronología</p>
-            <p className="mt-1.5 font-display text-2xl font-bold text-white">
-              {selectedBucketLabel || '+00:00'}
-            </p>
-            {totalMoments > 0 && <p className="mt-1 text-xs text-white/55">{totalMoments} momentos</p>}
+    <section className="flex flex-col">
+      <div className={`relative h-[300px] overflow-hidden bg-black ${loading ? 'opacity-90' : ''}`}>
+        {loading ? (
+          <div className="flex h-full items-center justify-center">
+            <Spinner />
           </div>
-          <div className="inline-flex items-center rounded-full border border-white/15 bg-black/25 p-1">
+        ) : selectedMoment ? (
+          <div
+            key={selectedMoment.id}
+            className="absolute inset-0 animate-[timeline-fade_0.35s_ease] motion-reduce:animate-none"
+            onClick={togglePlayback}
+          >
+            {selectedMoment.media_type === 'video' ? (
+              <video
+                ref={videoRef}
+                playsInline
+                muted
+                autoPlay
+                className="h-full w-full object-cover"
+                onPlay={() => setPaused(false)}
+                onPause={() => setPaused(true)}
+                onEnded={() => {
+                  if (autoAdvance && onRequestNext) {
+                    onRequestNext();
+                  }
+                }}
+                poster={selectedMoment.thumbnail_url || undefined}
+              >
+                <source src={selectedMoment.media_url} />
+              </video>
+            ) : (
+              <img src={selectedMoment.media_url} alt={selectedMoment.caption || 'Momento'} className="h-full w-full object-cover" />
+            )}
+          </div>
+        ) : (
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,91,46,0.25),transparent_60%)]" />
+        )}
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,#0d0e12_2%,rgba(13,14,18,0)_50%,rgba(13,14,18,0.5))]" />
+        {stageChip ? (
+          <div className="pointer-events-none absolute right-3 top-[calc(18px+env(safe-area-inset-top,0px))] z-[1301] max-w-[70%]">
+            {stageChip}
+          </div>
+        ) : null}
+        {selectedMoment?.media_type === 'video' && paused && !loading ? (
+          <button
+            type="button"
+            aria-label="Reproducir"
+            onClick={togglePlayback}
+            className="absolute left-1/2 top-[46%] flex h-[60px] w-[60px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-app-ink/90 text-app-bg"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M8 5l12 7-12 7z" />
+            </svg>
+          </button>
+        ) : null}
+        <div className="pointer-events-none absolute inset-x-4 bottom-2">
+          {renderCaption ? renderCaption(selectedMoment) : null}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 px-4 pt-3">
+        <div className="flex items-center justify-between gap-3">
+          <p className="font-mono text-[12px] font-semibold text-white/60">
+            {selectedMoment ? selectedMomentLabel || selectedBucketLabel : '+00:00'}
+            {totalMoments > 0 ? ` · ${totalMoments} momentos` : ''}
+          </p>
+          <div className="inline-flex items-center rounded-full border border-app-line bg-app-surface p-0.5">
             {(['all', 'video', 'image'] as MediaFilter[]).map(filter => (
               <button
                 key={filter}
                 type="button"
-                className={`rounded-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] transition-all ${
-                  mediaFilter === filter
-                    ? 'bg-app-accent text-white shadow-[0_4px_10px_rgba(255,91,46,0.22)]'
-                    : 'text-white/60 hover:text-white'
+                aria-pressed={mediaFilter === filter}
+                className={`min-h-8 rounded-full px-2.5 text-[12px] font-semibold transition-colors ${
+                  mediaFilter === filter ? 'bg-app-ink text-app-bg' : 'text-white/60 hover:text-white'
                 }`}
                 onClick={() => onFilterChange(filter)}
               >
@@ -129,95 +200,25 @@ const TimelinePlayer: React.FC<TimelinePlayerProps> = ({
             ))}
           </div>
         </div>
+
+        {!loading && !selectedMoment && onAddMoments ? (
+          <button type="button" className="self-start text-sm font-semibold text-app-accent" onClick={onAddMoments}>
+            Aún no hay momentos. Sube el primero
+          </button>
+        ) : null}
+
+        {buckets.length > 1 ? (
+          <TimelineScrubber
+            buckets={buckets}
+            selectedIndex={selectedBucketIndex}
+            onSelectIndex={onSelectBucket}
+            eventStart={eventStart}
+            gapThresholdSeconds={120}
+          />
+        ) : null}
+
+        <SecondStack moments={moments} selectedIndex={selectedMomentIndex} onSelect={onSelectMoment} />
       </div>
-
-      <div className="-mx-4 px-4">
-        <div className={`relative aspect-video overflow-hidden rounded-2xl border border-white/10 bg-black/70 ${loading ? 'opacity-90' : ''}`}>
-          {loading ? (
-            <div className="flex h-full items-center justify-center bg-white/[0.03]">
-              <Spinner />
-            </div>
-          ) : selectedMoment ? (
-            <div
-              key={selectedMoment.id}
-              className="relative h-full w-full animate-[timeline-fade_0.35s_ease]"
-              onClick={() => {
-                const video = videoRef.current;
-                if (!video) return;
-                if (video.paused) {
-                  video.play().catch(() => {});
-                } else {
-                  video.pause();
-                }
-              }}
-            >
-              {selectedMoment.media_type === 'video' ? (
-                <video
-                  ref={videoRef}
-                  playsInline
-                  muted
-                  autoPlay
-                  className="h-full w-full object-cover"
-                  onEnded={() => {
-                    if (autoAdvance && onRequestNext) {
-                      onRequestNext();
-                    }
-                  }}
-                  poster={selectedMoment.thumbnail_url || undefined}
-                >
-                  <source src={selectedMoment.media_url} />
-                </video>
-              ) : (
-                <img src={selectedMoment.media_url} alt={selectedMoment.caption || 'Momento'} className="h-full w-full object-cover" />
-              )}
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/55 to-transparent p-4">
-                {selectedMoment.resolved_song_title && (
-                  <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/45 px-2.5 py-1">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/80">
-                      {selectedMoment.resolved_song_title}
-                    </span>
-                  </div>
-                )}
-                <p className="text-xs text-white/65">{selectedMomentLabel}</p>
-                <h4 className="mt-1.5 font-display text-lg font-bold text-white">
-                  {selectedMoment.actor_name ||
-                    selectedMoment.profiles?.display_name ||
-                    selectedMoment.profiles?.username ||
-                    'Anónimo'}
-                </h4>
-              </div>
-            </div>
-          ) : (
-            <div className="flex min-h-full flex-col items-center justify-center gap-2 px-6 text-center">
-              <p className="text-lg font-semibold text-white">Aún no hay momentos.</p>
-              <span className="text-xs text-white/55">Revive el concierto subiendo el primer vídeo.</span>
-              {onAddMoments && (
-                <button
-                  type="button"
-                  className="mt-2 inline-flex items-center rounded-full border border-app-accent/40 bg-app-accent/20 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-app-accent"
-                  onClick={onAddMoments}
-                >
-                  Sube el primer momento
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <TimelineScrubber
-        buckets={buckets}
-        selectedIndex={selectedBucketIndex}
-        onSelectIndex={onSelectBucket}
-        eventStart={eventStart}
-        gapThresholdSeconds={120}
-      />
-
-      <SecondStack
-        moments={moments}
-        selectedIndex={selectedMomentIndex}
-        onSelect={onSelectMoment}
-      />
     </section>
   );
 };

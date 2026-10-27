@@ -7,8 +7,13 @@ import { Event, PostWithSetlist, ProfileRole } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import AppShell from '../components/AppShell';
-import EventPosterTile from '../features/events/components/EventPosterTile';
-import { IconCalendar, IconEdit, IconHeart, IconLogout, IconPlay } from '../components/icons';
+import ConcertRow from '../components/ui/ConcertRow';
+import MomentGrid from '../components/ui/MomentGrid';
+import GeneratedPoster from '../components/ui/GeneratedPoster';
+import { NAV_CLEARANCE } from '../components/BottomNav';
+import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
+import { useFollowedEntities } from '../hooks/useFollowedEntities';
+import { IconLogout } from '../components/icons';
 import { useAppResume } from '../shared/hooks/useAppResume';
 import { fetchQuery } from '../lib/queryClient';
 import { fetchEventCards } from '../data/eventQueries';
@@ -42,7 +47,9 @@ const Profile: React.FC = () => {
   const [venueEvents, setVenueEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedTab, setSelectedTab] = useState<'liked' | 'attended' | 'moments'>('moments');
+  const [selectedTab, setSelectedTab] = useState<'moments' | 'concerts' | 'following'>(
+    (location.state as { profileTab?: string } | null)?.profileTab === 'following' ? 'following' : 'moments'
+  );
   const [displayName, setDisplayName] = useState(profile?.display_name || '');
   const [username, setUsername] = useState(profile?.username || '');
   const [primaryCity, setPrimaryCity] = useState(profile?.primary_city || '');
@@ -244,7 +251,6 @@ const Profile: React.FC = () => {
   }, [showEdit, editTarget]);
 
   const selectedVenuePlace = managedEntities.find(ent => ent.venue?.id === selectedVenuePlaceId)?.venue || null;
-  const displayVenue = selectedVenuePlace ?? managedEntities.find(ent => ent.type === 'venue')?.venue ?? null;
 
   useEffect(() => {
     if (!selectedVenuePlace) {
@@ -385,31 +391,32 @@ const Profile: React.FC = () => {
     }
   };
 
-  // Get tab label based on user role
-  const getAttendedTabLabel = () => {
-    if (profile?.role === 'artist') return 'Conciertos';
-    if (profile?.role === 'venue') return 'Eventos';
-    return 'Asistidos';
-  };
+  const { followedSubjectIds } = useFollowedSubjects();
+  const { entities: followedEntities } = useFollowedEntities(followedSubjectIds);
 
-  const getAttendedTabIcon = () => {
-    if (profile?.role === 'artist') return IconPlay; // Music/concert icon
-    return IconCalendar; // Calendar for regular attendance
-  };
-
-  const renderEmptyState = (
-    Icon: React.ComponentType<{ className?: string }>,
-    title: string,
-    description: string
-  ) => (
-    <div className="overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(155deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.03)_46%,rgba(3,7,14,0.75)_100%)] p-5">
-      <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-white/85">
-        <Icon className="h-5 w-5" />
-      </div>
-      <h3 className="mt-3 font-display text-lg font-semibold text-white">{title}</h3>
+  const renderEmpty = (title: string, description: string) => (
+    <div className="mx-4 rounded-2xl border border-dashed border-app-line p-5">
+      <p className="font-display text-base font-bold text-app-ink">{title}</p>
       <p className="mt-1 text-sm text-white/60">{description}</p>
     </div>
   );
+
+  // Saved and attended concerts, newest first, without repeats.
+  const concerts = (() => {
+    const own = isManagementMode ? [...artistEvents, ...venueEvents] : [...attendedEvents, ...likedEvents];
+    const seen = new Set<string>();
+    return own
+      .filter(event => (seen.has(event.id) ? false : (seen.add(event.id), true)))
+      .sort((left, right) => right.starts_at.localeCompare(left.starts_at));
+  })();
+
+  // The next concert the user is going to or saved, up to a few hours after doors.
+  const nextConcert = (() => {
+    const from = Date.now() - 4 * 60 * 60 * 1000;
+    return [...attendedEvents, ...likedEvents]
+      .filter(event => new Date(event.starts_at).getTime() >= from)
+      .sort((left, right) => left.starts_at.localeCompare(right.starts_at))[0] || null;
+  })();
 
   const renderTabContent = () => {
     if (loading) {
@@ -421,388 +428,182 @@ const Profile: React.FC = () => {
     }
 
     if (error) {
-      return <p className="text-sm text-rose-400">{error}</p>;
+      return <p className="px-4 text-sm text-rose-400">{error}</p>;
     }
 
-    // For artists, show their concerts in the "attended" tab
-    if (profile?.role === 'artist' && selectedTab === 'attended') {
-      return artistEvents.length === 0 ? (
-        renderEmptyState(
-          IconPlay,
-          'Aún no hay conciertos',
-          'Aquí verás tus próximos conciertos y los pasados.'
-        )
+    if (selectedTab === 'following') {
+      return followedEntities.length === 0 ? (
+        renderEmpty('Aún no sigues a nadie', 'Sigue artistas y salas para ver cuándo tocan en Inicio.')
       ) : (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {artistEvents.map(event => (
-            <EventPosterTile
-              key={event.id}
-              event={event}
-              className="w-full"
-              onSelect={selected => navigate(`/event/${selected.id}`)}
-            />
+        <ul className="mx-4 divide-y divide-app-line overflow-hidden rounded-2xl border border-app-line bg-app-surface">
+          {followedEntities.map(entity => (
+            <li key={entity.subjectId}>
+              <button
+                type="button"
+                onClick={() => navigate(entity.kind === 'artist' ? `/tabs/artist/${entity.id}` : `/tabs/venue/${entity.id}`)}
+                className="flex w-full items-center gap-3 px-3 py-2.5 text-left"
+              >
+                <Avatar name={entity.name} src={entity.imageUrl} rounded={entity.kind === 'venue' ? 'xl' : 'full'} className="h-11 w-11 text-[15px]" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-display text-[15px] font-bold text-app-ink">{entity.name}</span>
+                  <span className="block truncate text-xs text-[#8f8b84]">
+                    {[entity.kind === 'artist' ? 'Artista' : 'Sala', entity.city].filter(Boolean).join(' · ')}
+                  </span>
+                </span>
+              </button>
+            </li>
           ))}
+        </ul>
+      );
+    }
+
+    if (selectedTab === 'concerts') {
+      return concerts.length === 0 ? (
+        renderEmpty('Aún no hay conciertos', 'Marca «Voy» o guarda un concierto y aparecerá aquí.')
+      ) : (
+        <div className="flex flex-col gap-2 px-4">
+          {concerts.map(event => {
+            const card = event as Event & { venue_place?: { name?: string | null } | null };
+            return (
+              <ConcertRow
+                key={event.id}
+                startsAt={event.starts_at}
+                title={card.name}
+                subtitle={card.venue_place?.name || event.city}
+                onSelect={() => navigate(`/event/${event.id}`)}
+              />
+            );
+          })}
         </div>
       );
     }
 
-    // For venues, show all their events in the "attended" tab
-    if (profile?.role === 'venue' && selectedTab === 'attended') {
-      return venueEvents.length === 0 ? (
-        renderEmptyState(
-          IconCalendar,
-          'Tu sala aún no tiene eventos',
-          'Aquí aparecerán las noches que publiques en tu sala.'
-        )
-      ) : (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {venueEvents.map(event => (
-            <EventPosterTile
-              key={event.id}
-              event={event}
-              className="w-full"
-              onSelect={selected => navigate(`/event/${selected.id}`)}
-            />
-          ))}
-        </div>
-      );
-    }
-
-    // For regular users or other roles
-    if (selectedTab === 'liked') {
-      return likedEvents.length === 0 ? (
-        renderEmptyState(
-          IconHeart,
-          'Aún no has guardado eventos',
-          'Cuando guardes conciertos, aparecerán aquí.'
-        )
-      ) : (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {likedEvents.map(event => (
-            <EventPosterTile
-              key={event.id}
-              event={event}
-              className="w-full"
-              onSelect={selected => navigate(`/event/${selected.id}`)}
-            />
-          ))}
-        </div>
-      );
-    }
-
-    if (selectedTab === 'attended') {
-      return attendedEvents.length === 0 ? (
-        renderEmptyState(
-          getAttendedTabIcon(),
-          'Aún no has ido a ningún concierto',
-          'Los conciertos a los que vayas irán formando tu historial aquí.'
-        )
-      ) : (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {attendedEvents.map(event => (
-            <EventPosterTile
-              key={event.id}
-              event={event}
-              className="w-full"
-              onSelect={selected => navigate(`/event/${selected.id}`)}
-            />
-          ))}
-        </div>
-      );
-    }
-
-    // Moments tab - show all moments from events they participated in
     return posts.length === 0 ? (
-      renderEmptyState(
-        IconPlay,
-        'Aún no hay momentos',
-        'Sube tu primer momento después de un concierto y aparecerá aquí.'
-      )
+      renderEmpty('Aún no hay momentos', 'Sube lo que grabes en tu próximo concierto y aparecerá aquí.')
     ) : (
-      <div className="grid grid-cols-3 gap-2">
-        {posts.map(post => (
-          <button
-            key={post.id}
-            type="button"
-            onClick={() => navigate(`/post/${post.id}`)}
-            className="overflow-hidden bg-white/5 transition-opacity hover:opacity-90"
-          >
-            {post.media_type === 'video' ? (
-              <video className="h-full w-full object-cover" muted>
-                <source src={post.media_url} />
-              </video>
-            ) : (
-              <img src={post.media_url} alt={post.caption || 'Momento'} className="h-full w-full object-cover" />
-            )}
-          </button>
-        ))}
-      </div>
+      <MomentGrid
+        moments={posts}
+        columns={3}
+        label={index => (posts[index] as any)?.events?.venue_place?.name || (posts[index] as any)?.events?.city}
+      />
     );
   };
 
+  const headerName = isManagementMode && activeEntity
+    ? (activeEntity.type === 'artist' ? activeEntity.artist?.name : activeEntity.venue?.name) || 'Tu perfil'
+    : profile?.display_name || profile?.username || 'Tu perfil';
+  const avatarUrl = isManagementMode && activeEntity
+    ? activeEntity.type === 'artist' ? activeEntity.artist?.avatar_url : activeEntity.venue?.photos?.[0]
+    : profile?.avatar_url;
+  const subline = isManagementMode && activeEntity
+    ? activeEntity.type === 'artist' ? 'Artista que gestionas' : 'Sala que gestionas'
+    : [profile?.primary_city, profile?.username ? `@${profile.username}` : null].filter(Boolean).join(' · ');
+
+  const tabs: { key: typeof selectedTab; label: string }[] = [
+    { key: 'moments', label: isManagementMode ? 'Momentos' : 'Mis momentos' },
+    { key: 'concerts', label: 'Conciertos' },
+    { key: 'following', label: 'Siguiendo' },
+  ];
+
   return (
-    <AppShell>
-      <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
-            {!isManagementMode && (
-              <div className="space-y-4 animate-fade-up motion-reduce:animate-none">
-                <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(155deg,rgba(255,91,46,0.2)_0%,rgba(255,91,46,0.08)_38%,rgba(9,13,22,0.95)_100%)] p-4 shadow-[0_18px_42px_rgba(2,6,13,0.35)]">
-                  <button
-                    type="button"
-                    aria-label="Editar perfil"
-                    className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white/80 transition hover:bg-white/15 hover:text-white"
-                    onClick={openContextualEditModal}
-                  >
-                    <IconEdit className="h-4 w-4" />
-                  </button>
-                  <div className="flex items-start gap-4">
-                    <Avatar
-                      name={profile?.display_name || profile?.username || 'Tú'}
-                      src={profile?.avatar_url}
-                      rounded="xl"
-                      className="h-20 w-20 text-[26px]"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/65">
-                        Perfil personal
-                      </p>
-                      <h2 className="mt-2 line-clamp-1 font-display text-2xl font-bold text-white">
-                        {profile?.username ? `@${profile.username}` : profile?.display_name || 'Tú'}
-                      </h2>
-                      <p className="mt-1 text-sm text-white/60">
-                        {profile?.primary_city || 'Añade tu ciudad para mejorar las recomendaciones'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4 grid grid-cols-3 gap-2">
-                    <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-center">
-                      <p className="text-lg font-bold text-white">{posts.length}</p>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/55">Momentos</p>
-                    </div>
-                    <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-center">
-                      <p className="text-lg font-bold text-white">{likedEvents.length}</p>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/55">Guardados</p>
-                    </div>
-                    <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-center">
-                      <p className="text-lg font-bold text-white">{attendedEvents.length}</p>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/55">Asistidos</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+    <AppShell headerProps={null}>
+      <div className={`flex flex-col ${NAV_CLEARANCE}`}>
+        <header className="flex items-center gap-3.5 px-4 pt-[calc(18px+env(safe-area-inset-top,0px))]">
+          {avatarUrl ? (
+            <Avatar name={headerName} src={avatarUrl} className="h-[72px] w-[72px]" />
+          ) : (
+            <span className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-full bg-app-accent font-poster text-[28px] text-[#14151a]">
+              {isManagementMode ? headerName.slice(0, 2) : 'Tú'}
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate font-display text-[22px] font-bold text-app-ink">{headerName}</h1>
+            <p className="mt-0.5 truncate text-sm text-[#c9c5bd]">{subline || 'Añade tu ciudad en ajustes'}</p>
+          </div>
+          <button
+            type="button"
+            aria-label="Ajustes"
+            onClick={openContextualEditModal}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-app-line bg-app-surface text-app-ink"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z" />
+            </svg>
+          </button>
+        </header>
 
-            {isManagementMode && (
-              <div className="relative flex items-center gap-4 animate-fade-up motion-reduce:animate-none">
-                <button
-                  type="button"
-                  aria-label="Editar perfil"
-                  className="absolute right-0 top-0 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white/80 transition hover:bg-white/15 hover:text-white"
-                  onClick={openContextualEditModal}
-                >
-                  <IconEdit className="h-4 w-4" />
-                </button>
-                <Avatar
-                  name={
-                    (activeEntity
-                      ? activeEntity.type === 'artist'
-                        ? activeEntity.artist?.name
-                        : activeEntity.venue?.name
-                      : profile?.display_name || profile?.username) || 'Tú'
-                  }
-                  src={
-                    activeEntity
-                      ? activeEntity.type === 'artist'
-                        ? activeEntity.artist?.avatar_url
-                        : activeEntity.venue?.photos?.[0]
-                      : profile?.avatar_url
-                  }
-                  rounded="xl"
-                  className="h-16 w-16 text-[22px]"
-                />
-                <div className="flex-1">
-                  <h2 className="font-display text-xl font-bold text-white">
-                    {activeEntity
-                      ? activeEntity.type === 'artist'
-                        ? activeEntity.artist?.name
-                        : activeEntity.venue?.name
-                      : profile?.display_name || profile?.username || 'Tu perfil'}
-                  </h2>
-                  <p className="text-sm text-white/55">
-                    {activeEntity ? (activeEntity.type === 'artist' ? 'Artista que gestionas' : 'Sala que gestionas') : ''}
-                  </p>
-                </div>
-                <div className="mr-10 flex flex-col gap-2">
-                  {activeEntity?.type === 'artist' && activeEntity.artist?.id && (
-                    <button
-                      type="button"
-                      className="bg-white/10 px-3 py-1.5 text-xs font-semibold text-white"
-                      onClick={() => navigate(`/tabs/artist/${(activeEntity.artist as any).id || (activeEntity.artist as any).artist_id}`)}
-                    >
-                      Ver perfil
-                    </button>
-                  )}
-                  {activeEntity?.type === 'venue' && activeEntity.venue?.id && (
-                    <button
-                      type="button"
-                      className="bg-white/10 px-3 py-1.5 text-xs font-semibold text-white"
-                      onClick={() => navigate(`/tabs/venue/${(activeEntity.venue as any).id || (activeEntity.venue as any).venue_place_id}`)}
-                    >
-                      Ver perfil
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {isManagementMode && managedEntities.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto pb-1 animate-fade-in">
-                {managedEntities.map(ent => (
-                  <button
-                    key={ent.subject_id}
-                    type="button"
-                    className={`flex-shrink-0 rounded-xl px-4 py-1.5 text-xs font-semibold transition ${
-                      activeEntity?.subject_id === ent.subject_id
-                        ? 'bg-white/10 text-app-accent'
-                        : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/80'
-                    }`}
-                    onClick={() => setActiveEntity(ent)}
-                  >
-                    {ent.type === 'artist' ? ent.artist?.name : ent.venue?.name}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            
-
-            {profile?.role === 'artist' && (linkWebsite || linkInstagram || linkSpotify) && (
-              <div
-                className="space-y-3 rounded-2xl bg-white/5 p-4 [animation-delay:160ms]"
-              >
-                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Enlaces del artista</p>
-                <div className="space-y-2 text-sm text-white/80">
-                  {linkWebsite && (
-                    <a
-                      href={linkWebsite}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-white/80 hover:text-white"
-                    >
-                      {linkWebsite.replace(/^https?:\/\//, '')}
-                    </a>
-                  )}
-                  {linkInstagram && (
-                    <a
-                      href={linkInstagram}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-white/80 hover:text-white"
-                    >
-                      {linkInstagram.replace(/^https?:\/\//, '')}
-                    </a>
-                  )}
-                  {linkSpotify && (
-                    <a
-                      href={linkSpotify}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-white/80 hover:text-white"
-                    >
-                      {linkSpotify.replace(/^https?:\/\//, '')}
-                    </a>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {profile?.role === 'venue' && displayVenue && (
-              <div
-                className="space-y-3 rounded-2xl bg-white/5 p-4 [animation-delay:160ms]"
-              >
-                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Datos de la sala</p>
-                <div className="space-y-2 text-sm text-white/80">
-                  {(displayVenue.address || profile.primary_city) && (
-                    <p>{displayVenue.address || profile.primary_city}</p>
-                  )}
-                  {displayVenue.website_url && (
-                    <a
-                      href={displayVenue.website_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-white/80 hover:text-white"
-                    >
-                      {displayVenue.website_url.replace(/^https?:\/\//, '')}
-                    </a>
-                  )}
-                </div>
-                {(displayVenue.photos ?? []).length > 0 && (
-                  <div className="flex gap-3 overflow-x-auto pb-1">
-                    {(displayVenue.photos ?? []).map((url: string, index: number) => (
-                      <div
-                        key={`${url}-${index}`}
-                        className="h-24 w-40 flex-shrink-0 overflow-hidden rounded-2xl bg-black/30"
-                      >
-                        <img src={url} alt="Sala" className="h-full w-full object-cover" />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div
-              className="flex gap-2 animate-fade-up motion-reduce:animate-none [animation-delay:160ms]"
-            >
+        {isManagementMode && managedEntities.length > 1 && (
+          <div className="flex gap-2 overflow-x-auto px-4 pt-3">
+            {managedEntities.map(ent => (
               <button
+                key={ent.subject_id}
                 type="button"
-                className={`flex flex-1 items-center justify-center gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-[0.22em] transition-colors ${
-                  selectedTab === 'moments' ? 'text-app-accent' : 'text-white/55 hover:text-white/80'
+                className={`min-h-9 shrink-0 rounded-full px-3.5 text-[13px] font-semibold ${
+                  activeEntity?.subject_id === ent.subject_id ? 'bg-app-ink text-app-bg' : 'border border-app-line text-[#c9c5bd]'
                 }`}
-                onClick={() => setSelectedTab('moments')}
+                onClick={() => setActiveEntity(ent)}
               >
-                <IconPlay className="h-4 w-4" />
-                Momentos
+                {ent.type === 'artist' ? ent.artist?.name : ent.venue?.name}
               </button>
-              <button
-                type="button"
-                className={`flex flex-1 items-center justify-center gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-[0.22em] transition-colors ${
-                  selectedTab === 'attended' ? 'text-app-accent' : 'text-white/55 hover:text-white/80'
-                }`}
-                onClick={() => setSelectedTab('attended')}
-              >
-                {React.createElement(getAttendedTabIcon(), { className: 'h-4 w-4' })}
-                {getAttendedTabLabel()}
-              </button>
-              <button
-                type="button"
-                className={`flex flex-1 items-center justify-center gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-[0.22em] transition-colors ${
-                  selectedTab === 'liked' ? 'text-app-accent' : 'text-white/55 hover:text-white/80'
-                }`}
-                onClick={() => setSelectedTab('liked')}
-              >
-                <IconHeart className="h-4 w-4" />
-                Guardados
-              </button>
-            </div>
+            ))}
+          </div>
+        )}
 
-            <div
-              className="animate-fade-up motion-reduce:animate-none [animation-delay:240ms]"
-            >
-              {renderTabContent()}
-            </div>
+        {!isManagementMode && nextConcert ? (
+          <button
+            type="button"
+            aria-label="Tu próximo concierto"
+            onClick={() => navigate(`/event/${nextConcert.id}`)}
+            className="mx-4 mt-[18px] flex items-center gap-3 rounded-[18px] border border-app-line bg-app-surface p-3.5 text-left"
+          >
+            <span className="relative h-[68px] w-[54px] shrink-0 overflow-hidden rounded-[10px]">
+              {nextConcert.cover_image_url ? (
+                <img src={nextConcert.cover_image_url} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <GeneratedPoster title={nextConcert.name} variant="thumb" />
+              )}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-mono text-[11px] font-semibold uppercase text-app-accent">
+                {(() => {
+                  const date = new Date(nextConcert.starts_at);
+                  const time = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                  return date.toDateString() === new Date().toDateString()
+                    ? `Vas hoy · ${time}`
+                    : `Próximo · ${date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/[.,]/g, '')} · ${time}`;
+                })()}
+              </span>
+              <span className="block truncate font-display text-base font-bold text-app-ink">
+                {nextConcert.name}
+                {(nextConcert as any).venue_place?.name ? ` · ${(nextConcert as any).venue_place.name}` : ''}
+              </span>
+              <span className="block text-[13px] text-[#c9c5bd]">Cuando acabe, sube lo que grabes.</span>
+            </span>
+          </button>
+        ) : null}
 
-            {!showEdit && formError && <p className="text-sm text-rose-400">{formError}</p>}
-            {!showEdit && message && <p className="text-sm text-emerald-400">{message}</p>}
-
+        <div role="tablist" aria-label="Secciones del perfil" className="flex gap-1.5 overflow-x-auto px-4 pb-3 pt-[18px]">
+          {tabs.map(tab => (
             <button
+              key={tab.key}
               type="button"
-              className="hidden w-full items-center justify-center gap-2 bg-white/10 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-              onClick={handleSignOut}
-              disabled={signingOut}
+              role="tab"
+              aria-selected={selectedTab === tab.key}
+              onClick={() => setSelectedTab(tab.key)}
+              className={`min-h-10 shrink-0 rounded-full px-3.5 text-sm font-semibold ${
+                selectedTab === tab.key ? 'bg-app-ink text-app-bg' : 'border border-app-line text-[#c9c5bd]'
+              }`}
             >
-              <IconLogout className="h-4 w-4" />
-              {signingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
+              {tab.label}
             </button>
+          ))}
+        </div>
+
+        {renderTabContent()}
+
+        {!showEdit && formError && <p className="px-4 pt-3 text-sm text-rose-400">{formError}</p>}
+        {!showEdit && message && <p className="px-4 pt-3 text-sm text-emerald-400">{message}</p>}
       </div>
 
       <Modal isOpen={showEdit} onDidDismiss={closeEditModal} title="Editar perfil">

@@ -71,6 +71,7 @@ export const mapEvent = (row: UnknownRow): Event => ({
   name: String(row.name ?? ''),
   description: stringOrNull(row.description),
   event_url: stringOrNull(row.source_url),
+  ticket_url: stringOrNull(row.ticket_url),
   city: String(row.city ?? ''),
   address: stringOrNull(row.address),
   latitude: numberOrNull(row.latitude),

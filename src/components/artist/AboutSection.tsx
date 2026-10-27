@@ -10,62 +10,53 @@ type AboutSectionProps = {
   onOpenMap: () => void;
 };
 
-const AboutSection: React.FC<AboutSectionProps> = ({
-  artist,
-  isManager,
-  playedCount,
-  onCreateShow,
-  onOpenMap,
-}) => (
-  <section className="animate-fade-up space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 motion-reduce:animate-none">
-    <div>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-white/60">Info</p>
-      <h2 className="font-display text-xl font-bold text-white">Detalles</h2>
-    </div>
-    <div className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/60">Ciudad</p>
-          <p className="text-sm font-semibold text-white">{artist.city || '—'}</p>
-        </div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/60">Tipo</p>
-          <p className="text-sm font-semibold text-white">{artist.artist_type === 'band' ? 'Banda' : 'Solista'}</p>
-        </div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/60">Géneros</p>
-          <p className="text-sm font-semibold text-white">
-            {artist.genres && artist.genres.length > 0 ? artist.genres.join(', ') : '—'}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/60">Conciertos</p>
-          <p className="text-sm font-semibold text-white">
-            {playedCount > 0 ? `${playedCount} tocados` : 'Próximamente'}
-          </p>
-        </div>
-      </div>
-      {isManager && (
-        <div className="flex flex-wrap gap-3 pt-2">
+const ARTIST_TYPES: Record<string, string> = {
+  band: 'Banda',
+  solo: 'Solista',
+  dj: 'DJ',
+  collective: 'Colectivo',
+};
+
+const AboutSection: React.FC<AboutSectionProps> = ({ artist, isManager, playedCount, onCreateShow, onOpenMap }) => {
+  const facts = [
+    { label: 'Ciudad', value: artist.city || '—' },
+    { label: 'Tipo', value: ARTIST_TYPES[artist.artist_type || ''] || 'Artista' },
+    { label: 'Géneros', value: artist.genres?.length ? artist.genres.join(', ') : '—' },
+    { label: 'Conciertos', value: playedCount > 0 ? String(playedCount) : '—' },
+  ];
+
+  return (
+    <section className="flex flex-col gap-4">
+      {artist.bio ? <p className="text-[15px] leading-relaxed text-[#e4e0d8]">{artist.bio}</p> : null}
+      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-app-line bg-app-line">
+        {facts.map(fact => (
+          <div key={fact.label} className="bg-app-surface p-3">
+            <dt className="font-mono text-[11px] font-semibold uppercase text-[#8f8b84]">{fact.label}</dt>
+            <dd className="mt-1 text-sm font-semibold text-app-ink">{fact.value}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onOpenMap}
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-app-line px-4 text-sm font-semibold text-app-ink"
+        >
+          <IconMap size={16} />
+          Ver en el mapa
+        </button>
+        {isManager ? (
           <button
             type="button"
             onClick={onCreateShow}
-            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/[0.06] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white transition hover:bg-white/[0.1]"
+            className="inline-flex min-h-11 items-center rounded-full border border-app-line px-4 text-sm font-semibold text-app-ink"
           >
             Crear concierto
           </button>
-          <button
-            type="button"
-            onClick={onOpenMap}
-            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/[0.06] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white transition hover:bg-white/[0.1]"
-          >
-            <IconMap size={14} />
-            Ver en el mapa
-          </button>
-        </div>
-      )}
-    </div>
-  </section>
-);
+        ) : null}
+      </div>
+    </section>
+  );
+};
 
 export default AboutSection;
