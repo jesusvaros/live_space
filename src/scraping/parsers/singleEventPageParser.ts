@@ -10,6 +10,7 @@ const SINGLE_EVENT_DEFAULTS = {
   artistSelectors: ['.artist', '.artists li', '.lineup li', '.event-artists li'],
   venueSelectors: ['.venue', '.location', '.event-venue', '.tribe-events-venue-details'],
   citySelectors: ['.city', '.locality', '.event-city'],
+  imageSelectors: ['meta[property="og:image"]', 'meta[name="twitter:image"]', 'main img[src]', 'article img[src]'],
 };
 
 export const singleEventPageParser: VenueParser = {

@@ -1,6 +1,8 @@
 import type { AiExtractionPayload, NormalizedArtist, NormalizedEvent, EventType } from '../types/domain.js';
 import type { ScrapeSource, StagingEventRecord } from '../types/scrape.js';
+import { cleanArtistName } from './cleanArtistName.js';
 import { extractOffer } from './extractOffer.js';
+import { extractImageUrl } from './extractImage.js';
 import { normalizeArtistNames } from './normalizeArtist.js';
 import { cleanupDisplayText, hasExcessiveNoise, normalizeForMatching } from './normalizeText.js';
 import { normalizeVenue } from './normalizeVenue.js';
@@ -262,7 +264,12 @@ export const normalizeStagingEvent = (
   const description = cleanupDisplayText(
     typeof rawPayload.description === 'string' ? rawPayload.description : undefined,
   );
-  const artistResult = normalizeArtistNames(record.extracted_artist_names, title);
+  // Rows captured before parsers cleaned their titles still carry
+  // "Morat - YEM World Tour" as the artist, so the rules run here as well.
+  const artistResult = normalizeArtistNames(
+    (record.extracted_artist_names || []).flatMap((name) => cleanArtistName(name).names),
+  );
+  const titleCleanup = cleanArtistName(title);
   // Undated texts ("8 septiembre") resolve against the capture date, not the
   // processing date, so reprocessing an old row never jumps it a year ahead.
   const capturedAt = record.created_at ? new Date(record.created_at) : new Date();
@@ -309,7 +316,9 @@ export const normalizeStagingEvent = (
       record.source_event_id &&
       startsAt &&
       !artistResult.ambiguous &&
-      aiReasons.length === 0,
+      // A structured listing without a performer (a tribute night, a show)
+      // is still a real event; it is published without artists.
+      aiReasons.every((reason) => reason === 'no-artists-detected'),
   );
 
   return {
@@ -323,6 +332,8 @@ export const normalizeStagingEvent = (
       sourceUrl: record.source_url || source.base_url,
       sourceExternalId: record.source_event_id || undefined,
       offer: extractOffer(record.raw_payload, record.source_url, startsAt),
+      imageUrl: extractImageUrl(record.raw_payload) ?? undefined,
+      tourName: titleCleanup.tourName ?? undefined,
       artists: artistResult.artists,
       venue,
       confidence: isVerifiedStructuredRecord ? Math.max(heuristicConfidence, 0.97) : heuristicConfidence,

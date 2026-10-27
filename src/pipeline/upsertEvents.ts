@@ -5,7 +5,7 @@ import type { EventRow, NormalizedEvent } from '../types/domain.js';
 import { Logger } from '../utils/logger.js';
 
 const EVENT_SELECT =
-  'id,name,normalized_name,venue_place_id,starts_at,source_url,source_id,source_external_id';
+  'id,name,normalized_name,venue_place_id,starts_at,source_url,source_id,source_external_id,image_url,image_source,tour_name';
 
 // Only facts the source states overwrite the event; an empty capture never
 // clears a ticket link or prices set earlier.
@@ -15,6 +15,22 @@ export const offerUpdates = (event: NormalizedEvent): Record<string, unknown> =>
   if (event.offer?.priceTiers.length) updates.price_tiers = event.offer.priceTiers;
   if (event.offer?.isFree) updates.is_free = true;
   if (event.offer?.endsAt) updates.ends_at = event.offer.endsAt;
+  return updates;
+};
+
+// The poster follows the source (a venue may swap a placeholder for the real
+// artwork), but a capture without an image never clears one, and a manually
+// chosen image is never replaced.
+export const imageUpdates = (
+  event: Pick<NormalizedEvent, 'imageUrl' | 'tourName'>,
+  current: Pick<EventRow, 'image_url' | 'image_source' | 'tour_name'>,
+): Record<string, unknown> => {
+  const updates: Record<string, unknown> = {};
+  if (event.imageUrl && current.image_source !== 'manual' && current.image_url !== event.imageUrl) {
+    updates.image_url = event.imageUrl;
+    updates.image_source = 'source';
+  }
+  if (event.tourName && !current.tour_name) updates.tour_name = event.tourName;
   return updates;
 };
 
@@ -55,6 +71,7 @@ export const upsertEvent = async (
       updates.description = event.description;
     }
     Object.assign(updates, offerUpdates(event));
+    Object.assign(updates, imageUpdates(event, match.match));
     if (Object.keys(updates).length === 0) {
       return {
         row: match.match,
@@ -104,6 +121,9 @@ export const upsertEvent = async (
       price_tiers: event.offer?.priceTiers ?? [],
       ticket_url: event.offer?.ticketUrl ?? null,
       ends_at: event.offer?.endsAt ?? null,
+      image_url: event.imageUrl ?? null,
+      image_source: event.imageUrl ? 'source' : null,
+      tour_name: event.tourName ?? null,
       status: 'published',
       published_at: new Date().toISOString(),
     })

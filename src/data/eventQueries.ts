@@ -8,9 +8,7 @@ const EVENT_CARD_SELECT = `
     id,name,city,address,capacity,venue_type,latitude,longitude,website_url,created_by,created_at,updated_at
   ),
   event_artists (
-    artist:artists!event_artists_artist_id_fkey (
-      id,name,artist_type,city,bio,genres,external_links,created_at,updated_at
-    )
+    artist:artists!event_artists_artist_id_fkey (*)
   ),
   media_assets!media_assets_event_id_fkey (
     kind,status,secure_url,thumbnail_url,created_at
@@ -21,13 +19,15 @@ export const mapEventCard = (row: any): EventListItem => {
   const publishedImages = (row.media_assets || [])
     .filter((asset: any) => asset.kind === 'image' && asset.status === 'published')
     .sort((left: any, right: any) => String(right.created_at).localeCompare(String(left.created_at)));
-  const coverImageUrl = publishedImages[0]?.thumbnail_url ?? publishedImages[0]?.secure_url ?? null;
+  // Fan photos first; the scraped poster only fills the empty state.
+  const coverImageUrl =
+    publishedImages[0]?.thumbnail_url ?? publishedImages[0]?.secure_url ?? row.image_url ?? null;
 
   return {
     ...mapEvent({ ...row, cover_image_url: coverImageUrl }),
     venue_place: row.venue_place ? mapVenue({ ...row.venue_place, photos: [] }) : null,
     event_artists: (row.event_artists || []).map((entry: any) => ({
-      artist: entry.artist ? mapArtist({ ...entry.artist, avatar_url: null }) : null,
+      artist: entry.artist ? mapArtist({ ...entry.artist, avatar_url: entry.artist.image_url ?? null }) : null,
     })),
   };
 };

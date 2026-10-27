@@ -30,6 +30,7 @@ export type RawScrapedEvent = {
   venueName?: string;
   city?: string;
   artistNames?: string[];
+  imageUrl?: string;
   rawPayload: unknown;
 };
 
@@ -41,6 +42,7 @@ export type ScrapeSourceMetadata = {
   descriptionSelector?: string;
   linkSelector?: string;
   artistSelector?: string;
+  imageSelector?: string;
   venueSelector?: string;
   citySelector?: string;
   nextButtonSelector?: string;

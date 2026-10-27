@@ -1,3 +1,5 @@
+import { artistNamesFromTitle } from '../../normalize/cleanArtistName.js';
+import { toHttpUrl } from '../../normalize/extractImage.js';
 import type { RawScrapedEvent, ScrapeSource, VenueParser } from '../../types/scrape.js';
 
 type WordpressEvent = {
@@ -12,6 +14,7 @@ export type LuzDeGasCard = {
   date?: string;
   time?: string;
   sourceEventUrl?: string;
+  imageUrl?: string;
 };
 
 const clean = (value: string | undefined): string | undefined => {
@@ -53,7 +56,8 @@ export const mapLuzDeGasCard = (
     startsAt: null,
     venueName: source.name,
     city: source.city ?? undefined,
-    artistNames: [title],
+    artistNames: artistNamesFromTitle(title),
+    imageUrl: toHttpUrl(card.imageUrl, source.base_url) ?? undefined,
     rawPayload: {
       id: sourceEventId,
       title,
@@ -103,6 +107,10 @@ export const luzDeGasCalendarParser: VenueParser = {
         date: await card.locator('.main-archive__fecha').first().textContent() ?? undefined,
         time: await card.locator('.main-archive__horario').first().textContent() ?? undefined,
         sourceEventUrl: await moreInfoLink.getAttribute('href') ?? undefined,
+        imageUrl:
+          (await card.locator('img').first().getAttribute('data-src').catch(() => null)) ??
+          (await card.locator('img').first().getAttribute('src').catch(() => null)) ??
+          undefined,
       });
     }
 

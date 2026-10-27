@@ -29,6 +29,16 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      # Before the scrape: once names like "Morat - YEM World Tour" are fixed,
+      # reprocessed rows dedupe to the renamed artist instead of creating a
+      # second one. Idempotent; never merges or deletes.
+      - name: Clean artist names
+        continue-on-error: true
+        run: npm run artists:cleanup
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
       - name: Run weekly scrape
         run: npm run scrape:weekly
         env:
@@ -38,6 +48,14 @@ jobs:
           SCRAPER_TIMEOUT_MS: "30000"
           ENABLE_AI_NORMALIZATION: "false"
           SCRAPER_CITY_ALLOWLIST: "Madrid,Barcelona"
+
+      - name: Enrich images (event posters, artist photos)
+        if: always()
+        continue-on-error: true
+        run: npm run enrich:images
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
       - name: Resolve obsolete watcher alerts
         if: always()

@@ -1,4 +1,5 @@
 import type { RawScrapedEvent, VenueParser } from '../../types/scrape.js';
+import { withTitleArtists } from './shared.js';
 
 const DETAIL_LINK = /\/(?:eventos?|events?|conciertos?|concerts?)\/[^/?#]+/i;
 
@@ -9,7 +10,7 @@ export const linkedEventCardsParser: VenueParser = {
     return (matches || []).length >= 2;
   },
   parseListPage: async (page, source) =>
-    page.evaluate(
+    withTitleArtists(await page.evaluate(
       ({ sourceUrl, venueName, city }) => {
         const detailLink = /\/(?:eventos?|events?|conciertos?|concerts?)\/[^/?#]+/i;
         const dateSignal =
@@ -69,14 +70,14 @@ export const linkedEventCardsParser: VenueParser = {
             dateText: text,
             venueName,
             city: city || undefined,
-            artistNames: [title],
+            imageUrl: (() => { const img = (root || anchor).querySelector<HTMLImageElement>('img'); return img ? (img.getAttribute('data-src') || img.getAttribute('data-lazy-src') || img.getAttribute('src') || '').trim() || undefined : undefined; })(),
             rawPayload: { text: text.slice(0, 2_000) },
           });
         }
         return events;
       },
       { sourceUrl: source.base_url, venueName: source.name, city: source.city },
-    ),
+    )),
 };
 
 export const isLinkedEventDetailUrl = (url: string): boolean => {

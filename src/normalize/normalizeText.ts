@@ -26,7 +26,9 @@ export const removeRedundantPunctuation = (value: string): string =>
     .replace(/[|•·]+/g, ' ')
     .replace(/[!?,;:]{2,}/g, ' ')
     .replace(/[()[\]{}]+/g, ' ')
-    .replace(/\s*-\s*/g, ' - ');
+    // Only spaced dashes are separators; "Sho-Hai" or "Sheehy-Moss" keep
+    // their hyphen.
+    .replace(/\s+[-–—]\s+/g, ' - ');
 
 export const toAsciiFold = (value: string): string =>
   value

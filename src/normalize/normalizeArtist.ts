@@ -1,4 +1,5 @@
 import type { ArtistRole, NormalizedArtist } from '../types/domain.js';
+import { smartTitleCase } from './cleanArtistName.js';
 import { cleanupDisplayText, normalizeForMatching } from './normalizeText.js';
 
 export type ArtistNormalizationResult = {
@@ -74,7 +75,7 @@ const normalizeArtistEntry = (
   role: ArtistRole = 'unknown',
   confidence = 0.7
 ): NormalizedArtist | null => {
-  const displayName = cleanupDisplayText(rawName);
+  const displayName = smartTitleCase(cleanupDisplayText(rawName));
   const normalizedName = normalizeForMatching(displayName, ['dj set', 'live set', 'live']);
 
   if (!displayName || !normalizedName || GUEST_SIGNALS.test(displayName)) {
@@ -90,15 +91,12 @@ const normalizeArtistEntry = (
   };
 };
 
-export const normalizeArtistNames = (
-  rawNames: string[] | undefined,
-  fallbackTitle?: string
-): ArtistNormalizationResult => {
+// The event title is never used as an artist here: parsers without a
+// performer field derive names with cleanArtistName.artistNamesFromTitle,
+// which drops tour names, tributes and other non-performer titles.
+export const normalizeArtistNames = (rawNames: string[] | undefined): ArtistNormalizationResult => {
   const reasons: string[] = [];
   const candidates = (rawNames || []).map((value) => cleanupDisplayText(value)).filter(Boolean);
-  if (candidates.length === 0 && fallbackTitle) {
-    candidates.push(cleanupDisplayText(fallbackTitle));
-  }
 
   const artistMap = new Map<string, NormalizedArtist>();
   let ambiguous = false;

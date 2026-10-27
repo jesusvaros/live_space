@@ -1,4 +1,5 @@
 import type { VenueParser } from '../../types/scrape.js';
+import { withTitleArtists } from './shared.js';
 
 const MONTHS: Record<string, number> = {
   ENE: 1,
@@ -40,7 +41,7 @@ export const elementorAgendaParser: VenueParser = {
   key: 'elementor-agenda',
   canHandle: (_url, html) =>
     html.includes('elementor-heading-title') && html.toLowerCase().includes('comprar entradas'),
-  parseListPage: async (page, source) => page.evaluate(({ sourceUrl, venueName, city, months }) => {
+  parseListPage: async (page, source) => withTitleArtists(await page.evaluate(({ sourceUrl, venueName, city, months }) => {
     const monthMap = months as Record<string, number>;
     const today = new Date();
     const cutoff = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
@@ -76,7 +77,7 @@ export const elementorAgendaParser: VenueParser = {
         dateText: `${match[1].padStart(2, '0')}/${String(month).padStart(2, '0')}/${match[3]} 20:00`,
         venueName,
         city,
-        artistNames: [title],
+        imageUrl: (() => { const img = card.querySelector<HTMLImageElement>('img'); return img ? (img.getAttribute('data-src') || img.getAttribute('data-lazy-src') || img.getAttribute('src') || '').trim() || undefined : undefined; })(),
         rawPayload: { dateLabel, ticketUrl: ticketUrl || null },
       }];
     });
@@ -85,5 +86,5 @@ export const elementorAgendaParser: VenueParser = {
     venueName: source.name,
     city: source.city || undefined,
     months: MONTHS,
-  }),
+  })),
 };
