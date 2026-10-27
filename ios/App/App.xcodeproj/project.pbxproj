@@ -17,6 +17,8 @@
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		A1C0FFEE2EB0000100000002 /* GalleryScanPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0FFEE2EB0000100000001 /* GalleryScanPlugin.swift */; };
 		A1C0FFEE2EB0000100000004 /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0FFEE2EB0000100000003 /* MainViewController.swift */; };
+		A1B2C3D40000000000000012 /* LiveSpaceMediaPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D40000000000000002 /* LiveSpaceMediaPlugin.swift */; };
+		A1B2C3D40000000000000013 /* VideoCompressor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D40000000000000003 /* VideoCompressor.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,6 +34,8 @@
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		A1C0FFEE2EB0000100000001 /* GalleryScanPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryScanPlugin.swift; sourceTree = "<group>"; };
 		A1C0FFEE2EB0000100000003 /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
+		A1B2C3D40000000000000002 /* LiveSpaceMediaPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSpaceMediaPlugin.swift; sourceTree = "<group>"; };
+		A1B2C3D40000000000000003 /* VideoCompressor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoCompressor.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -70,6 +74,8 @@
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				A1C0FFEE2EB0000100000003 /* MainViewController.swift */,
 				A1C0FFEE2EB0000100000001 /* GalleryScanPlugin.swift */,
+				A1B2C3D40000000000000002 /* LiveSpaceMediaPlugin.swift */,
+				A1B2C3D40000000000000003 /* VideoCompressor.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
@@ -164,6 +170,8 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				A1C0FFEE2EB0000100000004 /* MainViewController.swift in Sources */,
 				A1C0FFEE2EB0000100000002 /* GalleryScanPlugin.swift in Sources */,
+				A1B2C3D40000000000000012 /* LiveSpaceMediaPlugin.swift in Sources */,
+				A1B2C3D40000000000000013 /* VideoCompressor.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

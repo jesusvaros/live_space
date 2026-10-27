@@ -10,7 +10,7 @@ import GeneratedPoster from '../components/ui/GeneratedPoster';
 import { IconChevronDown, IconPlus, IconQrCode } from '../components/icons';
 import { fetchEventCardById, fetchEventCards } from '../data/eventQueries';
 import { eventService } from '../services/event.service';
-import { createConfiguredCloudinaryMediaProvider, uploadEventPost } from '../media';
+import { enqueueMomentUploads } from '../media';
 import { distanceToConcert, songAtTime } from '../lib/songAssignment';
 import { EventListItem } from '../features/events/types';
 import { ReuseConsentCheckbox } from '../features/community';
@@ -250,21 +250,16 @@ const Upload: React.FC = () => {
     setUploading(true);
     setProgress({ current: 0, total: items.length });
     try {
-      const provider = createConfiguredCloudinaryMediaProvider();
-      for (let index = 0; index < items.length; index += 1) {
-        const item = items[index];
-        setProgress({ current: index + 1, total: items.length });
-        await uploadEventPost({
-          provider,
-          file: item.file,
-          kind: item.mediaType,
-          eventId: event.id,
-          authorId: user.id,
-          capturedAt: item.captureAt ? item.captureAt.toISOString() : null,
-          // Only setlist songs that exist in the catalogue can be linked.
-          songId: songFor(item)?.song_id ?? null,
-        });
-      }
+      // The background queue uploads, retries and creates the posts; progress
+      // shows in the upload pill, so the screen can close right away.
+      await enqueueMomentUploads(items.map(item => ({
+        file: item.file,
+        kind: item.mediaType,
+        eventId: event.id,
+        capturedAt: item.captureAt ? item.captureAt.toISOString() : null,
+        // Only setlist songs that exist in the catalogue can be linked.
+        songId: songFor(item)?.song_id ?? null,
+      })));
       itemsRef.current.forEach(item => URL.revokeObjectURL(item.previewUrl));
       setItems([]);
       navigate(`/event/${event.id}`, { replace: true });

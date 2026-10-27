@@ -6,7 +6,10 @@ export type MediaUploadErrorCode =
   | 'file_too_large'
   | 'upload_failed'
   | 'invalid_upload_response'
-  | 'aborted';
+  | 'aborted'
+  | 'upload_rejected'
+  | 'unsupported_media'
+  | 'quota_exceeded';
 
 export class MediaUploadError extends Error {
   readonly code: MediaUploadErrorCode;

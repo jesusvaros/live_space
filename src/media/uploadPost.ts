@@ -45,7 +45,8 @@ export const uploadEventPost = async (options: {
     eventId: options.eventId,
     purpose: 'user',
   });
-  const mediaAssetId = await waitForMediaAssetId(upload.reservationId);
+  // R2 creates the asset synchronously; Cloudinary through its webhook.
+  const mediaAssetId = upload.mediaAssetId ?? await waitForMediaAssetId(upload.reservationId);
   const { data, error } = await supabase
     .from('posts')
     .insert({
