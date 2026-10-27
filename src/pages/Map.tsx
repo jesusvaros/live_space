@@ -1,22 +1,18 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { MapContainer } from 'react-leaflet';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { MapContainer, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { supabase } from '../lib/supabase';
-import { Artist, Event, VenuePlace } from '../lib/types';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import AppShell from '../components/AppShell';
+import { useLocation } from 'react-router-dom';
+import { Page } from '../components/ui/AppPrimitives';
 import MapLibreLayer from '../components/MapLibreLayer';
 import MapResizeObserver from '../components/MapResizeObserver';
 import MapMarkers from '../components/map/MapMarkers';
 import MapFilterBar from '../components/map/MapFilterBar';
 import MapFilterModal from '../components/map/MapFilterModal';
 import MapSelectionSheet from '../components/map/MapSelectionSheet';
-import { useMapFilters } from '../hooks/useMapFilters';
+import { useMapFilters, type MapArtistFilter } from '../hooks/useMapFilters';
 import { useQuery } from '../shared/hooks/useQuery';
-import { fetchEventCards } from '../data/eventQueries';
-import { mapVenue } from '../data/canonicalMappers';
+import { fetchMapEvents, type MapEvent } from '../data/eventQueries';
 
 // Puerta del Sol: the pilot's agenda is Madrid and Barcelona.
 const defaultCenter: [number, number] = [40.4168, -3.7038];
@@ -24,6 +20,11 @@ const defaultZoom = 13;
 const nearbyZoom = 14;
 // v2: earlier builds saved a Seville default view that hid the pilot's concerts.
 const mapViewKey = 'live_space.map.view.v2';
+const EMPTY_EVENTS: MapEvent[] = [];
+
+// `.map-dark` (index.css) darkens the OSM tiles only, so pins keep the accent colour.
+const darkAttribution =
+  '[&_.leaflet-control-attribution]:!bg-black/50 [&_.leaflet-control-attribution]:!text-[10px] [&_.leaflet-control-attribution]:!text-white/55 [&_.leaflet-control-attribution_a]:!text-white/70';
 
 const readStoredView = () => {
   if (typeof window === 'undefined') return null;
@@ -41,206 +42,62 @@ const readStoredView = () => {
 };
 
 const persistView = (center: [number, number], zoom: number) => {
-  if (typeof window === 'undefined') return;
   try {
     window.localStorage.setItem(mapViewKey, JSON.stringify({ center, zoom }));
-  } catch (e) {
+  } catch {
     // ignore storage failures
   }
 };
 
-type EventWithVenue = Event & {
-  venue_place?: VenuePlace | null;
-  event_artists?: { artist: Artist | null }[];
-};
+type MapLocationState = { artistFilter?: MapArtistFilter };
 
-type MapLocationState = {
-  artistFilter?: { id: string; name: string; avatar_url: string | null };
+/** Persists the view and closes the sheet when the bare map is tapped. */
+const MapEventsBridge: React.FC<{ onMapClick: () => void }> = ({ onMapClick }) => {
+  const map = useMapEvents({
+    click: onMapClick,
+    moveend: () => {
+      const center = map.getCenter();
+      persistView([center.lat, center.lng], map.getZoom());
+    },
+  });
+  return null;
 };
 
 const Map: React.FC = () => {
-  const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
-  const [followedEventIds, setFollowedEventIds] = useState<Set<string>>(new Set());
-  const [attendanceStatusByEventId, setAttendanceStatusByEventId] = useState<Record<string, 'going' | 'attended'>>({});
-  const [followPendingEventIds, setFollowPendingEventIds] = useState<Set<string>>(new Set());
-  const [attendancePendingEventIds, setAttendancePendingEventIds] = useState<Set<string>>(new Set());
-  const [selectedArtists, setSelectedArtists] = useState<{ id: string; name: string; avatar_url: string | null }[]>([]);
-  const [focusArtistSearch, setFocusArtistSearch] = useState(false);
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const [visibleItems, setVisibleItems] = useState<{ type: 'event' | 'venue'; id: string }[]>([]);
-  const activeSelection = activeIndex !== null ? visibleItems[activeIndex] : null;
   // Leaflet owns the view after mount; React only seeds it once.
   const [initialView] = useState(() => readStoredView());
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  
-  // Monitor ref changes - this is the fix!
-  useEffect(() => {
-    const checkRef = () => {
-      if (mapRef.current && !mapInstance) {
-        console.log('[Map] mapRef.current is now available, setting mapInstance');
-        setMapInstance(mapRef.current);
-      }
-    };
-
-    // Check immediately
-    checkRef();
-    
-    // Check periodically
-    const interval = setInterval(checkRef, 100);
-    
-    // Stop checking after 5 seconds
-    setTimeout(() => clearInterval(interval), 5000);
-
-    return () => clearInterval(interval);
-  }, [mapInstance]);
-
+  const [activeVenueId, setActiveVenueId] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [initialArtistFilterApplied, setInitialArtistFilterApplied] = useState<string | null>(null);
+  const appliedArtistFilter = useRef<string | null>(null);
 
-  const eventsQuery = useQuery<EventWithVenue[]>(
-    ['map:events'],
-    async () => {
-      return fetchEventCards({}) as Promise<EventWithVenue[]>;
-    },
-    { ttlMs: 15_000, initialData: [] }
+  const [includePastQuery, setIncludePastQuery] = useState(false);
+  const eventsQuery = useQuery<MapEvent[]>(
+    ['map:events', includePastQuery ? 'all' : 'upcoming'],
+    () => fetchMapEvents({ includePast: includePastQuery }),
+    { ttlMs: 60_000, initialData: EMPTY_EVENTS }
   );
+  const events = eventsQuery.data ?? EMPTY_EVENTS;
 
-  const venuesQuery = useQuery<VenuePlace[]>(
-    ['map:venues'],
-    async () => {
-      const { data, error } = await supabase
-        .from('v_subject_venues')
-        .select('*');
-      if (error) throw error;
-      return (data || []).map(mapVenue);
-    },
-    { ttlMs: 30_000, initialData: [] }
-  );
+  const filters = useMapFilters(events);
+  const { venueGroups, filteredEvents, artists, city, addArtist, includePast } = filters;
 
-  const userEngagementQuery = useQuery<{ followedIds: string[]; attendanceByEventId: Record<string, 'going' | 'attended'> }>(
-    ['map:user_engagement', user?.id || 'anonymous'],
-    async () => {
-      if (!user?.id) return { followedIds: [], attendanceByEventId: {} };
-      const [savesRes, attendanceRes] = await Promise.all([
-        supabase
-          .from('event_saves')
-          .select('event_id')
-          .eq('profile_id', user.id),
-        supabase
-          .from('event_attendance')
-          .select('event_id,status')
-          .eq('profile_id', user.id),
-      ]);
+  useEffect(() => {
+    setIncludePastQuery(includePast);
+  }, [includePast]);
 
-      const followedIds = (savesRes.data || [])
-        .map((row: any) => row?.event_id)
-        .filter((value: unknown): value is string => typeof value === 'string');
-
-      const attendanceByEventId: Record<string, 'going' | 'attended'> = {};
-      (attendanceRes.data || []).forEach((row: any) => {
-        if (row?.event_id && (row?.status === 'going' || row?.status === 'attended')) {
-          attendanceByEventId[row.event_id] = row.status;
-        }
-      });
-
-      return { followedIds, attendanceByEventId };
-    },
-    { enabled: Boolean(user?.id), ttlMs: 10_000, initialData: { followedIds: [], attendanceByEventId: {} } }
-  );
-
-  const events = eventsQuery.data || [];
-  const venues = venuesQuery.data || [];
-
-  const {
-    search,
-    setSearch,
-    showEvents,
-    setShowEvents,
-    showVenues,
-    setShowVenues,
-    showUpcoming,
-    setShowUpcoming,
-    showPast,
-    setShowPast,
-    filterToday,
-    filterTomorrow,
-    toggleToday,
-    toggleTomorrow,
-    filterDate,
-    setFilterDate,
-    filterNow,
-    setFilterNow,
-    filterFree,
-    setFilterFree,
-    filterGenres,
-    setFilterGenres,
-    priceMin,
-    setPriceMin,
-    priceMax,
-    setPriceMax,
-    filterDayPart,
-    setFilterDayPart,
-    filterBandOnly,
-    setFilterBandOnly,
-    filterGoing,
-    setFilterGoing,
-    filterAttended,
-    setFilterAttended,
-    clearExtraFilters,
-    setSelectedArtistIds,
-    filteredEvents,
-    filteredVenues,
-  } = useMapFilters({
-    events,
-    venues,
-    userId: user?.id,
-  });
-
+  // Arriving from an artist page: filter the map to that artist.
   useEffect(() => {
     const artistFilter = (location.state as MapLocationState | null)?.artistFilter;
-    if (!artistFilter || initialArtistFilterApplied === artistFilter.id) return;
-
-    setSelectedArtists(current =>
-      current.some(artist => artist.id === artistFilter.id) ? current : [...current, artistFilter]
-    );
-    setSelectedArtistIds(current =>
-      current.includes(artistFilter.id) ? current : [...current, artistFilter.id]
-    );
-    setShowVenues(false);
-    setInitialArtistFilterApplied(artistFilter.id);
-  }, [initialArtistFilterApplied, location.state, setSelectedArtistIds, setShowVenues]);
+    if (!artistFilter || appliedArtistFilter.current === artistFilter.id) return;
+    appliedArtistFilter.current = artistFilter.id;
+    addArtist(artistFilter);
+  }, [location.state, addArtist]);
 
   useEffect(() => {
-    L.Icon.Default.mergeOptions({
-      iconRetinaUrl: new URL('leaflet/dist/images/marker-icon-2x.png', import.meta.url).toString(),
-      iconUrl: new URL('leaflet/dist/images/marker-icon.png', import.meta.url).toString(),
-      shadowUrl: new URL('leaflet/dist/images/marker-shadow.png', import.meta.url).toString(),
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!user?.id) {
-      // Keep the same objects when already empty: the query's initialData is a
-      // fresh literal every render, so replacing them here looped forever.
-      setFollowedEventIds(prev => (prev.size ? new Set() : prev));
-      setAttendanceStatusByEventId(prev => (Object.keys(prev).length ? {} : prev));
-      return;
-    }
-    if (followPendingEventIds.size > 0 || attendancePendingEventIds.size > 0) return;
-    const followedIds = userEngagementQuery.data?.followedIds || [];
-    const attendanceByEventId = userEngagementQuery.data?.attendanceByEventId || {};
-    setFollowedEventIds(new Set(followedIds));
-    setAttendanceStatusByEventId(attendanceByEventId);
-  }, [
-    attendancePendingEventIds.size,
-    followPendingEventIds.size,
-    user?.id,
-    userEngagementQuery.data?.attendanceByEventId,
-    userEngagementQuery.data?.followedIds,
-  ]);
+    mapInstance?.attributionControl?.setPrefix(false);
+  }, [mapInstance]);
 
   // First visit (no saved view): centre on the visitor if they allow it.
   useEffect(() => {
@@ -252,440 +109,90 @@ const Map: React.FC = () => {
     );
   }, [mapInstance, initialView]);
 
+  // A new artist or city filter frames its venues.
+  const fitKey = `${artists.map(artist => artist.id).join(',')}|${city ?? ''}`;
+  const lastFitKey = useRef('|');
   useEffect(() => {
-    if (!mapInstance) return;
-    mapInstance.invalidateSize();
-    const handleMove = () => {
-      const mapCenter = mapInstance.getCenter();
-      persistView([mapCenter.lat, mapCenter.lng], mapInstance.getZoom());
-    };
-    mapInstance.on('moveend', handleMove);
-    return () => {
-      mapInstance.off('moveend', handleMove);
-    };
-  }, [mapInstance]);
+    if (!mapInstance || fitKey === lastFitKey.current || venueGroups.length === 0) return;
+    lastFitKey.current = fitKey;
+    const bounds = L.latLngBounds(venueGroups.map(group => [group.latitude, group.longitude] as [number, number]));
+    mapInstance.fitBounds(bounds, { padding: [56, 56], maxZoom: 15 });
+  }, [mapInstance, fitKey, venueGroups]);
 
-  useEffect(() => {
-    if (!mapInstance) return;
-    const timer = window.setTimeout(() => {
-      mapInstance.invalidateSize();
-    }, 150);
-    return () => window.clearTimeout(timer);
-  }, [mapInstance, location.key]);
-
-  // Center map when activeSelection changes
-  useEffect(() => {
-    if (activeSelection && mapInstance) {
-      const coords = getItemLatLng(activeSelection);
-      if (coords) {
-        // Calculate offset to place marker above modal
-        const mapHeight = mapInstance.getSize().y;
-        const offsetPercentage = -0.15; // Move marker 25% up from center
-        const offsetY = mapHeight * offsetPercentage;
-        
-        // Get the current zoom and calculate the pixel offset
-        const zoom = mapInstance.getZoom();
-        const point = mapInstance.latLngToContainerPoint(coords);
-        const offsetPoint = L.point(point.x, point.y - offsetY);
-        const centerCoords = mapInstance.containerPointToLatLng(offsetPoint);
-        
-        mapInstance.setView(centerCoords, zoom, { animate: true });
-      }
-    }
-  }, [activeSelection, mapInstance]);
-
-  const getItemLatLng = (item: { type: 'event' | 'venue'; id: string }): [number, number] | null => {
-    if (item.type === 'event') {
-      const ev = filteredEvents.find(e => e.id === item.id);
-      if (!ev) return null;
-      const lat = Number(ev.latitude ?? ev.venue_place?.latitude ?? null);
-      const lng = Number(ev.longitude ?? ev.venue_place?.longitude ?? null);
-      if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
-      return [lat, lng];
-    } else {
-      const venue = filteredVenues.find(v => v.id === item.id);
-      if (!venue) return null;
-      const lat = Number(venue.latitude ?? null);
-      const lng = Number(venue.longitude ?? null);
-      if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
-      return [lat, lng];
-    }
-  };
-
-  const handleSelect = (item: { type: 'event' | 'venue'; id: string }) => {
-    const coords = getItemLatLng(item);
-    if (!coords) return;
-
-    const visibleList: { type: 'event' | 'venue'; id: string }[] = [];
-    if (showEvents) {
-      filteredEvents.forEach(ev => {
-        const ll = getItemLatLng({ type: 'event', id: ev.id });
-        if (ll) visibleList.push({ type: 'event', id: ev.id });
-      });
-    }
-    if (showVenues) {
-      filteredVenues.forEach(v => {
-        const ll = getItemLatLng({ type: 'venue', id: v.id });
-        if (ll) visibleList.push({ type: 'venue', id: v.id });
-      });
-    }
-
-    // Ensure clicked item is present
-    const existingIdx = visibleList.findIndex(i => i.type === item.type && i.id === item.id);
-    const nextList =
-      existingIdx === -1 ? [...visibleList, item] : visibleList;
-    const nextIndex =
-      existingIdx === -1 ? nextList.length - 1 : existingIdx;
-
-    setVisibleItems(nextList);
-    setActiveIndex(nextIndex);
-  };
-
-  const goNext = (direction: 1 | -1) => {
-    if (activeIndex === null || visibleItems.length === 0) return;
-    let next = activeIndex + direction;
-    if (next < 0) next = visibleItems.length - 1;
-    if (next >= visibleItems.length) next = 0;
-    setActiveIndex(next);
-  };
-
-  const [touchStartX, setTouchStartX] = useState<number | null>(null);
-  const [touchStartY, setTouchStartY] = useState<number | null>(null);
-
-  const clearArtistFilters = () => {
-    setSelectedArtists([]);
-    setSelectedArtistIds([]);
-    setShowVenues(true);
-  };
-
-  const handleFollowEvent = useCallback(
-    async (eventId: string) => {
-      if (!user?.id) {
-        navigate('/welcome');
-        return;
-      }
-      if (followPendingEventIds.has(eventId)) return;
-
-      const wasFollowed = followedEventIds.has(eventId);
-
-      setFollowPendingEventIds(prev => {
-        const next = new Set(prev);
-        next.add(eventId);
-        return next;
-      });
-      setFollowedEventIds(prev => {
-        const next = new Set(prev);
-        if (wasFollowed) next.delete(eventId);
-        else next.add(eventId);
-        return next;
-      });
-
-      try {
-        if (wasFollowed) {
-          const { error } = await supabase
-            .from('event_saves')
-            .delete()
-            .eq('event_id', eventId)
-            .eq('profile_id', user.id);
-          if (error) throw error;
-        } else {
-          const { error } = await supabase
-            .from('event_saves')
-            .insert({
-              event_id: eventId,
-              profile_id: user.id,
-            });
-          if (error) throw error;
-        }
-      } catch (error) {
-        setFollowedEventIds(prev => {
-          const next = new Set(prev);
-          if (wasFollowed) next.add(eventId);
-          else next.delete(eventId);
-          return next;
-        });
-      } finally {
-        setFollowPendingEventIds(prev => {
-          const next = new Set(prev);
-          next.delete(eventId);
-          return next;
-        });
-      }
-    },
-    [followPendingEventIds, followedEventIds, navigate, user?.id]
+  const activeGroup = useMemo(
+    () => venueGroups.find(group => group.id === activeVenueId) ?? null,
+    [venueGroups, activeVenueId]
   );
 
-  const handleAttendanceEvent = useCallback(
-    async (eventId: string, nextStatus: 'going' | 'attended') => {
-      if (!user?.id) {
-        navigate('/welcome');
-        return;
-      }
-      if (attendancePendingEventIds.has(eventId)) return;
+  // Keep the selected pin visible above the sheet.
+  useEffect(() => {
+    if (!mapInstance || !activeGroup) return;
+    const size = mapInstance.getSize();
+    const point = mapInstance.latLngToContainerPoint([activeGroup.latitude, activeGroup.longitude]);
+    mapInstance.panBy([point.x - size.x / 2, point.y - size.y * 0.24], { animate: true });
+  }, [mapInstance, activeGroup?.id]);
 
-      const current = attendanceStatusByEventId[eventId] || null;
-      const shouldClear = current === nextStatus;
-
-      setAttendancePendingEventIds(prev => {
-        const next = new Set(prev);
-        next.add(eventId);
-        return next;
-      });
-      setAttendanceStatusByEventId(prev => {
-        const next = { ...prev };
-        if (shouldClear) delete next[eventId];
-        else next[eventId] = nextStatus;
-        return next;
-      });
-
-      try {
-        if (shouldClear) {
-          const { error } = await supabase
-            .from('event_attendance')
-            .delete()
-            .eq('event_id', eventId)
-            .eq('profile_id', user.id);
-          if (error) throw error;
-        } else {
-          const { error } = await supabase
-            .from('event_attendance')
-            .upsert(
-              {
-                event_id: eventId,
-                profile_id: user.id,
-                status: nextStatus,
-              },
-              { onConflict: 'event_id,profile_id' }
-            );
-          if (error) throw error;
-        }
-      } catch (error) {
-        setAttendanceStatusByEventId(prev => {
-          const next = { ...prev };
-          if (current) next[eventId] = current;
-          else delete next[eventId];
-          return next;
-        });
-      } finally {
-        setAttendancePendingEventIds(prev => {
-          const next = new Set(prev);
-          next.delete(eventId);
-          return next;
-        });
-      }
-    },
-    [attendancePendingEventIds, attendanceStatusByEventId, navigate, user?.id]
-  );
+  const handleSelectVenue = useCallback((venueId: string) => setActiveVenueId(venueId), []);
+  const closeSheet = useCallback(() => setActiveVenueId(null), []);
 
   return (
-    <AppShell>
-      <div className="relative flex min-h-full flex-col p-0">
-        <div className="pointer-events-auto absolute left-4 right-4 top-4 z-[1000]">
-          <div className="flex flex-col gap-2 rounded-2xl bg-black/85 p-3">
-            <input
-              type="search"
-              placeholder="Busca conciertos"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-full rounded-xl bg-white/15 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
-            />
-            <MapFilterBar
-              showUpcoming={showUpcoming}
-              showPast={showPast}
-              filterToday={filterToday}
-              filterTomorrow={filterTomorrow}
-              filterDate={filterDate}
-              filterNow={filterNow}
-              filterFree={filterFree}
-              showEvents={showEvents}
-              showVenues={showVenues}
-              onToggleUpcoming={() => setShowUpcoming((prev: boolean) => !prev)}
-              onTogglePast={() => setShowPast((prev: boolean) => !prev)}
-              onToggleToday={toggleToday}
-              onToggleTomorrow={toggleTomorrow}
-              onDateChange={value => {
-                setFilterDate(value);
-                if (value) {
-                  setFilterNow(false);
-                }
-              }}
-              onToggleNow={() => setFilterNow((prev: boolean) => !prev)}
-              onToggleFree={() => setFilterFree((prev: boolean) => !prev)}
-              onToggleEvents={() => setShowEvents((prev: boolean) => !prev)}
-              onToggleVenues={() => setShowVenues((prev: boolean) => !prev)}
-              onOpenArtistSearch={() => {
-                setFocusArtistSearch(true);
-                setShowFilters(true);
-              }}
-              onOpenFilters={() => setShowFilters(true)}
-            />
-            {selectedArtists.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-xs text-white">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/60">Artista</span>
-                {selectedArtists.map(artist => (
-                  <div
-                    key={artist.id}
-                    className="flex items-center gap-1 rounded-lg bg-white/15 px-2 py-1 text-xs font-medium text-white"
-                  >
-                    {artist.avatar_url && (
-                      <img
-                        src={artist.avatar_url}
-                        alt={artist.name}
-                        className="h-4 w-4 rounded-full object-cover"
-                      />
-                    )}
-                    <span>{artist.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedArtists(prev => prev.filter(a => a.id !== artist.id));
-                        setSelectedArtistIds(prev => {
-                          const next = prev.filter(item => item !== artist.id);
-                          if (next.length === 0) {
-                            setShowVenues(true);
-                          }
-                          return next;
-                        });
-                      }}
-                      className="ml-auto text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70 transition hover:text-white"
-                    >
-                      Clear
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={clearArtistFilters}
-                  className="bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white"
-                >
-                  Clear artist filter
-                </button>
-              </div>
-            )}
-          </div>
+    <Page className="bg-app-bg">
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        <MapContainer
+          center={initialView?.center ?? defaultCenter}
+          zoom={initialView?.zoom ?? defaultZoom}
+          className={`map-dark h-full w-full ${darkAttribution}`}
+          zoomControl={false}
+          ref={setMapInstance}
+        >
+          <MapLibreLayer />
+          <MapResizeObserver />
+          <MapEventsBridge onMapClick={closeSheet} />
+          <MapMarkers groups={venueGroups} activeVenueId={activeVenueId} onSelectVenue={handleSelectVenue} />
+        </MapContainer>
+
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[1000] pt-[calc(12px+env(safe-area-inset-top,0px))] [&>*]:pointer-events-auto">
+          <MapFilterBar
+            search={filters.search}
+            onSearchChange={filters.setSearch}
+            when={filters.when}
+            onWhenChange={filters.setWhen}
+            city={city}
+            cities={filters.cities}
+            onCityChange={filters.setCity}
+            artists={artists}
+            onRemoveArtist={filters.removeArtist}
+            onClearArtists={filters.clearArtists}
+            activeFilterCount={filters.activeFilterCount}
+            onOpenFilters={() => setShowFilters(true)}
+          />
+          {!eventsQuery.loading && venueGroups.length === 0 && events.length > 0 ? (
+            <p className="mx-auto mt-3 w-fit rounded-full border border-app-line bg-app-surface/90 px-4 py-2 text-sm text-app-ink/70 backdrop-blur-md">
+              Ningún concierto con estos filtros
+            </p>
+          ) : null}
         </div>
-        <div className="relative">
-          <MapContainer
-            center={initialView?.center ?? defaultCenter}
-            zoom={initialView?.zoom ?? defaultZoom}
-            style={{ height: 'calc(100vh - 60px)', width: '100%' }}
-            className="rounded-none [&_.leaflet-container]:rounded-none [&_.leaflet-pane]:z-0 [&_.leaflet-marker-pane]:z-[500] [&_.leaflet-overlay-pane]:z-[400] [&_.leaflet-popup-pane]:z-[600]"
-            zoomControl={false}
-            ref={mapRef}
-            whenReady={() => {
-              console.log('[Map] MapContainer whenReady triggered');
-            }}
-            preferCanvas={false}
-          >
-            <MapLibreLayer />
-            <MapResizeObserver />
-            <MapMarkers
-              events={showEvents ? filteredEvents : []}
-              venues={filteredVenues}
-              showVenues={showVenues}
-              onSelectEvent={eventId => handleSelect({ type: 'event', id: eventId })}
-              onSelectVenue={venueId => handleSelect({ type: 'venue', id: venueId })}
-              activeSelection={activeIndex !== null ? visibleItems[activeIndex] : null}
-            />
-          </MapContainer>
-        </div>
+
+        <MapSelectionSheet group={activeGroup} onClose={closeSheet} />
       </div>
-
-      <MapSelectionSheet
-        activeItem={activeSelection}
-        events={filteredEvents}
-        venues={filteredVenues}
-        onFollowEvent={(eventId) => {
-          void handleFollowEvent(eventId);
-        }}
-        onSetAttendance={(eventId, status) => {
-          void handleAttendanceEvent(eventId, status);
-        }}
-        followedEventIds={followedEventIds}
-        attendanceStatusByEventId={attendanceStatusByEventId}
-        followPendingEventIds={followPendingEventIds}
-        attendancePendingEventIds={attendancePendingEventIds}
-        onTouchStart={(e) => {
-          setTouchStartX(e.touches[0].clientX);
-          setTouchStartY(e.touches[0].clientY);
-        }}
-        onTouchEnd={(e) => {
-          if (touchStartX === null || touchStartY === null) return;
-
-          const dx = e.changedTouches[0].clientX - touchStartX;
-          const dy = e.changedTouches[0].clientY - touchStartY;
-
-          // Check for swipe down (vertical swipe)
-          if (dy > 100 && Math.abs(dx) < 50) {
-            setActiveIndex(null); // Close modal on swipe down
-          }
-          // Check for horizontal swipe (navigation)
-          else if (Math.abs(dx) > 50 && Math.abs(dy) < 50) {
-            goNext(dx < 0 ? 1 : -1);
-          }
-
-          setTouchStartX(null);
-          setTouchStartY(null);
-        }}
-      />
 
       <MapFilterModal
         isOpen={showFilters}
-        onDismiss={() => {
-          setShowFilters(false);
-          setFocusArtistSearch(false);
-        }}
-        filterGenres={filterGenres}
-        onGenresChange={setFilterGenres}
-        priceMin={priceMin}
-        onPriceMinChange={setPriceMin}
-        priceMax={priceMax}
-        onPriceMaxChange={setPriceMax}
-        filterDayPart={filterDayPart || ''}
-        onDayPartChange={setFilterDayPart}
-        filterBandOnly={filterBandOnly}
-        onToggleBand={setFilterBandOnly}
-        filterGoing={filterGoing}
-        onToggleGoing={setFilterGoing}
-        filterAttended={filterAttended}
-        onToggleAttended={setFilterAttended}
-        disableAttendance={false}
-        autoFocusArtist={focusArtistSearch}
-        selectedArtists={selectedArtists}
-        onAddArtist={artist => {
-          setSelectedArtists(prev => [...prev, artist]);
-          setSelectedArtistIds(prev => [...prev, artist.id]);
-          setShowVenues(false);
-        }}
-        onRemoveArtist={id => {
-          setSelectedArtists(prev => prev.filter(a => a.id !== id));
-          setSelectedArtistIds(prev => {
-            const next = prev.filter(item => item !== id);
-            if (next.length === 0) {
-              setShowVenues(true);
-            }
-            return next;
-          });
-        }}
-        filterDate={filterDate}
-        onDateChange={setFilterDate}
-        showVenues={showVenues}
-        onToggleVenues={setShowVenues}
-        onClear={() => {
-          clearExtraFilters();
-          setFilterDate('');
-          setFilterNow(false);
-          setFilterFree(false);
-          setFilterGenres('');
-          setPriceMin('');
-          setPriceMax('');
-          setFilterDayPart('');
-          setFilterBandOnly(false);
-          setFilterGoing(false);
-          setFilterAttended(false);
-        }}
+        onDismiss={() => setShowFilters(false)}
+        when={filters.when}
+        onWhenChange={filters.setWhen}
+        city={city}
+        cities={filters.cities}
+        onCityChange={filters.setCity}
+        artists={artists}
+        onAddArtist={addArtist}
+        onRemoveArtist={filters.removeArtist}
+        includePast={includePast}
+        onIncludePastChange={filters.setIncludePast}
+        resultCount={filteredEvents.length}
+        onClear={filters.clearFilters}
       />
-    </AppShell>
+    </Page>
   );
 };
 

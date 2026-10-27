@@ -99,7 +99,7 @@ const CreateEventPage: React.FC = () => {
     <Page>
       <Content fullscreen scrollY={false}>
         <div className="relative h-full overflow-hidden bg-app-bg">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(circle_at_10%_8%,rgba(255,107,74,0.24),transparent_56%)]" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(circle_at_10%_8%,rgba(255,91,46,0.24),transparent_56%)]" />
           <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_88%_10%,rgba(122,167,255,0.16),transparent_62%)]" />
           <div className="relative z-10 mx-auto h-full w-full max-w-3xl px-0 sm:px-4 sm:py-4">
             <div className="h-full sm:overflow-hidden sm:rounded-3xl sm:border sm:border-white/10 sm:bg-black/20 sm:backdrop-blur-xl">

@@ -1,210 +1,114 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Event, VenuePlace } from '../../lib/types';
-import { useNavigate } from 'react-router-dom';
-import { IconBookmark, IconTicket } from '../icons';
-
-type SelectionItem = { type: 'event' | 'venue'; id: string };
+import React, { useRef } from 'react';
+import { Link } from 'react-router-dom';
+import type { MapVenueGroup } from '../../hooks/useMapFilters';
+import type { MapEvent } from '../../data/eventQueries';
+import GeneratedPoster from '../ui/GeneratedPoster';
 
 type MapSelectionSheetProps = {
-  activeItem: SelectionItem | null;
-  events: (Event & { venue_place?: VenuePlace | null; event_artists?: { artist?: { name?: string | null } | null }[] })[];
-  venues: VenuePlace[];
-  onTouchStart: (e: React.TouchEvent) => void;
-  onTouchEnd: (e: React.TouchEvent) => void;
-  onFollowEvent?: (eventId: string) => void;
-  onSetAttendance?: (eventId: string, status: 'going' | 'attended') => void;
-  followedEventIds?: Set<string>;
-  attendanceStatusByEventId?: Record<string, 'going' | 'attended'>;
-  followPendingEventIds?: Set<string>;
-  attendancePendingEventIds?: Set<string>;
+  group: MapVenueGroup | null;
+  onClose: () => void;
 };
 
-const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({
-  activeItem,
-  events,
-  venues,
-  onTouchStart,
-  onTouchEnd,
-  onFollowEvent,
-  onSetAttendance,
-  followedEventIds,
-  attendanceStatusByEventId,
-  followPendingEventIds,
-  attendancePendingEventIds,
-}) => {
-  const navigate = useNavigate();
-  const [followAnimating, setFollowAnimating] = useState(false);
-  const [attendanceAnimating, setAttendanceAnimating] = useState(false);
-  const followTimerRef = useRef<number | null>(null);
-  const attendanceTimerRef = useRef<number | null>(null);
+const weekday = new Intl.DateTimeFormat('es-ES', { weekday: 'short' });
+const dayMonth = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short' });
+const time = new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' });
 
-  useEffect(() => {
-    return () => {
-      if (followTimerRef.current) window.clearTimeout(followTimerRef.current);
-      if (attendanceTimerRef.current) window.clearTimeout(attendanceTimerRef.current);
-    };
-  }, []);
+const formatDate = (iso: string) => {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const clean = (value: string) => value.replace('.', '');
+  return `${clean(weekday.format(date))} ${clean(dayMonth.format(date))} · ${time.format(date)}`.toUpperCase();
+};
 
-  const triggerActionFx = (action: 'follow' | 'attendance') => {
-    if (action === 'follow') {
-      setFollowAnimating(false);
-      if (followTimerRef.current) window.clearTimeout(followTimerRef.current);
-      window.requestAnimationFrame(() => {
-        setFollowAnimating(true);
-        followTimerRef.current = window.setTimeout(() => setFollowAnimating(false), 420);
-      });
-      return;
-    }
+const Poster: React.FC<{ event: MapEvent }> = ({ event }) => {
+  const image = event.cover_image_url ?? event.artist?.avatar_url ?? null;
+  if (image) {
+    return <img src={image} alt="" loading="lazy" className="h-[72px] w-14 shrink-0 rounded-lg object-cover" />;
+  }
+  return (
+    <span className="relative h-[72px] w-14 shrink-0 overflow-hidden rounded-lg">
+      <GeneratedPoster title={event.artist?.name || event.name} variant="thumb" />
+    </span>
+  );
+};
 
-    setAttendanceAnimating(false);
-    if (attendanceTimerRef.current) window.clearTimeout(attendanceTimerRef.current);
-    window.requestAnimationFrame(() => {
-      setAttendanceAnimating(true);
-      attendanceTimerRef.current = window.setTimeout(() => setAttendanceAnimating(false), 420);
-    });
-  };
+const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({ group, onClose }) => {
+  const touchStartY = useRef<number | null>(null);
+  if (!group) return null;
 
-  const baseSheetChipClass = 'relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-full border px-3 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-white/90 backdrop-blur-md transition-all duration-200 hover:border-white/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none';
-  const neutralSheetChipClass = 'border-white/25 bg-[linear-gradient(145deg,rgba(3,6,12,0.78),rgba(9,15,26,0.86))]';
-  const followActiveSheetChipClass = 'border-[#ff6b4a]/80 bg-[linear-gradient(140deg,rgba(255,107,74,0.3),rgba(255,107,74,0.16)_65%,rgba(13,18,30,0.88))] text-white shadow-[0_0_0_1px_rgba(255,107,74,0.24),0_10px_22px_rgba(0,0,0,0.28)]';
-  const attendanceActiveSheetChipClass = 'border-[#25d47b]/80 bg-[linear-gradient(140deg,rgba(37,212,123,0.28),rgba(37,212,123,0.14)_65%,rgba(13,18,30,0.88))] text-white shadow-[0_0_0_1px_rgba(37,212,123,0.24),0_10px_22px_rgba(0,0,0,0.28)]';
-  const attendancePastActiveSheetChipClass = 'border-[#f3bf4a]/80 bg-[linear-gradient(140deg,rgba(243,191,74,0.26),rgba(243,191,74,0.13)_65%,rgba(13,18,30,0.88))] text-white shadow-[0_0_0_1px_rgba(243,191,74,0.25),0_10px_22px_rgba(0,0,0,0.28)]';
-
-  if (!activeItem) return null;
-
-  const renderDetails = () => {
-    if (activeItem.type === 'event') {
-      const ev = events.find(e => e.id === activeItem.id);
-      if (!ev) return null;
-      const artists = (ev.event_artists || []).map(a => a.artist?.name).filter(Boolean).join(', ');
-      const start = new Date(ev.starts_at);
-      const end = ev.ends_at ? new Date(ev.ends_at) : new Date(start.getTime() + 6 * 60 * 60 * 1000);
-      const isPastEvent = Date.now() > end.getTime();
-      const attendanceLabel = isPastEvent ? 'Fui' : 'Voy';
-      const attendanceStatus: 'going' | 'attended' = isPastEvent ? 'attended' : 'going';
-      const isFollowed = followedEventIds?.has(ev.id) ?? false;
-      const currentAttendance = attendanceStatusByEventId?.[ev.id] || null;
-      const isAttendanceActive = currentAttendance === attendanceStatus;
-      const followLoading = followPendingEventIds?.has(ev.id) ?? false;
-      const attendanceLoading = attendancePendingEventIds?.has(ev.id) ?? false;
-      return (
-        <div className="flex gap-4">
-          <div className="relative flex-shrink-0">
-            {ev.cover_image_url ? (
-              <img
-                src={ev.cover_image_url}
-                alt={ev.name}
-                className="h-80 w-48 rounded-xl object-cover"
-              />
-            ) : (
-              <div className="h-80 w-48 rounded-xl bg-white/10" />
-            )}
-          </div>
-
-          <div className="flex min-w-0 flex-1 flex-col">
-            <div 
-              className="flex min-w-0 flex-1 flex-col justify-center cursor-pointer transition-opacity hover:opacity-80"
-              onClick={() => navigate(`/event/${ev.id}`)}
-            >
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Evento</p>
-              <h3 className="mt-2 font-display text-2xl font-bold text-white leading-tight">{ev.name}</h3>
-              {ev.venue_place?.name && (
-                <p className="mt-1 text-sm font-medium text-white/80">{ev.venue_place.name}</p>
-              )}
-              <p className="mt-1 text-sm text-white/70">{ev.venue_place?.city || ev.city}</p>
-              {artists && <p className="mt-2 text-sm text-white/55">{artists}</p>}
-              <p className="mt-3 text-sm text-white/55">
-                {new Date(ev.starts_at).toLocaleString('es-ES', {
-                  weekday: 'short',
-                  month: 'short',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </p>
-            </div>
-            <div className="mt-4 flex flex-col gap-2">
-              <button
-                type="button"
-                className={`${baseSheetChipClass} ${isFollowed ? followActiveSheetChipClass : neutralSheetChipClass} ${
-                  followAnimating ? 'scale-[1.02]' : ''
-                }`}
-                aria-label="Seguir evento"
-                disabled={followLoading}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  triggerActionFx('follow');
-                  onFollowEvent?.(ev.id);
-                }}
-              >
-                <span
-                  className={`pointer-events-none absolute inset-0 rounded-full border border-current ${
-                    followAnimating ? 'animate-ping opacity-40 motion-reduce:animate-none' : 'opacity-0'
-                  }`}
-                />
-                <span className={`inline-flex items-center justify-center ${followAnimating ? 'animate-pulse motion-reduce:animate-none' : ''}`}>
-                  <IconBookmark className="h-[19px] w-[19px]" />
-                </span>
-                <span>Seguir</span>
-              </button>
-              <button
-                type="button"
-                className={`${baseSheetChipClass} ${
-                  isAttendanceActive
-                    ? isPastEvent
-                      ? attendancePastActiveSheetChipClass
-                      : attendanceActiveSheetChipClass
-                    : neutralSheetChipClass
-                } ${attendanceAnimating ? 'scale-[1.02]' : ''}`}
-                aria-label={attendanceLabel}
-                disabled={attendanceLoading}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  triggerActionFx('attendance');
-                  onSetAttendance?.(ev.id, attendanceStatus);
-                }}
-              >
-                <span
-                  className={`pointer-events-none absolute inset-0 rounded-full border border-current ${
-                    attendanceAnimating ? 'animate-ping opacity-40 motion-reduce:animate-none' : 'opacity-0'
-                  }`}
-                />
-                <span className={`inline-flex items-center justify-center ${attendanceAnimating ? 'animate-pulse motion-reduce:animate-none' : ''}`}>
-                  <IconTicket className="h-[19px] w-[19px]" />
-                </span>
-                <span>{attendanceLabel}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      );
-    }
-    const venue = venues.find(v => v.id === activeItem.id);
-    if (!venue) return null;
-    return (
-      <div 
-        className="cursor-pointer transition-opacity hover:opacity-80"
-        onClick={() => navigate(`/venue/${venue.id}`)}
-      >
-        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Sala</p>
-        <h3 className="mt-2 font-display text-xl font-bold text-white">{venue.name}</h3>
-        <p className="text-sm text-white/70">{venue.city}</p>
-        <p className="mt-2 text-xs font-medium text-white/40">Toca para ver la sala</p>
-      </div>
-    );
-  };
+  const count = group.events.length;
 
   return (
-    <div
-      className="fixed inset-x-0 bottom-0 z-[1100] max-h-[60vh] rounded-t-3xl bg-black/92 p-4"
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
+    <section
+      role="dialog"
+      aria-label={group.name}
+      className="absolute inset-x-0 bottom-0 z-[1100] flex max-h-[62%] flex-col rounded-t-3xl border-t border-app-line bg-app-surface text-app-ink shadow-[0_-12px_40px_rgba(0,0,0,0.55)]"
+      onKeyDown={event => {
+        if (event.key === 'Escape') onClose();
+      }}
     >
-      <div className="mb-3 flex items-center justify-center">
-        <div className="h-1 w-12 rounded-full bg-white/20" />
+      <div
+        className="shrink-0 px-5 pb-3 pt-2"
+        onTouchStart={event => {
+          touchStartY.current = event.touches[0].clientY;
+        }}
+        onTouchEnd={event => {
+          const start = touchStartY.current;
+          touchStartY.current = null;
+          if (start !== null && event.changedTouches[0].clientY - start > 60) onClose();
+        }}
+      >
+        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20" aria-hidden="true" />
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate font-display text-xl font-bold leading-tight">{group.name}</h2>
+            <p className="mt-0.5 text-sm text-app-ink/55">
+              {group.city ? `${group.city} · ` : ''}
+              {count} {count === 1 ? 'concierto' : 'conciertos'}
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label="Cerrar"
+            onClick={onClose}
+            className="-mr-2 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg text-app-ink/60 hover:bg-white/5 hover:text-app-ink"
+          >
+            ✕
+          </button>
+        </div>
+        <Link
+          to={`/tabs/venue/${group.id}`}
+          className="mt-3 inline-flex h-11 items-center rounded-full border border-app-line px-4 text-sm font-semibold text-app-ink hover:border-app-accent/60"
+        >
+          Ver sala →
+        </Link>
       </div>
-      {renderDetails()}
-    </div>
+
+      <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-app-line px-3 pb-4">
+        {group.events.map(event => (
+          <li key={event.id}>
+            <Link
+              to={`/event/${event.id}`}
+              className="flex min-h-11 items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-white/5"
+            >
+              <Poster event={event} />
+              <span className="min-w-0 flex-1">
+                <span className="block font-mono text-[12px] font-semibold tracking-wide text-app-accent">
+                  {formatDate(event.starts_at)}
+                </span>
+                <span className="mt-1 block truncate text-[16px] font-bold leading-snug">
+                  {event.artist?.name || event.name}
+                </span>
+                <span className="block truncate text-[13px] text-app-ink/55">
+                  {event.artist && event.artist.name !== event.name ? event.name : group.name}
+                </span>
+              </span>
+              <span aria-hidden="true" className="text-app-ink/30">›</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 };
 

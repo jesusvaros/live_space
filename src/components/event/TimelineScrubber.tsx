@@ -178,7 +178,7 @@ const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
           );
         })}
         <div
-          className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-app-accent bg-app-accent/20 shadow-[0_0_0_4px_rgba(255,107,74,0.1)]"
+          className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-app-accent bg-app-accent/20 shadow-[0_0_0_4px_rgba(255,91,46,0.1)]"
           style={{ left: `${selectedRatio * 100}%` }}
         />
       </div>

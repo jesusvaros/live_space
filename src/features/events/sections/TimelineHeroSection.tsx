@@ -46,7 +46,7 @@ const TimelineHeroSection: React.FC<TimelineHeroSectionProps> = ({ state, featur
     return () => window.clearInterval(timer);
   }, [slides, state.kind]);
 
-  const heroShellClass = 'relative h-[64vh] min-h-[420px] w-full overflow-hidden bg-black';
+  const heroShellClass = 'relative h-[52vh] min-h-[380px] w-full overflow-hidden bg-black';
   const basePrimaryCtaClass =
     'inline-flex items-center justify-center rounded-full border border-app-accent/35 bg-app-accent px-5 py-2.5 text-sm font-semibold text-white transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] motion-reduce:transition-none';
   const baseGhostCtaClass =
@@ -56,7 +56,7 @@ const TimelineHeroSection: React.FC<TimelineHeroSectionProps> = ({ state, featur
     if (state.kind === 'loading') {
       return (
         <div className={heroShellClass}>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(255,107,74,0.22),transparent_48%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(255,91,46,0.22),transparent_48%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_86%_12%,rgba(122,167,255,0.16),transparent_52%)]" />
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/72 to-transparent p-5 sm:p-6">
             <div className="h-8 w-3/4 animate-pulse rounded bg-white/10" />
@@ -133,7 +133,7 @@ const TimelineHeroSection: React.FC<TimelineHeroSectionProps> = ({ state, featur
       const date = formatShortDate(state.event.starts_at);
       return (
         <div className={heroShellClass}>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_8%,rgba(255,107,74,0.2),transparent_48%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_8%,rgba(255,91,46,0.2),transparent_48%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_14%,rgba(122,167,255,0.16),transparent_54%)]" />
           {image ? (
             <img
@@ -174,7 +174,7 @@ const TimelineHeroSection: React.FC<TimelineHeroSectionProps> = ({ state, featur
     const date = formatShortDate(state.event.starts_at);
     return (
       <div className={heroShellClass}>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_8%,rgba(255,107,74,0.2),transparent_48%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_8%,rgba(255,91,46,0.2),transparent_48%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_14%,rgba(122,167,255,0.16),transparent_54%)]" />
         {image ? (
           <img

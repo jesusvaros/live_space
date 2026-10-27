@@ -1,3 +1,4 @@
+import { useAuth } from '../../../contexts/AuthContext';
 import { useMemo } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { cached } from '../../../lib/requestCache';
@@ -7,6 +8,7 @@ import { useQuery } from '../../../shared/hooks/useQuery';
 type TrendingMeta = Record<string, { saves: number; going: number; attended: number; moments: number }>;
 
 export const useTrendingEvents = (events: EventListItem[], startOfToday: Date) => {
+  const { user } = useAuth();
   const eventsKey = useMemo(
     () => events.map(event => `${event.id}:${event.starts_at}`).sort().join('|'),
     [events]
@@ -76,7 +78,8 @@ export const useTrendingEvents = (events: EventListItem[], startOfToday: Date) =
       return { trending, meta };
     },
     {
-      enabled: events.length > 0,
+      // Saves and attendance are only readable with a session.
+      enabled: events.length > 0 && Boolean(user),
       ttlMs: 10_000,
       initialData: { trending: [], meta: {} },
     }

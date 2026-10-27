@@ -44,6 +44,10 @@ const DiscoverScreen: React.FC = () => {
   }, []);
 
   const onToggleFollow = async (subjectId: string) => {
+    if (!canFollow) {
+      navigate('/welcome');
+      return;
+    }
     const result = await toggleFollowSubject(subjectId);
     if (!result.ok && result.reason === 'network') {
       presentToast({
@@ -61,11 +65,11 @@ const DiscoverScreen: React.FC = () => {
 
   return (
     <div className="relative min-h-full">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-[radial-gradient(circle_at_14%_2%,rgba(255,107,74,0.2),transparent_58%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-[radial-gradient(circle_at_14%_2%,rgba(255,91,46,0.2),transparent_58%)]" />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-[radial-gradient(circle_at_88%_7%,rgba(122,167,255,0.14),transparent_62%)]" />
 
       <div className="relative z-10 flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
-        <header className="rounded-2xl border border-white/10 bg-[linear-gradient(140deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02)_55%,rgba(255,107,74,0.08))] p-4">
+        <header className="rounded-2xl border border-white/10 bg-[linear-gradient(140deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02)_55%,rgba(255,91,46,0.08))] p-4">
           <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/65">Descubre</p>
           <h2 className="mt-2 font-display text-3xl font-bold text-white">
             {tab === 'artists' ? 'Artistas' : 'Salas'}

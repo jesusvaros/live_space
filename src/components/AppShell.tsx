@@ -9,6 +9,7 @@ type AppShellProps = {
   contentClassName?: string;
   contentFullscreen?: boolean;
   contentWrapperClassName?: string | false;
+  contentRef?: React.Ref<HTMLElement>;
 };
 
 const AppShell: React.FC<AppShellProps> = ({
@@ -18,6 +19,7 @@ const AppShell: React.FC<AppShellProps> = ({
   contentClassName,
   contentFullscreen = true,
   contentWrapperClassName = 'min-h-full',
+  contentRef,
 }) => {
   const headerNode = headerProps ? <AppHeader {...headerProps} /> : null;
   const content = (
@@ -30,7 +32,7 @@ const AppShell: React.FC<AppShellProps> = ({
   return (
     <Page>
       {headerPlacement === 'outside' ? headerNode : null}
-      <Content fullscreen={contentFullscreen} className={contentClassName}>
+      <Content ref={contentRef} fullscreen={contentFullscreen} className={contentClassName}>
         {contentWrapperClassName === false ? content : <div className={contentWrapperClassName}>{content}</div>}
       </Content>
     </Page>

@@ -16,7 +16,7 @@ const SecondStack: React.FC<SecondStackProps> = ({ moments, selectedIndex, onSel
           key={moment.id}
           type="button"
           className={`relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl border transition-all hover:opacity-95 ${
-            index === selectedIndex ? 'border-app-accent shadow-[0_4px_10px_rgba(255,107,74,0.2)]' : 'border-white/10 bg-white/5'
+            index === selectedIndex ? 'border-app-accent shadow-[0_4px_10px_rgba(255,91,46,0.2)]' : 'border-white/10 bg-white/5'
           }`}
           onClick={() => onSelect(index)}
         >

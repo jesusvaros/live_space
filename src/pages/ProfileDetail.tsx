@@ -144,7 +144,7 @@ const ProfileDetail: React.FC = () => {
                         disabled={followLoading}
                         onClick={handleFollowToggle}
                         className={`px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] disabled:opacity-60 ${
-                          isFollowing ? 'bg-white/10 text-white/80' : 'bg-[#ff6b4a] text-white'
+                          isFollowing ? 'bg-white/10 text-white/80' : 'bg-[#ff5b2e] text-white'
                         }`}
                       >
                         {followLoading ? <Spinner /> : (isFollowing ? 'Siguiendo' : 'Seguir')}

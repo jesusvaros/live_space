@@ -473,7 +473,7 @@ const Upload: React.FC = () => {
                 <>
                   <button
                     type="button"
-                    className="inline-flex w-full items-center justify-center rounded-2xl bg-[#ff6b4a] px-4 py-2 text-sm font-semibold text-white"
+                    className="inline-flex w-full items-center justify-center rounded-2xl bg-[#ff5b2e] px-4 py-2 text-sm font-semibold text-white"
                     onClick={handleAddMomentsClick}
                   >
                     Añadir momentos
@@ -619,7 +619,7 @@ const Upload: React.FC = () => {
 
               <button
                 type="button"
-                className="inline-flex w-full items-center justify-center rounded-2xl bg-[#ff6b4a] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex w-full items-center justify-center rounded-2xl bg-[#ff5b2e] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={handleUploadMoments}
                 disabled={uploading || momentItems.length === 0}
               >

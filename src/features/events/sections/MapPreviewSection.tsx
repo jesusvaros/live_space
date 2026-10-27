@@ -48,7 +48,7 @@ const MapPreviewSection: React.FC<MapPreviewSectionProps> = ({ center, pins, onO
             <MapContainer
               center={mapCenter}
               zoom={12}
-              className="h-full w-full"
+              className="map-dark h-full w-full"
               zoomControl={false}
               dragging={false}
               scrollWheelZoom={false}
@@ -58,7 +58,7 @@ const MapPreviewSection: React.FC<MapPreviewSectionProps> = ({ center, pins, onO
               attributionControl={false}
             >
               <MapResizeObserver />
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="© OpenStreetMap" />
               <FitBounds center={center} pins={pins} />
               {center && (
                 <CircleMarker
@@ -72,7 +72,7 @@ const MapPreviewSection: React.FC<MapPreviewSectionProps> = ({ center, pins, onO
                   key={pin.id}
                   center={[pin.lat, pin.lng]}
                   radius={7}
-                  pathOptions={{ color: '#ff6b4a', fillColor: '#ff6b4a', fillOpacity: 0.95, weight: 2 }}
+                  pathOptions={{ color: '#ff5b2e', fillColor: '#ff5b2e', fillOpacity: 0.95, weight: 2 }}
                 />
               ))}
             </MapContainer>
