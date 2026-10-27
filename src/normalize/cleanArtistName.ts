@@ -130,7 +130,8 @@ const splitCollaborations = (value: string): string[] => {
     // Keep "Ciro y los Persas": a right side starting with an article joins.
     const merged: string[] = [];
     for (const piece of pieces) {
-      if (merged.length > 0 && ARTICLE_RE.test(piece)) {
+      // "Piti y me voy": a lowercase right side continues the same name.
+      if (merged.length > 0 && (ARTICLE_RE.test(piece) || /^\p{Ll}/u.test(piece))) {
         merged[merged.length - 1] = `${merged[merged.length - 1]} ${part.match(CONJUNCTION_SPLIT_RE)?.[0].trim() ?? 'y'} ${piece}`;
       } else {
         merged.push(piece);
@@ -269,7 +270,8 @@ export const cleanArtistName = (raw: string | null | undefined): ArtistNameClean
 
   // Headliner first, then the rest of the bill in the order printed.
   const heads = [subtitle.head, ...subtitle.extraArtists, ...support].flatMap((head) =>
-    head.split(/\s+\+\s+/).map(collapse).filter(Boolean),
+    // "Stivijoes+Gomz" too, but not "C+C Music Factory".
+    head.split(/\s+\+\s+|(?<=\p{L}{3})\+(?=\p{L}{3})/u).map(collapse).filter(Boolean),
   );
   const names: string[] = [];
   for (const head of heads) {

@@ -1,7 +1,6 @@
 import { artistNamesFromTitle } from '../../normalize/cleanArtistName.js';
 import { imageFromTribe } from '../../normalize/extractImage.js';
 import type { RawScrapedEvent, VenueParser } from '../../types/scrape.js';
-import { artistNamesFromBill } from './shared.js';
 
 type TribeEvent = {
   id?: number | string;
@@ -52,7 +51,6 @@ export const mapTribeEvent = (
   sourceUrl: string,
   venueName: string,
   city?: string,
-  splitBills = false,
 ): RawScrapedEvent | null => {
   const title = stripHtml(event.title);
   const dateText = toMadridDateText(event.start_date, event.all_day === true);
@@ -67,7 +65,7 @@ export const mapTribeEvent = (
     dateText,
     venueName,
     city,
-    artistNames: (splitBills ? artistNamesFromBill : artistNamesFromTitle)(toArtistTitle(title)),
+    artistNames: artistNamesFromTitle(toArtistTitle(title)),
     imageUrl: imageFromTribe(event.image) ?? undefined,
     rawPayload: event,
   };
@@ -109,7 +107,7 @@ export const tribeEventsApiParser: VenueParser = {
         return categories.some((category) => categoryAllowlist.includes(category as string));
       })
       .map((event) =>
-        mapTribeEvent(event, source.base_url, source.name, source.city || undefined, source.metadata.splitBills === true),
+        mapTribeEvent(event, source.base_url, source.name, source.city || undefined),
       )
       .filter((event): event is RawScrapedEvent => event !== null);
   },

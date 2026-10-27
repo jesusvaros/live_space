@@ -1,5 +1,5 @@
 import type { RawScrapedEvent, VenueParser } from '../../types/scrape.js';
-import { artistNamesFromBill, withTitleArtists } from './shared.js';
+import { billArtistNames, withTitleArtists } from './shared.js';
 
 // Sala Malandar (Sevilla) lists its "qode-event" posts in an Elementor loop:
 // each card has day, month and poster but no title. The event page has the
@@ -88,7 +88,7 @@ export const malandarAgendaParser: VenueParser = {
         dateText: `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year} ${detail.time || ''}`.trim(),
         venueName: source.name,
         city: source.city || undefined,
-        artistNames: artistNamesFromBill(detail.title),
+        artistNames: billArtistNames(detail.title),
         imageUrl,
         rawPayload: { ...detail, inferredYear: year },
       });

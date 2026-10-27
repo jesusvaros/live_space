@@ -77,8 +77,9 @@ export const withoutFestivalTag = (title: string): string =>
 const BILL_SEPARATOR = /\s*\+\s*|\s+\/\s+|\s+(?:vs\.?|b2b|x)\s+|,\s+|\s+·\s+/i;
 
 // Every performer of the night, headliner first: "Promoter: A + B, C" →
-// [A, B, C]. Each piece then goes through the shared cleanup rules, so tour
-// names, "presenta…" and "(Festival …)" decorations are dropped.
+// [A, B, C], also across several lines. Each piece then goes through the
+// shared cleanup rules, so tour names, "presenta…" and "(Festival …)"
+// decorations are dropped.
 export const billArtists = (...lines: Array<string | undefined>): string[] => {
   const names = lines
     .flatMap((line) => {

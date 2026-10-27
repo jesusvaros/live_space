@@ -1,5 +1,5 @@
 import type { VenueParser } from '../../types/scrape.js';
-import { artistNamesFromBill, withTitleArtists } from './shared.js';
+import { billArtistNames, withTitleArtists } from './shared.js';
 
 // Sala Custom (Sevilla) publishes a hand-written agenda: an <h2> per year and,
 // below it, one <article> per night with "V30 OCT" and the bill in capitals
@@ -51,6 +51,6 @@ export const salaCustomAgendaParser: VenueParser = {
         }];
       });
     }, { sourceUrl: source.base_url, venueName: source.name, city: source.city || undefined });
-    return withTitleArtists(events.map((event) => ({ ...event, artistNames: artistNamesFromBill(event.title) })));
+    return withTitleArtists(events.map((event) => ({ ...event, artistNames: billArtistNames(event.title) })));
   },
 };

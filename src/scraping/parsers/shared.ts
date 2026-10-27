@@ -66,27 +66,6 @@ const toAbsoluteUrl = (rawUrl: string | null, baseUrl: string): string | undefin
   }
 };
 
-const GUEST_PLACEHOLDER_RE = /^(?:(?:m[aá]s\s+)?(?:artistas?\s+)?invitad[oa]s?|(?:special\s+)?guests?|y\s+m[aá]s)$/i;
-
-// A bill such as "SOEN + TRIBULATION + VULKAN" or "Stivijoes+Gomz" lists every
-// performer of the night, headliner first. The title rules keep "+" bills
-// together (ambiguous in general), so parsers whose source writes the bill
-// this way split it here; each side still goes through the title cleanup.
-export const artistNamesFromBill = (title: string | null | undefined): string[] => {
-  const whole = artistNamesFromTitle(title);
-  const parts = (title || '').split(/\s*\+\s*/).map((part) => part.trim()).filter(Boolean);
-  if (whole.length === 0 || parts.length < 2) return whole;
-  const names = parts
-    .filter((part) => !GUEST_PLACEHOLDER_RE.test(part))
-    .flatMap((part) => artistNamesFromTitle(part));
-  const seen = new Set<string>();
-  return names.filter((name) => {
-    const key = name.toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-};
 
 // Parsers whose source has no performer field derive artists from the title
 // with the cleanup rules (never the raw title), and absolutize the poster.
@@ -106,9 +85,9 @@ const NON_PERFORMER_BILL_PART_RE =
   /^(?:artistas?\s+invitad[oa]s?|invitad[oa]s?|guests?|special guests?|jam(?:\s+session)?|dj\s*set|after\s*-?party\b.*|sorpresa)$/i;
 
 // Small venues bill a night as "A + B + C" (headliner first) and often put a
-// series name in front: "CIRCUIT A-BANDA: PERFECTO MISERABLE + DECLIVE". The
-// cleanup rules keep "+" bills whole, so venues without a performer field
-// split them here, piece by piece, keeping the billing order.
+// series name in front: "CIRCUIT A-BANDA: PERFECTO MISERABLE + DECLIVE". On
+// top of the shared cleanup rules this drops pieces that name no performer
+// ("+ ARTISTA INVITADO", "+ AFTERPARTY").
 export const billArtistNames = (title: string | null | undefined): string[] => {
   const text = title?.replace(/\s+/g, ' ').trim();
   if (!text) return [];

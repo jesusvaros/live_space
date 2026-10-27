@@ -1,5 +1,5 @@
 import type { RawScrapedEvent, VenueParser } from '../../types/scrape.js';
-import { artistNamesFromBill, withTitleArtists } from './shared.js';
+import { billArtistNames, withTitleArtists } from './shared.js';
 
 // Pandora and Supra Music Hall (Sevilla, RollerCoaster Group) share one
 // WordPress theme. The source points at the "conciertos" agenda category:
@@ -107,7 +107,7 @@ export const rollercoasterAgendaParser: VenueParser = {
         dateText: `${day}/${month}/${year}${detail?.time ? ` ${detail.time}` : ''}`,
         venueName: source.name,
         city: source.city || undefined,
-        artistNames: performers.length ? performers : artistNamesFromBill(title),
+        artistNames: performers.length ? performers : billArtistNames(title),
         imageUrl: detail?.imageUrl || card.imageUrl,
         rawPayload: { card, detail },
       });

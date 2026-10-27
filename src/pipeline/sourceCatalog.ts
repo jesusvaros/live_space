@@ -24,7 +24,6 @@ const source = (
     structuredDataVerified?: boolean;
     categoryAllowlist?: string[];
     reviewedAt?: string;
-    splitBills?: boolean;
   } = {}
 ): SeedSource => ({
   source_type: 'venue',
@@ -38,7 +37,6 @@ const source = (
     fixtureVerified: options.ready ?? false,
     structuredDataVerified: options.structuredDataVerified ?? false,
     categoryAllowlist: options.categoryAllowlist ?? [],
-    ...(options.splitBills ? { splitBills: true } : {}),
   },
   terms_reviewed_at: options.ready ? (options.reviewedAt ?? '2026-07-18T00:00:00.000Z') : null,
   is_active: options.ready ?? false,
@@ -217,7 +215,6 @@ export const seedSources: SeedSource[] = [
     reviewedAt: LOCAL_SCENE_REVIEW,
     structuredDataVerified: true,
     categoryAllowlist: ['Concierto'],
-    splitBills: true,
   }),
   source('Sala Custom', 'https://salacustom.com/', 'Sevilla', 'https://salacustom.com/', {
     parserKey: 'sala-custom-agenda',
