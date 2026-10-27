@@ -1,13 +1,11 @@
 import { useMemo } from 'react';
 import { EventListItem } from '../types';
-import { useAuth } from '../../../contexts/AuthContext';
 import { useQuery } from '../../../shared/hooks/useQuery';
 import { fetchEventCards } from '../../../data/eventQueries';
 
 const EMPTY_EVENTS: EventListItem[] = [];
 
 export const useEventsList = (options: { startIso: string; endIso: string }) => {
-  const { loading: authLoading } = useAuth();
   const queryKey = useMemo(
     () => ['events:list', options.startIso, options.endIso] as const,
     [options.endIso, options.startIso]
@@ -19,15 +17,15 @@ export const useEventsList = (options: { startIso: string; endIso: string }) => 
       return fetchEventCards({ startIso: options.startIso, endIso: options.endIso });
     },
     {
-      enabled: !authLoading,
-      ttlMs: 10_000,
+      // Public listings: no need to wait for the session.
+      ttlMs: 60_000,
       initialData: EMPTY_EVENTS,
     }
   );
 
   return {
     events: data || EMPTY_EVENTS,
-    loading: authLoading || loading,
+    loading,
     error: error ? 'No se pudieron cargar los eventos. Revisa tu conexión.' : '',
   };
 };

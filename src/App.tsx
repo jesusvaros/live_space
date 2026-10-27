@@ -147,7 +147,6 @@ const TabsLayout: React.FC<TabsLayoutProps> = ({
 };
 
 const AppRoutes = () => {
-  const { user, loading } = useAuth();
   const { activeWorkspace } = useWorkspace();
   const activeArtistId = activeWorkspace?.type === 'artist'
     ? (activeWorkspace.artist as any)?.id || (activeWorkspace.artist as any)?.artist_id || null
@@ -228,16 +227,11 @@ const AppRoutes = () => {
             <Route path="madrid/conciertos/*" element={<Events />} />
             <Route path="barcelona/conciertos/*" element={<Events />} />
           </Route>
-          <Route path="/" element={<Navigate to={loading ? '/welcome' : mainTabHref} replace />} />
+          <Route path="/" element={<Navigate to={mainTabHref} replace />} />
           <Route path="*" element={<Navigate to={mainTabHref} replace />} />
         </Routes>
       </React.Suspense>
 
-      {loading && !user ? (
-        <div className="pointer-events-none fixed inset-0 z-[5000] flex items-center justify-center bg-black/35 backdrop-blur">
-          <Spinner />
-        </div>
-      ) : null}
     </>
   );
 };

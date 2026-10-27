@@ -70,33 +70,8 @@ const topArtistIdsFromEvents = (events: EventListItem[]) => {
 
 export const getSuggestedArtists = async (options?: { location?: { lat: number; lng: number } | null }) => {
   const { startOfToday, endOfTwoWeeks, endOfWeek } = dateWindow();
-  const events = await fetchUpcomingEvents(startOfToday.toISOString(), endOfTwoWeeks.toISOString());
-  const sections: SuggestedSection<DiscoverArtist>[] = [];
-
-  if (options?.location) {
-    const nearEvents: EventListItem[] = [];
-    for (const event of events) {
-      const eventLat = toNumber(event.latitude ?? event.venue_place?.latitude ?? null);
-      const eventLng = toNumber(event.longitude ?? event.venue_place?.longitude ?? null);
-      if (eventLat === null || eventLng === null) continue;
-      const km = calculateDistanceKm(options.location.lat, options.location.lng, eventLat, eventLng);
-      if (km > NEARBY_RADIUS_KM) continue;
-      nearEvents.push(event);
-    }
-    const ids = topArtistIdsFromEvents(nearEvents);
-    const items = await fetchArtistsByIds(ids);
-    if (items.length > 0) sections.push({ key: 'trending_near_you', title: 'Tendencia cerca de ti', items });
-  }
-
-  const weekEvents = events.filter(event => {
-    const startsAt = new Date(event.starts_at);
-    return startsAt >= startOfToday && startsAt <= endOfWeek;
-  });
-  const weekIds = topArtistIdsFromEvents(weekEvents);
-  const weekItems = await fetchArtistsByIds(weekIds);
-  if (weekItems.length > 0) sections.push({ key: 'popular_this_week', title: 'Populares esta semana', items: weekItems });
-
-  const recentArtists = await cached(
+  // Independent requests run together: events, then both id lookups at once.
+  const recentPromise = cached(
     'discover:artists:recent',
     async () => {
       const { data, error } = await supabase
@@ -108,10 +83,36 @@ export const getSuggestedArtists = async (options?: { location?: { lat: number; 
       return (data || []).map(mapArtist) as DiscoverArtist[];
     },
     { ttlMs: 60_000 }
-  );
-  const recentArtistsWithPosters = await withArtistRecentPosters(recentArtists);
-  if (recentArtistsWithPosters.length > 0) {
-    sections.push({ key: 'recently_active', title: 'Activos hace poco', items: recentArtistsWithPosters });
+  ).then(withArtistRecentPosters);
+  const events = await fetchUpcomingEvents(startOfToday.toISOString(), endOfTwoWeeks.toISOString());
+
+  const nearEvents: EventListItem[] = [];
+  if (options?.location) {
+    for (const event of events) {
+      const eventLat = toNumber(event.latitude ?? event.venue_place?.latitude ?? null);
+      const eventLng = toNumber(event.longitude ?? event.venue_place?.longitude ?? null);
+      if (eventLat === null || eventLng === null) continue;
+      const km = calculateDistanceKm(options.location.lat, options.location.lng, eventLat, eventLng);
+      if (km > NEARBY_RADIUS_KM) continue;
+      nearEvents.push(event);
+    }
+  }
+  const weekEvents = events.filter(event => {
+    const startsAt = new Date(event.starts_at);
+    return startsAt >= startOfToday && startsAt <= endOfWeek;
+  });
+
+  const [nearItems, weekItems, recentWithPosters] = await Promise.all([
+    options?.location ? fetchArtistsByIds(topArtistIdsFromEvents(nearEvents)) : Promise.resolve([]),
+    fetchArtistsByIds(topArtistIdsFromEvents(weekEvents)),
+    recentPromise,
+  ]);
+
+  const sections: SuggestedSection<DiscoverArtist>[] = [];
+  if (nearItems.length > 0) sections.push({ key: 'trending_near_you', title: 'Tendencia cerca de ti', items: nearItems });
+  if (weekItems.length > 0) sections.push({ key: 'popular_this_week', title: 'Populares esta semana', items: weekItems });
+  if (recentWithPosters.length > 0) {
+    sections.push({ key: 'recently_active', title: 'Activos hace poco', items: recentWithPosters });
   }
 
   const seen = new Set<string>();
