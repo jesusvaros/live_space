@@ -160,7 +160,8 @@ as $$
 $$;
 
 -- Organisers edit texts, dates and poster; the grounds and authorship stay
--- with admins, or a manager could hang their sets on someone else's venue.
+-- with admins. (Sets themselves are pinned to the grounds by
+-- events_guard_festival below.)
 create or replace function public.festivals_guard_admin_columns()
 returns trigger
 language plpgsql
@@ -182,6 +183,45 @@ drop trigger if exists festivals_guard_admin_columns on public.festivals;
 create trigger festivals_guard_admin_columns
   before update on public.festivals
   for each row execute function public.festivals_guard_admin_columns();
+
+-- Only the festival's managers put a concert in its line-up or take it out,
+-- and a set stays at the festival grounds. Without this, anyone able to
+-- create or edit an event could hang it on someone else's festival (and gain
+-- that festival's stats and download rights on it). Writes without a user
+-- (scraper, service role) are not affected.
+create or replace function public.events_guard_festival()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if (select auth.uid()) is null or public.current_user_is_admin() then
+    return new;
+  end if;
+  if tg_op = 'INSERT' then
+    if new.festival_id is not null and not public.can_manage_festival(new.festival_id) then
+      raise exception using errcode = '42501', message = 'Only the festival managers can add sets';
+    end if;
+    return new;
+  end if;
+  if new.festival_id is distinct from old.festival_id and (
+    (new.festival_id is not null and not public.can_manage_festival(new.festival_id))
+    or (old.festival_id is not null and not public.can_manage_festival(old.festival_id))
+  ) then
+    raise exception using errcode = '42501', message = 'Only the festival managers can change its line-up';
+  end if;
+  if old.festival_id is not null and new.venue_place_id is distinct from old.venue_place_id then
+    raise exception using errcode = '42501', message = 'A festival set stays at the festival grounds';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists events_guard_festival on public.events;
+create trigger events_guard_festival
+  before insert or update of festival_id, venue_place_id on public.events
+  for each row execute function public.events_guard_festival();
 
 alter table public.festivals enable row level security;
 
@@ -447,6 +487,7 @@ left join lateral (
 
 revoke all on function public.create_festival_subject() from public;
 revoke all on function public.festivals_guard_admin_columns() from public;
+revoke all on function public.events_guard_festival() from public;
 revoke all on function public.can_manage_festival(uuid) from public;
 revoke all on function public.festival_save_performance(uuid, uuid, text, text, timestamptz, text, timestamptz) from public;
 revoke all on function public.festival_cancel_performance(uuid) from public;
