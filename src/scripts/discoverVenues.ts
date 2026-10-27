@@ -17,7 +17,7 @@ const endpoints = (process.env.OVERPASS_API_URLS || 'https://maps.mail.ru/osm/to
   .split(',')
   .map((value) => value.trim())
   .filter(Boolean);
-const scopes = (process.env.VENUE_DISCOVERY_SCOPES || 'Madrid,Barcelona')
+const scopes = (process.env.VENUE_DISCOVERY_SCOPES || 'Madrid,Barcelona,Sevilla,Valencia')
   .split(',')
   .map((scope) => scope.trim())
   .filter(Boolean);
@@ -31,6 +31,7 @@ const pilotBoundingBoxes: Record<string, BoundingBox> = {
   Madrid: [40.312, -3.889, 40.643, -3.518],
   Barcelona: [41.32, 2.052, 41.47, 2.229],
   Valencia: [39.407, -0.431, 39.522, -0.3],
+  Sevilla: [37.33, -6.03, 37.44, -5.9],
 };
 
 const resolveBoundingBox = async (scope: string): Promise<BoundingBox> => {

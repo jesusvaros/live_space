@@ -23,4 +23,4 @@ export const publicPath = {
   artist: (name: string, id: string) => `/artista/${withId(name, id)}`,
 };
 
-export const PUBLIC_CITIES: Record<string, string> = { madrid: 'Madrid', barcelona: 'Barcelona' };
+export const PUBLIC_CITIES: Record<string, string> = { madrid: 'Madrid', barcelona: 'Barcelona', sevilla: 'Sevilla', valencia: 'Valencia' };

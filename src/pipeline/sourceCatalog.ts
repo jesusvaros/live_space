@@ -4,7 +4,7 @@ export type SeedSource = {
   source_type: SourceType;
   name: string;
   base_url: string;
-  city: 'Madrid' | 'Barcelona';
+  city: 'Madrid' | 'Barcelona' | 'Sevilla' | 'Valencia';
   parser_key: ParserKey;
   metadata: ScrapeSourceMetadata;
   is_active: boolean;

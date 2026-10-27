@@ -94,7 +94,9 @@ export const parseJsonLdDocuments = (
       return {
         sourceUrl: source.base_url,
         sourceEventUrl,
-        sourceEventId: asText(record.identifier ?? record['@id']),
+        // Most WordPress calendars publish no identifier; the event URL is just
+        // as stable and lets verified listings publish without review.
+        sourceEventId: asText(record.identifier ?? record['@id']) ?? sourceEventUrl,
         title,
         description: asDisplayText(record.description),
         dateText: startsAt,
