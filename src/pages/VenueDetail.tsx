@@ -16,6 +16,7 @@ import { fetchEventCards } from '../data/eventQueries';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
 import DetailHeader from '../components/ui/DetailHeader';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
+import PhotoCredit from '../components/ui/PhotoCredit';
 import ClaimProfileLink from '../components/pro/ClaimProfileLink';
 
 const VENUE_TYPE_LABELS: Record<string, string> = {
@@ -166,6 +167,8 @@ const VenueDetail: React.FC = () => {
     return query ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}` : null;
   }, [venue]);
 
+  const venueCover = venue ? venue.cover_image_url || (venue.photos || [])[0] || null : null;
+
   const posterDate = (iso: string) =>
     new Date(iso)
       .toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })
@@ -186,13 +189,14 @@ const VenueDetail: React.FC = () => {
       {!loading && venue && (
         <div className="pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
           <section className="relative h-[300px] w-full overflow-hidden">
-            {(venue.photos || [])[0] ? (
-              <img src={(venue.photos || [])[0]} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            {venueCover ? (
+              <img src={venueCover} alt="" className="absolute inset-0 h-full w-full object-cover" />
             ) : (
               <GeneratedPoster title={venue.name} variant="hero" />
             )}
             <div className="absolute inset-0 bg-[linear-gradient(to_top,#0d0e12_4%,rgba(13,14,18,0)_60%)]" />
             <div className="absolute inset-x-4 bottom-1.5">
+              <PhotoCredit credit={venueCover ? venue.cover_credit : null} className="mb-2" />
               <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-app-accent">
                 {[venueTypeLabel(venue.venue_type), venue.city].filter(Boolean).join(' · ')}
               </p>

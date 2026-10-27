@@ -104,14 +104,13 @@ const isValidCalendarDate = (year: number, month: number, day: number): boolean 
 };
 
 const parseTime = (value: string): { hour: number; minute: number } => {
-  const timeMatch = value.match(/(\d{1,2})[:.h](\d{2})/i);
+  // "20:30" and "20h30" first; a dotted "20.30" only when it is not part of a
+  // date such as "29.10.2026", which would otherwise read as 29:10.
+  const timeMatch =
+    value.match(/(?<!\d)([01]?\d|2[0-3])[:h]([0-5]\d)(?!\d)/i) ??
+    value.match(/(?<![\d.])([01]?\d|2[0-3])\.([0-5]\d)(?![\d.])/);
   if (timeMatch) {
-    const hour = Number(timeMatch[1]);
-    const minute = Number(timeMatch[2]);
-    return {
-      hour: Number.isFinite(hour) ? hour : 20,
-      minute: Number.isFinite(minute) ? minute : 0,
-    };
+    return { hour: Number(timeMatch[1]), minute: Number(timeMatch[2]) };
   }
 
   const hourOnlyMatch = value.match(/\b(\d{1,2})\s*h\b/i);

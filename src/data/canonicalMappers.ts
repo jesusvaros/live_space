@@ -59,6 +59,8 @@ export const mapVenue = (row: UnknownRow): VenuePlace => ({
   longitude: numberOrNull(row.longitude),
   website_url: stringOrNull(row.website_url),
   photos: Array.isArray(row.photos) ? row.photos.filter((item): item is string => typeof item === 'string') : [],
+  cover_image_url: stringOrNull(row.cover_image_url),
+  cover_credit: stringOrNull(row.cover_credit),
   created_by: stringOrNull(row.created_by),
   created_at: String(row.created_at ?? ''),
   updated_at: String(row.updated_at ?? ''),

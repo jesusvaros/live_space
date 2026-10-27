@@ -11,6 +11,8 @@ export type SeedSource = {
   terms_reviewed_at: string | null;
 };
 
+const LOCAL_SCENE_REVIEW = '2026-10-27T00:00:00.000Z';
+
 const source = (
   name: string,
   base_url: string,
@@ -21,6 +23,7 @@ const source = (
     ready?: boolean;
     structuredDataVerified?: boolean;
     categoryAllowlist?: string[];
+    reviewedAt?: string;
   } = {}
 ): SeedSource => ({
   source_type: 'venue',
@@ -35,7 +38,7 @@ const source = (
     structuredDataVerified: options.structuredDataVerified ?? false,
     categoryAllowlist: options.categoryAllowlist ?? [],
   },
-  terms_reviewed_at: options.ready ? '2026-07-18T00:00:00.000Z' : null,
+  terms_reviewed_at: options.ready ? (options.reviewedAt ?? '2026-07-18T00:00:00.000Z') : null,
   is_active: options.ready ?? false,
 });
 
@@ -86,7 +89,11 @@ export const seedSources: SeedSource[] = [
     parserKey: 'apolo-agenda',
     ready: true,
   }),
-  source('Sidecar', 'https://sidecar.es/', 'Barcelona', 'https://sidecar.es/'),
+  source('Sidecar', 'https://sidecar.es/programacio/', 'Barcelona', 'https://sidecar.es/', {
+    parserKey: 'linked-event-cards',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+  }),
   source('Upload', 'https://uploadbarcelona.com/', 'Barcelona', 'https://uploadbarcelona.com/'),
   source('La Nau', 'https://lanau.com/', 'Barcelona', 'https://lanau.com/'),
   source('Luz de Gas', 'https://luzdegas.com/', 'Barcelona', 'https://luzdegas.com/', {
@@ -100,5 +107,33 @@ export const seedSources: SeedSource[] = [
     structuredDataVerified: true,
     categoryAllowlist: ['Concert'],
   }),
-  source('Wolf Barcelona', 'https://wolfbarcelona.com/', 'Barcelona', 'https://wolfbarcelona.com/'),
+  source('Wolf Barcelona', 'https://wolfbarcelona.com/conciertos/', 'Barcelona', 'https://wolfbarcelona.com/', {
+    parserKey: 'linked-event-cards',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+  }),
+  // Small venues of the local scene, reviewed 2026-10-27: public agenda and
+  // robots.txt allow it. Sala Villanos stays out: its robots.txt blocks
+  // every crawler but the search engines.
+  source('Café La Palma', 'https://cafelapalma.com/', 'Madrid', 'https://cafelapalma.com/', {
+    parserKey: 'tribe-events-api',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Sala Galileo Galilei', 'https://salagalileo.es/programacion/', 'Madrid', 'https://salagalileo.es/', {
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Gruta 77', 'https://gruta77.com/programacion-eventos-gruta77-madrid/', 'Madrid', 'https://gruta77.com/', {
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Marula Café', 'https://marulacafe.com/agenda', 'Barcelona', 'https://marulacafe.com/', {
+    parserKey: 'linked-event-cards',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+  }),
 ];
