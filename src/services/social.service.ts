@@ -40,7 +40,8 @@ export const socialService = {
       .from('follows')
       .select('*', { count: 'exact', head: true })
       .eq('target_subject_id', subjectId);
-    if (error) throw error;
+    // Not readable without a session; the count is decoration, not data.
+    if (error) return 0;
     return count || 0;
   },
 

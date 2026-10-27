@@ -70,33 +70,8 @@ const topVenueIdsFromEvents = (events: EventListItem[]) => {
 
 export const getSuggestedVenues = async (options?: { location?: { lat: number; lng: number } | null }) => {
   const { startOfToday, endOfTwoWeeks, endOfWeek } = dateWindow();
-  const events = await fetchUpcomingEvents(startOfToday.toISOString(), endOfTwoWeeks.toISOString());
-  const sections: SuggestedSection<DiscoverVenue>[] = [];
-
-  if (options?.location) {
-    const nearEvents: EventListItem[] = [];
-    for (const event of events) {
-      const eventLat = toNumber(event.latitude ?? event.venue_place?.latitude ?? null);
-      const eventLng = toNumber(event.longitude ?? event.venue_place?.longitude ?? null);
-      if (eventLat === null || eventLng === null) continue;
-      const km = calculateDistanceKm(options.location.lat, options.location.lng, eventLat, eventLng);
-      if (km > NEARBY_RADIUS_KM) continue;
-      nearEvents.push(event);
-    }
-    const ids = topVenueIdsFromEvents(nearEvents);
-    const items = await fetchVenuesByIds(ids);
-    if (items.length > 0) sections.push({ key: 'venues_near_you', title: 'Salas cerca de ti', items });
-  }
-
-  const weekEvents = events.filter(event => {
-    const startsAt = new Date(event.starts_at);
-    return startsAt >= startOfToday && startsAt <= endOfWeek;
-  });
-  const weekIds = topVenueIdsFromEvents(weekEvents);
-  const weekItems = await fetchVenuesByIds(weekIds);
-  if (weekItems.length > 0) sections.push({ key: 'popular_venues_this_week', title: 'Salas populares esta semana', items: weekItems });
-
-  const recentVenues = await cached(
+  // Independent requests run together: events, then both id lookups at once.
+  const recentPromise = cached(
     'discover:venues:recent',
     async () => {
       const { data, error } = await supabase
@@ -108,10 +83,36 @@ export const getSuggestedVenues = async (options?: { location?: { lat: number; l
       return (data || []).map(mapVenue) as DiscoverVenue[];
     },
     { ttlMs: 60_000 }
-  );
-  const recentVenuesWithPosters = await withVenueRecentPosters(recentVenues);
-  if (recentVenuesWithPosters.length > 0) {
-    sections.push({ key: 'recently_added', title: 'Salas añadidas hace poco', items: recentVenuesWithPosters });
+  ).then(withVenueRecentPosters);
+  const events = await fetchUpcomingEvents(startOfToday.toISOString(), endOfTwoWeeks.toISOString());
+
+  const nearEvents: EventListItem[] = [];
+  if (options?.location) {
+    for (const event of events) {
+      const eventLat = toNumber(event.latitude ?? event.venue_place?.latitude ?? null);
+      const eventLng = toNumber(event.longitude ?? event.venue_place?.longitude ?? null);
+      if (eventLat === null || eventLng === null) continue;
+      const km = calculateDistanceKm(options.location.lat, options.location.lng, eventLat, eventLng);
+      if (km > NEARBY_RADIUS_KM) continue;
+      nearEvents.push(event);
+    }
+  }
+  const weekEvents = events.filter(event => {
+    const startsAt = new Date(event.starts_at);
+    return startsAt >= startOfToday && startsAt <= endOfWeek;
+  });
+
+  const [nearItems, weekItems, recentWithPosters] = await Promise.all([
+    options?.location ? fetchVenuesByIds(topVenueIdsFromEvents(nearEvents)) : Promise.resolve([]),
+    fetchVenuesByIds(topVenueIdsFromEvents(weekEvents)),
+    recentPromise,
+  ]);
+
+  const sections: SuggestedSection<DiscoverVenue>[] = [];
+  if (nearItems.length > 0) sections.push({ key: 'venues_near_you', title: 'Salas cerca de ti', items: nearItems });
+  if (weekItems.length > 0) sections.push({ key: 'popular_venues_this_week', title: 'Salas populares esta semana', items: weekItems });
+  if (recentWithPosters.length > 0) {
+    sections.push({ key: 'recently_added', title: 'Salas añadidas hace poco', items: recentWithPosters });
   }
 
   const seen = new Set<string>();
