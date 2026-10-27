@@ -90,9 +90,10 @@ export const seedSources: SeedSource[] = [
     ready: true,
   }),
   source('Sidecar', 'https://sidecar.es/programacio/', 'Barcelona', 'https://sidecar.es/', {
-    parserKey: 'linked-event-cards',
+    parserKey: 'sidecar-agenda',
     ready: true,
     reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
   }),
   source('Upload', 'https://uploadbarcelona.com/', 'Barcelona', 'https://uploadbarcelona.com/'),
   source('La Nau', 'https://lanau.com/', 'Barcelona', 'https://lanau.com/'),
@@ -108,9 +109,10 @@ export const seedSources: SeedSource[] = [
     categoryAllowlist: ['Concert'],
   }),
   source('Wolf Barcelona', 'https://wolfbarcelona.com/conciertos/', 'Barcelona', 'https://wolfbarcelona.com/', {
-    parserKey: 'linked-event-cards',
+    parserKey: 'wolf-agenda',
     ready: true,
     reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
   }),
   // Small venues of the local scene, reviewed 2026-10-27: public agenda and
   // robots.txt allow it. Sala Villanos stays out: its robots.txt blocks
@@ -132,8 +134,34 @@ export const seedSources: SeedSource[] = [
     structuredDataVerified: true,
   }),
   source('Marula Café', 'https://marulacafe.com/agenda', 'Barcelona', 'https://marulacafe.com/', {
-    parserKey: 'linked-event-cards',
+    parserKey: 'marula-agenda',
     ready: true,
     reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  // Barcelona local scene (agent)
+  source('Heliogàbal', 'https://www.heliogabal.com/', 'Barcelona', 'https://www.heliogabal.com/', {
+    parserKey: 'heliogabal-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Sala Vol', 'https://salavol.com/', 'Barcelona', 'https://salavol.com/', {
+    parserKey: 'sala-vol-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Freedonia', 'https://freedonia.eu/evento/categoria/conciertos/', 'Barcelona', 'https://freedonia.eu/', {
+    parserKey: 'freedonia-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Soda Acústic', 'https://soda.cat/agenda-de-conciertos/', 'Barcelona', 'https://soda.cat/', {
+    parserKey: 'soda-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
   }),
 ];
