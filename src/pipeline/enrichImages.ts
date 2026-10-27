@@ -13,6 +13,7 @@ export type EnrichImagesOptions = {
   dryRun?: boolean;
   events?: boolean;
   artists?: boolean;
+  venues?: boolean;
   // Upcoming events still without a poster after the staging backfill get
   // their page's og:image, one request per second.
   pageFetchLimit?: number;
@@ -29,6 +30,9 @@ export type EnrichImagesSummary = {
   artistsChecked: number;
   artistsMatched: number;
   artistErrors: number;
+  artistsFromPosters: number;
+  venuesChecked: number;
+  venuesMatched: number;
 };
 
 const PAGE_SIZE = 500;
@@ -198,7 +202,8 @@ export const enrichArtistPhotos = async (
   const { data, error } = await supabase
     .from('artists')
     .select('id,name,external_ids')
-    .is('image_url', null)
+    // A poster fallback is still upgraded to a real photo when Deezer has one.
+    .or('image_url.is.null,image_source.eq.poster')
     .or(`image_checked_at.is.null,image_checked_at.lt.${recheckBefore}`)
     .order('image_checked_at', { ascending: true, nullsFirst: true })
     .limit(options.artistLimit ?? 400);
@@ -243,6 +248,125 @@ export const enrichArtistPhotos = async (
       .from('artists')
       .update(update)
       .eq('id', artist.id)
+      .or('image_url.is.null,image_source.eq.poster');
+    if (updateError) throw updateError;
+  }
+};
+
+type HeadlinerRow = {
+  event_id: string;
+  artist_id: string;
+  is_headliner: boolean;
+  event: { image_url: string | null; image_source: string | null; starts_at: string } | null;
+};
+
+// Local bands are rarely on Deezer, but the venue's poster of a night they
+// headline (or play alone) usually shows them. Never from a shared bill as
+// support act, and never over any other image.
+export const enrichArtistsFromPosters = async (
+  supabase: SupabaseClient,
+  logger: Logger,
+  options: EnrichImagesOptions,
+  summary: EnrichImagesSummary,
+) => {
+  const { data: artists, error } = await supabase
+    .from('artists')
+    .select('id,name')
+    .is('image_url', null)
+    .limit(1000);
+  if (error) throw error;
+  const names = new Map(((artists || []) as Array<{ id: string; name: string }>).map((row) => [row.id, row.name]));
+
+  for (let start = 0; start < names.size; start += 100) {
+    const ids = [...names.keys()].slice(start, start + 100);
+    const { data: bills, error: billsError } = await supabase
+      .from('event_artists')
+      .select('event_id,artist_id,is_headliner,event:events!inner(image_url,image_source,starts_at)')
+      .in('artist_id', ids)
+      .eq('events.image_source', 'source')
+      .not('events.image_url', 'is', null);
+    if (billsError) throw billsError;
+    const rows = (bills || []) as unknown as HeadlinerRow[];
+    if (rows.length === 0) continue;
+
+    const { data: lineups, error: lineupsError } = await supabase
+      .from('event_artists')
+      .select('event_id')
+      .in('event_id', [...new Set(rows.map((row) => row.event_id))]);
+    if (lineupsError) throw lineupsError;
+    const billSize = new Map<string, number>();
+    for (const row of (lineups || []) as Array<{ event_id: string }>) {
+      billSize.set(row.event_id, (billSize.get(row.event_id) || 0) + 1);
+    }
+
+    const latest = new Map<string, HeadlinerRow>();
+    for (const row of rows) {
+      if (!row.event?.image_url) continue;
+      if (!row.is_headliner && billSize.get(row.event_id) !== 1) continue;
+      const current = latest.get(row.artist_id);
+      if (!current || row.event.starts_at > (current.event?.starts_at || '')) latest.set(row.artist_id, row);
+    }
+
+    for (const [artistId, row] of latest) {
+      summary.artistsFromPosters += 1;
+      logger.info('Artist photo from poster', { artistId, artist: names.get(artistId), eventId: row.event_id });
+      if (options.dryRun) continue;
+      const { error: updateError } = await supabase
+        .from('artists')
+        .update({ image_url: row.event?.image_url, image_source: 'poster' })
+        .eq('id', artistId)
+        .is('image_url', null);
+      if (updateError) throw updateError;
+    }
+  }
+};
+
+// Logos and icons make poor covers; the GeneratedPoster looks better. Venue
+// sites ship their logo or a single gig's poster as PNG and their photos as
+// JPEG/WebP, and social CDN links expire within days.
+const LOGO_LIKE = /logo|favicon|icon|sprite|placeholder|cropped-/i;
+const POOR_VENUE_COVER = (image: string) => {
+  const url = new URL(image);
+  return (
+    LOGO_LIKE.test(url.pathname) ||
+    /\.(png|svg|gif)$/i.test(url.pathname) ||
+    /(^|\.)(cdninstagram\.com|fbcdn\.net)$/i.test(url.hostname)
+  );
+};
+
+// Venue cover from the og:image of the venue's own website.
+export const enrichVenuePhotos = async (
+  supabase: SupabaseClient,
+  logger: Logger,
+  options: EnrichImagesOptions,
+  summary: EnrichImagesSummary,
+) => {
+  const { data, error } = await supabase
+    .from('venue_places')
+    .select('id,name,website_url')
+    .is('image_url', null)
+    .not('website_url', 'is', null)
+    .limit(200);
+  if (error) throw error;
+
+  for (const venue of (data || []) as Array<{ id: string; name: string; website_url: string }>) {
+    let url: URL;
+    try {
+      url = new URL(venue.website_url);
+    } catch {
+      continue;
+    }
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') continue;
+    summary.venuesChecked += 1;
+    const image = await fetchPageImage(url.toString());
+    if (!image || POOR_VENUE_COVER(image)) continue;
+    summary.venuesMatched += 1;
+    logger.info('Venue photo from website', { venueId: venue.id, venue: venue.name, image });
+    if (options.dryRun) continue;
+    const { error: updateError } = await supabase
+      .from('venue_places')
+      .update({ image_url: image, image_source: 'source' })
+      .eq('id', venue.id)
       .is('image_url', null);
     if (updateError) throw updateError;
   }
@@ -261,10 +385,18 @@ export const enrichImages = async (
     artistsChecked: 0,
     artistsMatched: 0,
     artistErrors: 0,
+    artistsFromPosters: 0,
+    venuesChecked: 0,
+    venuesMatched: 0,
   };
   const log = logger.child({ pipeline: 'enrichImages', dryRun: Boolean(options.dryRun) });
   if (options.events !== false) await enrichEventPosters(supabase, log, options, summary);
-  if (options.artists !== false) await enrichArtistPhotos(supabase, log, options, summary);
+  if (options.artists !== false) {
+    await enrichArtistPhotos(supabase, log, options, summary);
+    // After Deezer, so a real photo always wins over a poster.
+    await enrichArtistsFromPosters(supabase, log, options, summary);
+  }
+  if (options.venues !== false) await enrichVenuePhotos(supabase, log, options, summary);
   log.info('Image enrichment finished', summary);
   return summary;
 };

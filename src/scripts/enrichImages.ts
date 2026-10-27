@@ -3,11 +3,12 @@ import { getSupabaseAdmin } from '../db/supabase.js';
 import { enrichImages } from '../pipeline/enrichImages.js';
 import { Logger } from '../utils/logger.js';
 
-// Event posters (staging backfill + og:image of upcoming events) and Deezer
-// artist photos. Writes by default; `-- --dry-run` only logs.
+// Event posters (staging backfill + og:image of upcoming events), Deezer
+// artist photos with the poster of a headlined night as fallback, and venue
+// covers from their website. Writes by default; `-- --dry-run` only logs.
 //   --dry-run         log what would change
-//   --events-only     skip artists
-//   --artists-only    skip events
+//   --events-only     skip artists and venues
+//   --artists-only    skip events and venues
 //   --page-limit=N    upcoming event pages fetched for og:image (default 120)
 //   --artist-limit=N  artists looked up on Deezer per run (default 400)
 const args = process.argv.slice(2);
@@ -24,6 +25,7 @@ enrichImages(
     dryRun: args.includes('--dry-run'),
     events: !args.includes('--artists-only'),
     artists: !args.includes('--events-only'),
+    venues: !args.includes('--events-only') && !args.includes('--artists-only'),
     pageFetchLimit: numberArg('page-limit', 120),
     artistLimit: numberArg('artist-limit', 400),
   },

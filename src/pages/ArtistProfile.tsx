@@ -62,6 +62,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
           city: artistRow.city,
           bio: artistRow.bio,
           avatar_url: artistRow.avatar_url,
+          avatar_credit: (artistRow as any).avatar_credit ?? null,
           genres: artistRow.genres || [],
           external_links: artistRow.external_links || {},
           created_at: artistRow.created_at,

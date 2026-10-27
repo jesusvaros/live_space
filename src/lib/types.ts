@@ -43,6 +43,8 @@ export interface Artist {
   city: string | null;
   bio: string | null;
   avatar_url: string | null;
+  // "@username" when the avatar is a fan photo.
+  avatar_credit?: string | null;
   genres: string[];
   external_links: Record<string, string>;
   created_at: string;
@@ -75,6 +77,10 @@ export interface VenuePlace {
   longitude: number | null;
   website_url: string | null;
   photos: string[];
+  // Profile photo, hand-picked image, fan photo or source image, in that order.
+  cover_image_url?: string | null;
+  // "@username" when the cover is a fan photo.
+  cover_credit?: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;

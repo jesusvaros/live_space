@@ -54,6 +54,15 @@ duplicados por URL canónica. Las webs sin JSON-LD permanecerán inactivas hasta
 disponer de un parser y selectores propios; el parser HTML genérico no constituye
 por sí solo autorización para activar una fuente.
 
+El 27 de octubre de 2026 se añadieron salas pequeñas de la escena local, que es
+el foco del producto: Café La Palma, Sala Galileo Galilei y Gruta 77 en Madrid;
+Marula Café, Sidecar y Wolf en Barcelona. Todas tienen agenda pública y su
+`robots.txt` lo permite. Sala Villanos se descartó porque su `robots.txt` bloquea
+cualquier robot que no sea un buscador. Wurlitzer, Costello, Copérnico,
+Heliogàbal, Sala Vol, Upload, Meteoro, Honky Tonk, El Intruso y Bóveda necesitan
+un parser propio. El Perro de la Parte de Atrás del Coche solo publica en
+Instagram. Las nuevas fuentes entran en la base con `npm run scrape:seed`.
+
 Estado remoto del 26 de octubre de 2026: 292 conciertos publicados, 133 futuros,
 34 salas publicadas y 276 artistas publicados. La captura de verificación leyó
 493 entradas de 13 fuentes y terminó con cero errores. Los 13 watchers quedaron
@@ -175,9 +184,25 @@ confianza para publicar datos dudosos.
 ## Enriquecimiento
 
 MusicBrainz se consulta con caché, User-Agent identificable y máximo una petición
-por segundo. Las imágenes provienen solo de Wikimedia Commons con licencia
-compatible o press kit con permiso explícito. Se guarda autor, licencia, texto de
-atribución, URL y fecha de obtención; si falta, se usa placeholder.
+por segundo.
+
+`npm run enrich:images` (paso diario del workflow) solo rellena imágenes vacías y
+nunca pisa una elegida a mano (`image_source = 'manual'`):
+
+- Conciertos: el cartel que publica la propia página del concierto (JSON-LD u
+  `og:image`).
+- Artistas: foto de Deezer y, si no hay, el cartel de una noche que encabezan o
+  tocan solos (`image_source = 'poster'`, que Deezer mejora si aparece después).
+  Nunca el de una noche en la que son teloneros.
+- Salas: la imagen de compartir de su web oficial, descartando logos, PNG/SVG y
+  enlaces de CDN de redes sociales, que caducan.
+
+Por encima de todo eso, las vistas `v_subject_artists` y `v_subject_venues`
+ponen como portada la última foto del público con la reutilización permitida
+(`posts.allow_reuse`, autor con perfil público) y exponen el crédito en
+`avatar_credit` / `cover_credit`; la app lo imprime como «Foto @usuario». Orden:
+foto subida al perfil, imagen manual, foto del público, imagen de catálogo o
+fuente. Si no hay ninguna, la app dibuja el cartel generado.
 Encontrar un artista en una agenda española no demuestra su nacionalidad: las
 altas sin identidad verificada usan `country_code = ZZ` hasta el enriquecimiento.
 

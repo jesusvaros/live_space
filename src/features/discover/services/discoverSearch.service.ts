@@ -37,7 +37,7 @@ export const searchVenues = async (query: string, limit = 20): Promise<DiscoverV
     async () => {
       const { data, error } = await supabase
         .from('v_subject_venues')
-        .select('venue_place_id,subject_id,name,city,address,photos,venue_type,capacity')
+        .select('venue_place_id,subject_id,name,city,address,photos,cover_image_url,venue_type,capacity')
         .or(`name.ilike.%${q}%,city.ilike.%${q}%`)
         .limit(limit);
       if (error) throw error;
@@ -48,6 +48,7 @@ export const searchVenues = async (query: string, limit = 20): Promise<DiscoverV
         city: row.city,
         address: row.address,
         photos: row.photos || [],
+        cover_image_url: row.cover_image_url ?? null,
         venue_type: row.venue_type ?? null,
         capacity: row.capacity ?? null,
       })) as DiscoverVenue[];

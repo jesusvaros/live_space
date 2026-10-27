@@ -18,6 +18,7 @@ export type DiscoverVenue = {
   city: string;
   address: string | null;
   photos: string[];
+  cover_image_url?: string | null;
   venue_type: string | null;
   capacity: number | null;
   recent_posters?: string[];

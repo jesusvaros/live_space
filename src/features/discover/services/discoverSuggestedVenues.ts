@@ -29,6 +29,7 @@ const mapVenue = (row: any): DiscoverVenue => ({
   city: row.city,
   address: row.address,
   photos: row.photos || [],
+  cover_image_url: row.cover_image_url ?? null,
   venue_type: row.venue_type ?? null,
   capacity: row.capacity ?? null,
 });
@@ -42,7 +43,7 @@ const fetchVenuesByIds = async (venuePlaceIds: string[]) => {
     async () => {
       const { data, error } = await supabase
         .from('v_subject_venues')
-        .select('venue_place_id,subject_id,name,city,address,photos,venue_type,capacity')
+        .select('venue_place_id,subject_id,name,city,address,photos,cover_image_url,venue_type,capacity')
         .in('venue_place_id', uniqueSorted);
       if (error) throw error;
       return data || [];
@@ -76,7 +77,7 @@ export const getSuggestedVenues = async (options?: { location?: { lat: number; l
     async () => {
       const { data, error } = await supabase
         .from('v_subject_venues')
-        .select('venue_place_id,subject_id,name,city,address,photos,venue_type,capacity,created_at')
+        .select('venue_place_id,subject_id,name,city,address,photos,cover_image_url,venue_type,capacity,created_at')
         .order('created_at', { ascending: false })
         .limit(SUGGESTED_LIMIT);
       if (error) throw error;

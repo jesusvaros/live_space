@@ -12,6 +12,27 @@ const asText = (value: unknown): string | undefined => {
   return text || undefined;
 };
 
+// WordPress plugins often escape the JSON-LD strings as HTML
+// ("En Bruto &#8211; Open mic").
+const NAMED_ENTITIES: Record<string, string> = { amp: '&', quot: '"', apos: "'", lt: '<', gt: '>', nbsp: ' ' };
+
+const decodeEntities = (text: string): string =>
+  text.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (match, entity: string) => {
+    if (entity[0] !== '#') return NAMED_ENTITIES[entity.toLowerCase()] ?? match;
+    const code = entity[1] === 'x' || entity[1] === 'X' ? parseInt(entity.slice(2), 16) : Number(entity.slice(1));
+    return Number.isFinite(code) && code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : match;
+  });
+
+const asDisplayText = (value: unknown): string | undefined => {
+  const text = asText(value);
+  return text ? decodeEntities(text) : undefined;
+};
+
+// Some calendars write the offset without its leading zero ("+1:00"), which
+// PostgreSQL and Date reject.
+const asIsoDate = (value: unknown): string | undefined =>
+  asText(value)?.replace(/([+-])(\d):(\d{2})$/, (_match, sign: string, hour: string, minute: string) => `${sign}0${hour}:${minute}`);
+
 const absoluteUrl = (value: unknown, baseUrl: string): string | undefined => {
   const text = asText(value);
   if (!text) return undefined;
@@ -66,8 +87,8 @@ export const parseJsonLdDocuments = (
       const location = asRecord(record.location);
       const address = asRecord(location?.address);
       const sourceEventUrl = absoluteUrl(record.url ?? record['@id'], source.base_url);
-      const startsAt = asText(record.startDate);
-      const title = asText(record.name);
+      const startsAt = asIsoDate(record.startDate);
+      const title = asDisplayText(record.name);
       const performers = performerNames(record.performer);
 
       return {
@@ -75,7 +96,7 @@ export const parseJsonLdDocuments = (
         sourceEventUrl,
         sourceEventId: asText(record.identifier ?? record['@id']),
         title,
-        description: asText(record.description),
+        description: asDisplayText(record.description),
         dateText: startsAt,
         startsAt: startsAt ?? null,
         venueName: asText(location?.name) ?? source.name,

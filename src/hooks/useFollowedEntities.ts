@@ -31,7 +31,7 @@ export const useFollowedEntities = (followedSubjectIds: Set<string>) => {
       async () => {
         const [artists, venues] = await Promise.all([
           supabase.from('v_subject_artists').select('subject_id,id,name,city,avatar_url').in('subject_id', ids),
-          supabase.from('v_subject_venues').select('subject_id,id,name,city,photos').in('subject_id', ids),
+          supabase.from('v_subject_venues').select('subject_id,id,name,city,photos,cover_image_url').in('subject_id', ids),
         ]);
         if (artists.error) throw artists.error;
         if (venues.error) throw venues.error;
@@ -49,7 +49,7 @@ export const useFollowedEntities = (followedSubjectIds: Set<string>) => {
             kind: 'venue' as const,
             id: String(row.id),
             name: String(row.name ?? ''),
-            imageUrl: (row.photos || [])[0] ?? null,
+            imageUrl: row.cover_image_url ?? (row.photos || [])[0] ?? null,
             city: row.city ?? null,
           })),
         ];
