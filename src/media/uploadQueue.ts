@@ -816,20 +816,23 @@ const defaultDeps: QueueDeps = {
     return (data?.song_id as string | null | undefined) ?? null;
   },
   createPost: async (input) => {
-    const { data, error } = await supabase
-      .from('posts')
-      .insert({
-        author_id: input.authorId,
-        media_asset_id: input.mediaAssetId,
-        event_id: input.eventId,
-        captured_at: input.capturedAt,
-        caption: input.caption,
-        song_id: input.songId,
-        // Only sent when off: the column defaults to true.
-        ...(input.allowReuse ? {} : { allow_reuse: false }),
-      })
-      .select('id')
-      .single();
+    const row = {
+      author_id: input.authorId,
+      media_asset_id: input.mediaAssetId,
+      event_id: input.eventId,
+      captured_at: input.capturedAt,
+      caption: input.caption,
+      song_id: input.songId,
+      // Only sent when off: the column defaults to true.
+      ...(input.allowReuse ? {} : { allow_reuse: false }),
+    };
+    // posts_create requires source = 'upload' for uploads (social import
+    // migration). Before that migration the column does not exist: retry
+    // without it.
+    let { data, error } = await supabase.from('posts').insert({ ...row, source: 'upload' }).select('id').single();
+    if (error && (error.code === 'PGRST204' || error.code === '42703') && /source/.test(error.message)) {
+      ({ data, error } = await supabase.from('posts').insert(row).select('id').single());
+    }
     if (error) {
       // A retry after a lost response: the post already exists.
       if (error.code === '23505') {
@@ -843,7 +846,7 @@ const defaultDeps: QueueDeps = {
       }
       throw error;
     }
-    return data.id as string;
+    return data!.id as string;
   },
 };
 
