@@ -37,6 +37,13 @@ export const IconMic: React.FC<IconProps> = ({ className, size = 20 }) => (
   </svg>
 );
 
+// A pennant: festivals, next to the mic (artists) and the pin (venues).
+export const IconFlag: React.FC<IconProps> = ({ className, size = 20 }) => (
+  <svg {...baseProps(size)} className={className}>
+    <path d="M5 21V4M5 4h11l-2 4 2 4H5" />
+  </svg>
+);
+
 export const IconPlus: React.FC<IconProps> = ({ className, size = 20 }) => (
   <svg {...baseProps(size)} className={className}>
     <path d="M12 5v14M5 12h14" />

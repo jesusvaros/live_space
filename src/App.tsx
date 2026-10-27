@@ -37,6 +37,8 @@ const GestionEstadisticas = React.lazy(() => import('./pages/GestionEstadisticas
 const LicenciaMomentos = React.lazy(() => import('./pages/LicenciaMomentos'));
 const ClaimProfile = React.lazy(() => import('./pages/ClaimProfile'));
 const Management = React.lazy(() => import('./pages/Management'));
+const FestivalDetail = React.lazy(() => import('./pages/FestivalDetail'));
+const FestivalTimetable = React.lazy(() => import('./pages/FestivalTimetable'));
 const EventQr = React.lazy(() => import('./pages/EventQr'));
 
 const deferredPage = (page: React.ReactNode) => (
@@ -179,6 +181,7 @@ const AppRoutes = () => {
           <Route path="/subir/sugerido" element={<RequireAuth>{deferredPage(<SuggestedUpload />)}</RequireAuth>} />
           <Route path="/reclamar/:type/:id" element={<RequireAuth>{deferredPage(<ClaimProfile />)}</RequireAuth>} />
           <Route path="/gestion" element={<RequireAuth>{deferredPage(<Management />)}</RequireAuth>} />
+          <Route path="/gestion/festival/:id" element={<RequireAuth>{deferredPage(<FestivalTimetable />)}</RequireAuth>} />
           <Route path="/gestion/evento/:id/qr" element={<RequireAuth>{deferredPage(<EventQr />)}</RequireAuth>} />
           <Route path="/importar" element={deferredPage(<Import />)} />
           <Route
@@ -208,6 +211,7 @@ const AppRoutes = () => {
             />
             <Route path="artist/:id" element={<ArtistProfile />} />
             <Route path="venue/:id" element={<VenueDetail />} />
+            <Route path="festival/:id" element={deferredPage(<FestivalDetail />)} />
             <Route index element={<Navigate to={mainTabHref} replace />} />
           </Route>
           <Route

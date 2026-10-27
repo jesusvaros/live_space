@@ -38,6 +38,7 @@ export const fetchEventCards = async (options: {
   eventId?: string;
   eventIds?: string[];
   venueId?: string;
+  festivalId?: string;
 }) => {
   let query = supabase.from('events').select(EVENT_CARD_SELECT).eq('status', 'published');
   if (options.startIso) query = query.gte('starts_at', options.startIso);
@@ -48,6 +49,7 @@ export const fetchEventCards = async (options: {
     query = query.in('id', options.eventIds);
   }
   if (options.venueId) query = query.eq('venue_place_id', options.venueId);
+  if (options.festivalId) query = query.eq('festival_id', options.festivalId);
 
   const { data, error } = await query.order('starts_at', { ascending: true });
   if (error) throw error;

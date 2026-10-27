@@ -42,7 +42,7 @@ const ClaimsQueue: React.FC = () => {
   }, [load]);
 
   const review = async (row: AdminClaimRow, approve: boolean) => {
-    const name = row.subject?.artist?.name || row.subject?.venue?.name || 'este perfil';
+    const name = row.subject?.artist?.name || row.subject?.venue?.name || row.subject?.festival?.name || 'este perfil';
     const who = row.claimant?.display_name || row.claimant?.username || row.contact_email;
     const question = approve
       ? `¿Dar acceso de gestión de ${name} a ${who}? Confirma antes que el email o el código de Instagram son correctos.`
@@ -90,9 +90,11 @@ const ClaimsQueue: React.FC = () => {
 
       <ul className="space-y-3">
         {rows.map(row => {
-          const entityName = row.subject?.artist?.name || row.subject?.venue?.name || 'Perfil';
-          const entityId = row.subject?.artist?.id || row.subject?.venue?.id;
-          const officialDomain = domainFromUrl(row.subject?.venue?.website_url || row.subject?.artist?.external_links?.website);
+          const entityName = row.subject?.artist?.name || row.subject?.venue?.name || row.subject?.festival?.name || 'Perfil';
+          const entityId = row.subject?.artist?.id || row.subject?.venue?.id || row.subject?.festival?.id;
+          const officialDomain = domainFromUrl(
+            row.subject?.venue?.website_url || row.subject?.festival?.website_url || row.subject?.artist?.external_links?.website,
+          );
           const emailDomain = row.contact_email.split('@')[1]?.toLowerCase() || '';
           const domainMatches = officialDomain ? emailDomain === officialDomain || emailDomain.endsWith(`.${officialDomain}`) : null;
           return (
@@ -101,7 +103,7 @@ const ClaimsQueue: React.FC = () => {
                 <Avatar name={entityName} rounded="xl" className="h-11 w-11 text-base" />
                 <div className="min-w-0 flex-1">
                   <p className="font-mono text-[11px] font-semibold uppercase text-app-accent">
-                    {row.subject?.type === 'venue' ? 'Sala' : 'Artista'} · {formatDate(row.created_at)}
+                    {row.subject?.type === 'venue' ? 'Sala' : row.subject?.type === 'festival' ? 'Festival' : 'Artista'} · {formatDate(row.created_at)}
                   </p>
                   {entityId ? (
                     <Link to={`/tabs/${row.subject?.type}/${entityId}`} className="block truncate font-semibold text-app-ink underline-offset-2 hover:underline">

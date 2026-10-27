@@ -15,6 +15,7 @@ import {
 const ROLES: Record<ClaimEntityType, string[]> = {
   artist: ['Soy el artista o miembro del grupo', 'Management', 'Sello o discográfica', 'Comunicación o prensa', 'Booking'],
   venue: ['Programación', 'Dirección', 'Comunicación', 'Producción', 'Propiedad de la sala'],
+  festival: ['Organización', 'Dirección', 'Programación', 'Comunicación o prensa', 'Producción'],
 };
 
 const fieldClass =
@@ -43,7 +44,7 @@ const statusCopy: Record<EntityClaim['status'], { title: string; body: string }>
 
 const ClaimProfile: React.FC = () => {
   const { type: rawType, id } = useParams();
-  const type: ClaimEntityType = rawType === 'venue' ? 'venue' : 'artist';
+  const type: ClaimEntityType = rawType === 'venue' || rawType === 'festival' ? rawType : 'artist';
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -138,7 +139,7 @@ const ClaimProfile: React.FC = () => {
     }
   };
 
-  const kindLabel = type === 'venue' ? 'sala' : 'artista';
+  const kindLabel = type === 'venue' ? 'sala' : type === 'festival' ? 'festival' : 'artista';
 
   const renderHeaderEntity = () =>
     target ? (

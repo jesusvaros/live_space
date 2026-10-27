@@ -9,7 +9,7 @@ import AppShell from '../components/AppShell';
 import TimelinePlayer, { MediaFilter } from '../components/event/TimelinePlayer';
 import { TimelineBucket } from '../components/event/TimelineScrubber';
 import ShareSheet from '../components/ShareSheet';
-import { IconBookmark, IconBookmarkFilled, IconPlus, IconShare } from '../components/icons';
+import { IconBookmark, IconBookmarkFilled, IconFlag, IconPlus, IconShare } from '../components/icons';
 import DetailHeader from '../components/ui/DetailHeader';
 import Avatar from '../components/ui/Avatar';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
@@ -20,6 +20,7 @@ import { enableMomentNudges } from '../features/moments/momentNudge';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { EventStatsCard, VenueFeedbackPrompt } from '../features/community';
 import { EventTagBadge } from '../features/socialImport';
+import { festivalService } from '../services/festival.service';
 
 type EventDetailData = Event & {
   organizer?: Profile | null;
@@ -73,6 +74,7 @@ const EventDetail: React.FC = () => {
   const { user } = useAuth();
   const { isFollowing } = useFollowedSubjects();
   const [event, setEvent] = useState<EventDetailData | null>(null);
+  const [festival, setFestival] = useState<{ id: string; name: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [buckets, setBuckets] = useState<TimelineBucket[]>([]);
@@ -292,6 +294,21 @@ const EventDetail: React.FC = () => {
     const bucket = buckets[index];
     loadBucket(bucket.bucket_time, false, filter);
   };
+
+  // A festival set links back to its festival.
+  useEffect(() => {
+    if (!event?.festival_id) {
+      setFestival(null);
+      return undefined;
+    }
+    let cancelled = false;
+    festivalService.forEvent(event.id).then(next => {
+      if (!cancelled) setFestival(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [event?.id, event?.festival_id]);
 
   useEffect(() => {
     bucketCacheRef.current = {};
@@ -749,6 +766,19 @@ const EventDetail: React.FC = () => {
               </section>
 
               <div className="flex flex-col gap-3 px-4 pt-3.5">
+                {festival ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/tabs/festival/${festival.id}`)}
+                    className="flex min-h-[52px] items-center gap-2.5 rounded-2xl border border-app-accent/50 bg-app-accent/10 px-3.5 text-left"
+                  >
+                    <IconFlag size={18} className="text-app-accent" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-app-accent">Parte del festival</span>
+                      <span className="block truncate font-display text-[15px] font-bold text-app-ink">{festival.name}</span>
+                    </span>
+                  </button>
+                ) : null}
                 {venue ? (
                   <button
                     type="button"

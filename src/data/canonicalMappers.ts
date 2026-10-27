@@ -85,6 +85,8 @@ export const mapEvent = (row: UnknownRow): Event => ({
   starts_at: String(row.starts_at ?? ''),
   ends_at: stringOrNull(row.ends_at),
   ...(typeof row.share_tag === 'string' && row.share_tag ? { share_tag: row.share_tag } : {}),
+  festival_id: stringOrNull(row.festival_id),
+  room: stringOrNull(row.room),
   is_public: row.status === 'published',
   qr_token: null,
   qr_token_rotated_at: null,

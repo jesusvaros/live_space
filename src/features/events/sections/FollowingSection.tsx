@@ -37,6 +37,7 @@ const FollowingSection: React.FC<FollowingSectionProps> = ({ events, entities, s
   const { upcoming, soonIds } = useMemo(() => {
     const artistIds = new Set(entities.filter(entity => entity.kind === 'artist').map(entity => entity.id));
     const venueIds = new Set(entities.filter(entity => entity.kind === 'venue').map(entity => entity.id));
+    const festivalIds = new Set(entities.filter(entity => entity.kind === 'festival').map(entity => entity.id));
     const now = Date.now();
     // Tonight's concert stays listed for a few hours after doors.
     const from = now - 4 * 60 * 60 * 1000;
@@ -47,11 +48,14 @@ const FollowingSection: React.FC<FollowingSectionProps> = ({ events, entities, s
       if (startsAt.getTime() < from) continue;
       const artistMatch = (event.event_artists || []).find(entry => entry.artist?.id && artistIds.has(entry.artist.id));
       const venueMatch = event.venue_place?.id && venueIds.has(event.venue_place.id) ? event.venue_place.id : null;
-      if (!artistMatch && !venueMatch) continue;
-      list.push({ event, reason: artistMatch ? 'sigues al artista' : 'sigues la sala', startsAt });
+      const festivalMatch = event.festival_id && festivalIds.has(event.festival_id) ? event.festival_id : null;
+      if (!artistMatch && !venueMatch && !festivalMatch) continue;
+      const reason = artistMatch ? 'sigues al artista' : festivalMatch ? 'sigues el festival' : 'sigues la sala';
+      list.push({ event, reason, startsAt });
       if (startsAt.getTime() - now <= WEEK_MS) {
         if (artistMatch?.artist?.id) soon.add(artistMatch.artist.id);
         if (venueMatch) soon.add(venueMatch);
+        if (festivalMatch) soon.add(festivalMatch);
       }
     }
     list.sort((left, right) => left.startsAt.getTime() - right.startsAt.getTime());
@@ -95,17 +99,17 @@ const FollowingSection: React.FC<FollowingSectionProps> = ({ events, entities, s
             <button
               key={entity.subjectId}
               type="button"
-              onClick={() => navigate(entity.kind === 'artist' ? `/tabs/artist/${entity.id}` : `/tabs/venue/${entity.id}`)}
+              onClick={() => navigate(`/tabs/${entity.kind}/${entity.id}`)}
               className="flex w-[68px] shrink-0 flex-col items-center gap-1.5 text-app-ink"
             >
-              <span className={`${entity.kind === 'venue' ? 'rounded-[18px]' : 'rounded-full'} border-2 p-0.5 ${ringed ? 'border-app-accent' : 'border-app-line'}`}>
+              <span className={`${entity.kind === 'artist' ? 'rounded-full' : 'rounded-[18px]'} border-2 p-0.5 ${ringed ? 'border-app-accent' : 'border-app-line'}`}>
                 <Avatar name={entity.name} src={entity.imageUrl} kind={entity.kind} badge className="h-[60px] w-[60px] text-[22px]" />
               </span>
               <span className={`w-full truncate text-center text-xs font-semibold ${ringed ? '' : 'text-[#c9c5bd]'}`}>
                 {entity.name}
               </span>
               <span className="-mt-1 font-mono text-[9px] font-semibold uppercase tracking-[0.08em] text-[#8f8b84]">
-                {entity.kind === 'artist' ? 'Artista' : 'Sala'}
+                {entity.kind === 'artist' ? 'Artista' : entity.kind === 'festival' ? 'Festival' : 'Sala'}
               </span>
             </button>
           );

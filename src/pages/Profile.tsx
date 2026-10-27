@@ -440,14 +440,14 @@ const Profile: React.FC = () => {
             <li key={entity.subjectId}>
               <button
                 type="button"
-                onClick={() => navigate(entity.kind === 'artist' ? `/tabs/artist/${entity.id}` : `/tabs/venue/${entity.id}`)}
+                onClick={() => navigate(`/tabs/${entity.kind}/${entity.id}`)}
                 className="flex w-full items-center gap-3 px-3 py-2.5 text-left"
               >
                 <Avatar name={entity.name} src={entity.imageUrl} kind={entity.kind} badge className="h-11 w-11 text-[15px]" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-display text-[15px] font-bold text-app-ink">{entity.name}</span>
                   <span className="block truncate text-xs text-[#8f8b84]">
-                    {[entity.kind === 'artist' ? 'Artista' : 'Sala', entity.city].filter(Boolean).join(' · ')}
+                    {[entity.kind === 'artist' ? 'Artista' : entity.kind === 'festival' ? 'Festival' : 'Sala', entity.city].filter(Boolean).join(' · ')}
                   </span>
                 </span>
               </button>
