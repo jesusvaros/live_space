@@ -57,6 +57,17 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
+      # Setlists for concerts of the last 3 days that still have none. Skips
+      # itself (one log line) when the SETLISTFM_API_KEY secret is not set.
+      - name: Fallback setlists from setlist.fm
+        if: always()
+        continue-on-error: true
+        run: npm run setlists:fallback
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SETLISTFM_API_KEY: ${{ secrets.SETLISTFM_API_KEY }}
+
       - name: Resolve obsolete watcher alerts
         if: always()
         run: npm run scrape:maintenance

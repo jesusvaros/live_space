@@ -18,6 +18,8 @@ import DetailHeader from '../components/ui/DetailHeader';
 import { fetchEventCardById } from '../data/eventQueries';
 import { createConfiguredCloudinaryMediaProvider, uploadEventPost } from '../media';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
+import SetlistAttribution from '../components/event/SetlistAttribution';
+import { enableMomentNudges } from '../features/moments/momentNudge';
 
 type EventDetailData = Event & {
   organizer?: Profile | null;
@@ -598,6 +600,8 @@ const EventDetail: React.FC = () => {
           });
         if (insertError) throw insertError;
         setFollowed(true);
+        // Morning-after "¿Subes lo de anoche?" for saved concerts.
+        void enableMomentNudges(user.id);
       }
     } catch (err: any) {
       setEngagementError(err?.message || 'No se ha podido actualizar el seguimiento.');
@@ -637,6 +641,7 @@ const EventDetail: React.FC = () => {
         );
       if (upsertError) throw upsertError;
       setAttendanceStatus(status);
+      if (status === 'going') void enableMomentNudges(user.id);
       return true;
     } catch (err: any) {
       setEngagementError(err?.message || 'No se ha podido actualizar la asistencia.');
@@ -797,6 +802,9 @@ const EventDetail: React.FC = () => {
                         </div>
                       ))}
                     </div>
+                    {setlist.some(entry => entry.source === 'setlistfm') && (
+                      <SetlistAttribution url={setlist.find(entry => entry.source_url)?.source_url} />
+                    )}
                   </div>
                 )}
 

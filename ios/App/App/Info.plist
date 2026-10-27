@@ -52,7 +52,9 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Live Space usa la cámara para grabar y subir momentos del concierto y escanear el QR de la sala.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Live Space accede a tus fotos y vídeos para que elijas qué subir del concierto.</string>
+	<string>Live Space busca en tu galería las fotos y vídeos que hiciste en los conciertos a los que fuiste, para proponerte subirlos sin buscarlos uno a uno. No se sube nada hasta que tú lo confirmas.</string>
+	<key>PHPhotoLibraryPreventAutomaticLimitedAccessAlert</key>
+	<true/>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Live Space guarda en tu galería las fotos que hagas desde la app.</string>
 	<key>CFBundleURLTypes</key>

@@ -17,6 +17,8 @@ const mapSetlistEntry = (row: any): EventSetlistEntry => ({
   starts_offset_ms: row.performed_at_offset_seconds == null ? null : row.performed_at_offset_seconds * 1000,
   ends_offset_ms: null,
   created_at: row.created_at,
+  source: row.source ?? null,
+  source_url: row.source_url ?? null,
   ...(row.performer ? { performer: row.performer } : {}),
   ...(row.song ? { song: row.song } : {}),
 }) as EventSetlistEntry;

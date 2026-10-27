@@ -14,6 +14,7 @@ import { useAuth } from './contexts/AuthContext';
 import { useWorkspace } from './contexts/WorkspaceContext';
 import AppBackHandler from './app/AppBackHandler';
 import AuthDeepLinks from './app/AuthDeepLinks';
+import MomentNudges from './features/moments/MomentNudges';
 import Welcome from './pages/Welcome';
 import Events from './pages/Events';
 
@@ -30,6 +31,7 @@ const CreateEventPage = React.lazy(() => import('./pages/CreateEvent'));
 const EventDetail = React.lazy(() => import('./pages/EventDetail'));
 const Map = React.lazy(() => import('./pages/Map'));
 const Upload = React.lazy(() => import('./pages/Upload'));
+const SuggestedUpload = React.lazy(() => import('./pages/SuggestedUpload'));
 
 const deferredPage = (page: React.ReactNode) => (
   <React.Suspense
@@ -166,6 +168,7 @@ const AppRoutes = () => {
     <>
       <AppBackHandler mainTabPath={mainTabHref} />
       <AuthDeepLinks />
+      <MomentNudges />
       <React.Suspense fallback={<div className="h-dvh bg-app-bg" />}>
         <Routes>
           <Route path="/welcome" element={<WelcomeRoute />} />
@@ -184,6 +187,8 @@ const AppRoutes = () => {
           <Route path="/reset" element={<ResetPassword />} />
           <Route path="/create-event" element={<RequireAuth><CreateEventRedirect /></RequireAuth>} />
           <Route path="/upload" element={<RequireAuth><Navigate to="/tabs/upload" replace /></RequireAuth>} />
+          {/* Morning-after nudge: clips found in the gallery, ready to publish */}
+          <Route path="/subir/sugerido" element={<RequireAuth>{deferredPage(<SuggestedUpload />)}</RequireAuth>} />
           <Route
             path="/tabs"
             element={(
