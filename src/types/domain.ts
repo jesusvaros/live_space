@@ -85,4 +85,6 @@ export type EventRow = {
   image_url?: string | null;
   image_source?: string | null;
   tour_name?: string | null;
+  // Fields a manager edited by hand; the pipeline never overwrites them.
+  manager_locked_fields?: string[] | null;
 };

@@ -15,6 +15,8 @@ import { distanceToConcert, songAtTime } from '../lib/songAssignment';
 import { EventListItem } from '../features/events/types';
 import { ReuseConsentCheckbox } from '../features/community';
 import { getEventCoverImage, getPrimaryArtistName } from '../features/events/utils';
+import { parseScannedUploadValue } from '../lib/uploadQr';
+import { eventManagementService } from '../services/eventManagement.service';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 // Detected only if the media was captured within this distance of the concert.
@@ -73,7 +75,10 @@ const Upload: React.FC = () => {
   const location = useLocation();
   const { user } = useAuth();
   const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
-  const presetEventId = params.get('event');
+  // A concert QR carries ?qr=<upload token> (resolved below) instead of the id.
+  const presetToken = params.get('qr');
+  const [tokenEventId, setTokenEventId] = useState<string | null>(null);
+  const presetEventId = params.get('event') || tokenEventId;
   const presetSong = Number(params.get('song')) || null;
 
   const [event, setEvent] = useState<EventListItem | null>(null);
@@ -99,6 +104,24 @@ const Upload: React.FC = () => {
   }, [items]);
 
   useEffect(() => () => itemsRef.current.forEach(item => URL.revokeObjectURL(item.previewUrl)), []);
+
+  useEffect(() => {
+    if (!presetToken) return;
+    let cancelled = false;
+    eventManagementService
+      .resolveUploadToken(presetToken)
+      .then(eventId => {
+        if (cancelled) return;
+        if (eventId) setTokenEventId(eventId);
+        else setError('Este QR ya no es válido. Elige el concierto a mano.');
+      })
+      .catch(() => {
+        if (!cancelled) setError('No hemos podido leer el QR. Elige el concierto a mano.');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [presetToken]);
 
   // Coming from a concert page ("¿La grabaste?", "Sube lo que grabaste").
   useEffect(() => {
@@ -204,20 +227,15 @@ const Upload: React.FC = () => {
   };
 
   const handleQrDetected = async (value: string) => {
-    let eventId = value.trim();
-    try {
-      const url = new URL(value);
-      const parts = url.pathname.split('/').filter(Boolean);
-      eventId = parts[parts.length - 1] || '';
-    } catch {
-      // Not a URL, treat as raw event id.
-    }
+    const target = parseScannedUploadValue(value);
     setShowScanner(false);
-    if (!eventId) {
+    if (!target) {
       setError('Código QR no válido.');
       return;
     }
     try {
+      const eventId = 'token' in target ? await eventManagementService.resolveUploadToken(target.token) : target.eventId;
+      if (!eventId) throw new Error('not found');
       const found = await fetchEventCardById(eventId);
       if (!found) throw new Error('not found');
       selectEvent(found);

@@ -15,6 +15,7 @@ import { fetchPostCards } from '../data/postQueries';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import DetailHeader from '../components/ui/DetailHeader';
+import ClaimProfileLink from '../components/pro/ClaimProfileLink';
 
 type ArtistTab = 'shows' | 'moments' | 'about';
 
@@ -305,6 +306,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
           <div className="px-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))] pt-4">
             {tabBar}
             <div className="pt-3.5">{renderTabContent()}</div>
+            <ClaimProfileLink type="artist" entityId={artist.id} subjectId={artist.subject_id} className="pt-6" />
           </div>
         </>
       )}
