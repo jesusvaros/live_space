@@ -17,7 +17,15 @@ export type ParserKey =
   | 'generic-agenda'
   | 'wordpress-generic'
   | 'single-event-page'
-  | 'resident-advisor-like';
+  | 'resident-advisor-like'
+  | 'honky-tonk-agenda'
+  | 'wurlitzer-agenda'
+  | 'intruso-agenda'
+  | 'maravillas-agenda'
+  | 'libertad8-agenda'
+  | 'moby-dick-agenda'
+  | 'tribe-events-lineup'
+  | 'cafe-central-agenda';
 
 export type RawScrapedEvent = {
   sourceUrl: string;

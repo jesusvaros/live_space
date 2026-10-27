@@ -14,6 +14,14 @@ import { sirocoAgendaParser } from './parsers/sirocoAgendaParser.js';
 import { shopifyConcertsParser } from './parsers/shopifyConcertsParser.js';
 import { tribeEventsApiParser } from './parsers/tribeEventsApiParser.js';
 import { wordpressGenericParser } from './parsers/wordpressGenericParser.js';
+import { honkyTonkAgendaParser } from './parsers/honkyTonkAgendaParser.js';
+import { wurlitzerAgendaParser } from './parsers/wurlitzerAgendaParser.js';
+import { intrusoAgendaParser } from './parsers/intrusoAgendaParser.js';
+import { maravillasAgendaParser } from './parsers/maravillasAgendaParser.js';
+import { libertad8AgendaParser } from './parsers/libertad8AgendaParser.js';
+import { mobyDickAgendaParser } from './parsers/mobyDickAgendaParser.js';
+import { tribeEventsLineupParser } from './parsers/tribeEventsLineupParser.js';
+import { cafeCentralAgendaParser } from './parsers/cafeCentralAgendaParser.js';
 
 const parserRegistry: Record<ParserKey, VenueParser> = {
   'apolo-agenda': apoloAgendaParser,
@@ -31,6 +39,14 @@ const parserRegistry: Record<ParserKey, VenueParser> = {
   'siroco-agenda': sirocoAgendaParser,
   'shopify-concerts': shopifyConcertsParser,
   'tribe-events-api': tribeEventsApiParser,
+  'honky-tonk-agenda': honkyTonkAgendaParser,
+  'wurlitzer-agenda': wurlitzerAgendaParser,
+  'intruso-agenda': intrusoAgendaParser,
+  'maravillas-agenda': maravillasAgendaParser,
+  'libertad8-agenda': libertad8AgendaParser,
+  'moby-dick-agenda': mobyDickAgendaParser,
+  'tribe-events-lineup': tribeEventsLineupParser,
+  'cafe-central-agenda': cafeCentralAgendaParser,
 };
 
 export const getParser = (key: ParserKey): VenueParser => {
