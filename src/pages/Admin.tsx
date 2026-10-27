@@ -513,7 +513,7 @@ const Admin: React.FC = () => {
                   <MapContainer
                     center={venueMapCenter}
                     zoom={12}
-                    className="h-full w-full"
+                    className="map-dark h-full w-full"
                     zoomControl={false}
                     style={{ height: '100%', width: '100%' }}
                   >

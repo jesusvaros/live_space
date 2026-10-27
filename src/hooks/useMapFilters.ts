@@ -1,291 +1,157 @@
-import { useEffect, useMemo, useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { Artist, Event, VenuePlace } from '../lib/types';
+import { useMemo, useState } from 'react';
+import type { MapEvent } from '../data/eventQueries';
 
-type EventWithVenue = Event & { venue_place?: VenuePlace | null };
-type AttendanceStatus = 'going' | 'attended';
+export type MapWhen = 'all' | 'today' | 'weekend' | 'next30';
 
-type UseMapFiltersParams = {
-  events: (EventWithVenue & {
-    event_artists?: { artist: Artist | null }[];
-  })[];
-  venues: VenuePlace[];
-  userId?: string | null;
+// Busy venues list a year ahead; a month keeps pin counts meaningful.
+const DEFAULT_WHEN: MapWhen = 'next30';
+
+export type MapArtistFilter = { id: string; name: string; avatar_url: string | null };
+
+export type MapVenueGroup = {
+  id: string;
+  name: string;
+  city: string;
+  latitude: number;
+  longitude: number;
+  /** Matching concerts at this venue, soonest first. */
+  events: MapEvent[];
 };
 
-export const useMapFilters = ({ events, venues, userId }: UseMapFiltersParams) => {
-  const [search, setSearch] = useState('');
-  const [showEvents, setShowEvents] = useState(true);
-  const [showVenues, setShowVenues] = useState(false);
-  const [showUpcoming, setShowUpcoming] = useState(true);
-  const [showPast, setShowPast] = useState(true);
-  const [filterToday, setFilterToday] = useState(false);
-  const [filterTomorrow, setFilterTomorrow] = useState(false);
-  const [filterDate, setFilterDate] = useState('');
-  const [filterNow, setFilterNow] = useState(false);
-  const [filterFree, setFilterFree] = useState(false);
-  const [filterGenres, setFilterGenres] = useState('');
-  const [priceMin, setPriceMin] = useState('');
-  const [priceMax, setPriceMax] = useState('');
-  const [filterDayPart, setFilterDayPart] = useState<'day' | 'night' | ''>('');
-  const [filterBandOnly, setFilterBandOnly] = useState(false);
-  const [selectedArtistIds, setSelectedArtistIds] = useState<string[]>([]);
-  const [filterGoing, setFilterGoing] = useState(false);
-  const [filterAttended, setFilterAttended] = useState(false);
-  const [attendanceMap, setAttendanceMap] = useState<Record<string, AttendanceStatus>>({});
+export const MAP_WHEN_LABELS: Record<Exclude<MapWhen, 'all'>, string> = {
+  today: 'Hoy',
+  weekend: 'Este finde',
+  next30: 'Próximos 30 días',
+};
 
-  useEffect(() => {
-    if (!userId || (!filterGoing && !filterAttended)) {
-      setAttendanceMap({});
-      return;
-    }
-    const loadAttendance = async () => {
-      const { data } = await supabase
-        .from('event_attendance')
-        .select('event_id, status')
-        .eq('profile_id', userId);
-      const nextMap: Record<string, AttendanceStatus> = {};
-      (data || []).forEach((row: any) => {
-        if (row?.event_id && row?.status) {
-          nextMap[row.event_id] = row.status as AttendanceStatus;
-        }
-      });
-      setAttendanceMap(nextMap);
-    };
-    loadAttendance();
-  }, [userId, filterGoing, filterAttended]);
+const startOfDay = (date: Date) => {
+  const next = new Date(date);
+  next.setHours(0, 0, 0, 0);
+  return next;
+};
+
+const endOfDay = (date: Date) => {
+  const next = new Date(date);
+  next.setHours(23, 59, 59, 999);
+  return next;
+};
+
+const addDays = (date: Date, days: number) => {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+};
+
+/** [start, end] in local time for a date chip, or null for "any date". */
+export const getWhenRange = (when: MapWhen, now = new Date()): [Date, Date] | null => {
+  const today = startOfDay(now);
+  if (when === 'today') return [today, endOfDay(today)];
+  if (when === 'next30') return [today, endOfDay(addDays(today, 30))];
+  if (when === 'weekend') {
+    // Friday to Sunday of this week; on the weekend itself, from today.
+    const day = today.getDay();
+    const friday = day === 0 ? addDays(today, -2) : day === 6 ? addDays(today, -1) : addDays(today, 5 - day);
+    const start = friday < today ? today : friday;
+    return [start, endOfDay(addDays(friday, 2))];
+  }
+  return null;
+};
+
+const normalize = (value: string) =>
+  value.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+export const useMapFilters = (events: MapEvent[]) => {
+  const [search, setSearch] = useState('');
+  const [when, setWhen] = useState<MapWhen>(DEFAULT_WHEN);
+  const [city, setCity] = useState<string | null>(null);
+  const [artists, setArtists] = useState<MapArtistFilter[]>([]);
+  const [includePast, setIncludePast] = useState(false);
+
+  const cities = useMemo(() => {
+    const counts = new Map<string, number>();
+    events.forEach(event => {
+      if (!event.venue || !event.city) return;
+      counts.set(event.city, (counts.get(event.city) ?? 0) + 1);
+    });
+    return [...counts.entries()].sort((left, right) => right[1] - left[1]).map(([name]) => name);
+  }, [events]);
 
   const filteredEvents = useMemo(() => {
-    if (!showEvents) return [];
-
-    const query = search.trim().toLowerCase();
-    const now = new Date();
-    const startOfToday = new Date(now);
-    startOfToday.setHours(0, 0, 0, 0);
-    const endOfToday = new Date(now);
-    endOfToday.setHours(23, 59, 59, 999);
-    const startOfTomorrow = new Date(startOfToday);
-    startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
-    const endOfTomorrow = new Date(startOfTomorrow);
-    endOfTomorrow.setHours(23, 59, 59, 999);
-
-    const genreFilters = filterGenres
-      .split(',')
-      .map(item => item.trim().toLowerCase())
-      .filter(Boolean);
-
-    const minPrice = priceMin.trim() ? Number(priceMin) : null;
-    const maxPrice = priceMax.trim() ? Number(priceMax) : null;
+    const query = normalize(search.trim());
+    const range = getWhenRange(when);
+    const artistIds = new Set(artists.map(artist => artist.id));
 
     return events.filter(event => {
-      if (
-        query &&
-        !(
-          event.name.toLowerCase().includes(query) ||
-          event.city.toLowerCase().includes(query) ||
-          event.venue_place?.name?.toLowerCase().includes(query) ||
-          event.venue_place?.city?.toLowerCase().includes(query) ||
-          event.address?.toLowerCase().includes(query)
-        )
-      ) {
-        return false;
+      if (!event.venue) return false;
+      if (city && event.city !== city) return false;
+      if (range) {
+        const startsAt = new Date(event.starts_at);
+        if (startsAt < range[0] || startsAt > range[1]) return false;
       }
-
-      const startsAt = new Date(event.starts_at);
-      const endsAt = event.ends_at ? new Date(event.ends_at) : null;
-      const endForScope = endsAt ?? startsAt;
-      const isPastEvent = endForScope < now;
-
-      if (!showUpcoming && !showPast) {
-        return false;
+      if (artistIds.size > 0 && !event.artist_ids.some(id => artistIds.has(id))) return false;
+      if (query) {
+        const haystack = normalize(
+          [event.name, event.city, event.venue.name, ...event.artist_names].join(' ')
+        );
+        if (!haystack.includes(query)) return false;
       }
-      if (showUpcoming !== showPast) {
-        if (showPast && !isPastEvent) return false;
-        if (showUpcoming && isPastEvent) return false;
-      }
-
-      if (filterToday && (startsAt < startOfToday || startsAt > endOfToday)) {
-        return false;
-      }
-      if (filterTomorrow && (startsAt < startOfTomorrow || startsAt > endOfTomorrow)) {
-        return false;
-      }
-      if (filterDate) {
-        const selectedDate = new Date(`${filterDate}T00:00:00`);
-        const selectedEnd = new Date(selectedDate);
-        selectedEnd.setHours(23, 59, 59, 999);
-        if (startsAt < selectedDate || startsAt > selectedEnd) {
-          return false;
-        }
-      }
-      if (filterNow) {
-        if (startsAt > now) return false;
-        if (endsAt && endsAt < now) return false;
-      }
-      if (filterFree && event.is_free === false) {
-        return false;
-      }
-      if (filterDayPart) {
-        const hour = startsAt.getHours();
-        const isDay = hour >= 6 && hour < 18;
-        if (filterDayPart === 'day' && !isDay) return false;
-        if (filterDayPart === 'night' && isDay) return false;
-      }
-      if (filterBandOnly) {
-        const hasBand =
-          Array.isArray((event as any).event_artists) &&
-          (event as any).event_artists.some(
-            (item: any) => item?.artist?.artist_type === 'band'
-          );
-        if (!hasBand) return false;
-      }
-      if (selectedArtistIds.length > 0) {
-        const hasSelected =
-          Array.isArray((event as any).event_artists) &&
-          (event as any).event_artists.some(
-            (item: any) => item?.artist?.id && selectedArtistIds.includes(item.artist.id)
-          );
-        if (!hasSelected) return false;
-      }
-      if (genreFilters.length > 0) {
-        const eventGenres = (event.genres || []).map(item => item.toLowerCase());
-        if (!genreFilters.some(filterItem => eventGenres.includes(filterItem))) {
-          return false;
-        }
-      }
-      if (minPrice !== null || maxPrice !== null) {
-        const tiers = (event.price_tiers || []) as { price: number }[];
-        const prices = tiers.map(tier => Number(tier.price)).filter(price => Number.isFinite(price));
-        const eventIsFree = event.is_free !== false;
-        const eventMin = eventIsFree ? 0 : prices.length > 0 ? Math.min(...prices) : null;
-        const eventMax = eventIsFree ? 0 : prices.length > 0 ? Math.max(...prices) : null;
-        if (eventMin === null || eventMax === null) {
-          return false;
-        }
-        if (minPrice !== null && eventMax < minPrice) return false;
-        if (maxPrice !== null && eventMin > maxPrice) return false;
-      }
-      if (filterGoing || filterAttended) {
-        const status = attendanceMap[event.id];
-        if (filterGoing && status === 'going') return true;
-        if (filterAttended && status === 'attended') return true;
-        return false;
-      }
-
       return true;
     });
-  }, [
-    events,
-    search,
-    showUpcoming,
-    showPast,
-    filterToday,
-    filterTomorrow,
-    filterDate,
-    filterNow,
-    filterFree,
-    filterGenres,
-    priceMin,
-    priceMax,
-    filterDayPart,
-    filterBandOnly,
-    selectedArtistIds,
-    filterGoing,
-    filterAttended,
-    attendanceMap,
-    showEvents,
-  ]);
+  }, [events, search, when, city, artists]);
 
-  const filteredVenues = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return venues;
-    return venues.filter(venue =>
-      venue.name.toLowerCase().includes(query) ||
-      venue.city.toLowerCase().includes(query) ||
-      venue.address?.toLowerCase().includes(query)
-    );
-  }, [venues, search]);
-
-  const toggleToday = () => {
-    setFilterToday(prev => {
-      const next = !prev;
-      if (next) {
-        setFilterTomorrow(false);
-        setFilterDate('');
+  const venueGroups = useMemo(() => {
+    const groups = new Map<string, MapVenueGroup>();
+    filteredEvents.forEach(event => {
+      const venue = event.venue;
+      if (!venue) return;
+      const group = groups.get(venue.id);
+      if (group) {
+        group.events.push(event);
+      } else {
+        groups.set(venue.id, {
+          id: venue.id,
+          name: venue.name,
+          city: event.city,
+          latitude: venue.latitude,
+          longitude: venue.longitude,
+          events: [event],
+        });
       }
-      return next;
     });
-  };
+    return [...groups.values()];
+  }, [filteredEvents]);
 
-  const toggleTomorrow = () => {
-    setFilterTomorrow(prev => {
-      const next = !prev;
-      if (next) {
-        setFilterToday(false);
-        setFilterDate('');
-      }
-      return next;
-    });
-  };
+  const addArtist = (artist: MapArtistFilter) =>
+    setArtists(current => (current.some(item => item.id === artist.id) ? current : [...current, artist]));
+  const removeArtist = (id: string) => setArtists(current => current.filter(item => item.id !== id));
 
-  const setFilterDateValue = (value: string) => {
-    setFilterDate(value);
-    if (value) {
-      setFilterToday(false);
-      setFilterTomorrow(false);
-    }
-  };
+  const activeFilterCount =
+    (when !== DEFAULT_WHEN ? 1 : 0) + (city ? 1 : 0) + (artists.length > 0 ? 1 : 0) + (includePast ? 1 : 0);
 
-  const clearExtraFilters = () => {
-    setFilterGenres('');
-    setPriceMin('');
-    setPriceMax('');
-    setFilterDayPart('');
-    setFilterBandOnly(false);
-    setSelectedArtistIds([]);
-    setFilterGoing(false);
-    setFilterAttended(false);
+  const clearFilters = () => {
+    setWhen(DEFAULT_WHEN);
+    setCity(null);
+    setArtists([]);
+    setIncludePast(false);
   };
 
   return {
     search,
     setSearch,
-    showEvents,
-    setShowEvents,
-    showVenues,
-    setShowVenues,
-    showUpcoming,
-    setShowUpcoming,
-    showPast,
-    setShowPast,
-    filterToday,
-    filterTomorrow,
-    filterDate,
-    filterNow,
-    filterFree,
-    filterGenres,
-    priceMin,
-    priceMax,
-    filterDayPart,
-    setFilterDayPart,
-    filterBandOnly,
-    setFilterBandOnly,
-    selectedArtistIds,
-    setSelectedArtistIds,
-    filterGoing,
-    filterAttended,
-    toggleToday,
-    toggleTomorrow,
-    setFilterDate: setFilterDateValue,
-    setFilterNow,
-    setFilterFree,
-    setFilterGenres,
-    setPriceMin,
-    setPriceMax,
-    setFilterGoing,
-    setFilterAttended,
-    clearExtraFilters,
+    when,
+    setWhen,
+    city,
+    setCity,
+    cities,
+    artists,
+    addArtist,
+    removeArtist,
+    clearArtists: () => setArtists([]),
+    includePast,
+    setIncludePast,
+    activeFilterCount,
+    clearFilters,
     filteredEvents,
-    filteredVenues,
+    venueGroups,
   };
 };
