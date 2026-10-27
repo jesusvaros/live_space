@@ -34,6 +34,9 @@ export const intrusoAgendaParser: VenueParser = {
       return [{
         sourceUrl: source.base_url,
         sourceEventId: `intruso-${event.indice}`,
+        // No event pages: a per-event anchor keeps source_url unique, which the
+        // event dedupe matches on before the external id.
+        sourceEventUrl: `${source.base_url.replace(/#.*$/, '')}#evento-${event.indice}`,
         title,
         dateText: madridDateText(
           Number(date[1]),
