@@ -218,7 +218,9 @@ alter table public.posts
 create unique index if not exists posts_external_url_key on public.posts (external_url) where external_url is not null;
 create index if not exists posts_source_event_idx on public.posts (event_id, source) where source <> 'upload';
 
--- Inserts: the upload branch is the previous policy unchanged. An import has
+-- Inserts: the upload branch is the previous policy, with one fix: it said
+-- `m.event_id = event_id`, which resolves to m's own column on both sides and
+-- was always true, so an asset could be posted to any event. An import has
 -- no asset to prove ownership of, so it must enter as `review` and wait for
 -- moderation (posts_update_own already keeps authors from publishing).
 drop policy if exists posts_create on public.posts;
@@ -228,7 +230,7 @@ create policy posts_create on public.posts for insert to authenticated
     and (
       (
         source = 'upload'
-        and exists (select 1 from public.media_assets m where m.id = media_asset_id and m.owner_id = (select auth.uid()) and m.event_id = event_id)
+        and exists (select 1 from public.media_assets m where m.id = media_asset_id and m.owner_id = (select auth.uid()) and m.event_id = posts.event_id)
       )
       or (
         source <> 'upload'
