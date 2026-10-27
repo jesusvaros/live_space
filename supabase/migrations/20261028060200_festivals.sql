@@ -159,6 +159,30 @@ as $$
   );
 $$;
 
+-- Organisers edit texts, dates and poster; the grounds and authorship stay
+-- with admins, or a manager could hang their sets on someone else's venue.
+create or replace function public.festivals_guard_admin_columns()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.current_user_is_admin() and (
+    new.venue_place_id is distinct from old.venue_place_id
+    or new.created_by is distinct from old.created_by
+  ) then
+    raise exception using errcode = '42501', message = 'Only admins can change the grounds of a festival';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists festivals_guard_admin_columns on public.festivals;
+create trigger festivals_guard_admin_columns
+  before update on public.festivals
+  for each row execute function public.festivals_guard_admin_columns();
+
 alter table public.festivals enable row level security;
 
 drop policy if exists festivals_read on public.festivals;
@@ -422,6 +446,7 @@ left join lateral (
 ) moment on true;
 
 revoke all on function public.create_festival_subject() from public;
+revoke all on function public.festivals_guard_admin_columns() from public;
 revoke all on function public.can_manage_festival(uuid) from public;
 revoke all on function public.festival_save_performance(uuid, uuid, text, text, timestamptz, text, timestamptz) from public;
 revoke all on function public.festival_cancel_performance(uuid) from public;
