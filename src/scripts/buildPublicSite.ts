@@ -408,7 +408,15 @@ const run = async () => {
   // Cloudflare Pages: legacy UUID URLs move to their static page; old app
   // routes (the app is no longer on the web) go to the landing. Anything else
   // gets 404.html. Festival landings are SPA routes of the site bundle.
-  const appRoutes = ['/tabs/*', '/event/*', '/artist/*', '/venue/*', '/welcome', '/reset', '/upload', '/create-event', '/profile/*', '/post/*', '/admin', '/admin/*', '/discover'];
+  const appRoutes = ['/tabs/*', '/event/*', '/artist/*', '/venue/*', '/welcome', '/reset', '/create-event', '/profile/*', '/post/*', '/admin', '/admin/*', '/discover'];
+  // /upload is where a concert QR lands when scanned with the phone camera:
+  // the landing bundle hands it to the app or offers the download. noindex.
+  writePage(
+    '/upload/',
+    landingTemplate
+      .replace(/<title>[\s\S]*?<\/title>/, '<title>Sube tu momento · Live Space</title>')
+      .replace('</head>', '<meta name="robots" content="noindex" />\n  </head>'),
+  );
   writeFileSync(
     path.join(DIST, '_redirects'),
     [...redirects, ...appRoutes.map((route) => `${route} / 302`), ''].join('\n'),

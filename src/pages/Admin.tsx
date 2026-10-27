@@ -11,8 +11,9 @@ import { managementService } from '../services/management.service';
 import { artistService } from '../services/artist.service';
 import { venueService } from '../services/venue.service';
 import { supabase } from '../lib/supabase';
+import ClaimsQueue from '../components/admin/ClaimsQueue';
 
-type AdminTab = 'artist' | 'venue' | 'grant' | 'access';
+type AdminTab = 'claims' | 'artist' | 'venue' | 'grant' | 'access';
 
 type AccessRow = {
   profile_id: string;
@@ -34,6 +35,7 @@ type AccessRow = {
 };
 
 const tabs: Array<{ key: AdminTab; label: string }> = [
+  { key: 'claims', label: 'Solicitudes' },
   { key: 'artist', label: 'Crear artista' },
   { key: 'venue', label: 'Crear sala' },
   { key: 'grant', label: 'Dar acceso' },
@@ -44,7 +46,7 @@ const DEFAULT_VENUE_CENTER: [number, number] = [40.4168, -3.7038];
 
 const Admin: React.FC = () => {
   const { profile } = useAuth();
-  const [activeTab, setActiveTab] = useState<AdminTab>('artist');
+  const [activeTab, setActiveTab] = useState<AdminTab>('claims');
 
   const [artistName, setArtistName] = useState('');
   const [artistCity, setArtistCity] = useState('');
@@ -373,7 +375,7 @@ const Admin: React.FC = () => {
   return (
     <AppShell headerProps={{ title: 'Admin', showBack: true }}>
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
-        <div className="grid gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-2 sm:grid-cols-4">
+        <div className="grid gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-2 grid-cols-2 sm:grid-cols-5">
           {tabs.map(tab => {
             const isActive = tab.key === activeTab;
             return (
@@ -392,6 +394,8 @@ const Admin: React.FC = () => {
             );
           })}
         </div>
+
+        {activeTab === 'claims' && <ClaimsQueue />}
 
         {activeTab === 'artist' && (
           <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">

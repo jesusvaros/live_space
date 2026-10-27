@@ -118,6 +118,17 @@ const WorkspaceSwitcher: React.FC = () => {
                 </button>
               ))}
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                setIsOpen(false);
+                navigate('/gestion');
+              }}
+              className="flex min-h-12 w-full items-center gap-3 border-t border-white/10 px-4 text-left text-sm font-semibold text-app-accent hover:bg-white/5"
+            >
+              <IconBriefcase size={16} />
+              Panel de gestión
+            </button>
           </div>
         </>
       )}

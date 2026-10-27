@@ -550,6 +550,17 @@ const Profile: React.FC = () => {
           </div>
         )}
 
+        {managedEntities.some(ent => ent.type === 'artist' || ent.type === 'venue') ? (
+          <button
+            type="button"
+            onClick={() => navigate('/gestion')}
+            className="mx-4 mt-3.5 flex min-h-12 items-center justify-between rounded-[14px] border border-app-line bg-app-surface px-3.5 text-left text-sm font-semibold text-app-ink"
+          >
+            <span>Panel de gestión</span>
+            <span className="font-mono text-[11px] font-semibold uppercase text-app-accent">Eventos · setlist · QR</span>
+          </button>
+        ) : null}
+
         {!isManagementMode && nextConcert ? (
           <button
             type="button"
