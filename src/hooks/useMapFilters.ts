@@ -3,6 +3,9 @@ import type { MapEvent } from '../data/eventQueries';
 
 export type MapWhen = 'all' | 'today' | 'weekend' | 'next30';
 
+// Busy venues list a year ahead; a month keeps pin counts meaningful.
+const DEFAULT_WHEN: MapWhen = 'next30';
+
 export type MapArtistFilter = { id: string; name: string; avatar_url: string | null };
 
 export type MapVenueGroup = {
@@ -59,7 +62,7 @@ const normalize = (value: string) =>
 
 export const useMapFilters = (events: MapEvent[]) => {
   const [search, setSearch] = useState('');
-  const [when, setWhen] = useState<MapWhen>('all');
+  const [when, setWhen] = useState<MapWhen>(DEFAULT_WHEN);
   const [city, setCity] = useState<string | null>(null);
   const [artists, setArtists] = useState<MapArtistFilter[]>([]);
   const [includePast, setIncludePast] = useState(false);
@@ -123,10 +126,10 @@ export const useMapFilters = (events: MapEvent[]) => {
   const removeArtist = (id: string) => setArtists(current => current.filter(item => item.id !== id));
 
   const activeFilterCount =
-    (when !== 'all' ? 1 : 0) + (city ? 1 : 0) + (artists.length > 0 ? 1 : 0) + (includePast ? 1 : 0);
+    (when !== DEFAULT_WHEN ? 1 : 0) + (city ? 1 : 0) + (artists.length > 0 ? 1 : 0) + (includePast ? 1 : 0);
 
   const clearFilters = () => {
-    setWhen('all');
+    setWhen(DEFAULT_WHEN);
     setCity(null);
     setArtists([]);
     setIncludePast(false);
