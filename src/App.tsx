@@ -2,13 +2,12 @@ import React from 'react';
 import {
   BrowserRouter,
   Navigate,
-  NavLink,
   Outlet,
   Route,
   Routes,
   useLocation,
 } from 'react-router-dom';
-import { IconCalendar, IconUser, IconCompass, IconMap, IconPlay } from './components/icons';
+import BottomNav, { isDetailRoute } from './components/BottomNav';
 import { Spinner } from './components/ui/AppPrimitives';
 import { useAuth } from './contexts/AuthContext';
 import { useWorkspace } from './contexts/WorkspaceContext';
@@ -31,6 +30,8 @@ const CreateEventPage = React.lazy(() => import('./pages/CreateEvent'));
 const EventDetail = React.lazy(() => import('./pages/EventDetail'));
 const Map = React.lazy(() => import('./pages/Map'));
 const Upload = React.lazy(() => import('./pages/Upload'));
+const GestionEstadisticas = React.lazy(() => import('./pages/GestionEstadisticas'));
+const LicenciaMomentos = React.lazy(() => import('./pages/LicenciaMomentos'));
 const SuggestedUpload = React.lazy(() => import('./pages/SuggestedUpload'));
 
 const deferredPage = (page: React.ReactNode) => (
@@ -107,43 +108,17 @@ const TabsLayout: React.FC<TabsLayoutProps> = ({
   profileTabHref,
   isArtistWorkspace,
 }) => {
-  const navItemClass = ({ isActive }: { isActive: boolean }) =>
-    `flex min-h-12 flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${
-      isActive ? 'text-app-accent' : 'text-white/55 hover:text-white'
-    }`;
-
+  const { pathname } = useLocation();
   void isArtistWorkspace;
+  // Detail screens have their own back header and bottom action bar.
+  const showNav = !isDetailRoute(pathname) || pathname === profileTabHref;
 
   return (
     <div className="flex h-dvh min-h-0 flex-col bg-app-bg text-white">
       <div className="min-h-0 flex-1 overflow-hidden">
         {deferredPage(<Outlet />)}
       </div>
-      <nav
-        className="z-[2000] grid shrink-0 grid-cols-5 gap-1 border-t border-app-line bg-app-bg/95 px-2 pb-[calc(4px+env(safe-area-inset-bottom,0px))] pt-1 backdrop-blur"
-        aria-label="Navegación principal"
-      >
-        <NavLink to={mainTabHref} className={navItemClass} aria-label="Inicio">
-          <IconCalendar className="h-5 w-5" />
-          <span>Inicio</span>
-        </NavLink>
-        <NavLink to="/tabs/discover" className={navItemClass} aria-label="Explorar">
-          <IconCompass className="h-5 w-5" />
-          <span>Explorar</span>
-        </NavLink>
-        <NavLink to="/tabs/map" className={navItemClass} aria-label="Mapa">
-          <IconMap className="h-5 w-5" />
-          <span>Mapa</span>
-        </NavLink>
-        <NavLink to="/tabs/feed" className={navItemClass} aria-label="Momentos">
-          <IconPlay className="h-5 w-5" />
-          <span>Momentos</span>
-        </NavLink>
-        <NavLink to={profileTabHref} className={navItemClass} aria-label="Perfil">
-          <IconUser className="h-5 w-5" />
-          <span>Perfil</span>
-        </NavLink>
-      </nav>
+      {showNav ? <BottomNav mainTabHref={mainTabHref} profileTabHref={profileTabHref} /> : null}
     </div>
   );
 };
@@ -185,6 +160,8 @@ const AppRoutes = () => {
           <Route path="/admin/create-venue" element={<Navigate to="/admin" replace />} />
           <Route path="/admin/access-grants" element={<Navigate to="/admin" replace />} />
           <Route path="/reset" element={<ResetPassword />} />
+          <Route path="/gestion/estadisticas" element={<RequireAuth>{deferredPage(<GestionEstadisticas />)}</RequireAuth>} />
+          <Route path="/legal/licencia-momentos" element={deferredPage(<LicenciaMomentos />)} />
           <Route path="/create-event" element={<RequireAuth><CreateEventRedirect /></RequireAuth>} />
           <Route path="/upload" element={<RequireAuth><Navigate to="/tabs/upload" replace /></RequireAuth>} />
           {/* Morning-after nudge: clips found in the gallery, ready to publish */}

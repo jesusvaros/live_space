@@ -14,8 +14,9 @@ export type EventDedupeResult = {
   confidence: number;
 };
 
-const EVENT_SELECT =
-  'id,name,normalized_name,venue_place_id,starts_at,source_url,source_id,source_external_id,image_url,image_source,tour_name';
+// `*` rather than a column list so the match carries manager_locked_fields
+// when that migration is applied, and still works on a database without it.
+const EVENT_SELECT = '*';
 
 const buildDayBounds = (isoString: string): { from: string; to: string } => {
   const date = new Date(isoString);

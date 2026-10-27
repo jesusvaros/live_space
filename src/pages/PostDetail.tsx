@@ -5,6 +5,7 @@ import { Event, PostWithRelations, VenuePlace } from '../lib/types';
 import AppShell from '../components/AppShell';
 import { IconHeart, IconShare } from '../components/icons';
 import { fetchPostCardById } from '../data/postQueries';
+import { MomentReuseControls } from '../features/community';
 
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -92,6 +93,7 @@ const PostDetail: React.FC = () => {
               </button>
             </div>
 
+            <MomentReuseControls postId={post.id} />
             {event && (
               <button
                 type="button"

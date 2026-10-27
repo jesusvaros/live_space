@@ -31,6 +31,14 @@
                 <data android:scheme="com.livespace.app" android:host="auth" />
             </intent-filter>
 
+            <!-- Concert QR handoff from the public /upload page: com.livespace.app://upload?qr=… -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.livespace.app" android:host="upload" />
+            </intent-filter>
+
         </activity>
 
         <provider

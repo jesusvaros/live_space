@@ -87,6 +87,7 @@ export interface Event {
   name: string;
   description: string | null;
   event_url: string | null;
+  ticket_url?: string | null;
   city: string;
   address: string | null;
   latitude: number | null;

@@ -26,10 +26,10 @@ test('allows anonymous discovery while protecting creation', async ({ page }) =>
   await expect(page.getByRole('heading', { name: 'Cartelera' })).toBeVisible();
 
   await page.goto('/tabs/discover');
-  await expect(page.getByRole('heading', { name: 'Artistas' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Explorar' })).toBeVisible();
 
   await page.goto('/tabs/feed');
-  await expect(page.getByRole('heading', { name: 'Esta noche' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Siguiendo' })).toBeVisible();
 
   await page.goto('/tabs/upload');
   await expect(page).toHaveURL(/\/welcome$/);

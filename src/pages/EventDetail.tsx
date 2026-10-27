@@ -1,25 +1,24 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Content, Modal, Spinner } from '../components/ui/AppPrimitives';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Spinner } from '../components/ui/AppPrimitives';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Event, PostWithSetlist, Profile, VenuePlace, EventSetlistEntry, Artist } from '../lib/types';
-import { clearCached } from '../lib/requestCache';
 import { eventService } from '../services/event.service';
 import { useAuth } from '../contexts/AuthContext';
-import { buildMomentItems, parseDatetimeLocalValue, MomentItem } from '../lib/moments';
 import AppShell from '../components/AppShell';
-import EventHero, { EventEntity } from '../components/event/EventHero';
 import TimelinePlayer, { MediaFilter } from '../components/event/TimelinePlayer';
 import { TimelineBucket } from '../components/event/TimelineScrubber';
 import ShareSheet from '../components/ShareSheet';
-import { IconBookmark, IconBookmarkFilled, IconPlus, IconShare, IconTicket } from '../components/icons';
-import Button from '../components/ui/Button';
+import { IconBookmark, IconBookmarkFilled, IconPlus, IconShare } from '../components/icons';
 import DetailHeader from '../components/ui/DetailHeader';
+import Avatar from '../components/ui/Avatar';
+import GeneratedPoster from '../components/ui/GeneratedPoster';
 import { fetchEventCardById } from '../data/eventQueries';
-import { createConfiguredCloudinaryMediaProvider, uploadEventPost } from '../media';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
 import SetlistAttribution from '../components/event/SetlistAttribution';
 import { enableMomentNudges } from '../features/moments/momentNudge';
+import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
+import { EventStatsCard, VenueFeedbackPrompt } from '../features/community';
 
 type EventDetailData = Event & {
   organizer?: Profile | null;
@@ -27,16 +26,51 @@ type EventDetailData = Event & {
   event_artists?: { artist: Artist | null }[];
 };
 
-type EventDetailLocationState = {
-  openAddMoments?: boolean;
+// Just enough of every moment of the concert to group them by song.
+type SongMoment = Pick<
+  PostWithSetlist,
+  'id' | 'song_id' | 'resolved_song_id' | 'media_type' | 'media_url' | 'thumbnail_url' | 'captured_at' | 'created_at'
+>;
+
+const pad = (value: number) => value.toString().padStart(2, '0');
+const secondOf = (iso: string) => Math.floor(new Date(iso).getTime() / 1000);
+
+const sameDay = (left: Date, right: Date) => left.toDateString() === right.toDateString();
+
+const dayWord = (date: Date) => {
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  if (sameDay(date, today)) return 'Hoy';
+  if (sameDay(date, yesterday)) return 'Ayer';
+  if (sameDay(date, tomorrow)) return 'Mañana';
+  return null;
 };
+
+const kickerDate = (date: Date) => {
+  const full = date
+    .toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })
+    .replace(/[.,]/g, '');
+  const time = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  return [dayWord(date), full, time].filter(Boolean).join(' · ').toUpperCase();
+};
+
+const Chevron = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="shrink-0 text-white/50">
+    <path d="M9 6l6 6-6 6" />
+  </svg>
+);
+
+const thumbOf = (moment: SongMoment) =>
+  moment.thumbnail_url || (moment.media_type === 'image' ? moment.media_url : null);
 
 const EventDetail: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const locationState = location.state as EventDetailLocationState | null;
   const id = useRouteEntityId() || '';
   const { user } = useAuth();
+  const { isFollowing } = useFollowedSubjects();
   const [event, setEvent] = useState<EventDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -45,15 +79,11 @@ const EventDetail: React.FC = () => {
   const [bucketsError, setBucketsError] = useState('');
   const [bucketMoments, setBucketMoments] = useState<PostWithSetlist[]>([]);
   const [setlist, setSetlist] = useState<EventSetlistEntry[]>([]);
+  const [songMoments, setSongMoments] = useState<SongMoment[]>([]);
   const [bucketLoading, setBucketLoading] = useState(false);
   const [selectedBucketIndex, setSelectedBucketIndex] = useState(0);
   const [selectedMomentIndex, setSelectedMomentIndex] = useState(0);
-  const [showAddMoments, setShowAddMoments] = useState(false);
-  const [momentItems, setMomentItems] = useState<MomentItem[]>([]);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
-  const [uploadError, setUploadError] = useState('');
-  const [uploadSuccess, setUploadSuccess] = useState('');
+  const [pendingJump, setPendingJump] = useState<SongMoment | null>(null);
   const [showShare, setShowShare] = useState(false);
   const [followed, setFollowed] = useState(false);
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>('video');
@@ -61,42 +91,14 @@ const EventDetail: React.FC = () => {
   const [followLoading, setFollowLoading] = useState(false);
   const [attendanceStatus, setAttendanceStatus] = useState<'going' | 'attended' | null>(null);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
-  const [followAnimating, setFollowAnimating] = useState(false);
-  const [attendanceAnimating, setAttendanceAnimating] = useState(false);
   const [engagementError, setEngagementError] = useState('');
-  const [showReliveBanner, setShowReliveBanner] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const contentRef = useRef<HTMLElement | null>(null);
-  const momentItemsRef = useRef<MomentItem[]>([]);
-  const followFxTimerRef = useRef<number | null>(null);
-  const attendanceFxTimerRef = useRef<number | null>(null);
   const bucketCacheRef = useRef<Record<string, PostWithSetlist[]>>({});
   const bucketLoadingRef = useRef<Record<string, boolean>>({});
 
   const scrollToTop = () => {
     document.querySelector<HTMLElement>('.event-detail-content')?.scrollTo({ top: 0, behavior: 'auto' });
   };
-
-  useEffect(() => {
-    if (!locationState?.openAddMoments) return;
-    setShowReliveBanner(true);
-    navigate(
-      { pathname: location.pathname, search: location.search, hash: location.hash },
-      { replace: true, state: {} },
-    );
-  }, [location.hash, location.pathname, location.search, locationState?.openAddMoments, navigate]);
-
-  useEffect(() => {
-    momentItemsRef.current = momentItems;
-  }, [momentItems]);
-
-  useEffect(() => {
-    return () => {
-      momentItemsRef.current.forEach(item => URL.revokeObjectURL(item.previewUrl));
-      if (followFxTimerRef.current) window.clearTimeout(followFxTimerRef.current);
-      if (attendanceFxTimerRef.current) window.clearTimeout(attendanceFxTimerRef.current);
-    };
-  }, []);
 
   const loadEvent = async () => {
     setLoading(true);
@@ -113,9 +115,17 @@ const EventDetail: React.FC = () => {
 
       setEvent(data as EventDetailData);
 
-      // Load setlist
-      const setlistData = await eventService.getEventSetlist(id);
+      const [setlistData, momentsData] = await Promise.all([
+        eventService.getEventSetlist(id),
+        supabase
+          .from('v_event_posts_with_setlist')
+          .select('id,song_id,resolved_song_id,media_type,media_url,thumbnail_url,captured_at,created_at')
+          .eq('event_id', id)
+          .order('event_offset_ms', { ascending: true, nullsFirst: false })
+          .limit(400),
+      ]);
       setSetlist(setlistData);
+      setSongMoments(((momentsData.data || []) as unknown) as SongMoment[]);
     } catch (err) {
       setError('No se ha podido cargar este evento. Revisa tu conexión.');
       setEvent(null);
@@ -287,16 +297,12 @@ const EventDetail: React.FC = () => {
     bucketLoadingRef.current = {};
     setBuckets([]);
     setBucketMoments([]);
+    setSongMoments([]);
+    setSetlist([]);
     setSelectedBucketIndex(0);
     setSelectedMomentIndex(0);
-    setMomentItems([]);
-    setShowAddMoments(false);
     loadEvent();
     loadCounts();
-    window.setTimeout(scrollToTop, 0);
-  }, [id]);
-
-  useEffect(() => {
     window.setTimeout(scrollToTop, 0);
   }, [id]);
 
@@ -331,6 +337,32 @@ const EventDetail: React.FC = () => {
     prefetchBucket(selectedBucketIndex - 1, mediaFilter);
     prefetchBucket(selectedBucketIndex + 1, mediaFilter);
   }, [selectedBucket?.bucket_time, mediaFilter]);
+
+  // Tapping a song's moments moves the player to that second of the timeline.
+  useEffect(() => {
+    if (!pendingJump || bucketsLoading) return;
+    const second = secondOf(pendingJump.captured_at || pendingJump.created_at);
+    const index = buckets.findIndex(bucket => secondOf(bucket.bucket_time) === second);
+    if (index < 0) {
+      setPendingJump(null);
+      return;
+    }
+    if (index !== selectedBucketIndex) setSelectedBucketIndex(index);
+  }, [buckets, bucketsLoading, pendingJump]);
+
+  useEffect(() => {
+    if (!pendingJump) return;
+    const index = bucketMoments.findIndex(moment => moment.id === pendingJump.id);
+    if (index < 0) return;
+    setSelectedMomentIndex(index);
+    setPendingJump(null);
+  }, [bucketMoments, pendingJump]);
+
+  const jumpTo = (moment: SongMoment) => {
+    if (mediaFilter !== 'all' && moment.media_type !== mediaFilter) setMediaFilter('all');
+    setPendingJump(moment);
+    contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   useEffect(() => {
     const loadEngagement = async () => {
@@ -367,215 +399,54 @@ const EventDetail: React.FC = () => {
     loadEngagement();
   }, [user, id]);
 
-  const entities = useMemo<EventEntity[]>(() => {
-    if (!event) return [];
-    const list: EventEntity[] = [];
-    const seen = new Set<string>();
-    const pushProfile = (profile: Profile | null | undefined) => {
-      if (!profile || seen.has(profile.id)) return;
-      list.push({
-        id: profile.id,
-        name: profile.display_name || profile.username || 'Desconocido',
-        role: profile.role,
-      });
-      seen.add(profile.id);
-    };
-
-    const pushArtist = (artist: Artist | null | undefined) => {
-      if (!artist || seen.has(artist.id)) return;
-      list.push({
-        id: artist.id,
-        name: artist.name || 'Artista desconocido',
-        role: 'artist_entity',
-      });
-      seen.add(artist.id);
-    };
-
-    pushProfile(event.organizer);
-    event.event_artists?.forEach(item => pushArtist(item.artist));
-    return list;
-  }, [event]);
+  const artists = useMemo(
+    () => (event?.event_artists || []).map(entry => entry.artist).filter((artist): artist is Artist => Boolean(artist)),
+    [event],
+  );
 
   const heroTitle = useMemo(() => {
     if (!event) return 'Evento';
-    const artist = event.event_artists?.find(item => item.artist)?.artist;
-    if (artist) return artist.name;
+    if (artists[0]) return artists[0].name;
     const organizerName =
-      event.organizer && event.organizer.role !== 'venue' 
-        ? (event.organizer.display_name || event.organizer.username) 
+      event.organizer && event.organizer.role !== 'venue'
+        ? (event.organizer.display_name || event.organizer.username)
         : null;
     return organizerName || event.name;
-  }, [event]);
+  }, [artists, event]);
 
-  const heroMeta = useMemo(() => {
-    if (!event) return null;
-    const venueName =
-      event.venue_place?.name ||
-      event.address ||
-      'Sala por confirmar';
-    const timeLabel = new Date(event.starts_at).toLocaleString('es-ES', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-    return (
-      <span className="flex flex-wrap items-center gap-2">
-        {event.venue_place ? (
-          <button type="button" className="font-semibold text-white transition-colors hover:text-app-accent" onClick={() => navigate(`/tabs/venue/${event.venue_place?.id}`)}>
-            {venueName}
-          </button>
-        ) : (
-          <span className="font-semibold text-white">{venueName}</span>
-        )}
-        <span className="text-white/50">·</span>
-        <span className="text-white/80">{timeLabel}</span>
-      </span>
-    );
-  }, [event, navigate]);
+  // "Morat - YEM World Tour" under a "Morat" title reads as "YEM World Tour".
+  const tourName = useMemo(() => {
+    if (!event) return '';
+    const name = event.name.trim();
+    if (name.toLowerCase() === heroTitle.toLowerCase()) return '';
+    if (name.toLowerCase().startsWith(heroTitle.toLowerCase())) {
+      return name.slice(heroTitle.length).replace(/^[\s\-–—:·|,]+/, '');
+    }
+    return name;
+  }, [event, heroTitle]);
 
   const eventStart = useMemo(() => (event ? new Date(event.starts_at) : null), [event]);
   const eventEnd = useMemo(() => (event?.ends_at ? new Date(event.ends_at) : null), [event]);
 
-  const handleSelectEntity = (id: string, role: EventEntity['role']) => {
-    if (role === 'artist_entity') {
-      navigate(`/tabs/artist/${id}`);
-    } else {
-      navigate(`/profile/${id}`);
+  // Moments per setlist song, in the order they were recorded.
+  const momentsBySong = useMemo(() => {
+    const map = new Map<string, SongMoment[]>();
+    for (const moment of songMoments) {
+      const songId = moment.resolved_song_id || moment.song_id;
+      if (!songId) continue;
+      map.set(songId, [...(map.get(songId) || []), moment]);
     }
-  };
+    return map;
+  }, [songMoments]);
 
-  const formatEntityRole = (role: EventEntity['role']) => {
-    if (role === 'artist' || role === 'artist_entity') return 'Artista';
-    if (role === 'venue') return 'Sala';
-    if (role === 'label') return 'Sello';
-    return 'Usuario';
-  };
-
-  const openFilePicker = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handlePrimaryCtaClick = () => {
-    setUploadError('');
-    setUploadSuccess('');
-
+  const openUpload = (songOrdinal?: number) => {
     if (!user) {
       navigate('/welcome');
       return;
     }
-
-    if (!event) {
-      setUploadError('No encontramos este evento.');
-      return;
-    }
-
-    openFilePicker();
-  };
-
-  const handleMomentFilesSelected = async (eventInput: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(eventInput.target.files || []);
-    if (!files.length) return;
-    const items = await buildMomentItems(files);
-    setMomentItems(prev => [...prev, ...items]);
-    setShowAddMoments(true);
-    eventInput.target.value = '';
-  };
-
-  const handleMomentTimeChange = (momentId: string, value: string) => {
-    const parsed = parseDatetimeLocalValue(value);
-    setMomentItems(prev =>
-      prev.map(item =>
-        item.id === momentId
-          ? {
-              ...item,
-              manualValue: value,
-              captureAt: parsed,
-              captureSource: value ? 'manual' : null,
-            }
-          : item
-      )
-    );
-  };
-
-  const handleUseUploadTime = (momentId: string) => {
-    setMomentItems(prev =>
-      prev.map(item =>
-        item.id === momentId
-          ? {
-              ...item,
-              manualValue: '',
-              captureAt: null,
-              captureSource: null,
-            }
-          : item
-      )
-    );
-  };
-
-  const handleRemoveMoment = (momentId: string) => {
-    setMomentItems(prev => {
-      const target = prev.find(item => item.id === momentId);
-      if (target) {
-        URL.revokeObjectURL(target.previewUrl);
-      }
-      return prev.filter(item => item.id !== momentId);
-    });
-  };
-
-  const handleUploadMoments = async () => {
-    setUploadError('');
-    setUploadSuccess('');
-
-    if (!user) {
-      setUploadError('Entra para subir momentos.');
-      return;
-    }
-
-    if (!event) {
-      setUploadError('No encontramos este evento.');
-      return;
-    }
-
-    if (momentItems.length === 0) {
-      setUploadError('Elige al menos una foto o un vídeo.');
-      return;
-    }
-
-    setUploading(true);
-    setUploadProgress({ current: 0, total: momentItems.length });
-
-    try {
-      const mediaProvider = createConfiguredCloudinaryMediaProvider();
-      for (let i = 0; i < momentItems.length; i += 1) {
-        const item = momentItems[i];
-        setUploadProgress({ current: i + 1, total: momentItems.length });
-        await uploadEventPost({
-          provider: mediaProvider,
-          file: item.file,
-          kind: item.mediaType,
-          eventId: event.id,
-          authorId: user.id,
-          capturedAt: item.captureAt ? item.captureAt.toISOString() : null,
-        });
-      }
-
-      await updateAttendance('attended', { force: true });
-      setUploadSuccess('¡Momentos subidos!');
-      clearCached(`posts:count:user:${user.id}:event:${event.id}`);
-      setMomentItems(prev => {
-        prev.forEach(item => URL.revokeObjectURL(item.previewUrl));
-        return [];
-      });
-      setShowAddMoments(false);
-      loadCounts();
-      loadBuckets(mediaFilter);
-    } catch (err: any) {
-      setUploadError(err?.message || 'No se ha podido subir. Inténtalo de nuevo.');
-    } finally {
-      setUploading(false);
-    }
+    const params = new URLSearchParams({ event: id });
+    if (songOrdinal) params.set('song', String(songOrdinal));
+    navigate(`/tabs/upload?${params.toString()}`);
   };
 
   const toggleFollow = async () => {
@@ -610,15 +481,12 @@ const EventDetail: React.FC = () => {
     }
   };
 
-  const updateAttendance = async (
-    status: 'going' | 'attended',
-    options?: { force?: boolean }
-  ) => {
+  const updateAttendance = async (status: 'going' | 'attended') => {
     if (!user || !event) return false;
     setEngagementError('');
     setAttendanceLoading(true);
     try {
-      if (!options?.force && attendanceStatus === status) {
+      if (attendanceStatus === status) {
         const { error: deleteError } = await supabase
           .from('event_attendance')
           .delete()
@@ -635,7 +503,7 @@ const EventDetail: React.FC = () => {
           {
             event_id: event.id,
             profile_id: user.id,
-            status 
+            status,
           },
           { onConflict: 'event_id,profile_id' }
         );
@@ -654,36 +522,18 @@ const EventDetail: React.FC = () => {
   // Public link only: the QR upload token must never travel in a shared URL.
   const shareUrl = event ? `${window.location.origin}/event/${event.id}` : '';
   const now = new Date();
+  const hasStarted = eventStart ? now >= eventStart : false;
   const isPastEvent = eventStart
     ? eventEnd
       ? now > eventEnd
       : now.getTime() > eventStart.getTime() + 6 * 60 * 60 * 1000
     : false;
+  // After the concert, with something to show: the song-by-song view.
+  const lived = hasStarted && (setlist.length > 0 || totalMoments > 0 || songMoments.length > 0);
   const attendanceTarget: 'going' | 'attended' = isPastEvent ? 'attended' : 'going';
-  const attendanceLabel = isPastEvent ? 'Fui' : 'Voy';
   const attendanceActive = attendanceStatus === attendanceTarget;
 
-  const triggerEngagementFx = (action: 'follow' | 'attendance') => {
-    if (action === 'follow') {
-      setFollowAnimating(false);
-      if (followFxTimerRef.current) window.clearTimeout(followFxTimerRef.current);
-      window.requestAnimationFrame(() => {
-        setFollowAnimating(true);
-        followFxTimerRef.current = window.setTimeout(() => setFollowAnimating(false), 420);
-      });
-      return;
-    }
-
-    setAttendanceAnimating(false);
-    if (attendanceFxTimerRef.current) window.clearTimeout(attendanceFxTimerRef.current);
-    window.requestAnimationFrame(() => {
-      setAttendanceAnimating(true);
-      attendanceFxTimerRef.current = window.setTimeout(() => setAttendanceAnimating(false), 420);
-    });
-  };
-
   const handleFollowClick = () => {
-    triggerEngagementFx('follow');
     if (!user) {
       navigate('/welcome');
       return;
@@ -692,7 +542,6 @@ const EventDetail: React.FC = () => {
   };
 
   const handleAttendanceClick = () => {
-    triggerEngagementFx('attendance');
     if (!user) {
       navigate('/welcome');
       return;
@@ -711,135 +560,269 @@ const EventDetail: React.FC = () => {
     }
   };
 
+  const venue = event?.venue_place || null;
+  const shareButton = (
+    <button
+      type="button"
+      aria-label="Compartir"
+      className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-black/45 text-white backdrop-blur-md"
+      onClick={() => setShowShare(true)}
+    >
+      <IconShare size={19} />
+    </button>
+  );
+
+  const selectedMoment = bucketMoments[selectedMomentIndex] ?? null;
+  const playingSongId = selectedMoment ? selectedMoment.resolved_song_id || selectedMoment.song_id : null;
+
+  const renderCaption = (moment: PostWithSetlist | null) => {
+    if (!moment) {
+      return <p className="font-poster text-[34px] leading-[0.95] text-app-ink">{heroTitle}</p>;
+    }
+    const songId = moment.resolved_song_id || moment.song_id;
+    const entry = songId ? setlist.find(item => item.song_id === songId) : null;
+    const title = moment.resolved_song_title || moment.song_title || entry?.song_title;
+    return (
+      <>
+        <p className="font-mono text-[12px] font-semibold text-app-accent">
+          {title ? `SUENA AHORA${entry ? ` · ${pad(entry.ordinal)}` : ''}` : 'MOMENTO DEL PÚBLICO'}
+        </p>
+        <p className="mt-0.5 font-poster text-[34px] leading-[0.95] text-app-ink line-clamp-2">{title || heroTitle}</p>
+      </>
+    );
+  };
+
+  const stageChip = eventStart ? (
+    <span className="block truncate rounded-full bg-black/55 px-2.5 py-1.5 font-mono text-[11px] font-semibold uppercase text-app-ink">
+      {[heroTitle, venue?.name, dayWord(eventStart) || eventStart.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })]
+        .filter(Boolean)
+        .join(' · ')}
+    </span>
+  ) : null;
+
   return (
     <AppShell headerProps={null} contentRef={contentRef} contentWrapperClassName={false} contentClassName="event-detail-content">
-          {loading && (
-            <div className="flex items-center justify-center py-12">
-              <Spinner />
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <Spinner />
+        </div>
+      )}
+
+      {!loading && error && <div className="p-4"><p className="text-sm text-rose-400">{error}</p></div>}
+
+      {!loading && event && (
+        <>
+          <DetailHeader title={heroTitle} scrollRef={contentRef} actions={lived ? null : shareButton} />
+
+          {lived ? (
+            <div className="pb-[calc(96px+env(safe-area-inset-bottom,0px))]">
+              <TimelinePlayer
+                buckets={buckets}
+                selectedBucketIndex={selectedBucketIndex}
+                selectedMomentIndex={selectedMomentIndex}
+                moments={bucketMoments}
+                loading={bucketLoading || (bucketsLoading && bucketMoments.length === 0)}
+                totalMoments={totalMoments}
+                eventStart={eventStart}
+                mediaFilter={mediaFilter}
+                onSelectBucket={index => {
+                  setSelectedBucketIndex(index);
+                  setSelectedMomentIndex(0);
+                }}
+                onSelectMoment={index => setSelectedMomentIndex(index)}
+                onAddMoments={() => openUpload()}
+                onFilterChange={setMediaFilter}
+                autoAdvance={mediaFilter === 'video'}
+                onRequestNext={handleAdvanceToNext}
+                renderCaption={renderCaption}
+                stageChip={stageChip}
+              />
+
+              {bucketsError && <p className="px-4 pt-2 text-sm text-rose-400">{bucketsError}</p>}
+
+              <div className="px-4 pt-4 empty:hidden">
+                <VenueFeedbackPrompt eventId={event.id} />
+              </div>
+
+              <div className="flex items-center justify-between px-4 pt-5">
+                <h2 className="font-display text-xl font-bold text-app-ink">El concierto, canción a canción</h2>
+                <button type="button" aria-label="Compartir" className="text-white/70" onClick={() => setShowShare(true)}>
+                  <IconShare size={19} />
+                </button>
+              </div>
+
+              {setlist.length === 0 ? (
+                <p className="px-4 pt-2 text-sm text-white/60">
+                  Aún no hay setlist: los momentos van por orden de hora.
+                </p>
+              ) : (
+                <ol className="mt-2.5 flex flex-col gap-1 px-4">
+                  {setlist.map((entry, index) => {
+                    const moments = entry.song_id ? momentsBySong.get(entry.song_id) || [] : [];
+                    const current = Boolean(entry.song_id && entry.song_id === playingSongId);
+                    const last = index === setlist.length - 1;
+                    return (
+                      <li
+                        key={entry.ordinal}
+                        aria-current={current ? 'true' : undefined}
+                        className={`flex min-h-[60px] items-center gap-3 ${
+                          current
+                            ? '-mx-2.5 rounded-xl bg-app-accent/[0.12] px-2.5 py-2'
+                            : `py-2 ${last ? '' : 'border-b border-app-line'}`
+                        }`}
+                      >
+                        <span className={`w-6 font-mono text-[12px] font-semibold ${current ? 'text-app-accent' : 'text-[#8f8b84]'}`}>
+                          {pad(entry.ordinal)}
+                        </span>
+                        <span className={`min-w-0 flex-1 truncate text-[15px] ${current ? 'font-bold text-app-accent' : 'font-semibold text-app-ink'}`}>
+                          {entry.song_title || 'Canción sin título'}
+                        </span>
+                        {moments.length > 0 ? (
+                          <button
+                            type="button"
+                            className="flex"
+                            aria-label={`Ver ${moments.length} momentos de ${entry.song_title || 'esta canción'}`}
+                            onClick={() => jumpTo(moments[0])}
+                          >
+                            {moments.slice(0, 3).map((moment, thumbIndex) => {
+                              const thumb = thumbOf(moment);
+                              return (
+                                <span
+                                  key={moment.id}
+                                  className={`relative h-11 w-[34px] overflow-hidden rounded-md border-2 bg-app-surface ${
+                                    current && thumbIndex === 0 ? 'border-app-accent' : 'border-app-bg'
+                                  } ${thumbIndex > 0 ? '-ml-2.5' : ''}`}
+                                >
+                                  {thumb ? (
+                                    <img src={thumb} alt="" loading="lazy" className="h-full w-full object-cover" />
+                                  ) : (
+                                    <GeneratedPoster title={entry.song_title || heroTitle} variant="thumb" />
+                                  )}
+                                </span>
+                              );
+                            })}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => openUpload(entry.ordinal)}
+                            className="min-h-9 shrink-0 rounded-full border border-dashed border-app-line px-3 text-xs font-semibold text-[#c9c5bd]"
+                          >
+                            ¿La grabaste?
+                          </button>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ol>
+              )}
+              {setlist.some(entry => entry.source === 'setlistfm') && (
+                <div className="px-4">
+                  <SetlistAttribution url={setlist.find(entry => entry.source_url)?.source_url} />
+                </div>
+              )}
+              {engagementError && <p className="px-4 pt-3 text-sm text-rose-400">{engagementError}</p>}
+              <div className="px-4 pt-5 empty:hidden">
+                <EventStatsCard eventId={event.id} />
+              </div>
+            </div>
+          ) : (
+            <div className="pb-[calc(96px+env(safe-area-inset-bottom,0px))]">
+              <section className="relative h-[380px] overflow-hidden">
+                {event.cover_image_url ? (
+                  <img src={event.cover_image_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                ) : (
+                  <GeneratedPoster title={heroTitle} variant="hero" />
+                )}
+                <div className="absolute inset-0 bg-[linear-gradient(to_top,#0d0e12_4%,rgba(13,14,18,0.3)_55%,rgba(13,14,18,0.55))]" />
+                <div className="absolute inset-x-4 bottom-1.5">
+                  {eventStart ? (
+                    <p className="font-mono text-[12px] font-semibold tracking-[0.06em] text-app-accent">{kickerDate(eventStart)}</p>
+                  ) : null}
+                  <h1 className={`mt-1.5 font-poster leading-[0.86] text-app-ink ${heroTitle.length > 14 ? 'text-[46px]' : 'text-[64px]'}`}>
+                    {heroTitle}
+                  </h1>
+                  {tourName ? <p className="mt-1.5 text-[15px] text-[#e4e0d8] line-clamp-2">{tourName}</p> : null}
+                </div>
+              </section>
+
+              <div className="flex flex-col gap-3 px-4 pt-3.5">
+                {venue ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/tabs/venue/${venue.id}`)}
+                    className="flex items-center gap-3 rounded-2xl border border-app-line bg-app-surface p-3 text-left"
+                  >
+                    <Avatar name={venue.name} src={(venue.photos || [])[0]} rounded="xl" className="h-11 w-11 text-[15px]" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-display text-[15px] font-bold text-app-ink">{venue.name}</span>
+                      <span className="block truncate text-[13px] text-[#c9c5bd]">
+                        {[venue.address, venue.city].filter(Boolean).join(' · ')}
+                      </span>
+                    </span>
+                    <Chevron />
+                  </button>
+                ) : null}
+
+                {artists.map(artist => (
+                  <button
+                    key={artist.id}
+                    type="button"
+                    onClick={() => navigate(`/tabs/artist/${artist.id}`)}
+                    className="flex items-center gap-3 rounded-2xl border border-app-line bg-app-surface p-3 text-left"
+                  >
+                    <Avatar name={artist.name} src={artist.avatar_url} className="h-11 w-11 text-[15px]" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-display text-[15px] font-bold text-app-ink">{artist.name}</span>
+                      <span className="block truncate text-[13px] text-[#c9c5bd]">
+                        {artist.subject_id && isFollowing(artist.subject_id) ? 'Lo sigues' : 'Artista'}
+                      </span>
+                    </span>
+                    <Chevron />
+                  </button>
+                ))}
+
+                <div className="rounded-[18px] border border-dashed border-app-accent bg-app-accent/[0.08] p-4">
+                  <p className="font-mono text-[11px] font-semibold tracking-[0.06em] text-app-accent">
+                    {isPastEvent ? '¿ESTUVISTE?' : eventStart && sameDay(eventStart, now) ? 'ESTA NOCHE' : 'EL DÍA DEL CONCIERTO'}
+                  </p>
+                  <p className="mt-1.5 font-display text-lg font-bold text-app-ink">
+                    {isPastEvent ? 'Sube lo que grabaste' : 'Graba lo que quieras recordar'}
+                  </p>
+                  <p className="mt-1 text-sm text-[#c9c5bd]">
+                    Al subirlo lo colocamos en su canción, junto a lo que grabó el resto del público.
+                  </p>
+                </div>
+
+                <EventStatsCard eventId={event.id} />
+
+                {event.description ? <p className="text-sm text-white/65 line-clamp-6">{event.description}</p> : null}
+                {engagementError && <p className="text-sm text-rose-400">{engagementError}</p>}
+              </div>
             </div>
           )}
 
-          {!loading && error && <div className="p-4"><p className="text-sm text-rose-400">{error}</p></div>}
-
-          {!loading && event && (
-            <>
-              <DetailHeader
-                title={heroTitle}
-                scrollRef={contentRef}
-                actions={(
-                  <button
-                    type="button"
-                    aria-label="Compartir"
-                    className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-black/45 text-white backdrop-blur-md"
-                    onClick={() => setShowShare(true)}
-                  >
-                    <IconShare size={19} />
-                  </button>
-                )}
-              />
-              <EventHero title={heroTitle} coverImageUrl={event.cover_image_url} />
-
-              <div className="relative z-10 -mt-10">
-                <div className="flex flex-col gap-6 p-4 pb-[calc(110px+env(safe-area-inset-bottom,0px))]">
-                  <div className="space-y-3">
-                    <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-app-accent">Concierto</p>
-                    <h1 className="font-poster text-[44px] leading-[0.9] text-white">{heroTitle}</h1>
-                    {!event.name.toLowerCase().includes(heroTitle.toLowerCase()) ? <p className="text-sm text-white/70">{event.name}</p> : null}
-                    {heroMeta ? <div className="text-sm text-white/80">{heroMeta}</div> : null}
-                    {entities.length > 0 && (
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        {entities.map(entity => (
-                          <button
-                            key={entity.id}
-                            type="button"
-                            className="inline-flex items-center rounded-full border border-white/20 bg-black/25 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/80 transition-colors hover:border-white/40 hover:text-white"
-                            onClick={() => handleSelectEntity(entity.id, entity.role)}
-                          >
-                            {entity.name} · {formatEntityRole(entity.role)}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {showReliveBanner && (
-                    <div className="rounded-2xl border border-app-accent/30 bg-[linear-gradient(135deg,rgba(255,91,46,0.18),rgba(255,91,46,0.06)_60%,rgba(255,255,255,0.02))] p-4 shadow-[0_8px_18px_rgba(0,0,0,0.18)]">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-app-accent">Revívelo</p>
-                      <p className="mt-2 font-display text-lg font-bold text-white">Añade tus momentos</p>
-                      <p className="mt-1 text-xs text-white/70">Comparte lo que viviste antes de que se te olvide.</p>
-                      <div className="mt-4 flex items-center gap-2">
-                        <button
-                          type="button"
-                          className="inline-flex flex-1 items-center justify-center rounded-full bg-app-accent px-4 py-2 text-sm font-semibold text-white"
-                          onClick={handlePrimaryCtaClick}
-                        >
-                          Añade tus momentos
-                        </button>
-                        <button
-                          type="button"
-                          className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white"
-                          onClick={() => setShowReliveBanner(false)}
-                        >
-                          Ahora no
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                {engagementError && <p className="text-sm text-rose-400">{engagementError}</p>}
-                {bucketsError && <p className="text-sm text-rose-400">{bucketsError}</p>}
-
-                {setlist.length > 0 && (
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                    <h3 className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">Setlist oficial</h3>
-                    <div className="mt-3 flex flex-col gap-2">
-                      {setlist.map((entry) => (
-                        <div key={entry.ordinal} className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.03] px-3 py-2 text-xs">
-                          <span className="text-white/80">
-                            <span className="mr-2 text-white/45">{entry.ordinal}.</span>
-                            {entry.song_title || 'Canción desconocida'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    {setlist.some(entry => entry.source === 'setlistfm') && (
-                      <SetlistAttribution url={setlist.find(entry => entry.source_url)?.source_url} />
-                    )}
-                  </div>
-                )}
-
-                <TimelinePlayer
-                  buckets={buckets}
-                  selectedBucketIndex={selectedBucketIndex}
-                  selectedMomentIndex={selectedMomentIndex}
-                  moments={bucketMoments}
-                  loading={bucketLoading || (bucketsLoading && bucketMoments.length === 0)}
-                  totalMoments={totalMoments}
-                  eventStart={eventStart}
-                  mediaFilter={mediaFilter}
-                  onSelectBucket={index => {
-                    setSelectedBucketIndex(index);
-                    setSelectedMomentIndex(0);
-                  }}
-                  onSelectMoment={index => setSelectedMomentIndex(index)}
-                  onAddMoments={handlePrimaryCtaClick}
-                  onFilterChange={setMediaFilter}
-                  autoAdvance={mediaFilter === 'video'}
-                  onRequestNext={handleAdvanceToNext}
-                />
-                </div>
-              </div>
-
-              <div className="fixed inset-x-0 bottom-0 z-[1300] flex items-center gap-2 border-t border-app-line bg-app-bg/95 px-4 pb-[calc(10px+env(safe-area-inset-bottom,0px))] pt-2.5 backdrop-blur-xl">
+          <div className="fixed inset-x-0 bottom-0 z-[1300] flex items-center gap-2 border-t border-app-line bg-app-bg/95 px-4 pb-[calc(10px+env(safe-area-inset-bottom,0px))] pt-2.5 backdrop-blur-xl">
+            {isPastEvent || lived ? (
+              <button
+                type="button"
+                onClick={() => openUpload()}
+                className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-full bg-app-accent text-base font-bold text-[#14151a]"
+              >
+                <IconPlus className="h-5 w-5" />
+                Sube lo que grabaste
+              </button>
+            ) : (
+              <>
                 <button
                   type="button"
                   aria-label={followed ? 'Quitar de guardados' : 'Guardar'}
                   aria-pressed={followed}
                   disabled={followLoading}
                   onClick={handleFollowClick}
-                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition ${
-                    followed ? 'border-app-accent bg-app-accent/15 text-app-accent' : 'border-app-line bg-app-surface text-white'
-                  } ${followAnimating ? 'scale-105' : ''}`}
+                  className={`flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full border transition ${
+                    followed ? 'border-app-accent bg-app-accent/15 text-app-accent' : 'border-app-line bg-app-surface text-app-ink'
+                  }`}
                 >
                   {followed ? <IconBookmarkFilled className="h-5 w-5" /> : <IconBookmark className="h-5 w-5" />}
                 </button>
@@ -848,141 +831,31 @@ const EventDetail: React.FC = () => {
                   aria-pressed={attendanceActive}
                   disabled={attendanceLoading}
                   onClick={handleAttendanceClick}
-                  className={`flex h-12 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition ${
+                  className={`h-[50px] shrink-0 rounded-full border px-4 text-[15px] font-semibold transition ${
                     attendanceActive
-                      ? isPastEvent
-                        ? 'border-[#f3bf4a] bg-[#f3bf4a]/15 text-[#f3bf4a]'
-                        : 'border-[#25d47b] bg-[#25d47b]/15 text-[#25d47b]'
-                      : 'border-app-line bg-app-surface text-white'
-                  } ${attendanceAnimating ? 'scale-105' : ''}`}
+                      ? 'border-[#25d47b] bg-[#25d47b]/[0.12] text-[#25d47b]'
+                      : 'border-app-line bg-app-surface text-app-ink'
+                  } ${event.ticket_url ? '' : 'flex-1'}`}
                 >
-                  <IconTicket className="h-5 w-5" />
-                  {attendanceLabel}
+                  Voy
                 </button>
-                <Button size="lg" className="flex-1" icon={<IconPlus className="h-5 w-5" />} onClick={handlePrimaryCtaClick}>
-                  Momento
-                </Button>
-              </div>
-            </>
-          )}
-        <Modal isOpen={showAddMoments} onDidDismiss={() => setShowAddMoments(false)} title="Añadir momentos">
-          <Content fullscreen>
-            <div className="min-h-full bg-app-bg p-5">
-              <div className="flex items-center justify-between gap-4">
-                <h2 className="font-display text-lg font-bold text-white">Añadir momentos</h2>
-                <button
-                  type="button"
-                  className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
-                  onClick={() => setShowAddMoments(false)}
-                  disabled={uploading}
-                >
-                  Cerrar
-                </button>
-              </div>
-              {momentItems.length === 0 && (
-                <p className="text-sm text-white/55">Elige fotos o vídeos para añadir momentos.</p>
-              )}
-
-              {momentItems.map(item => (
-                <div
-                  key={item.id}
-                  className="mt-4 space-y-3 bg-white/5 p-4"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="h-20 w-20 overflow-hidden bg-black">
-                      {item.mediaType === 'video' ? (
-                        <video className="h-full w-full object-cover" muted>
-                          <source src={item.previewUrl} />
-                        </video>
-                      ) : (
-                        <img src={item.previewUrl} alt={item.file.name} className="h-full w-full object-cover" />
-                      )}
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <p className="text-sm font-semibold text-white">{item.file.name}</p>
-                      <p className="text-xs text-white/55">
-                        {item.captureAt
-                          ? item.captureAt.toLocaleString('es-ES', {
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })
-                          : 'Hora de subida'}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
-                      onClick={() => handleRemoveMoment(item.id)}
-                    >
-                      Quitar
-                    </button>
-                  </div>
-                  <label className="flex flex-col gap-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
-                      Hora de captura
-                    </span>
-                    <input
-                      type="datetime-local"
-                      className="w-full bg-white/10 px-4 py-3 text-sm text-white/85 focus:outline-none"
-                      value={item.manualValue}
-                      onChange={e => handleMomentTimeChange(item.id, e.target.value)}
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
-                    onClick={() => handleUseUploadTime(item.id)}
+                {event.ticket_url ? (
+                  <a
+                    href={event.ticket_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-[50px] flex-1 items-center justify-center rounded-full border border-app-line text-[15px] font-semibold text-app-ink"
                   >
-                    Usar hora de subida
-                  </button>
-                </div>
-              ))}
+                    Entradas
+                  </a>
+                ) : null}
+              </>
+            )}
+          </div>
+        </>
+      )}
 
-              {uploadError && (
-                <p className="text-sm text-rose-400">{uploadError}</p>
-              )}
-              {uploadSuccess && (
-                <p className="text-sm text-emerald-400">{uploadSuccess}</p>
-              )}
-
-              {uploading && (
-                <p className="text-xs text-white/55">
-                  Subiendo {uploadProgress.current}/{uploadProgress.total}
-                </p>
-              )}
-
-              <button
-                type="button"
-                className="mt-4 inline-flex w-full items-center justify-center bg-[#ff5b2e] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-                onClick={handleUploadMoments}
-                disabled={uploading || momentItems.length === 0}
-              >
-                {uploading ? 'Subiendo...' : 'Subir momentos'}
-              </button>
-              <button
-                type="button"
-                className="inline-flex w-full items-center justify-center bg-white/10 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-                onClick={openFilePicker}
-                disabled={uploading}
-              >
-                Añadir más
-              </button>
-            </div>
-          </Content>
-        </Modal>
-
-        <ShareSheet isOpen={showShare} onClose={() => setShowShare(false)} link={shareUrl} />
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*,video/*"
-          multiple
-          onChange={handleMomentFilesSelected}
-          className="hidden"
-        />
+      <ShareSheet isOpen={showShare} onClose={() => setShowShare(false)} link={shareUrl} />
     </AppShell>
   );
 };

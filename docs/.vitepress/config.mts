@@ -33,6 +33,7 @@ export default defineConfig({
           { text: 'Recuperación', link: '/recovery/' },
           { text: 'Scraping', link: '/scraping' },
           { text: 'Media y licencias', link: '/media' },
+          { text: 'Licencia de los momentos', link: '/legal/licencia-momentos' },
           { text: 'Moderación', link: '/moderacion' },
           { text: 'Runbooks', link: '/runbooks' },
         ],

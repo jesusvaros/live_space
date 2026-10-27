@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { getReuseConsent } from '../features/community/licence';
 import type { MediaKind, MediaProvider } from './types';
 
 const delay = (milliseconds: number) =>
@@ -33,7 +34,11 @@ export const uploadEventPost = async (options: {
   authorId: string;
   capturedAt?: string | null;
   caption?: string | null;
+  songId?: string | null;
+  /** Licence for the artist and venue; defaults to the remembered upload choice. */
+  allowReuse?: boolean;
 }) => {
+  const allowReuse = options.allowReuse ?? getReuseConsent();
   const upload = await options.provider.upload({
     file: options.file,
     kind: options.kind,
@@ -49,6 +54,10 @@ export const uploadEventPost = async (options: {
       event_id: options.eventId,
       captured_at: options.capturedAt ?? null,
       caption: options.caption ?? null,
+      song_id: options.songId ?? null,
+      // Only sent when off: the column defaults to true, so uploads keep
+      // working on a database without the licence migration.
+      ...(allowReuse ? {} : { allow_reuse: false }),
     })
     .select('id')
     .single();

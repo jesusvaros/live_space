@@ -34,6 +34,19 @@ export const imageUpdates = (
   return updates;
 };
 
+// A field edited by an artist or venue in the management panel wins over the
+// source. The database trigger enforces the same rule for every worker.
+export const withoutManagerLocks = (
+  updates: Record<string, unknown>,
+  current: Pick<EventRow, 'manager_locked_fields'>,
+): Record<string, unknown> => {
+  const locked = new Set(current.manager_locked_fields ?? []);
+  if (locked.size === 0) return updates;
+  return Object.fromEntries(
+    Object.entries(updates).filter(([key]) => !locked.has(key === 'image_source' ? 'image_url' : key)),
+  );
+};
+
 export type UpsertEventResult = {
   row: EventRow;
   created: boolean;
@@ -72,7 +85,8 @@ export const upsertEvent = async (
     }
     Object.assign(updates, offerUpdates(event));
     Object.assign(updates, imageUpdates(event, match.match));
-    if (Object.keys(updates).length === 0) {
+    const allowedUpdates = withoutManagerLocks(updates, match.match);
+    if (Object.keys(allowedUpdates).length === 0) {
       return {
         row: match.match,
         created: false,
@@ -82,7 +96,7 @@ export const upsertEvent = async (
 
     const { data, error } = await supabase
       .from('events')
-      .update(updates)
+      .update(allowedUpdates)
       .eq('id', match.match.id)
       .select(EVENT_SELECT)
       .single();
