@@ -46,7 +46,12 @@ export const decideByConfidence = (
 ): ConfidenceDecision => {
   const reasons: string[] = [];
   if (!event.startsAt) reasons.push('missing-starts-at');
-  if (event.artists.length === 0) reasons.push('missing-artists');
+  // Structured, verified listings may name no performer (tribute nights,
+  // shows); everything else still needs at least one artist.
+  const artistlessAllowed = Boolean(
+    context?.structuredDataVerified && context.sourceEventId && context.explicitDate,
+  );
+  if (event.artists.length === 0 && !artistlessAllowed) reasons.push('missing-artists');
   if (!event.venue.normalizedName) reasons.push('missing-venue');
 
   if (reasons.length > 0 || event.confidence < REVIEW_CONFIDENCE) {

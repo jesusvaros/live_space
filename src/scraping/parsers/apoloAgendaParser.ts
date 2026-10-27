@@ -1,10 +1,11 @@
 import type { VenueParser } from '../../types/scrape.js';
+import { withTitleArtists } from './shared.js';
 
 export const apoloAgendaParser: VenueParser = {
   key: 'apolo-agenda',
   canHandle: (_url, html) => html.includes('c-results__event') && html.includes('c-results__event__title'),
   parseListPage: async (page, source) =>
-    page.evaluate(({ sourceUrl, venueName, city }) =>
+    withTitleArtists(await page.evaluate(({ sourceUrl, venueName, city }) =>
       Array.from(document.querySelectorAll<HTMLElement>('.c-results__event')).flatMap((root) => {
         const category = root.querySelector('.c-leadCategory')?.textContent?.trim() || '';
         if (!/concierto/i.test(category)) return [];
@@ -32,10 +33,10 @@ export const apoloAgendaParser: VenueParser = {
           dateText,
           venueName,
           city,
-          artistNames: [title],
+          imageUrl: (() => { const img = root.querySelector<HTMLImageElement>('img'); return img ? (img.getAttribute('data-src') || img.getAttribute('data-lazy-src') || img.getAttribute('src') || '').trim() || undefined : undefined; })(),
           rawPayload: { category, meta },
         }];
       }),
     { sourceUrl: source.base_url, venueName: source.name, city: source.city || undefined }
-    ),
+    )),
 };

@@ -1,4 +1,5 @@
 import type { RawScrapedEvent, VenueParser } from '../../types/scrape.js';
+import { withTitleArtists } from './shared.js';
 
 export const eventsManagerCalendarParser: VenueParser = {
   key: 'events-manager-calendar',
@@ -6,7 +7,7 @@ export const eventsManagerCalendarParser: VenueParser = {
     (html.includes('em-cal-event') && html.includes('data-calendar-date')) ||
     (html.includes('gran-contenedor-agenda') && html.includes('nombre_evento')),
   parseListPage: async (page, source) =>
-    page.evaluate(({ sourceUrl, venueName, city }) => {
+    withTitleArtists(await page.evaluate(({ sourceUrl, venueName, city }) => {
       const events: RawScrapedEvent[] = [];
       const seen = new Set<string>();
 
@@ -28,7 +29,7 @@ export const eventsManagerCalendarParser: VenueParser = {
           dateText: `${date} ${time || '20:00'}`,
           venueName,
           city,
-          artistNames: [title],
+          imageUrl: (() => { const img = card.querySelector<HTMLImageElement>('img'); return img ? (img.getAttribute('data-src') || img.getAttribute('data-lazy-src') || img.getAttribute('src') || '').trim() || undefined : undefined; })(),
           rawPayload: { category, date, time: time || null },
         });
       });
@@ -68,12 +69,11 @@ export const eventsManagerCalendarParser: VenueParser = {
             dateText: `${dateLabel} ${time}`,
             venueName,
             city,
-            artistNames: [title],
             rawPayload: { dateLabel, time, eventId: event.dataset.eventId },
           });
         });
       });
 
       return events;
-    }, { sourceUrl: source.base_url, venueName: source.name, city: source.city || undefined }),
+    }, { sourceUrl: source.base_url, venueName: source.name, city: source.city || undefined })),
 };

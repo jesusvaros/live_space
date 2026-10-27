@@ -35,6 +35,8 @@ export type NormalizedEvent = {
   sourceUrl?: string;
   sourceExternalId?: string;
   offer?: EventOffer;
+  imageUrl?: string;
+  tourName?: string;
   artists: NormalizedArtist[];
   venue: NormalizedVenue;
   confidence: number;
@@ -80,4 +82,7 @@ export type EventRow = {
   source_url: string | null;
   source_id: string | null;
   source_external_id: string | null;
+  image_url?: string | null;
+  image_source?: string | null;
+  tour_name?: string | null;
 };

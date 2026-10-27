@@ -20,6 +20,7 @@ const normalizeRawEvent = (source: ScrapeSource, event: RawScrapedEvent): RawScr
   venueName: compact(event.venueName) || source.name,
   city: compact(event.city) || source.city || undefined,
   artistNames: (event.artistNames || []).map((name) => compact(name)).filter(Boolean) as string[],
+  imageUrl: compact(event.imageUrl),
 });
 
 const dedupeRawItems = (items: RawScrapedEvent[]): RawScrapedEvent[] => {

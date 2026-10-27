@@ -15,7 +15,7 @@ export type EventDedupeResult = {
 };
 
 const EVENT_SELECT =
-  'id,name,normalized_name,venue_place_id,starts_at,source_url,source_id,source_external_id';
+  'id,name,normalized_name,venue_place_id,starts_at,source_url,source_id,source_external_id,image_url,image_source,tour_name';
 
 const buildDayBounds = (isoString: string): { from: string; to: string } => {
   const date = new Date(isoString);

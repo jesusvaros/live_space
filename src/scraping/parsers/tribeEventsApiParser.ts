@@ -1,3 +1,5 @@
+import { artistNamesFromTitle } from '../../normalize/cleanArtistName.js';
+import { imageFromTribe } from '../../normalize/extractImage.js';
 import type { RawScrapedEvent, VenueParser } from '../../types/scrape.js';
 
 type TribeEvent = {
@@ -8,6 +10,7 @@ type TribeEvent = {
   start_date?: string;
   all_day?: boolean;
   categories?: Array<{ name?: string }>;
+  image?: unknown;
 };
 
 type TribeEventsResponse = {
@@ -62,7 +65,8 @@ export const mapTribeEvent = (
     dateText,
     venueName,
     city,
-    artistNames: [toArtistTitle(title)],
+    artistNames: artistNamesFromTitle(toArtistTitle(title)),
+    imageUrl: imageFromTribe(event.image) ?? undefined,
     rawPayload: event,
   };
 };

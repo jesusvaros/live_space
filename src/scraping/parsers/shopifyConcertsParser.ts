@@ -1,3 +1,5 @@
+import { artistNamesFromTitle } from '../../normalize/cleanArtistName.js';
+import { imageFromShopify } from '../../normalize/extractImage.js';
 import type { RawScrapedEvent, ScrapeSource, VenueParser } from '../../types/scrape.js';
 
 type ShopifyProduct = {
@@ -8,6 +10,7 @@ type ShopifyProduct = {
   product_type?: string;
   tags?: string[];
   variants?: Array<{ price?: string; updated_at?: string }>;
+  images?: Array<{ src?: string }>;
 };
 
 type ShopifyProductsResponse = {
@@ -60,7 +63,8 @@ export const mapShopifyConcert = (
     startsAt: null,
     venueName: source.name,
     city: source.city ?? undefined,
-    artistNames: [artistFromTitle(title)],
+    artistNames: artistNamesFromTitle(artistFromTitle(title)),
+    imageUrl: imageFromShopify(product) ?? undefined,
     // Shopify refreshes product/variant `updated_at` values on reads. Keeping
     // only catalog fields makes the staging hash stable while preserving the
     // official content needed for provenance and change detection.

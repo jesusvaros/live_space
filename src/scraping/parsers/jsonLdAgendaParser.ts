@@ -1,3 +1,5 @@
+import { artistNamesFromTitle } from '../../normalize/cleanArtistName.js';
+import { imageFromSchema } from '../../normalize/extractImage.js';
 import type { RawScrapedEvent, ScrapeSource, VenueParser } from '../../types/scrape.js';
 
 type JsonRecord = Record<string, unknown>;
@@ -65,18 +67,21 @@ export const parseJsonLdDocuments = (
       const address = asRecord(location?.address);
       const sourceEventUrl = absoluteUrl(record.url ?? record['@id'], source.base_url);
       const startsAt = asText(record.startDate);
+      const title = asText(record.name);
+      const performers = performerNames(record.performer);
 
       return {
         sourceUrl: source.base_url,
         sourceEventUrl,
         sourceEventId: asText(record.identifier ?? record['@id']),
-        title: asText(record.name),
+        title,
         description: asText(record.description),
         dateText: startsAt,
         startsAt: startsAt ?? null,
         venueName: asText(location?.name) ?? source.name,
         city: asText(address?.addressLocality) ?? source.city ?? undefined,
-        artistNames: performerNames(record.performer),
+        artistNames: performers.length > 0 ? performers : artistNamesFromTitle(title),
+        imageUrl: imageFromSchema(record.image, source.base_url) ?? undefined,
         rawPayload: record,
       };
     })

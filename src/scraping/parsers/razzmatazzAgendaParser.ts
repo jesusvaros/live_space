@@ -1,4 +1,5 @@
 import type { VenueParser } from '../../types/scrape.js';
+import { withTitleArtists } from './shared.js';
 
 export const razzmatazzAgendaParser: VenueParser = {
   key: 'razzmatazz-agenda',
@@ -9,7 +10,7 @@ export const razzmatazzAgendaParser: VenueParser = {
     const response = await page.context().request.get(source.base_url);
     const html = await response.text();
 
-    return page.evaluate(({ html: rawHtml, sourceUrl, venueName, city }) => {
+    return withTitleArtists(await page.evaluate(({ html: rawHtml, sourceUrl, venueName, city }) => {
       const parsedDocument = new DOMParser().parseFromString(rawHtml, 'text/html');
       const seen = new Set<string>();
       return Array.from(parsedDocument.querySelectorAll<HTMLElement>('article')).flatMap((card) => {
@@ -33,10 +34,10 @@ export const razzmatazzAgendaParser: VenueParser = {
           dateText: `${date[1]}/${date[2]}/${date[3]} ${time}`,
           venueName,
           city,
-          artistNames: [title],
+          imageUrl: (() => { const img = card.querySelector<HTMLImageElement>('img'); return img ? (img.getAttribute('data-src') || img.getAttribute('data-lazy-src') || img.getAttribute('src') || '').trim() || undefined : undefined; })(),
           rawPayload: { time },
         }];
       });
-    }, { html, sourceUrl: source.base_url, venueName: source.name, city: source.city || undefined });
+    }, { html, sourceUrl: source.base_url, venueName: source.name, city: source.city || undefined }));
   },
 };

@@ -1,5 +1,7 @@
 import type { Page } from 'playwright';
 
+import { artistNamesFromTitle } from '../../normalize/cleanArtistName.js';
+import { toHttpUrl } from '../../normalize/extractImage.js';
 import type { RawScrapedEvent, ScrapeSource } from '../../types/scrape.js';
 
 type ParserSelectorDefaults = {
@@ -11,9 +13,12 @@ type ParserSelectorDefaults = {
   artistSelectors: string[];
   venueSelectors: string[];
   citySelectors: string[];
+  imageSelectors?: string[];
 };
 
 type SerializableSelectorDefaults = Record<keyof ParserSelectorDefaults, string[]>;
+
+const DEFAULT_IMAGE_SELECTORS = ['img[data-src]', 'img[data-lazy-src]', 'img[src]'];
 
 const splitSelectorInput = (value: unknown, fallback: string[]): string[] => {
   if (Array.isArray(value)) {
@@ -46,6 +51,7 @@ const buildSelectorConfig = (
   artistSelectors: splitSelectorInput(source.metadata.artistSelector, defaults.artistSelectors),
   venueSelectors: splitSelectorInput(source.metadata.venueSelector, defaults.venueSelectors),
   citySelectors: splitSelectorInput(source.metadata.citySelector, defaults.citySelectors),
+  imageSelectors: splitSelectorInput(source.metadata.imageSelector, defaults.imageSelectors ?? DEFAULT_IMAGE_SELECTORS),
 });
 
 const toAbsoluteUrl = (rawUrl: string | null, baseUrl: string): string | undefined => {
@@ -59,6 +65,18 @@ const toAbsoluteUrl = (rawUrl: string | null, baseUrl: string): string | undefin
     return undefined;
   }
 };
+
+// Parsers whose source has no performer field derive artists from the title
+// with the cleanup rules (never the raw title), and absolutize the poster.
+export const withTitleArtists = (events: RawScrapedEvent[]): RawScrapedEvent[] =>
+  events.map((event) => {
+    const imageUrl = toHttpUrl(event.imageUrl, event.sourceEventUrl || event.sourceUrl);
+    return {
+      ...event,
+      artistNames: event.artistNames?.length ? event.artistNames : artistNamesFromTitle(event.title),
+      imageUrl: imageUrl && !/\.svg(?:$|\?)/i.test(imageUrl) ? imageUrl : undefined,
+    };
+  });
 
 const dedupeEvents = (events: RawScrapedEvent[]): RawScrapedEvent[] => {
   const seen = new Set<string>();
@@ -153,6 +171,20 @@ export const parseCardList = async (
         return Array.from(new Set(values));
       };
 
+      const firstMatchImage = (root: ParentNode, selectorList: string[]): string | undefined => {
+        for (const selector of selectorList) {
+          // <meta property="og:image"> lives in <head>, outside any card root.
+          const element = (selector.startsWith('meta') ? document : root).querySelector(selector);
+          const value =
+            element?.getAttribute('data-src') ||
+            element?.getAttribute('data-lazy-src') ||
+            element?.getAttribute('src') ||
+            element?.getAttribute('content');
+          if (value?.trim()) return value.trim();
+        }
+        return undefined;
+      };
+
       return collectRoots(pageSelectors.itemSelectors).map((root) => {
         const rawPayload = {
           html: root instanceof HTMLElement ? root.outerHTML.slice(0, 8_000) : '',
@@ -171,6 +203,7 @@ export const parseCardList = async (
           venueName: firstMatchText(root, pageSelectors.venueSelectors) || fallbackVenueName,
           city: firstMatchText(root, pageSelectors.citySelectors) || fallbackCity,
           artistNames: collectTexts(root, pageSelectors.artistSelectors),
+          imageUrl: firstMatchImage(root, pageSelectors.imageSelectors),
           rawPayload,
         };
       });
@@ -183,7 +216,7 @@ export const parseCardList = async (
     }
   );
 
-  return dedupeEvents(
+  return dedupeEvents(withTitleArtists(
     events
       .map((event) => ({
         ...event,
@@ -192,7 +225,7 @@ export const parseCardList = async (
         city: event.city || undefined,
       }))
       .filter((event) => Boolean(event.title || event.dateText || event.sourceEventUrl))
-  );
+  ));
 };
 
 export const GENERIC_CARD_DEFAULTS: ParserSelectorDefaults = {

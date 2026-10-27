@@ -32,6 +32,8 @@
     "scrape:auto-probe": "npm run scrape:build && node dist-scraper/scripts/autoProbeDiscoveredSources.js",
     "scrape:approve-probed": "npm run scrape:build && node dist-scraper/scripts/approveAutoProbedSources.js",
     "scrape:maintenance": "npm run scrape:build && node dist-scraper/scripts/runScraperMaintenance.js",
+    "enrich:images": "npm run scrape:build && node dist-scraper/scripts/enrichImages.js",
+    "artists:cleanup": "npm run scrape:build && node dist-scraper/scripts/cleanupArtistNames.js",
     "venues:discover": "npm run scrape:build && node dist-scraper/scripts/discoverVenues.js",
     "venues:curate": "npm run scrape:build && node dist-scraper/scripts/curateVenues.js"
   },

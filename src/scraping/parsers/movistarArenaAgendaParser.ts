@@ -1,3 +1,5 @@
+import { artistNamesFromTitle } from '../../normalize/cleanArtistName.js';
+import { imageFromSchema, toHttpUrl } from '../../normalize/extractImage.js';
 import type { RawScrapedEvent, ScrapeSource, VenueParser } from '../../types/scrape.js';
 
 type JsonRecord = Record<string, unknown>;
@@ -7,6 +9,7 @@ type MovistarArenaCard = {
   href?: string;
   eventId?: string;
   startsAt?: string;
+  image?: string;
 };
 
 const asRecord = (value: unknown): JsonRecord | null =>
@@ -66,7 +69,8 @@ export const parseMovistarArenaCards = (
       startsAt: card.startsAt || null,
       venueName: source.name,
       city: source.city ?? undefined,
-      artistNames: [],
+      artistNames: artistNamesFromTitle(title),
+      imageUrl: toHttpUrl(card.image, source.base_url) ?? undefined,
       rawPayload: card,
     });
   }
@@ -101,7 +105,8 @@ export const parseMovistarArenaDocuments = (
       startsAt: null,
       venueName: source.name,
       city: source.city ?? undefined,
-      artistNames: [],
+      artistNames: artistNamesFromTitle(title),
+      imageUrl: imageFromSchema(event?.image, source.base_url) ?? undefined,
       rawPayload: listItem,
     }];
   });
@@ -118,11 +123,13 @@ export const movistarArenaAgendaParser: VenueParser = {
         elements.map((element) => {
           const titleLink = element.querySelector<HTMLAnchorElement>('.event-card__heading a');
           const time = element.querySelector<HTMLTimeElement>('.event-card__schedule time[datetime*="T"]');
+          const image = element.querySelector<HTMLImageElement>('.event-card__media img');
           return {
             title: titleLink?.dataset.eventDetail || titleLink?.textContent || undefined,
             href: titleLink?.href || undefined,
             eventId: titleLink?.dataset.eventId || undefined,
             startsAt: time?.dateTime || undefined,
+            image: image?.getAttribute('src') || undefined,
           };
         }),
       );

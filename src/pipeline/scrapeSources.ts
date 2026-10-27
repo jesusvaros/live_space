@@ -31,13 +31,15 @@ export const buildStagingRow = (
     venueName: event.venueName || null,
     city: event.city || null,
     artistNames: event.artistNames || [],
+    imageUrl: event.imageUrl || null,
     payload: event.rawPayload,
   };
 
   // The parser payload carries volatile counters (e.g. category counts) that
   // changed daily and created a new staging row per event and day, so the
-  // hash covers only the extracted fields.
-  const { payload: _payload, ...hashedFields } = rawPayload;
+  // hash covers only the extracted fields. The poster URL is left out too:
+  // CDNs rotate cache-busting query strings (`?v=`) without any real change.
+  const { payload: _payload, imageUrl: _imageUrl, ...hashedFields } = rawPayload;
 
   return {
     scrape_run_id: scrapeRunId,
