@@ -18,6 +18,7 @@ import DetailHeader from '../components/ui/DetailHeader';
 import { fetchEventCardById } from '../data/eventQueries';
 import { createConfiguredCloudinaryMediaProvider, uploadEventPost } from '../media';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
+import { EventStatsCard, ReuseConsentCheckbox, VenueFeedbackPrompt } from '../features/community';
 
 type EventDetailData = Event & {
   organizer?: Profile | null;
@@ -757,6 +758,7 @@ const EventDetail: React.FC = () => {
                     )}
                   </div>
 
+                  <VenueFeedbackPrompt eventId={event.id} />
                   {showReliveBanner && (
                     <div className="rounded-2xl border border-app-accent/30 bg-[linear-gradient(135deg,rgba(255,91,46,0.18),rgba(255,91,46,0.06)_60%,rgba(255,255,255,0.02))] p-4 shadow-[0_8px_18px_rgba(0,0,0,0.18)]">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-app-accent">Revívelo</p>
@@ -819,6 +821,7 @@ const EventDetail: React.FC = () => {
                   autoAdvance={mediaFilter === 'video'}
                   onRequestNext={handleAdvanceToNext}
                 />
+                <EventStatsCard eventId={event.id} />
                 </div>
               </div>
 
@@ -945,6 +948,7 @@ const EventDetail: React.FC = () => {
                 </p>
               )}
 
+              <ReuseConsentCheckbox className="mt-4" />
               <button
                 type="button"
                 className="mt-4 inline-flex w-full items-center justify-center bg-[#ff5b2e] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"

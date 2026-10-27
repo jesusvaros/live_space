@@ -14,6 +14,7 @@ import { useRouteEntityId } from '../hooks/useRouteEntityId';
 import Button, { buttonClass } from '../components/ui/Button';
 import DetailHeader from '../components/ui/DetailHeader';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
+import { VenueFeedbackSummary } from '../features/community';
 
 const VENUE_TYPE_LABELS: Record<string, string> = {
   music_venue: 'Sala de conciertos',
@@ -218,6 +219,7 @@ const VenueDetail: React.FC = () => {
               </section>
             )}
 
+                <VenueFeedbackSummary venueId={venue.id} />
                 <section className="space-y-3">
                   <div>
                     <h2 className="font-display text-xl font-bold text-white">Próximos conciertos</h2>

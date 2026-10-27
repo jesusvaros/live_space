@@ -9,6 +9,7 @@ import AppShell from '../components/AppShell';
 import EventPosterTile from '../features/events/components/EventPosterTile';
 import { fetchEventCardById, fetchEventCards } from '../data/eventQueries';
 import { createConfiguredCloudinaryMediaProvider, uploadEventPost } from '../media';
+import { ReuseConsentCheckbox } from '../features/community';
 
 type NearbyEvent = {
   event: EventWithVenue;
@@ -617,6 +618,7 @@ const Upload: React.FC = () => {
                 </p>
               )}
 
+              <ReuseConsentCheckbox />
               <button
                 type="button"
                 className="inline-flex w-full items-center justify-center rounded-2xl bg-[#ff5b2e] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"

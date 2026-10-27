@@ -30,6 +30,8 @@ const CreateEventPage = React.lazy(() => import('./pages/CreateEvent'));
 const EventDetail = React.lazy(() => import('./pages/EventDetail'));
 const Map = React.lazy(() => import('./pages/Map'));
 const Upload = React.lazy(() => import('./pages/Upload'));
+const GestionEstadisticas = React.lazy(() => import('./pages/GestionEstadisticas'));
+const LicenciaMomentos = React.lazy(() => import('./pages/LicenciaMomentos'));
 
 const deferredPage = (page: React.ReactNode) => (
   <React.Suspense
@@ -182,6 +184,8 @@ const AppRoutes = () => {
           <Route path="/admin/create-venue" element={<Navigate to="/admin" replace />} />
           <Route path="/admin/access-grants" element={<Navigate to="/admin" replace />} />
           <Route path="/reset" element={<ResetPassword />} />
+          <Route path="/gestion/estadisticas" element={<RequireAuth>{deferredPage(<GestionEstadisticas />)}</RequireAuth>} />
+          <Route path="/legal/licencia-momentos" element={deferredPage(<LicenciaMomentos />)} />
           <Route path="/create-event" element={<RequireAuth><CreateEventRedirect /></RequireAuth>} />
           <Route path="/upload" element={<RequireAuth><Navigate to="/tabs/upload" replace /></RequireAuth>} />
           <Route
