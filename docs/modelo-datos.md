@@ -17,11 +17,36 @@ raíz son históricos y no se aplican al piloto.
 
 | Reclamaciones | `entity_claims` (solicitud de gestionar un artista o sala) |
 | Subida por QR | `event_upload_tokens` (token privado del QR de cada concierto) |
+| Festivales | `festivals` (edición con fechas y recinto), `events.festival_id` y `events.room` (escenario) |
 
-`subjects` ofrece una identidad social uniforme para usuario, artista y sala.
+`subjects` ofrece una identidad social uniforme para usuario, artista, sala y
+festival.
 `entity_memberships` separa quién inicia sesión de la entidad que puede gestionar.
 Los activos Cloudinary existen antes que el post y pasan por `pending_review`.
 Un evento importado conserva fuente e identificador externo para idempotencia.
+
+## Festivales
+
+Un festival es un contenedor de conciertos normales. La edición (`festivals`)
+guarda nombre, año, fechas, ciudad y recinto: un `venue_place`, porque todo
+evento necesita sala. Cada actuación es un `event` con `festival_id`, su
+artista y su hora, y `room` como escenario. Así los momentos por canción, el
+setlist, la subida por QR y la detección por hora en la galería funcionan igual
+que en una sala.
+
+El festival es un `subject`: se sigue, se reclama (`entity_claims`) y se
+gestiona (`entity_memberships`) como un artista o una sala. Lo crea un
+administrador. Quien lo gestiona escribe el horario con
+`festival_save_performance`, que busca o crea el artista por nombre
+normalizado y publica la actuación al momento, y lo corrige con
+`festival_cancel_performance`, que cancela sin borrar para no perder los
+momentos ya subidos. `can_manage_event` e `is_event_entity_member` reconocen a
+los gestores del festival en sus actuaciones. `v_subject_festivals` da la
+portada: la imagen propia o, si no hay, la última foto del público con la
+reutilización permitida y su crédito.
+
+La migración va en dos pasos. `20261028060100` añade `festival` a los enums y
+debe ejecutarse sola. `20261028060200` crea el resto.
 
 ## Datos de comunidad
 

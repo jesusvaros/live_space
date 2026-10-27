@@ -12,7 +12,7 @@ type ClaimProfileLinkProps = {
   className?: string;
 };
 
-// Footer of an artist or venue page. Members get the way into the management
+// Footer of an artist, venue or festival page. Members get the way into the management
 // panel; everyone else a discreet "is this you?" link to claim the profile.
 const ClaimProfileLink: React.FC<ClaimProfileLinkProps> = ({ type, entityId, subjectId, className = '' }) => {
   const { user } = useAuth();

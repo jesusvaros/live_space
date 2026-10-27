@@ -4,7 +4,7 @@ import { cached } from '../lib/requestCache';
 
 export type FollowedEntity = {
   subjectId: string;
-  kind: 'artist' | 'venue';
+  kind: 'artist' | 'venue' | 'festival';
   id: string;
   name: string;
   imageUrl: string | null;
@@ -13,7 +13,7 @@ export type FollowedEntity = {
 
 const EMPTY: FollowedEntity[] = [];
 
-// Artists and venues behind the followed subject ids, with name and picture.
+// Artists, venues and festivals behind the followed subject ids, with name and picture.
 export const useFollowedEntities = (followedSubjectIds: Set<string>) => {
   const [entities, setEntities] = useState<FollowedEntity[]>(EMPTY);
   const [loading, setLoading] = useState(false);
@@ -29,9 +29,10 @@ export const useFollowedEntities = (followedSubjectIds: Set<string>) => {
     cached(
       `followed-entities:${ids.join(',')}`,
       async () => {
-        const [artists, venues] = await Promise.all([
+        const [artists, venues, festivals] = await Promise.all([
           supabase.from('v_subject_artists').select('subject_id,id,name,city,avatar_url').in('subject_id', ids),
           supabase.from('v_subject_venues').select('subject_id,id,name,city,photos,cover_image_url').in('subject_id', ids),
+          supabase.from('v_subject_festivals').select('subject_id,id,name,city,cover_image_url').in('subject_id', ids),
         ]);
         if (artists.error) throw artists.error;
         if (venues.error) throw venues.error;
@@ -50,6 +51,15 @@ export const useFollowedEntities = (followedSubjectIds: Set<string>) => {
             id: String(row.id),
             name: String(row.name ?? ''),
             imageUrl: row.cover_image_url ?? (row.photos || [])[0] ?? null,
+            city: row.city ?? null,
+          })),
+          // Before the festivals migration the view is missing; skip it.
+          ...(festivals.error ? [] : festivals.data || []).map((row: any) => ({
+            subjectId: String(row.subject_id),
+            kind: 'festival' as const,
+            id: String(row.id),
+            name: String(row.name ?? ''),
+            imageUrl: row.cover_image_url ?? null,
             city: row.city ?? null,
           })),
         ];

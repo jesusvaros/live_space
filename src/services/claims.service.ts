@@ -1,6 +1,6 @@
 import { supabase } from '../api';
 
-export type ClaimEntityType = 'artist' | 'venue';
+export type ClaimEntityType = 'artist' | 'venue' | 'festival';
 export type ClaimStatus = 'pending' | 'approved' | 'rejected';
 export type ClaimVerificationMethod = 'email_domain' | 'instagram_code';
 
@@ -39,6 +39,7 @@ export type AdminClaimRow = EntityClaim & {
     type: ClaimEntityType;
     artist: { id: string; name: string; external_links: Record<string, string> | null } | null;
     venue: { id: string; name: string; city: string | null; website_url: string | null } | null;
+    festival?: { id: string; name: string; city: string | null; website_url: string | null } | null;
   } | null;
 };
 
@@ -74,8 +75,43 @@ export const isMissingRelation = (error: { code?: string; message?: string } | n
         /does not exist|could not find/i.test(error.message || '')),
   );
 
+// Festival subjects are named from their read model, not embedded: the claim
+// queries keep working before the festivals migration exists.
+const festivalsBySubject = async (subjectIds: string[]) => {
+  const names = new Map<string, { id: string; name: string; city: string | null; website_url: string | null }>();
+  if (subjectIds.length === 0) return names;
+  const { data, error } = await supabase
+    .from('v_subject_festivals')
+    .select('subject_id,festival_id,name,city,website_url')
+    .in('subject_id', subjectIds);
+  if (error) return names;
+  for (const row of (data || []) as any[]) {
+    names.set(row.subject_id, { id: row.festival_id, name: row.name, city: row.city ?? null, website_url: row.website_url ?? null });
+  }
+  return names;
+};
+
 export const claimsService = {
   async getTarget(type: ClaimEntityType, id: string): Promise<ClaimTarget | null> {
+    if (type === 'festival') {
+      const { data, error } = await supabase
+        .from('v_subject_festivals')
+        .select('festival_id,subject_id,name,city,cover_image_url,website_url,instagram_url')
+        .eq('festival_id', id)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      return {
+        type,
+        id: data.festival_id,
+        subjectId: data.subject_id,
+        name: data.name,
+        imageUrl: data.cover_image_url ?? null,
+        city: data.city ?? null,
+        officialDomain: domainFromUrl(data.website_url),
+        instagram: instagramHandleFromLink(data.instagram_url),
+      };
+    }
     if (type === 'artist') {
       const { data, error } = await supabase
         .from('v_subject_artists')
@@ -142,10 +178,12 @@ export const claimsService = {
       if (isMissingRelation(error)) return [];
       throw error;
     }
-    return (data || []).map((row: any) => ({
+    const rows = (data || []) as any[];
+    const festivals = await festivalsBySubject(rows.filter(row => row.subject?.type === 'festival').map(row => row.subject_id));
+    return rows.map(row => ({
       ...(row as EntityClaim),
-      type: row.subject?.type === 'venue' ? 'venue' : 'artist',
-      name: row.subject?.artist?.name || row.subject?.venue?.name || 'Perfil',
+      type: (row.subject?.type === 'venue' || row.subject?.type === 'festival' ? row.subject.type : 'artist') as ClaimEntityType,
+      name: row.subject?.artist?.name || row.subject?.venue?.name || festivals.get(row.subject_id)?.name || 'Perfil',
     }));
   },
 
@@ -201,7 +239,11 @@ export const claimsService = {
     if (status !== 'all') query = query.eq('status', status);
     const { data, error } = await query;
     if (error) throw error;
-    return (data || []) as unknown as AdminClaimRow[];
+    const rows = (data || []) as unknown as AdminClaimRow[];
+    const festivals = await festivalsBySubject(rows.filter(row => row.subject?.type === 'festival').map(row => row.subject_id));
+    return rows.map(row =>
+      row.subject?.type === 'festival' ? { ...row, subject: { ...row.subject, festival: festivals.get(row.subject_id) ?? null } } : row,
+    );
   },
 
   async review(claimId: string, approve: boolean, note?: string | null): Promise<void> {

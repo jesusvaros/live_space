@@ -12,8 +12,9 @@ import { artistService } from '../services/artist.service';
 import { venueService } from '../services/venue.service';
 import { supabase } from '../lib/supabase';
 import ClaimsQueue from '../components/admin/ClaimsQueue';
+import AdminFestivalForm from '../components/admin/AdminFestivalForm';
 
-type AdminTab = 'claims' | 'artist' | 'venue' | 'grant' | 'access';
+type AdminTab = 'claims' | 'artist' | 'venue' | 'festival' | 'grant' | 'access';
 
 type AccessRow = {
   profile_id: string;
@@ -38,6 +39,7 @@ const tabs: Array<{ key: AdminTab; label: string }> = [
   { key: 'claims', label: 'Solicitudes' },
   { key: 'artist', label: 'Crear artista' },
   { key: 'venue', label: 'Crear sala' },
+  { key: 'festival', label: 'Crear festival' },
   { key: 'grant', label: 'Dar acceso' },
   { key: 'access', label: 'Ver accesos' },
 ];
@@ -396,6 +398,7 @@ const Admin: React.FC = () => {
         </div>
 
         {activeTab === 'claims' && <ClaimsQueue />}
+        {activeTab === 'festival' && <AdminFestivalForm />}
 
         {activeTab === 'artist' && (
           <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">

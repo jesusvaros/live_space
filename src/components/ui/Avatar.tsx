@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { IconMap, IconMic } from '../icons';
+import { IconFlag, IconMap, IconMic } from '../icons';
 import { initials, pickPalette } from './generated';
 
 type AvatarProps = {
@@ -9,7 +9,7 @@ type AvatarProps = {
   rounded?: 'full' | 'xl';
   // Artists are round and venues square everywhere; `kind` sets the shape
   // and, with `badge`, adds a mic or pin so mixed lists read at a glance.
-  kind?: 'artist' | 'venue';
+  kind?: 'artist' | 'venue' | 'festival';
   badge?: boolean;
 };
 
@@ -18,7 +18,7 @@ type AvatarProps = {
 const Avatar: React.FC<AvatarProps> = ({ name, src, className = 'h-12 w-12', rounded, kind, badge = false }) => {
   const [failed, setFailed] = useState<string | null>(null);
   const palette = pickPalette(name);
-  const shape = (rounded ?? (kind === 'venue' ? 'xl' : 'full')) === 'full' ? 'rounded-full' : 'rounded-xl';
+  const shape = (rounded ?? (kind === 'artist' || !kind ? 'full' : 'xl')) === 'full' ? 'rounded-full' : 'rounded-xl';
   const image = src && failed !== src ? (
     <img
       src={src}
@@ -46,7 +46,7 @@ const Avatar: React.FC<AvatarProps> = ({ name, src, className = 'h-12 w-12', rou
         aria-hidden
         className="absolute -bottom-0.5 -right-0.5 flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 border-app-bg bg-app-ink text-app-bg"
       >
-        {kind === 'artist' ? <IconMic size={12} /> : <IconMap size={12} />}
+        {kind === 'artist' ? <IconMic size={12} /> : kind === 'festival' ? <IconFlag size={12} /> : <IconMap size={12} />}
       </span>
     </span>
   );

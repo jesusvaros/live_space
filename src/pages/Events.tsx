@@ -8,6 +8,7 @@ import { calculateDistanceKm, getEventCoverImage, toNumber } from '../features/e
 import { NearbyEventListItem } from '../features/events/types';
 import CityListingSection, { deriveCities } from '../features/events/sections/CityListingSection';
 import FollowingSection from '../features/events/sections/FollowingSection';
+import FestivalsSection from '../features/events/sections/FestivalsSection';
 import { useAuth } from '../contexts/AuthContext';
 import { useEventsList } from '../features/events/hooks/useEventsList';
 import { useUserConcertHero } from '../features/events/hooks/useUserConcertHero';
@@ -114,6 +115,8 @@ const Events: React.FC = () => {
       />
 
       <FollowingSection events={events} entities={followedEntities} signedIn={Boolean(user)} />
+
+      <FestivalsSection />
 
       <div className={`px-4 pt-[22px] ${NAV_CLEARANCE}`}>
         <CityListingSection
