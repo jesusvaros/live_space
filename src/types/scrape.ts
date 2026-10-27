@@ -30,7 +30,10 @@ export type ParserKey =
   | 'wix-events-warmup'
   | 'repvblicca-agenda'
   | 'jimmy-glass-agenda'
-  | 'radio-city-agenda';
+  | 'radio-city-agenda'
+  | 'sala-custom-agenda'
+  | 'rollercoaster-agenda'
+  | 'malandar-agenda';
 
 export type RawScrapedEvent = {
   sourceUrl: string;

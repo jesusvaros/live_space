@@ -27,6 +27,9 @@ import { wixEventsWarmupParser } from './parsers/wixEventsWarmupParser.js';
 import { repvbliccaAgendaParser } from './parsers/repvbliccaAgendaParser.js';
 import { jimmyGlassAgendaParser } from './parsers/jimmyGlassAgendaParser.js';
 import { radioCityAgendaParser } from './parsers/radioCityAgendaParser.js';
+import { salaCustomAgendaParser } from './parsers/salaCustomAgendaParser.js';
+import { rollercoasterAgendaParser } from './parsers/rollercoasterAgendaParser.js';
+import { malandarAgendaParser } from './parsers/malandarAgendaParser.js';
 
 const parserRegistry: Record<ParserKey, VenueParser> = {
   'apolo-agenda': apoloAgendaParser,
@@ -57,6 +60,9 @@ const parserRegistry: Record<ParserKey, VenueParser> = {
   'repvblicca-agenda': repvbliccaAgendaParser,
   'jimmy-glass-agenda': jimmyGlassAgendaParser,
   'radio-city-agenda': radioCityAgendaParser,
+  'sala-custom-agenda': salaCustomAgendaParser,
+  'rollercoaster-agenda': rollercoasterAgendaParser,
+  'malandar-agenda': malandarAgendaParser,
 };
 
 export const getParser = (key: ParserKey): VenueParser => {

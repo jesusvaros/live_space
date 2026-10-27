@@ -66,6 +66,28 @@ const toAbsoluteUrl = (rawUrl: string | null, baseUrl: string): string | undefin
   }
 };
 
+const GUEST_PLACEHOLDER_RE = /^(?:(?:m[aá]s\s+)?(?:artistas?\s+)?invitad[oa]s?|(?:special\s+)?guests?|y\s+m[aá]s)$/i;
+
+// A bill such as "SOEN + TRIBULATION + VULKAN" or "Stivijoes+Gomz" lists every
+// performer of the night, headliner first. The title rules keep "+" bills
+// together (ambiguous in general), so parsers whose source writes the bill
+// this way split it here; each side still goes through the title cleanup.
+export const artistNamesFromBill = (title: string | null | undefined): string[] => {
+  const whole = artistNamesFromTitle(title);
+  const parts = (title || '').split(/\s*\+\s*/).map((part) => part.trim()).filter(Boolean);
+  if (whole.length === 0 || parts.length < 2) return whole;
+  const names = parts
+    .filter((part) => !GUEST_PLACEHOLDER_RE.test(part))
+    .flatMap((part) => artistNamesFromTitle(part));
+  const seen = new Set<string>();
+  return names.filter((name) => {
+    const key = name.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
 // Parsers whose source has no performer field derive artists from the title
 // with the cleanup rules (never the raw title), and absolutize the poster.
 export const withTitleArtists = (events: RawScrapedEvent[]): RawScrapedEvent[] =>
