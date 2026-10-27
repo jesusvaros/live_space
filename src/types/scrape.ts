@@ -17,7 +17,31 @@ export type ParserKey =
   | 'generic-agenda'
   | 'wordpress-generic'
   | 'single-event-page'
-  | 'resident-advisor-like';
+  | 'resident-advisor-like'
+  | 'marula-agenda'
+  | 'wolf-agenda'
+  | 'sidecar-agenda'
+  | 'heliogabal-agenda'
+  | 'sala-vol-agenda'
+  | 'freedonia-agenda'
+  | 'soda-agenda'
+  | 'json-ld-bill-agenda'
+  | 'sixteen-toneladas-agenda'
+  | 'wix-events-warmup'
+  | 'repvblicca-agenda'
+  | 'jimmy-glass-agenda'
+  | 'radio-city-agenda'
+  | 'sala-custom-agenda'
+  | 'rollercoaster-agenda'
+  | 'malandar-agenda'
+  | 'honky-tonk-agenda'
+  | 'wurlitzer-agenda'
+  | 'intruso-agenda'
+  | 'maravillas-agenda'
+  | 'libertad8-agenda'
+  | 'moby-dick-agenda'
+  | 'tribe-events-lineup'
+  | 'cafe-central-agenda';
 
 export type RawScrapedEvent = {
   sourceUrl: string;

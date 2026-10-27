@@ -106,7 +106,9 @@ export const tribeEventsApiParser: VenueParser = {
         const categories = (event.categories || []).map((category) => category.name).filter(Boolean);
         return categories.some((category) => categoryAllowlist.includes(category as string));
       })
-      .map((event) => mapTribeEvent(event, source.base_url, source.name, source.city || undefined))
+      .map((event) =>
+        mapTribeEvent(event, source.base_url, source.name, source.city || undefined),
+      )
       .filter((event): event is RawScrapedEvent => event !== null);
   },
 };

@@ -14,6 +14,30 @@ import { sirocoAgendaParser } from './parsers/sirocoAgendaParser.js';
 import { shopifyConcertsParser } from './parsers/shopifyConcertsParser.js';
 import { tribeEventsApiParser } from './parsers/tribeEventsApiParser.js';
 import { wordpressGenericParser } from './parsers/wordpressGenericParser.js';
+import { marulaAgendaParser } from './parsers/marulaAgendaParser.js';
+import { wolfAgendaParser } from './parsers/wolfAgendaParser.js';
+import { sidecarAgendaParser } from './parsers/sidecarAgendaParser.js';
+import { heliogabalAgendaParser } from './parsers/heliogabalAgendaParser.js';
+import { salaVolAgendaParser } from './parsers/salaVolAgendaParser.js';
+import { freedoniaAgendaParser } from './parsers/freedoniaAgendaParser.js';
+import { sodaAgendaParser } from './parsers/sodaAgendaParser.js';
+import { jsonLdBillAgendaParser } from './parsers/jsonLdBillAgendaParser.js';
+import { sixteenToneladasAgendaParser } from './parsers/sixteenToneladasAgendaParser.js';
+import { wixEventsWarmupParser } from './parsers/wixEventsWarmupParser.js';
+import { repvbliccaAgendaParser } from './parsers/repvbliccaAgendaParser.js';
+import { jimmyGlassAgendaParser } from './parsers/jimmyGlassAgendaParser.js';
+import { radioCityAgendaParser } from './parsers/radioCityAgendaParser.js';
+import { salaCustomAgendaParser } from './parsers/salaCustomAgendaParser.js';
+import { rollercoasterAgendaParser } from './parsers/rollercoasterAgendaParser.js';
+import { malandarAgendaParser } from './parsers/malandarAgendaParser.js';
+import { honkyTonkAgendaParser } from './parsers/honkyTonkAgendaParser.js';
+import { wurlitzerAgendaParser } from './parsers/wurlitzerAgendaParser.js';
+import { intrusoAgendaParser } from './parsers/intrusoAgendaParser.js';
+import { maravillasAgendaParser } from './parsers/maravillasAgendaParser.js';
+import { libertad8AgendaParser } from './parsers/libertad8AgendaParser.js';
+import { mobyDickAgendaParser } from './parsers/mobyDickAgendaParser.js';
+import { tribeEventsLineupParser } from './parsers/tribeEventsLineupParser.js';
+import { cafeCentralAgendaParser } from './parsers/cafeCentralAgendaParser.js';
 
 const parserRegistry: Record<ParserKey, VenueParser> = {
   'apolo-agenda': apoloAgendaParser,
@@ -31,6 +55,30 @@ const parserRegistry: Record<ParserKey, VenueParser> = {
   'siroco-agenda': sirocoAgendaParser,
   'shopify-concerts': shopifyConcertsParser,
   'tribe-events-api': tribeEventsApiParser,
+  'marula-agenda': marulaAgendaParser,
+  'wolf-agenda': wolfAgendaParser,
+  'sidecar-agenda': sidecarAgendaParser,
+  'heliogabal-agenda': heliogabalAgendaParser,
+  'sala-vol-agenda': salaVolAgendaParser,
+  'freedonia-agenda': freedoniaAgendaParser,
+  'soda-agenda': sodaAgendaParser,
+  'json-ld-bill-agenda': jsonLdBillAgendaParser,
+  'sixteen-toneladas-agenda': sixteenToneladasAgendaParser,
+  'wix-events-warmup': wixEventsWarmupParser,
+  'repvblicca-agenda': repvbliccaAgendaParser,
+  'jimmy-glass-agenda': jimmyGlassAgendaParser,
+  'radio-city-agenda': radioCityAgendaParser,
+  'sala-custom-agenda': salaCustomAgendaParser,
+  'rollercoaster-agenda': rollercoasterAgendaParser,
+  'malandar-agenda': malandarAgendaParser,
+  'honky-tonk-agenda': honkyTonkAgendaParser,
+  'wurlitzer-agenda': wurlitzerAgendaParser,
+  'intruso-agenda': intrusoAgendaParser,
+  'maravillas-agenda': maravillasAgendaParser,
+  'libertad8-agenda': libertad8AgendaParser,
+  'moby-dick-agenda': mobyDickAgendaParser,
+  'tribe-events-lineup': tribeEventsLineupParser,
+  'cafe-central-agenda': cafeCentralAgendaParser,
 };
 
 export const getParser = (key: ParserKey): VenueParser => {

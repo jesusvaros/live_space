@@ -66,6 +66,7 @@ const toAbsoluteUrl = (rawUrl: string | null, baseUrl: string): string | undefin
   }
 };
 
+
 // Parsers whose source has no performer field derive artists from the title
 // with the cleanup rules (never the raw title), and absolutize the poster.
 export const withTitleArtists = (events: RawScrapedEvent[]): RawScrapedEvent[] =>
@@ -77,6 +78,39 @@ export const withTitleArtists = (events: RawScrapedEvent[]): RawScrapedEvent[] =
       imageUrl: imageUrl && !/\.svg(?:$|\?)/i.test(imageUrl) ? imageUrl : undefined,
     };
   });
+
+// Pieces of a "+" bill that name no performer: "+ ARTISTA INVITADO",
+// "+ AFTERPARTY BY …", "Concierto + Jam".
+const NON_PERFORMER_BILL_PART_RE =
+  /^(?:artistas?\s+invitad[oa]s?|invitad[oa]s?|guests?|special guests?|jam(?:\s+session)?|dj\s*set|after\s*-?party\b.*|sorpresa)$/i;
+
+// Small venues bill a night as "A + B + C" (headliner first) and often put a
+// series name in front: "CIRCUIT A-BANDA: PERFECTO MISERABLE + DECLIVE". On
+// top of the shared cleanup rules this drops pieces that name no performer
+// ("+ ARTISTA INVITADO", "+ AFTERPARTY").
+export const billArtistNames = (title: string | null | undefined): string[] => {
+  const text = title?.replace(/\s+/g, ' ').trim();
+  if (!text) return [];
+  const series = text.match(/^[^:+]{2,60}:\s*(.+\s\+\s.+)$/);
+  const bill = series ? series[1] : text;
+  const parts = bill
+    .split(/\s+\+\s+/)
+    .map((part) => part.replace(/\s+concierto$/i, '').trim())
+    .filter((part) => part && !NON_PERFORMER_BILL_PART_RE.test(part));
+  if (parts.length < 2) return artistNamesFromTitle(parts[0] ?? text);
+
+  const seen = new Set<string>();
+  return parts
+    .flatMap((part) => artistNamesFromTitle(part))
+    .filter((name) => {
+      const key = name.toLocaleLowerCase('es');
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+};
+
+export const pause = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 const dedupeEvents = (events: RawScrapedEvent[]): RawScrapedEvent[] => {
   const seen = new Set<string>();
@@ -238,3 +272,75 @@ export const GENERIC_CARD_DEFAULTS: ParserSelectorDefaults = {
   venueSelectors: ['.venue', '.location', '.event-venue'],
   citySelectors: ['.city', '.event-city', '.location .city'],
 };
+
+const BILL_NOT_ARTIST_RE = /^(?:(?:gran )?fiesta|concierto|evento privado|micro abierto|open mic)\b|\bjam\b/i;
+
+const billActs = (text: string): string[] => {
+  const names = text
+    .split(/\s+\+\s*/)
+    .map((act) => act.replace(/\s*[([].*$/, '').trim())
+    .filter((act) => act && !BILL_NOT_ARTIST_RE.test(act))
+    .flatMap((act) => artistNamesFromTitle(act));
+  const seen = new Set<string>();
+  return names.filter((name) => !seen.has(name.toLowerCase()) && Boolean(seen.add(name.toLowerCase())));
+};
+
+// "Ciclo 2026: A + B y C (Género) País" → ["A", "B", "C"]. Series prefixes
+// ("Radar Joven:", "Jazz con Sabor a Club 2026." or "Patronas 2026 -") are
+// dropped, "+" and "feat:" separate the acts in billing order, anything from
+// the first bracket of an act on is genre or origin, and every act then goes
+// through the shared cleanup rules. When nothing is left after a colon
+// ("Lion Family Band: Sandunga vol 2") the left side is the artist. A title
+// opening with quotes names a show, not a performer; a tribute band keeps its
+// own name ("Chili Critters – Trib. Red Hot Chili Peppers" → Chili Critters).
+export const lineupFromTitle = (title: string | null | undefined): string[] => {
+  let text = (title || '').replace(/\s+/g, ' ').replace(/\s+feat\.?:?\s+/gi, ' + ').trim();
+  if (/^["“«]/.test(text)) return [];
+  if (!/^(?:el\s+)?(?:gran\s+)?trib/i.test(text)) {
+    text = text.replace(/\s+[-–—]?\s*\btrib(?:uto|ute)?\b\.?\s+(?:a\s+|al\s+|to\s+)?\S.*$/i, '');
+  }
+  const colon = text.match(/^([^:+]+):\s+(?=\S)/);
+  const names = billActs(
+    text
+      .slice(colon?.[0].length ?? 0)
+      .replace(/^[^.+]{6,}\.\s+(?=\S)/, '')
+      .replace(/^[^+]*?\b20\d{2}\s+[-–—]\s+/, ''),
+  );
+  return names.length === 0 && colon ? billActs(colon[1]) : names;
+};
+
+// Madrid wall-clock "dd/mm/yyyy HH:MM", which parseDateTextToIso reads with an
+// explicit year. Venue agendas list a show after midnight under the night it
+// belongs to, so `nextDay` moves it to its real calendar day.
+export const madridDateText = (
+  year: number,
+  month: number,
+  day: number,
+  time = '20:00',
+  nextDay = false,
+): string | undefined => {
+  const valid = new Date(Date.UTC(year, month - 1, day));
+  if (valid.getUTCMonth() !== month - 1 || valid.getUTCDate() !== day) return undefined;
+  const date = new Date(Date.UTC(year, month - 1, day + (nextDay ? 1 : 0)));
+  const [hour, minute] = time.split(/[:h.]/);
+  const pad = (value: number | string | undefined) => String(value || 0).padStart(2, '0');
+  return `${pad(date.getUTCDate())}/${pad(date.getUTCMonth() + 1)}/${date.getUTCFullYear()} ${pad(hour)}:${pad(minute)}`;
+};
+
+// Today in Madrid as yyyy-mm-dd, to drop past nights from a listing.
+export const madridToday = (): string =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(new Date());
+
+export const htmlToText = (value: string | null | undefined): string =>
+  (value || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;|&#160;/gi, ' ')
+    .replace(/&amp;|&#0*38;/gi, '&')
+    .replace(/&#8211;|&ndash;/gi, '–')
+    .replace(/&#8217;|&rsquo;/gi, '’')
+    .replace(/&#822[01];|&quot;|&[lr]dquo;/gi, '"')
+    .replace(/&hellip;|&#8230;/gi, '…')
+    .replace(/&#(\d+);/g, (_match, code: string) => String.fromCharCode(Number(code)))
+    .replace(/[ \t]+/g, ' ')
+    .trim();

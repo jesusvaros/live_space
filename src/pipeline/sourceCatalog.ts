@@ -90,9 +90,10 @@ export const seedSources: SeedSource[] = [
     ready: true,
   }),
   source('Sidecar', 'https://sidecar.es/programacio/', 'Barcelona', 'https://sidecar.es/', {
-    parserKey: 'linked-event-cards',
+    parserKey: 'sidecar-agenda',
     ready: true,
     reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
   }),
   source('Upload', 'https://uploadbarcelona.com/', 'Barcelona', 'https://uploadbarcelona.com/'),
   source('La Nau', 'https://lanau.com/', 'Barcelona', 'https://lanau.com/'),
@@ -108,9 +109,10 @@ export const seedSources: SeedSource[] = [
     categoryAllowlist: ['Concert'],
   }),
   source('Wolf Barcelona', 'https://wolfbarcelona.com/conciertos/', 'Barcelona', 'https://wolfbarcelona.com/', {
-    parserKey: 'linked-event-cards',
+    parserKey: 'wolf-agenda',
     ready: true,
     reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
   }),
   // Small venues of the local scene, reviewed 2026-10-27: public agenda and
   // robots.txt allow it. Sala Villanos stays out: its robots.txt blocks
@@ -132,8 +134,162 @@ export const seedSources: SeedSource[] = [
     structuredDataVerified: true,
   }),
   source('Marula Café', 'https://marulacafe.com/agenda', 'Barcelona', 'https://marulacafe.com/', {
-    parserKey: 'linked-event-cards',
+    parserKey: 'marula-agenda',
     ready: true,
     reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  // Barcelona local scene (agent)
+  source('Heliogàbal', 'https://www.heliogabal.com/', 'Barcelona', 'https://www.heliogabal.com/', {
+    parserKey: 'heliogabal-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Sala Vol', 'https://salavol.com/', 'Barcelona', 'https://salavol.com/', {
+    parserKey: 'sala-vol-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Freedonia', 'https://freedonia.eu/evento/categoria/conciertos/', 'Barcelona', 'https://freedonia.eu/', {
+    parserKey: 'freedonia-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Soda Acústic', 'https://soda.cat/agenda-de-conciertos/', 'Barcelona', 'https://soda.cat/', {
+    parserKey: 'soda-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  // Valencia local scene (agent), reviewed 2026-10-27: public agenda on the
+  // venue's own site and robots.txt allows it. Left out: Sala Moon (domain
+  // parked), Wah Wah (closed, domain is now a blog), Matisse (hand-edited list
+  // without years), Café Mercedes (no concerts published), La Fábrica de Hielo
+  // (robots.txt blocks its calendar views), Spook (large techno club).
+  source('Loco Club', 'https://lococlub.es/', 'Valencia', 'https://lococlub.es/', {
+    parserKey: 'json-ld-bill-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('16 Toneladas', 'https://16toneladas.com/', 'Valencia', 'https://16toneladas.com/', {
+    parserKey: 'sixteen-toneladas-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Black Note Club', 'https://www.blacknoteclub.com/', 'Valencia', 'https://www.blacknoteclub.com/', {
+    parserKey: 'wix-events-warmup',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Sala Repvblicca', 'https://republicca.com/agenda/', 'Valencia', 'https://republicca.com/', {
+    parserKey: 'repvblicca-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Jimmy Glass Jazz Bar', 'https://www.jimmyglassjazz.net/Eventos/', 'Valencia', 'https://www.jimmyglassjazz.net/', {
+    parserKey: 'jimmy-glass-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Radio City', 'https://radiocityvalencia.es/agenda/', 'Valencia', 'https://radiocityvalencia.es/', {
+    parserKey: 'radio-city-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  // Sevilla local scene (agent), reviewed 2026-10-27: public agenda on the
+  // venue's own site and robots.txt allows it. Malandar's pages never print
+  // the year (inferred from the poster upload folder), so it is not marked
+  // as structured data.
+  source('Fun Club', 'https://funclubsevilla.com/agenda/', 'Sevilla', 'https://funclubsevilla.com/', {
+    parserKey: 'tribe-events-api',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+    categoryAllowlist: ['Concierto'],
+  }),
+  source('Sala Custom', 'https://salacustom.com/', 'Sevilla', 'https://salacustom.com/', {
+    parserKey: 'sala-custom-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Sala Malandar', 'https://salamalandar.com/programacion/', 'Sevilla', 'https://salamalandar.com/', {
+    parserKey: 'malandar-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+  }),
+  source('Sala Pandora', 'https://pandorasevilla.com/agenda_category/conciertos/', 'Sevilla', 'https://pandorasevilla.com/', {
+    parserKey: 'rollercoaster-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Supra Music Hall', 'https://www.supramusichall.com/agenda_category/conciertos/', 'Sevilla', 'https://www.supramusichall.com/', {
+    parserKey: 'rollercoaster-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  // Madrid local scene (agent): own parsers for agendas the auto-probe could
+  // not read. robots.txt allows every agenda path. Costello (empty agenda),
+  // Copérnico (no dates after May 2026), Sala Vesta (ticketing widget only)
+  // and RockVille (monthly poster image only) stay out.
+  source('Wurlitzer Ballroom', 'https://wurlitzerballroom.com/agenda', 'Madrid', 'https://wurlitzerballroom.com/', {
+    parserKey: 'wurlitzer-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Honky Tonk', 'https://clubhonky.com/programacion/', 'Madrid', 'https://clubhonky.com/', {
+    parserKey: 'honky-tonk-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('El Intruso', 'https://www.intrusobar.com/', 'Madrid', 'https://www.intrusobar.com/', {
+    parserKey: 'intruso-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Maravillas Club', 'https://www.maravillasclub.com/category/conciertos/', 'Madrid', 'https://www.maravillasclub.com/', {
+    parserKey: 'maravillas-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Tempo Club', 'https://tempoclub.es/conciertos/', 'Madrid', 'https://tempoclub.es/', {
+    parserKey: 'tribe-events-lineup',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+    categoryAllowlist: ['Conciertos'],
+  }),
+  source('Café Libertad 8', 'https://libertad8cafe.es/eventos/', 'Madrid', 'https://libertad8cafe.es/', {
+    parserKey: 'libertad8-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Moby Dick Club', 'https://www.mobydickclub.com/programacion.php', 'Madrid', 'https://www.mobydickclub.com/', {
+    parserKey: 'moby-dick-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Café Central', 'https://cafecentralmadrid.com/programacion/', 'Madrid', 'https://cafecentralmadrid.com/', {
+    parserKey: 'cafe-central-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
   }),
 ];

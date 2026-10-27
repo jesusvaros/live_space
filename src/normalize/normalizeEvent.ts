@@ -176,13 +176,20 @@ export const parseDateTextToIso = (
   return null;
 };
 
-const detectEventType = (source: ScrapeSource, title: string, description?: string): EventType => {
-  const haystack = `${title} ${description || ''}`.toLowerCase();
-  if (source.source_type === 'festival' || /\bfestival|lineup|cartel\b/.test(haystack)) {
+// Only the title decides, and only clear signals: venue prose mentions
+// "club" or "festival" all the time, and series names such as "Jazz con
+// Sabor a Club 2026" or "Shred Fest 2026: A + B" announce ordinary concerts.
+const FESTIVAL_TITLE_RE = /\b(?:festival|line-?up)\b/i;
+const SESSION_TITLE_RE =
+  /\b(?:dj ?sets?|djs|all night long|after ?hours?|club night|sesi[oó]n(?:es)? (?:de )?dj|dj sessions?|(?:jam|jazz) sessions?)\b|^(?:club|sesi[oó]n|session)\b/i;
+
+const detectEventType = (source: ScrapeSource, title: string, _description?: string): EventType => {
+  // A festival night that names its bill ("Festival X: A + B") is a concert.
+  if (source.source_type === 'festival' || (FESTIVAL_TITLE_RE.test(title) && !/[:+]/.test(title))) {
     return 'festival';
   }
 
-  if (/\bsession|sesion|sesión|club|after|all night|dj set\b/.test(haystack)) {
+  if (SESSION_TITLE_RE.test(title)) {
     return 'session';
   }
 
