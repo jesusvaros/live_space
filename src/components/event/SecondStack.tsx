@@ -1,4 +1,6 @@
 import { PostWithSetlist } from '../../lib/types';
+import { isExternalPost } from '../../features/socialImport';
+import PlatformIcon from '../../features/socialImport/components/PlatformIcon';
 
 type SecondStackProps = {
   moments: PostWithSetlist[];
@@ -20,7 +22,11 @@ const SecondStack: React.FC<SecondStackProps> = ({ moments, selectedIndex, onSel
           }`}
           onClick={() => onSelect(index)}
         >
-          {moment.media_type === 'video' ? (
+          {isExternalPost(moment) && !moment.thumbnail_url ? (
+            <span className="flex h-full w-full items-center justify-center bg-app-surface text-white/70">
+              <PlatformIcon source={moment.source as 'instagram' | 'tiktok' | 'youtube'} size={22} />
+            </span>
+          ) : moment.media_type === 'video' ? (
             moment.thumbnail_url ? (
               <img src={moment.thumbnail_url} alt={moment.caption || 'Momento'} className="h-full w-full object-cover" />
             ) : (

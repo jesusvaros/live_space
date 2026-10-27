@@ -82,6 +82,7 @@ export const mapEvent = (row: UnknownRow): Event => ({
   price_tiers: Array.isArray(row.price_tiers) ? (row.price_tiers as Event['price_tiers']) : [],
   starts_at: String(row.starts_at ?? ''),
   ends_at: stringOrNull(row.ends_at),
+  ...(typeof row.share_tag === 'string' && row.share_tag ? { share_tag: row.share_tag } : {}),
   is_public: row.status === 'published',
   qr_token: null,
   qr_token_rotated_at: null,

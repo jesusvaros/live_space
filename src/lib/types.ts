@@ -98,6 +98,8 @@ export interface Event {
   price_tiers: PriceTier[];
   starts_at: string;
   ends_at: string | null;
+  // Concert tag for social imports, e.g. "LSRIV29" (see features/socialImport).
+  share_tag?: string | null;
   is_public: boolean;
   qr_token: string | null;
   qr_token_rotated_at: string | null;
@@ -122,6 +124,14 @@ export interface Post {
   capture_source: string | null;
   created_at: string;
   updated_at: string;
+  // Imported clips (20261028040100_social_import.sql); absent on older rows.
+  source?: 'upload' | 'instagram' | 'tiktok' | 'youtube';
+  external_url?: string | null;
+  external_id?: string | null;
+  external_author_handle?: string | null;
+  external_author_name?: string | null;
+  external_author_url?: string | null;
+  external_published_at?: string | null;
 }
 
 export interface PostWithSetlist extends Post {

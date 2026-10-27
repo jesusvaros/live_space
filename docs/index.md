@@ -32,6 +32,7 @@ objetivo es que la gente instale la app (ver [Web pública y landings](./landing
 | Operar Supabase, Cloudinary, backups o incidentes | [Runbooks](./runbooks.md) |
 | Mantener el pipeline de agendas | [Scraping](./scraping.md) |
 | Operar media, licencias y moderación | [Media](./media.md) y [Moderación](./moderacion.md) |
+| Importar clips de Instagram, TikTok y YouTube | [Importar clips](./importar-clips.md) |
 | Coordinar trabajo asistido | [Manual de agentes](./agentes.md) |
 | Ver fases y puertas de salida | [Roadmap](./roadmap.md) |
 

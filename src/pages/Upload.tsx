@@ -375,6 +375,13 @@ const Upload: React.FC = () => {
               <IconQrCode size={18} />
               Escanear el QR del concierto
             </button>
+            <button
+              type="button"
+              onClick={() => navigate('/importar')}
+              className="flex min-h-11 items-center justify-center gap-2 rounded-full border border-app-line px-4 text-sm font-semibold text-app-ink"
+            >
+              Pegar enlace de Instagram, TikTok o YouTube
+            </button>
           </div>
         ) : (
           <>
