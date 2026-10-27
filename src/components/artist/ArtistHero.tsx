@@ -84,35 +84,40 @@ const ArtistHero: React.FC<ArtistHeroProps> = ({
   onEdit,
 }) => {
   const verifiedBadge = (artist as any)?.is_verified;
-  const meta = [
-    artist.city || (artist.artist_type === 'band' ? 'Banda' : artist.artist_type === 'solo' ? 'Solista' : null),
-    playedCount > 0 ? `${playedCount} ${playedCount === 1 ? 'concierto' : 'conciertos'}` : null,
+  const kicker = [
+    'Artista',
+    artist.genres?.[0] || artist.city || null,
+    verifiedBadge ? 'verificado' : null,
   ].filter(Boolean);
+  void playedCount;
 
   return (
     <section>
-      <div className={`relative overflow-hidden ${immersive ? 'h-[52vh] min-h-[320px]' : 'h-[300px] rounded-2xl'}`}>
+      <div className={`relative overflow-hidden ${immersive ? 'h-[360px]' : 'h-[300px] rounded-2xl'}`}>
         {artist.avatar_url ? (
           <img src={artist.avatar_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
         ) : (
           <GeneratedPoster title={artist.name} variant="hero" />
         )}
-        <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-app-bg via-app-bg/60 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 px-4 pb-3">
-          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-app-accent">
-            Artista{verifiedBadge ? ' · verificado' : ''}
+        <div className="absolute inset-0 bg-[linear-gradient(to_top,#0d0e12_4%,rgba(13,14,18,0.25)_60%,rgba(13,14,18,0.5))]" />
+        <div className="absolute inset-x-4 bottom-1.5">
+          <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-app-accent">
+            {kicker.join(' · ')}
           </p>
-          <h1 className="mt-1 font-poster text-[48px] leading-[0.88] text-white">{artist.name}</h1>
-          {meta.length > 0 ? <p className="mt-2 text-sm text-white/75">{meta.join(' · ')}</p> : null}
+          <h1 className={`mt-1.5 font-poster leading-[0.86] text-app-ink ${artist.name.length > 16 ? 'text-[40px]' : 'text-[56px]'}`}>
+            {artist.name}
+          </h1>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 px-4 pt-3">
+      <div className="flex flex-wrap items-center gap-2 px-4 pt-3.5">
         {onToggleFollow ? (
           <Button
             variant={isFollowing ? 'secondary' : 'primary'}
             disabled={followLoading}
             onClick={onToggleFollow}
+            aria-pressed={isFollowing}
+            className="min-h-[46px] px-[22px] text-[15px] font-bold"
             icon={isFollowing ? <IconCheckCircle size={16} /> : null}
           >
             {isFollowing ? 'Siguiendo' : 'Seguir'}
@@ -132,7 +137,7 @@ const ArtistHero: React.FC<ArtistHeroProps> = ({
               target="_blank"
               rel="noreferrer"
               aria-label={LINK_LABELS[key]}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-app-line bg-app-surface text-white/85"
+              className="flex h-[46px] w-[46px] items-center justify-center rounded-full border border-app-line bg-app-surface text-app-ink"
             >
               <SocialIcon name={key} />
             </a>
@@ -140,9 +145,6 @@ const ArtistHero: React.FC<ArtistHeroProps> = ({
         })}
       </div>
 
-      {artist.bio && (
-        <p className="px-4 pt-3 text-sm text-white/75 line-clamp-3">{artist.bio}</p>
-      )}
     </section>
   );
 };

@@ -84,7 +84,7 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({ group, onClose })
         </Link>
       </div>
 
-      <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-app-line px-3 pb-4">
+      <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-app-line px-3 pb-[calc(88px+env(safe-area-inset-bottom,0px))]">
         {group.events.map(event => (
           <li key={event.id}>
             <Link

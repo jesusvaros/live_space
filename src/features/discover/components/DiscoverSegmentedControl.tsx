@@ -6,33 +6,28 @@ type DiscoverSegmentedControlProps = {
   onChange: (next: DiscoverTabKey) => void;
 };
 
-const DiscoverSegmentedControl: React.FC<DiscoverSegmentedControlProps> = ({ value, onChange }) => {
-  return (
-    <div className="inline-flex w-full items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
+const OPTIONS: { key: DiscoverTabKey; label: string }[] = [
+  { key: 'artists', label: 'Artistas' },
+  { key: 'venues', label: 'Salas' },
+];
+
+const DiscoverSegmentedControl: React.FC<DiscoverSegmentedControlProps> = ({ value, onChange }) => (
+  <div role="tablist" aria-label="Qué buscar" className="flex gap-2">
+    {OPTIONS.map(option => (
       <button
+        key={option.key}
         type="button"
-        onClick={() => onChange('artists')}
-        className={`inline-flex flex-1 items-center justify-center rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] transition-colors ${
-          value === 'artists'
-            ? 'bg-app-accent text-white'
-            : 'text-white/60 hover:text-white/85'
+        role="tab"
+        aria-selected={value === option.key}
+        onClick={() => onChange(option.key)}
+        className={`min-h-10 rounded-full px-4 text-sm font-semibold transition-colors ${
+          value === option.key ? 'bg-app-ink text-app-bg' : 'border border-app-line text-[#c9c5bd]'
         }`}
       >
-        Artistas
+        {option.label}
       </button>
-      <button
-        type="button"
-        onClick={() => onChange('venues')}
-        className={`inline-flex flex-1 items-center justify-center rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] transition-colors ${
-          value === 'venues'
-            ? 'bg-app-accent text-white'
-            : 'text-white/60 hover:text-white/85'
-        }`}
-      >
-        Salas
-      </button>
-    </div>
-  );
-};
+    ))}
+  </div>
+);
 
 export default DiscoverSegmentedControl;

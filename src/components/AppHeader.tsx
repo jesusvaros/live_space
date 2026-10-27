@@ -1,7 +1,6 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import AppBrand from './AppBrand';
-import { IconBell } from './icons';
 import WorkspaceSwitcher from './WorkspaceSwitcher';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -24,7 +23,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, rightSlot, showBack }) => 
   };
 
   return (
-    <header className="sticky top-0 z-[1200] bg-app-bg px-4 py-3 pt-[calc(12px+env(safe-area-inset-top,0px))]">
+    <header className="sticky top-0 z-[1200] bg-app-bg px-4 pb-2.5 pt-[calc(14px+env(safe-area-inset-top,0px))]">
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-1 items-center gap-2">
           {title ? (
@@ -52,14 +51,19 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, rightSlot, showBack }) => 
               {inAdminRoute ? 'App' : 'Admin'}
             </button>
           ) : null}
-          <button
-            type="button"
-            className="inline-flex items-center justify-center px-3 py-2 text-sm font-semibold text-white/80 disabled:cursor-not-allowed disabled:opacity-60"
-            aria-label="Notificaciones"
-            disabled
-          >
-            <IconBell className="h-4 w-4" />
-          </button>
+          {title ? null : (
+            <button
+              type="button"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-app-line bg-app-surface text-app-ink"
+              aria-label="Buscar"
+              onClick={() => navigate('/tabs/discover')}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M20 20l-3.5-3.5" />
+              </svg>
+            </button>
+          )}
           {rightSlot}
         </div>
       </div>

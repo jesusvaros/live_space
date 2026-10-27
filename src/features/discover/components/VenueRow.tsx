@@ -11,59 +11,28 @@ type VenueRowProps = {
   onOpenProfile: () => void;
 };
 
-const VenueRow: React.FC<VenueRowProps> = ({
-  venue,
-  isFollowing,
-  followLoading,
-  onToggleFollow,
-  onOpenProfile,
-}) => {
-  const cover = venue.photos?.[0] || null;
-  const posters = venue.recent_posters || [];
-
-  return (
-    <div className="rounded-2xl border border-app-line bg-app-surface p-3">
-      <div className="flex items-center justify-between gap-4">
-        <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={onOpenProfile}>
-          <Avatar name={venue.name} src={cover} rounded="xl" className="h-12 w-12 text-[16px]" />
-          <div className="min-w-0">
-            <p className="font-display text-base font-bold text-white line-clamp-1">{venue.name}</p>
-            <p className="mt-0.5 text-xs text-white/55 line-clamp-1">{venue.city}</p>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          disabled={followLoading}
-          onClick={e => {
-            e.stopPropagation();
-            onToggleFollow();
-          }}
-          className={`min-h-9 shrink-0 rounded-full px-3.5 text-[12px] font-semibold transition disabled:opacity-60 ${
-            isFollowing ? 'border border-app-line text-white/70' : 'bg-app-ink text-app-bg'
-          }`}
-        >
-          {isFollowing ? 'Siguiendo' : 'Seguir'}
-        </button>
-      </div>
-
-      {posters.length > 0 && (
-        <div className="mt-3 border-t border-white/10 pt-3">
-          <p className="mb-2 text-[12px] text-white/55">Últimos carteles</p>
-          <div className="flex items-center gap-2">
-            {posters.slice(0, 3).map((poster, index) => (
-              <div
-                key={`${venue.id}-${index}`}
-                className="h-16 w-12 overflow-hidden rounded-lg border border-white/10 bg-black/35"
-              >
-                <img src={poster} alt={`Cartel ${index + 1} de ${venue.name}`} className="h-full w-full object-cover" loading="lazy" />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
+// One row of a grouped venue list (the list draws the card and dividers).
+const VenueRow: React.FC<VenueRowProps> = ({ venue, isFollowing, followLoading, onToggleFollow, onOpenProfile }) => (
+  <li className="flex items-center gap-3 px-3 py-2.5">
+    <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={onOpenProfile}>
+      <Avatar name={venue.name} src={venue.photos?.[0] || null} rounded="xl" className="h-11 w-11 text-[15px]" />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-display text-[15px] font-bold text-app-ink">{venue.name}</span>
+        <span className="block truncate text-xs text-[#8f8b84]">{[venue.city, venue.address].filter(Boolean).join(' · ')}</span>
+      </span>
+    </button>
+    <button
+      type="button"
+      disabled={followLoading}
+      aria-pressed={isFollowing}
+      onClick={onToggleFollow}
+      className={`min-h-9 shrink-0 rounded-full px-3.5 text-[13px] font-semibold transition disabled:opacity-60 ${
+        isFollowing ? 'border border-app-line text-[#c9c5bd]' : 'bg-app-ink text-app-bg'
+      }`}
+    >
+      {isFollowing ? 'Siguiendo' : 'Seguir'}
+    </button>
+  </li>
+);
 
 export default VenueRow;
