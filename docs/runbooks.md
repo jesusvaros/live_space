@@ -100,6 +100,33 @@ los secretos. Alta, una sola vez:
 6. Opcionales: variables del repo `VITE_CONTACT_EMAIL` (botón «Pide tu QR») y,
    cuando la app esté publicada, `VITE_ANDROID_URL` y `VITE_IOS_URL`.
 
+## QR de concierto: abrir la app desde la cámara (paso humano)
+
+El QR de cada concierto apunta a `https://<sitio>/upload?qr=<token>`. Hoy, al
+escanearlo con la cámara del móvil se abre la web: `/upload` intenta abrir la app
+con `com.livespace.app://upload?…` (en Android, automáticamente con una URL
+`intent://`; en iPhone, con el botón «Abrir en Live Space») y, si no está
+instalada, muestra «Descarga Live Space» y la lista de espera. La app ya
+entiende tanto ese esquema como `https://<sitio>/upload` (`uploadDeepLinkPath`).
+
+Para que el QR abra la app directamente, sin pasar por la web, hay que dar de
+alta los enlaces verificados una vez fijado el dominio definitivo:
+
+1. **Android App Links.** Publicar `site-public/.well-known/assetlinks.json` con
+   el paquete `com.livespace.app` y el SHA-256 del certificado de firma de
+   Play (Play Console → Integridad de la app). Añadir en `AndroidManifest.xml`
+   un `intent-filter` con `android:autoVerify="true"`, `scheme="https"`, el
+   host del dominio y `pathPrefix="/upload"`. Comprobar con
+   `adb shell pm get-app-links com.livespace.app`.
+2. **iOS Universal Links.** Publicar
+   `site-public/.well-known/apple-app-site-association` (sin extensión, JSON,
+   `Content-Type: application/json`, añadir la regla en `_headers`) con
+   `applinks.details[].appIDs = ["<TEAMID>.com.livespace.app"]` y
+   `components: [{ "/": "/upload*" }]`. En Xcode → Signing & Capabilities →
+   Associated Domains: `applinks:<dominio>`. Requiere la cuenta de Apple
+   Developer.
+3. Probar con un QR impreso en ambos sistemas, con la app instalada y sin ella.
+
 ## Acceso: Google, Apple y enlaces de email
 
 La pantalla de acceso (`src/pages/Welcome.tsx`) muestra «Continuar con Apple» y

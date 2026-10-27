@@ -16,6 +16,7 @@ import { fetchEventCards } from '../data/eventQueries';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
 import DetailHeader from '../components/ui/DetailHeader';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
+import ClaimProfileLink from '../components/pro/ClaimProfileLink';
 
 const VENUE_TYPE_LABELS: Record<string, string> = {
   music_venue: 'Sala de conciertos',
@@ -286,6 +287,7 @@ const VenueDetail: React.FC = () => {
               <MomentGrid moments={moments} />
             )}
           </section>
+          <ClaimProfileLink type="venue" entityId={venue.id} subjectId={venue.subject_id} className="px-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))] pt-6" />
         </div>
       )}
     </AppShell>

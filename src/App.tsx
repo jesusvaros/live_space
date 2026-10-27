@@ -31,6 +31,9 @@ const Map = React.lazy(() => import('./pages/Map'));
 const Upload = React.lazy(() => import('./pages/Upload'));
 const GestionEstadisticas = React.lazy(() => import('./pages/GestionEstadisticas'));
 const LicenciaMomentos = React.lazy(() => import('./pages/LicenciaMomentos'));
+const ClaimProfile = React.lazy(() => import('./pages/ClaimProfile'));
+const Management = React.lazy(() => import('./pages/Management'));
+const EventQr = React.lazy(() => import('./pages/EventQr'));
 
 const deferredPage = (page: React.ReactNode) => (
   <React.Suspense
@@ -48,6 +51,11 @@ const LegacyEntityRedirect: React.FC<{ type: 'artist' | 'venue' }> = ({ type }) 
   const location = useLocation();
   const id = location.pathname.split('/').filter(Boolean).at(-1);
   return <Navigate to={id ? `/tabs/${type}/${id}` : '/tabs/events'} replace />;
+};
+
+const UploadRedirect = () => {
+  const location = useLocation();
+  return <Navigate to={`/tabs/upload${location.search}`} replace />;
 };
 
 const CreateEventRedirect = () => {
@@ -160,7 +168,10 @@ const AppRoutes = () => {
           <Route path="/gestion/estadisticas" element={<RequireAuth>{deferredPage(<GestionEstadisticas />)}</RequireAuth>} />
           <Route path="/legal/licencia-momentos" element={deferredPage(<LicenciaMomentos />)} />
           <Route path="/create-event" element={<RequireAuth><CreateEventRedirect /></RequireAuth>} />
-          <Route path="/upload" element={<RequireAuth><Navigate to="/tabs/upload" replace /></RequireAuth>} />
+          <Route path="/upload" element={<RequireAuth><UploadRedirect /></RequireAuth>} />
+          <Route path="/reclamar/:type/:id" element={<RequireAuth>{deferredPage(<ClaimProfile />)}</RequireAuth>} />
+          <Route path="/gestion" element={<RequireAuth>{deferredPage(<Management />)}</RequireAuth>} />
+          <Route path="/gestion/evento/:id/qr" element={<RequireAuth>{deferredPage(<EventQr />)}</RequireAuth>} />
           <Route
             path="/tabs"
             element={(
