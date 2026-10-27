@@ -14,6 +14,9 @@ import { sirocoAgendaParser } from './parsers/sirocoAgendaParser.js';
 import { shopifyConcertsParser } from './parsers/shopifyConcertsParser.js';
 import { tribeEventsApiParser } from './parsers/tribeEventsApiParser.js';
 import { wordpressGenericParser } from './parsers/wordpressGenericParser.js';
+import { salaCustomAgendaParser } from './parsers/salaCustomAgendaParser.js';
+import { rollercoasterAgendaParser } from './parsers/rollercoasterAgendaParser.js';
+import { malandarAgendaParser } from './parsers/malandarAgendaParser.js';
 
 const parserRegistry: Record<ParserKey, VenueParser> = {
   'apolo-agenda': apoloAgendaParser,
@@ -31,6 +34,9 @@ const parserRegistry: Record<ParserKey, VenueParser> = {
   'siroco-agenda': sirocoAgendaParser,
   'shopify-concerts': shopifyConcertsParser,
   'tribe-events-api': tribeEventsApiParser,
+  'sala-custom-agenda': salaCustomAgendaParser,
+  'rollercoaster-agenda': rollercoasterAgendaParser,
+  'malandar-agenda': malandarAgendaParser,
 };
 
 export const getParser = (key: ParserKey): VenueParser => {

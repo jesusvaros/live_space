@@ -17,7 +17,10 @@ export type ParserKey =
   | 'generic-agenda'
   | 'wordpress-generic'
   | 'single-event-page'
-  | 'resident-advisor-like';
+  | 'resident-advisor-like'
+  | 'sala-custom-agenda'
+  | 'rollercoaster-agenda'
+  | 'malandar-agenda';
 
 export type RawScrapedEvent = {
   sourceUrl: string;

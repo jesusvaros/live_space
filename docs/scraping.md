@@ -63,6 +63,18 @@ Heliogàbal, Sala Vol, Upload, Meteoro, Honky Tonk, El Intruso y Bóveda necesit
 un parser propio. El Perro de la Parte de Atrás del Coche solo publica en
 Instagram. Las nuevas fuentes entran en la base con `npm run scrape:seed`.
 
+Sevilla se abrió el mismo día con Fun Club (API de The Events Calendar, con
+los carteles «A + B» separados por artista), Sala Custom (`sala-custom-agenda`,
+una cabecera por año), Pandora y Supra Music Hall (`rollercoaster-agenda`,
+categoría «conciertos» y una ficha por noche con hora y artistas) y Sala
+Malandar (`malandar-agenda`). Malandar nunca publica el año: se deduce de la
+carpeta de subida del cartel, así que no cuenta como dato estructurado y sus
+conciertos esperan revisión. Sala Even se descartó porque su agenda vive en una
+tienda de entradas de Woutick mezclada con sesiones de club; Teatro Central,
+porque programa sobre todo teatro y danza en una URL que cambia cada temporada.
+Sala X, La2, Obbio, Naima, La Caja Negra y Bestiario no tienen agenda en web
+propia.
+
 Estado remoto del 26 de octubre de 2026: 292 conciertos publicados, 133 futuros,
 34 salas publicadas y 276 artistas publicados. La captura de verificación leyó
 493 entradas de 13 fuentes y terminó con cero errores. Los 13 watchers quedaron
