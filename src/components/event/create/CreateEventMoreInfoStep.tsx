@@ -32,17 +32,17 @@ const CreateEventMoreInfoStep: React.FC<CreateEventMoreInfoStepProps> = ({
 
   const posterHelp = useMemo(() => {
     if (posterFile) return posterFile.name;
-    return 'Upload a licensed poster (optional).';
+    return 'Sube un cartel con licencia (opcional).';
   }, [posterFile]);
 
   return (
     <section className="h-full overflow-y-auto space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/60">More info</p>
-        <p className="mt-1 text-sm text-white/65">Optional polish for the listing.</p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/60">Más info</p>
+        <p className="mt-1 text-sm text-white/65">Detalles opcionales para el evento.</p>
       </div>
       <label className="flex flex-col gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Ends at</span>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Termina</span>
         <input
           className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/15"
           type="datetime-local"
@@ -51,7 +51,7 @@ const CreateEventMoreInfoStep: React.FC<CreateEventMoreInfoStepProps> = ({
         />
       </label>
       <label className="flex flex-col gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Genres</span>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Géneros</span>
         <input
           className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
           value={eventGenres}
@@ -63,7 +63,7 @@ const CreateEventMoreInfoStep: React.FC<CreateEventMoreInfoStepProps> = ({
       <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Poster</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Cartel</p>
             <p className="mt-1 text-xs text-white/60">{posterHelp}</p>
           </div>
           <div className="flex items-center gap-2">
@@ -72,7 +72,7 @@ const CreateEventMoreInfoStep: React.FC<CreateEventMoreInfoStepProps> = ({
               className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15"
               onClick={() => fileInputRef.current?.click()}
             >
-              Upload
+              Subir
             </button>
             {hasPoster && (
               <button
@@ -83,7 +83,7 @@ const CreateEventMoreInfoStep: React.FC<CreateEventMoreInfoStepProps> = ({
                   onPosterRemove();
                 }}
               >
-                Remove
+                Quitar
               </button>
             )}
           </div>
@@ -100,19 +100,19 @@ const CreateEventMoreInfoStep: React.FC<CreateEventMoreInfoStepProps> = ({
 
         {posterPreview && (
           <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/30">
-            <img src={posterPreview} alt="Event poster preview" className="h-52 w-full object-cover" />
+            <img src={posterPreview} alt="Vista previa del cartel" className="h-52 w-full object-cover" />
           </div>
         )}
 
       </div>
 
       <label className="flex flex-col gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Description</span>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Descripción</span>
         <textarea
           className="min-h-[110px] w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
           value={eventDescription}
           onChange={e => onEventDescriptionChange(e.target.value)}
-          placeholder="Optional details..."
+          placeholder="Detalles opcionales..."
         />
       </label>
     </section>

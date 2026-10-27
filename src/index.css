@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import url("https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+@config "../tailwind.config.ts";
 
 @tailwind base;
 @tailwind components;
@@ -19,9 +19,9 @@
   --app-surface-strong: #0b0b0d;
   --app-ink: #ffffff;
   --app-muted: rgba(255, 255, 255, 0.68);
-  --app-accent: #ff6b4a;
-  --app-accent-strong: #ff6b4a;
-  --app-ring: rgba(255, 107, 74, 0.3);
+  --app-accent: #ff5b2e;
+  --app-accent-strong: #ff5b2e;
+  --app-ring: rgba(255, 91, 46, 0.3);
   --app-card-shadow: none;
   --app-radius: 18px;
   --font-sans: "Instrument Sans", "Space Grotesk", sans-serif;

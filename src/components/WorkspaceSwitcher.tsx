@@ -51,8 +51,8 @@ const WorkspaceSwitcher: React.FC = () => {
         </div>
         <span className="max-w-[120px] truncate text-xs font-medium text-white/80">
           {activeWorkspace 
-            ? (activeWorkspace.artist?.name || activeWorkspace.venue?.name || 'Workspace')
-            : 'Personal Profile'}
+            ? (activeWorkspace.artist?.name || activeWorkspace.venue?.name || 'Espacio')
+            : 'Perfil personal'}
         </span>
         {isOpen ? <IconChevronUp size={14} className="text-white/50" /> : <IconChevronDown size={14} className="text-white/50" />}
       </button>
@@ -75,13 +75,13 @@ const WorkspaceSwitcher: React.FC = () => {
                 <IconUser size={16} />
               </div>
               <div className="flex-1 overflow-hidden">
-                <div className="truncate text-sm font-medium">Personal Profile</div>
-                <div className="text-[10px] text-white/50">Viewing as yourself</div>
+                <div className="truncate text-sm font-medium">Perfil personal</div>
+                <div className="text-[10px] text-white/50">Viendo como tú</div>
               </div>
             </button>
 
             <div className="px-4 pb-2 pt-4 text-[10px] font-semibold uppercase tracking-[0.24em] text-white/40">
-              Workspaces
+              Espacios
             </div>
             <div className="max-h-64 overflow-y-auto">
               {managedEntities.map((entity) => (

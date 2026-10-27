@@ -13,7 +13,7 @@ test('keeps unknown routes inside the public app', async ({ page }) => {
   await page.goto('/does-not-exist');
 
   await expect(page).toHaveURL(/\/tabs\/events$/);
-  await expect(page.getByRole('heading', { name: 'Find your next night' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tu próxima noche' })).toBeVisible();
 });
 
 test('allows anonymous discovery while protecting creation', async ({ page }) => {
@@ -23,13 +23,13 @@ test('allows anonymous discovery while protecting creation', async ({ page }) =>
   });
 
   await page.goto('/tabs/events');
-  await expect(page.getByRole('heading', { name: 'Find your next night' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tu próxima noche' })).toBeVisible();
 
   await page.goto('/tabs/discover');
-  await expect(page.getByRole('heading', { name: 'Artists' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Artistas' })).toBeVisible();
 
   await page.goto('/tabs/feed');
-  await expect(page.getByRole('heading', { name: 'Tonight' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Esta noche' })).toBeVisible();
 
   await page.goto('/tabs/upload');
   await expect(page).toHaveURL(/\/welcome$/);

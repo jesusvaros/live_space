@@ -21,9 +21,9 @@ const ShareSheet: React.FC<ShareSheetProps> = ({ isOpen, onClose, link }) => {
     if (!link) return;
     try {
       await navigator.clipboard.writeText(link);
-      setMessage('Link copied.');
+      setMessage('Enlace copiado.');
     } catch {
-      setMessage('Copy failed. Long-press to copy.');
+      setMessage('No se pudo copiar. Mantén pulsado para copiarlo.');
     }
   };
 
@@ -31,7 +31,7 @@ const ShareSheet: React.FC<ShareSheetProps> = ({ isOpen, onClose, link }) => {
     if (!link) return;
     if (navigator.share) {
       try {
-        await navigator.share({ url: link, title: 'Live Space event' });
+        await navigator.share({ url: link, title: 'Evento en Live Space' });
         return;
       } catch {
         // Fall back to copy.
@@ -51,13 +51,13 @@ const ShareSheet: React.FC<ShareSheetProps> = ({ isOpen, onClose, link }) => {
       <Content fullscreen>
         <div className="min-h-full bg-app-bg p-5">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="font-display text-lg font-bold text-white">Share</h2>
+            <h2 className="font-display text-lg font-bold text-white">Compartir</h2>
             <button
               type="button"
               className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
               onClick={onClose}
             >
-              Close
+              Cerrar
             </button>
           </div>
 
@@ -65,7 +65,7 @@ const ShareSheet: React.FC<ShareSheetProps> = ({ isOpen, onClose, link }) => {
             {link && (
               <img
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(link)}`}
-                alt="Event QR"
+                alt="QR del evento"
                 className="h-40 w-40 bg-white"
               />
             )}
@@ -74,11 +74,11 @@ const ShareSheet: React.FC<ShareSheetProps> = ({ isOpen, onClose, link }) => {
           <div className="mt-6 space-y-2">
             <button type="button" className="inline-flex w-full items-center justify-center gap-2 bg-white/10 px-4 py-3 text-sm font-semibold text-white" onClick={handleCopy}>
               <IconCopy className="h-4 w-4" />
-              Copy link
+              Copiar enlace
             </button>
             <button type="button" className="inline-flex w-full items-center justify-center gap-2 bg-white/10 px-4 py-3 text-sm font-semibold text-white" onClick={handleShare}>
               <IconShare className="h-4 w-4" />
-              Share
+              Compartir
             </button>
           </div>
 

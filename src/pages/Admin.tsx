@@ -34,10 +34,10 @@ type AccessRow = {
 };
 
 const tabs: Array<{ key: AdminTab; label: string }> = [
-  { key: 'artist', label: 'Create Artist' },
-  { key: 'venue', label: 'Create Venue' },
-  { key: 'grant', label: 'Grant Access' },
-  { key: 'access', label: 'View Access' },
+  { key: 'artist', label: 'Crear artista' },
+  { key: 'venue', label: 'Crear sala' },
+  { key: 'grant', label: 'Dar acceso' },
+  { key: 'access', label: 'Ver accesos' },
 ];
 
 const DEFAULT_VENUE_CENTER: [number, number] = [40.4168, -3.7038];
@@ -164,7 +164,7 @@ const Admin: React.FC = () => {
         if (error) throw error;
         if (!cancelled) setRows((data || []) as unknown as AccessRow[]);
       } catch (e: any) {
-        if (!cancelled) setAccessError(e?.message || 'Failed to load access grants');
+        if (!cancelled) setAccessError(e?.message || 'No se han podido cargar los accesos');
       } finally {
         if (!cancelled) setAccessLoading(false);
       }
@@ -194,7 +194,7 @@ const Admin: React.FC = () => {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&addressdetails=1`
       );
-      if (!response.ok) throw new Error('Reverse geocode failed');
+      if (!response.ok) throw new Error('No se ha podido obtener la dirección');
       const data = await response.json();
       const address = data?.address || {};
       const city =
@@ -212,9 +212,9 @@ const Admin: React.FC = () => {
 
       if (city) setVenueCity(city);
       if (addressLine || fallbackAddress) setVenueAddress(addressLine || fallbackAddress);
-      setReverseGeoMessage({ type: 'success', text: 'Address updated from selected coordinates' });
+      setReverseGeoMessage({ type: 'success', text: 'Dirección actualizada a partir de las coordenadas' });
     } catch (error: any) {
-      setReverseGeoMessage({ type: 'error', text: error?.message || 'Could not reverse geocode coordinates' });
+      setReverseGeoMessage({ type: 'error', text: error?.message || 'No se ha podido obtener la dirección de esas coordenadas' });
     } finally {
       setReverseGeoLoading(false);
     }
@@ -231,14 +231,14 @@ const Admin: React.FC = () => {
   const handleReverseGeocodeFromInput = async () => {
     const match = reverseGeoInput.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
     if (!match) {
-      setReverseGeoMessage({ type: 'error', text: 'Use format: lat,lng' });
+      setReverseGeoMessage({ type: 'error', text: 'Usa el formato: lat,lng' });
       return;
     }
     const lat = Number(match[1]);
     const lng = Number(match[2]);
     const isValid = lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
     if (!isValid) {
-      setReverseGeoMessage({ type: 'error', text: 'Coordinates out of range' });
+      setReverseGeoMessage({ type: 'error', text: 'Coordenadas fuera de rango' });
       return;
     }
     setVenueLatitude(lat);
@@ -249,7 +249,7 @@ const Admin: React.FC = () => {
 
   const handleCreateArtist = async () => {
     if (!artistName.trim()) {
-      setArtistMessage({ type: 'error', text: 'Artist name is required' });
+      setArtistMessage({ type: 'error', text: 'El nombre del artista es obligatorio' });
       return;
     }
     setArtistLoading(true);
@@ -268,13 +268,13 @@ const Admin: React.FC = () => {
         genres,
         external_links: {},
       });
-      setArtistMessage({ type: 'success', text: 'Artist created successfully' });
+      setArtistMessage({ type: 'success', text: 'Artista creado' });
       setArtistName('');
       setArtistCity('');
       setArtistGenres('');
       setArtistType('solo');
     } catch (e: any) {
-      setArtistMessage({ type: 'error', text: e?.message || 'Failed to create artist' });
+      setArtistMessage({ type: 'error', text: e?.message || 'No se ha podido crear el artista' });
     } finally {
       setArtistLoading(false);
     }
@@ -282,7 +282,7 @@ const Admin: React.FC = () => {
 
   const handleCreateVenue = async () => {
     if (!venueName.trim() || !venueCity.trim()) {
-      setVenueMessage({ type: 'error', text: 'Venue name and city are required' });
+      setVenueMessage({ type: 'error', text: 'El nombre de la sala y la ciudad son obligatorios' });
       return;
     }
     setVenueLoading(true);
@@ -301,7 +301,7 @@ const Admin: React.FC = () => {
         photos: [],
         created_by: profile?.id ?? null,
       });
-      setVenueMessage({ type: 'success', text: 'Venue created successfully' });
+      setVenueMessage({ type: 'success', text: 'Sala creada' });
       setVenueName('');
       setVenueCity('');
       setVenueAddress('');
@@ -314,7 +314,7 @@ const Admin: React.FC = () => {
       setReverseGeoInput('');
       setReverseGeoMessage(null);
     } catch (e: any) {
-      setVenueMessage({ type: 'error', text: e?.message || 'Failed to create venue' });
+      setVenueMessage({ type: 'error', text: e?.message || 'No se ha podido crear la sala' });
     } finally {
       setVenueLoading(false);
     }
@@ -331,13 +331,13 @@ const Admin: React.FC = () => {
         selectedEntity.id,
         'admin'
       );
-      setGrantMessage({ type: 'success', text: 'Access granted successfully' });
+      setGrantMessage({ type: 'success', text: 'Acceso concedido' });
       setSelectedUser(null);
       setSelectedEntity(null);
       setUserQuery('');
       setEntityQuery('');
     } catch (e: any) {
-      setGrantMessage({ type: 'error', text: e?.message || 'Failed to grant access' });
+      setGrantMessage({ type: 'error', text: e?.message || 'No se ha podido dar acceso' });
     } finally {
       setGrantLoading(false);
     }
@@ -363,7 +363,7 @@ const Admin: React.FC = () => {
       <AppShell headerProps={{ title: 'Admin', showBack: true }}>
         <div className="p-4">
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-sm text-white/70">
-            Access denied. Admin only.
+            Acceso denegado. Solo para administradores.
           </div>
         </div>
       </AppShell>
@@ -395,18 +395,18 @@ const Admin: React.FC = () => {
 
         {activeTab === 'artist' && (
           <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <p className="text-sm text-white/70">Create an artist entity so you can publish and assign access.</p>
+            <p className="text-sm text-white/70">Crea un artista para poder publicar y asignar accesos.</p>
             <div className="grid gap-3 sm:grid-cols-2">
               <input
                 type="text"
-                placeholder="Artist name *"
+                placeholder="Nombre del artista *"
                 value={artistName}
                 onChange={e => setArtistName(e.target.value)}
                 className="w-full rounded-xl border border-white/10 bg-white/[0.02] p-3 text-white outline-none focus:border-app-accent/60"
               />
               <input
                 type="text"
-                placeholder="City"
+                placeholder="Ciudad"
                 value={artistCity}
                 onChange={e => setArtistCity(e.target.value)}
                 className="w-full rounded-xl border border-white/10 bg-white/[0.02] p-3 text-white outline-none focus:border-app-accent/60"
@@ -417,11 +417,11 @@ const Admin: React.FC = () => {
                 className="w-full rounded-xl border border-white/10 bg-white/[0.02] p-3 text-white outline-none focus:border-app-accent/60"
               >
                 <option value="solo">Solo</option>
-                <option value="band">Band</option>
+                <option value="band">Grupo</option>
               </select>
               <input
                 type="text"
-                placeholder="Genres (comma separated)"
+                placeholder="Géneros (separados por comas)"
                 value={artistGenres}
                 onChange={e => setArtistGenres(e.target.value)}
                 className="w-full rounded-xl border border-white/10 bg-white/[0.02] p-3 text-white outline-none focus:border-app-accent/60 sm:col-span-2"
@@ -440,53 +440,53 @@ const Admin: React.FC = () => {
               onClick={handleCreateArtist}
               className="inline-flex w-full items-center justify-center rounded-xl bg-app-accent px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
             >
-              {artistLoading ? <Spinner /> : 'Create artist'}
+              {artistLoading ? <Spinner /> : 'Crear artista'}
             </button>
           </section>
         )}
 
         {activeTab === 'venue' && (
           <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <p className="text-sm text-white/70">Create a venue entity to manage events and content.</p>
+            <p className="text-sm text-white/70">Crea una sala para gestionar sus eventos y contenido.</p>
             <div className="grid gap-3 sm:grid-cols-2">
               <input
                 type="text"
-                placeholder="Venue name *"
+                placeholder="Nombre de la sala *"
                 value={venueName}
                 onChange={e => setVenueName(e.target.value)}
                 className="w-full rounded-xl border border-white/10 bg-white/[0.02] p-3 text-white outline-none focus:border-app-accent/60"
               />
               <input
                 type="text"
-                placeholder="City *"
+                placeholder="Ciudad *"
                 value={venueCity}
                 onChange={e => setVenueCity(e.target.value)}
                 className="w-full rounded-xl border border-white/10 bg-white/[0.02] p-3 text-white outline-none focus:border-app-accent/60"
               />
               <input
                 type="text"
-                placeholder="Type (club, theatre...)"
+                placeholder="Tipo (club, teatro...)"
                 value={venueType}
                 onChange={e => setVenueType(e.target.value)}
                 className="w-full rounded-xl border border-white/10 bg-white/[0.02] p-3 text-white outline-none focus:border-app-accent/60"
               />
               <input
                 type="text"
-                placeholder="Website"
+                placeholder="Web"
                 value={venueWebsite}
                 onChange={e => setVenueWebsite(e.target.value)}
                 className="w-full rounded-xl border border-white/10 bg-white/[0.02] p-3 text-white outline-none focus:border-app-accent/60"
               />
               <input
                 type="text"
-                placeholder="Address"
+                placeholder="Dirección"
                 value={venueAddress}
                 onChange={e => setVenueAddress(e.target.value)}
                 className="w-full rounded-xl border border-white/10 bg-white/[0.02] p-3 text-white outline-none focus:border-app-accent/60 sm:col-span-2"
               />
               <input
                 type="number"
-                placeholder="Capacity"
+                placeholder="Aforo"
                 value={venueCapacity}
                 onChange={e => setVenueCapacity(e.target.value)}
                 className="w-full rounded-xl border border-white/10 bg-white/[0.02] p-3 text-white outline-none focus:border-app-accent/60"
@@ -495,7 +495,7 @@ const Admin: React.FC = () => {
                 <div className="mb-3 flex flex-col gap-2 sm:flex-row">
                   <input
                     type="text"
-                    placeholder="lat,lng (reverse geocode)"
+                    placeholder="lat,lng (buscar dirección)"
                     value={reverseGeoInput}
                     onChange={e => setReverseGeoInput(e.target.value)}
                     className="w-full rounded-xl border border-white/10 bg-white/[0.02] p-3 text-white outline-none focus:border-app-accent/60"
@@ -506,7 +506,7 @@ const Admin: React.FC = () => {
                     disabled={reverseGeoLoading}
                     className="inline-flex min-w-[146px] items-center justify-center rounded-xl border border-white/20 bg-white/[0.06] px-4 py-3 text-sm font-semibold text-white/85 transition hover:bg-white/[0.1] disabled:opacity-60"
                   >
-                    {reverseGeoLoading ? <Spinner /> : 'Reverse geocode'}
+                    {reverseGeoLoading ? <Spinner /> : 'Buscar dirección'}
                   </button>
                 </div>
                 <div className="relative h-[230px] overflow-hidden rounded-2xl border border-white/10 bg-black/35 sm:h-[280px]">
@@ -531,7 +531,7 @@ const Admin: React.FC = () => {
                   </MapContainer>
                 </div>
                 <p className="mt-2 text-xs text-white/60">
-                  Click map to pin location. The app will autofill city and address with reverse geocode.
+                  Toca el mapa para marcar la ubicación. Rellenaremos la ciudad y la dirección automáticamente.
                 </p>
                 {reverseGeoMessage && (
                   <div className={`mt-3 rounded-xl p-3 text-sm ${
@@ -555,21 +555,21 @@ const Admin: React.FC = () => {
               onClick={handleCreateVenue}
               className="inline-flex w-full items-center justify-center rounded-xl bg-app-accent px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
             >
-              {venueLoading ? <Spinner /> : 'Create venue'}
+              {venueLoading ? <Spinner /> : 'Crear sala'}
             </button>
           </section>
         )}
 
         {activeTab === 'grant' && (
           <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <p className="text-sm text-white/70">Grant a user access to manage an artist or venue.</p>
+            <p className="text-sm text-white/70">Da acceso a un usuario para gestionar un artista o una sala.</p>
 
             <div className="space-y-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Find user</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Buscar usuario</p>
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Search by username or display name..."
+                  placeholder="Busca por usuario o nombre visible..."
                   value={userQuery}
                   onChange={e => setUserQuery(e.target.value)}
                   className="w-full rounded-xl border border-white/10 bg-white/[0.02] p-3 text-white outline-none focus:border-app-accent/60"
@@ -604,14 +604,14 @@ const Admin: React.FC = () => {
               </div>
               {selectedUser && (
                 <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                  <span className="text-sm text-white/85">Selected: <strong>{selectedUser.username}</strong></span>
-                  <button type="button" onClick={() => setSelectedUser(null)} className="text-xs text-white/65 hover:text-white">Clear</button>
+                  <span className="text-sm text-white/85">Seleccionado: <strong>{selectedUser.username}</strong></span>
+                  <button type="button" onClick={() => setSelectedUser(null)} className="text-xs text-white/65 hover:text-white">Quitar</button>
                 </div>
               )}
             </div>
 
             <div className="space-y-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Select entity</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Elegir artista o sala</p>
               <div className="inline-flex rounded-xl border border-white/10 bg-white/[0.02] p-1">
                 <button
                   type="button"
@@ -622,7 +622,7 @@ const Admin: React.FC = () => {
                   }}
                   className={`rounded-lg px-4 py-2 text-sm font-semibold ${entityType === 'artist' ? 'bg-app-accent text-white' : 'text-white/70'}`}
                 >
-                  Artist
+                  Artista
                 </button>
                 <button
                   type="button"
@@ -633,13 +633,13 @@ const Admin: React.FC = () => {
                   }}
                   className={`rounded-lg px-4 py-2 text-sm font-semibold ${entityType === 'venue' ? 'bg-app-accent text-white' : 'text-white/70'}`}
                 >
-                  Venue
+                  Sala
                 </button>
               </div>
               <div className="relative">
                 <input
                   type="text"
-                  placeholder={`Search ${entityType}...`}
+                  placeholder={`Buscar ${entityType === 'artist' ? 'artista' : 'sala'}...`}
                   value={entityQuery}
                   onChange={e => setEntityQuery(e.target.value)}
                   className="w-full rounded-xl border border-white/10 bg-white/[0.02] p-3 text-white outline-none focus:border-app-accent/60"
@@ -674,8 +674,8 @@ const Admin: React.FC = () => {
               </div>
               {selectedEntity && (
                 <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                  <span className="text-sm text-white/85">Selected: <strong>{selectedEntity.name}</strong></span>
-                  <button type="button" onClick={() => setSelectedEntity(null)} className="text-xs text-white/65 hover:text-white">Clear</button>
+                  <span className="text-sm text-white/85">Seleccionado: <strong>{selectedEntity.name}</strong></span>
+                  <button type="button" onClick={() => setSelectedEntity(null)} className="text-xs text-white/65 hover:text-white">Quitar</button>
                 </div>
               )}
             </div>
@@ -693,7 +693,7 @@ const Admin: React.FC = () => {
               onClick={handleGrant}
               className="inline-flex w-full items-center justify-center rounded-xl bg-app-accent px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
             >
-              {grantLoading ? <Spinner /> : 'Grant access'}
+              {grantLoading ? <Spinner /> : 'Dar acceso'}
             </button>
           </section>
         )}
@@ -701,7 +701,7 @@ const Admin: React.FC = () => {
         {activeTab === 'access' && (
           <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-white/70">Granted accesses</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-white/70">Accesos concedidos</p>
               {accessLoading ? <Spinner /> : null}
             </div>
             {accessError ? (
@@ -709,7 +709,7 @@ const Admin: React.FC = () => {
             ) : null}
             {!accessLoading && !accessError && rows.length === 0 ? (
               <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-sm text-white/70">
-                No access grants found.
+                No hay accesos concedidos.
               </div>
             ) : null}
             <div className="space-y-3">
@@ -730,7 +730,7 @@ const Admin: React.FC = () => {
                     </div>
                     <div>
                       <div className="text-sm font-semibold text-white">
-                        {row.admin?.display_name || row.admin?.username || 'Unknown admin'}
+                        {row.admin?.display_name || row.admin?.username || 'Admin desconocido'}
                       </div>
                       <div className="text-xs uppercase tracking-[0.18em] text-white/50">{row.role}</div>
                     </div>
@@ -738,7 +738,7 @@ const Admin: React.FC = () => {
                   <div className="text-right">
                     <div className="text-sm font-semibold text-white">{renderEntityLabel(row)}</div>
                     <div className="text-xs text-white/60">
-                      {row.entity?.type ? row.entity.type.toUpperCase() : 'Entity'}
+                      {row.entity?.type === 'artist' ? 'ARTISTA' : row.entity?.type === 'venue' ? 'SALA' : row.entity?.type ? row.entity.type.toUpperCase() : 'Entidad'}
                       {renderEntityMeta(row) ? ` · ${renderEntityMeta(row)}` : ''}
                     </div>
                   </div>

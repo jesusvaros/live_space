@@ -61,7 +61,7 @@ const pinVariants: Record<
       'border-[#9ca9c0] text-[#eef3ff] after:border-[#9ca9c0] shadow-[0_8px_20px_rgba(3,8,16,0.45),0_0_0_3px_rgba(156,169,192,0.22)]',
     activeClasses:
       '-translate-y-[2px] scale-[1.08] shadow-[0_12px_24px_rgba(3,8,16,0.55),0_0_0_4px_rgba(156,169,192,0.22)]',
-    badgeLabel: 'FREE',
+    badgeLabel: 'GRATIS',
     badgeClasses:
       'absolute -top-2 -right-2.5 pointer-events-none inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-white/50 bg-[rgba(11,14,20,0.95)] px-[5px] text-[10px] font-extrabold uppercase leading-none tracking-[0.08em] text-white/95',
   },

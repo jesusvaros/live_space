@@ -14,16 +14,16 @@ const GallerySection: React.FC<GallerySectionProps> = ({ gallery, onSelect, onVi
     <section className="animate-fade-up space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 motion-reduce:animate-none">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Media</p>
-          <h2 className="font-display text-xl font-bold text-white">Gallery</h2>
-          <p className="text-sm text-white/55">Live photos, posters, backstage.</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Fotos</p>
+          <h2 className="font-display text-xl font-bold text-white">Galería</h2>
+          <p className="text-sm text-white/55">Fotos en directo, carteles, backstage.</p>
         </div>
         <button
           type="button"
           onClick={onViewGallery}
           className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/75 transition-colors hover:border-white/35 hover:text-white"
         >
-          View gallery
+          Ver galería
         </button>
       </div>
       <div className="grid grid-cols-3 gap-2">
@@ -36,7 +36,7 @@ const GallerySection: React.FC<GallerySectionProps> = ({ gallery, onSelect, onVi
           >
             <img
               src={item.media_url}
-              alt={item.caption || 'Gallery item'}
+              alt={item.caption || 'Foto de la galería'}
               className="h-full w-full object-cover"
             />
           </button>

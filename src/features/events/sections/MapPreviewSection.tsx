@@ -78,9 +78,9 @@ const MapPreviewSection: React.FC<MapPreviewSectionProps> = ({ center, pins, onO
             </MapContainer>
           </div>
           <div className="absolute inset-x-0 bottom-0 bg-black/65 p-4 backdrop-blur-sm">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/65">Map</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/65">Mapa</p>
             <p className="mt-1 text-sm font-semibold text-white/90">
-              {pins.length > 0 ? `${pins.length} nearby` : 'Open the map to explore'}
+              {pins.length > 0 ? `${pins.length} cerca` : 'Abre el mapa para explorar'}
             </p>
           </div>
         </div>

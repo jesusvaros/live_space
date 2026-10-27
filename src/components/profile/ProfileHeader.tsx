@@ -27,20 +27,20 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
     ? activeEntity.type === 'artist'
       ? activeEntity.artist?.name
       : activeEntity.venue?.name
-    : profile?.display_name || profile?.username || 'Your profile';
+    : profile?.display_name || profile?.username || 'Tu perfil';
 
   const subline = isManagementMode && activeEntity
     ? activeEntity.type === 'artist'
-      ? 'Managed Artist'
-      : 'Managed Venue'
-    : (profile?.primary_city || 'City') + ' · @' + (profile?.username || 'user');
+      ? 'Artista gestionado'
+      : 'Sala gestionada'
+    : (profile?.primary_city || 'Ciudad') + ' · @' + (profile?.username || 'usuario');
 
   return (
     <div className="flex items-center gap-4 animate-fade-up motion-reduce:animate-none">
       <div className="h-16 w-16 overflow-hidden rounded-full bg-slate-800 ring-2 ring-white/5">
         <img
           src={avatarUrl}
-          alt="Profile avatar"
+          alt="Foto de perfil"
           className="h-full w-full object-cover"
         />
       </div>
@@ -59,7 +59,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           onClick={onEditClick}
         >
           <IconEdit className="h-4 w-4" />
-          Edit
+          Editar
         </button>
       </div>
     </div>

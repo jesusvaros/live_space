@@ -20,7 +20,7 @@ const ArtistTabs: React.FC<ArtistTabsProps> = ({ activeTab, onSelect }) => (
             : 'text-white/55 hover:bg-white/[0.05] hover:text-white/85'
         }`}
       >
-        {key === 'shows' ? 'Shows' : key === 'media' ? 'Media' : key === 'moments' ? 'Moments' : 'About'}
+        {key === 'shows' ? 'Conciertos' : key === 'media' ? 'Fotos' : key === 'moments' ? 'Momentos' : 'Info'}
       </button>
     ))}
   </div>

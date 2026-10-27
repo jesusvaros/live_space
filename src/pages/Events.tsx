@@ -7,7 +7,6 @@ import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { calculateDistanceKm, getEventCoverImage, formatDate, getPrimaryArtistName, toNumber } from '../features/events/utils';
 import { NearbyEventListItem } from '../features/events/types';
 import NearbyHeroSection from '../features/events/sections/NearbyHeroSection';
-import MapPreviewSection from '../features/events/sections/MapPreviewSection';
 import TrendingSection from '../features/events/sections/TrendingSection';
 import DiscoverSection from '../features/events/sections/DiscoverSection';
 import FollowedFromArtistsSection from '../features/events/sections/FollowedFromArtistsSection';
@@ -18,6 +17,9 @@ import { useFollowedArtistIds } from '../features/events/hooks/useFollowedArtist
 import { useUserConcertHero } from '../features/events/hooks/useUserConcertHero';
 import TimelineHeroSection from '../features/events/sections/TimelineHeroSection';
 import EventPosterTile from '../features/events/components/EventPosterTile';
+
+// Leaflet only loads once Inicio is on screen, not before the first paint.
+const MapPreviewSection = React.lazy(() => import('../features/events/sections/MapPreviewSection'));
 
 const NEARBY_RADIUS_KM = 50;
 const EVENTS_LOOKBACK_DAYS = 4;
@@ -93,6 +95,20 @@ const Events: React.FC = () => {
       .slice(0, 12) as { id: string; lat: number; lng: number }[];
   }, [nearbyUpcoming]);
 
+  // Hero photos: nearby first, then anything upcoming that has a cover.
+  const featured = useMemo(() => {
+    const upcoming = events.filter(event => {
+      const startsAt = new Date(event.starts_at);
+      return startsAt >= startOfToday && startsAt <= endOfNearbyWindow && getEventCoverImage(event);
+    });
+    const nearbyIds = new Set(nearbyUpcoming.map(event => event.id));
+    const ordered = [
+      ...nearbyUpcoming.filter(event => getEventCoverImage(event)),
+      ...upcoming.filter(event => !nearbyIds.has(event.id)),
+    ];
+    return ordered.slice(0, 6);
+  }, [endOfNearbyWindow, events, nearbyUpcoming, startOfToday]);
+
   const { trending, meta: trendingMeta, loading: trendingLoading } = useTrendingEvents(events, startOfToday);
 
   const { suggestedArtists, suggestedVenues, loading: suggestionsLoading } = useHomeSuggestions(events, {
@@ -118,6 +134,7 @@ const Events: React.FC = () => {
     <AppShell contentWrapperClassName={false}>
       <TimelineHeroSection
         state={hero}
+        featured={featured}
         onDismissPendingMoments={hero.kind === 'just_attended' ? dismissPendingMoments : undefined}
       />
 
@@ -125,16 +142,13 @@ const Events: React.FC = () => {
         <div className="relative z-10 -mt-16 rounded-t-[28px] border-t border-white/10 bg-app-bg/95 backdrop-blur-xl sm:-mt-20">
           <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/[0.03] to-transparent" />
           <div className="relative flex flex-col gap-8 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
-            <div className="space-y-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/60">Events</p>
-              <h2 className="font-display text-2xl font-bold text-white sm:text-3xl">Find your next night</h2>
-            </div>
+            <h2 className="font-display text-2xl font-bold text-white sm:text-3xl">Tu próxima noche</h2>
 
             {hero.kind !== 'cold_start' && nextUpcoming && (
               <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">Next</p>
-                  <h3 className="mt-2 font-display text-xl font-bold text-white">Coming up</h3>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">Lo próximo</p>
+                  <h3 className="mt-2 font-display text-xl font-bold text-white">Tus planes</h3>
                 </div>
                 <div className="flex gap-3 overflow-x-auto pb-1">
                   <div className="w-[220px] shrink-0 overflow-hidden rounded-2xl border border-white/10">
@@ -164,11 +178,13 @@ const Events: React.FC = () => {
               />
             )}
 
-            <MapPreviewSection
-              center={location}
-              pins={mapPins}
-              onOpenMap={() => navigate('/tabs/map')}
-            />
+            <React.Suspense fallback={<div className="h-56 rounded-2xl bg-white/[0.03]" />}>
+              <MapPreviewSection
+                center={location}
+                pins={mapPins}
+                onOpenMap={() => navigate('/tabs/map')}
+              />
+            </React.Suspense>
 
             <TrendingSection loading={trendingLoading} trending={trending} meta={trendingMeta} />
 

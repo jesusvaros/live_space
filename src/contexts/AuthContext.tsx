@@ -285,7 +285,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateProfile = async (updates: Partial<Profile>) => {
     if (!authState.user) {
-      return { error: { message: 'No user logged in' } as AuthError };
+      return { error: { message: 'No has iniciado sesión' } as AuthError };
     }
 
     const {

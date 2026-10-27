@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserConcertHeroState } from '../hooks/useUserConcertHero';
 import { getEventCoverImage } from '../utils';
@@ -6,11 +6,25 @@ import { EventListItem } from '../types';
 
 type TimelineHeroSectionProps = {
   state: UserConcertHeroState;
+  // Upcoming events with a photo, rotated behind the cold-start hero.
+  featured?: EventListItem[];
   onDismissPendingMoments?: (eventId: string) => void;
 };
 
+// CC0 concert photos (same as the landing, see src/landing/photos.ts) for
+// events that have no published photo yet.
+const FALLBACK_PHOTOS = [
+  '/auth/fondo-login.jpg',
+  '/fotos/multitud-escenario.jpg',
+  '/fotos/franja-luz-roja.jpg',
+  '/fotos/manos-luz-azul.jpg',
+  '/fotos/publico-escenario.jpg',
+  '/fotos/festival-multitud.jpg',
+];
+const ROTATE_MS = 5000;
+
 const getVenueName = (event: EventListItem) =>
-  event.venue_place?.name || event.address || event.city || 'Venue';
+  event.venue_place?.name || event.address || event.city || 'Sala';
 
 const getPrimaryArtistName = (event: EventListItem) => {
   const artist = event.event_artists?.find(entry => entry.artist)?.artist;
@@ -18,10 +32,19 @@ const getPrimaryArtistName = (event: EventListItem) => {
 };
 
 const formatShortDate = (iso: string) =>
-  new Date(iso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  new Date(iso).toLocaleDateString('es-ES', { weekday: 'short', month: 'short', day: 'numeric' });
 
-const TimelineHeroSection: React.FC<TimelineHeroSectionProps> = ({ state, onDismissPendingMoments }) => {
+const TimelineHeroSection: React.FC<TimelineHeroSectionProps> = ({ state, featured = [], onDismissPendingMoments }) => {
   const navigate = useNavigate();
+  const [slide, setSlide] = useState(0);
+  const slides = Math.max(featured.length, FALLBACK_PHOTOS.length);
+
+  useEffect(() => {
+    if (state.kind !== 'cold_start' || slides < 2) return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const timer = window.setInterval(() => setSlide(current => (current + 1) % slides), ROTATE_MS);
+    return () => window.clearInterval(timer);
+  }, [slides, state.kind]);
 
   const heroShellClass = 'relative h-[64vh] min-h-[420px] w-full overflow-hidden bg-black';
   const basePrimaryCtaClass =
@@ -46,28 +69,56 @@ const TimelineHeroSection: React.FC<TimelineHeroSectionProps> = ({ state, onDism
     }
 
     if (state.kind === 'cold_start') {
+      const current = featured.length ? featured[slide % featured.length] : null;
       return (
         <div className={heroShellClass}>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(255,107,74,0.28),transparent_46%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_84%_14%,rgba(122,167,255,0.2),transparent_54%)]" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/45 to-black/75" />
-          <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/65">Events</p>
-            <h2 className="mt-2 font-display text-3xl font-bold text-white sm:text-4xl">Discover concerts near you </h2>
+          {Array.from({ length: slides }, (_, index) => (
+            <img
+              key={index}
+              src={(featured[index] && getEventCoverImage(featured[index])) || FALLBACK_PHOTOS[index % FALLBACK_PHOTOS.length]}
+              alt=""
+              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 motion-reduce:transition-none ${
+                index === slide % slides ? 'opacity-100' : 'opacity-0'
+              }`}
+              loading={index === 0 ? 'eager' : 'lazy'}
+            />
+          ))}
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/10" />
+          <div className="absolute inset-x-0 bottom-0 p-5 pb-24 sm:p-6 sm:pb-28">
+            {current ? (
+              <button
+                type="button"
+                className="mb-3 inline-flex max-w-full items-center gap-2 rounded-full border border-white/20 bg-black/45 px-3 py-1.5 text-left text-xs font-semibold text-white/90 backdrop-blur-sm"
+                onClick={() => navigate(`/event/${current.id}`)}
+              >
+                <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-app-accent" aria-hidden="true" />
+                <span className="truncate">
+                  {getPrimaryArtistName(current)} · {formatShortDate(current.starts_at)}
+                </span>
+              </button>
+            ) : null}
+            <h2 className="font-display text-4xl font-bold leading-[0.95] text-white sm:text-5xl">
+              Lo grabaste.
+              <br />
+              <span className="text-app-accent">Súbelo.</span>
+            </h2>
+            <p className="mt-3 max-w-xs text-sm text-white/75">
+              Conciertos cerca de ti y lo que grabó el público, canción a canción.
+            </p>
             <div className="mt-5 flex items-center gap-3">
               <button
                 type="button"
                 className={basePrimaryCtaClass}
                 onClick={() => navigate('/tabs/map')}
               >
-                Explore map
+                Ver mapa
               </button>
               <button
                 type="button"
                 className={baseGhostCtaClass}
                 onClick={() => navigate('/tabs/discover')}
               >
-                Discover
+                Explorar
               </button>
             </div>
           </div>
@@ -97,7 +148,7 @@ const TimelineHeroSection: React.FC<TimelineHeroSectionProps> = ({ state, onDism
           <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/58 to-black/22" />
           <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/65">
-              You’re going to
+              Vas a ver a
             </p>
             <h2 className="mt-2 font-display text-3xl font-bold text-white sm:text-4xl">{artist}</h2>
             <p className="mt-2 text-sm font-semibold uppercase tracking-[0.18em] text-white/82">{venue}</p>
@@ -108,7 +159,7 @@ const TimelineHeroSection: React.FC<TimelineHeroSectionProps> = ({ state, onDism
                 className={baseGhostCtaClass}
                 onClick={() => navigate(`/event/${state.event.id}`)}
               >
-                View event
+                Ver concierto
               </button>
             </div>
           </div>
@@ -141,13 +192,13 @@ const TimelineHeroSection: React.FC<TimelineHeroSectionProps> = ({ state, onDism
             className="absolute right-4 top-4 z-10 rounded-full border border-white/25 bg-black/35 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/80 backdrop-blur-sm"
             onClick={() => onDismissPendingMoments(state.event.id)}
           >
-            Dismiss
+            Descartar
           </button>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/58 to-black/22" />
         <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/65">
-            Last night at {venue}
+            Anoche en {venue}
           </p>
           <h2 className="mt-2 font-display text-3xl font-bold text-white sm:text-4xl">{artist}</h2>
           <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/65">{date}</p>
@@ -157,13 +208,13 @@ const TimelineHeroSection: React.FC<TimelineHeroSectionProps> = ({ state, onDism
               className={basePrimaryCtaClass}
               onClick={() => navigate(`/event/${state.event.id}`, { state: { openAddMoments: true } })}
             >
-              Add your moments
+              Sube tus momentos
             </button>
           </div>
         </div>
       </div>
     );
-  }, [baseGhostCtaClass, basePrimaryCtaClass, heroShellClass, navigate, onDismissPendingMoments, state]);
+  }, [baseGhostCtaClass, basePrimaryCtaClass, featured, heroShellClass, navigate, onDismissPendingMoments, slide, slides, state]);
 
   return <section>{hero}</section>;
 };

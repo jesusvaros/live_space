@@ -18,7 +18,7 @@ const DiscoverSegmentedControl: React.FC<DiscoverSegmentedControlProps> = ({ val
             : 'text-white/60 hover:text-white/85'
         }`}
       >
-        Artists
+        Artistas
       </button>
       <button
         type="button"
@@ -29,7 +29,7 @@ const DiscoverSegmentedControl: React.FC<DiscoverSegmentedControlProps> = ({ val
             : 'text-white/60 hover:text-white/85'
         }`}
       >
-        Venues
+        Salas
       </button>
     </div>
   );

@@ -18,7 +18,7 @@ type CreateEventModalProps = {
   initialMapCenter?: [number, number] | null;
 };
 
-const steps = ['Venue', 'Artists', 'Tickets', 'Details'];
+const steps = ['Sala', 'Artistas', 'Entradas', 'Detalles'];
 
 const CreateEventModal: React.FC<CreateEventModalProps> = ({
   onDismiss,
@@ -197,14 +197,14 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
       <div className="relative z-10 flex flex-1 flex-col overflow-hidden">
         <div className="flex shrink-0 items-start justify-between gap-4 border-b border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] px-4 pb-4 pt-5">
           <div>
-            <h2 className="font-display text-2xl font-bold text-white">Create event</h2>
+            <h2 className="font-display text-2xl font-bold text-white">Crear evento</h2>
           </div>
           <button
             type="button"
             className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/85 transition-colors hover:text-white"
             onClick={onDismiss}
           >
-            Close
+            Cerrar
           </button>
         </div>
 
@@ -262,7 +262,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/15"
                 onClick={handleBack}
               >
-                Back
+                Volver
               </button>
             ) : (
               <span className="h-11 w-20 shrink-0" aria-hidden />
@@ -273,7 +273,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
               onClick={handlePrimary}
               disabled={form.saving || (stepIndex === steps.length - 1 && !organizerAllowed)}
             >
-              {stepIndex === steps.length - 1 ? (form.saving ? 'Creating...' : 'Create event') : 'Continue'}
+              {stepIndex === steps.length - 1 ? (form.saving ? 'Creando...' : 'Crear evento') : 'Continuar'}
             </button>
           </div>
         </div>

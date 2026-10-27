@@ -51,20 +51,20 @@ const VenueRow: React.FC<VenueRowProps> = ({
               : 'border-app-accent/35 bg-app-accent text-white'
           }`}
         >
-          {followLoading ? 'Loading…' : isFollowing ? 'Following' : 'Follow'}
+          {followLoading ? 'Cargando…' : isFollowing ? 'Siguiendo' : 'Seguir'}
         </button>
       </div>
 
       {posters.length > 0 && (
         <div className="mt-3 border-t border-white/10 pt-3">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/55">Latest posters</p>
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/55">Últimos pósters</p>
           <div className="flex items-center gap-2">
             {posters.slice(0, 3).map((poster, index) => (
               <div
                 key={`${venue.id}-${index}`}
                 className="h-16 w-12 overflow-hidden rounded-lg border border-white/10 bg-black/35"
               >
-                <img src={poster} alt={`${venue.name} poster ${index + 1}`} className="h-full w-full object-cover" loading="lazy" />
+                <img src={poster} alt={`Cartel ${index + 1} de ${venue.name}`} className="h-full w-full object-cover" loading="lazy" />
               </div>
             ))}
           </div>

@@ -17,18 +17,18 @@ const ProfileStats: React.FC<ProfileStatsProps> = ({
   isVerified,
 }) => {
   const stats = [
-    { label: 'Posts', value: posts.length.toString() },
+    { label: 'Publicaciones', value: posts.length.toString() },
     { 
-      label: 'Role', 
+      label: 'Rol', 
       value: isManagementMode && activeEntity 
         ? activeEntity.type.charAt(0).toUpperCase() + activeEntity.type.slice(1)
         : role || 'user' 
     },
     { 
-      label: 'Verified', 
+      label: 'Verificado', 
       value: isManagementMode && activeEntity 
-        ? (activeEntity.type === 'artist' ? 'Yes' : 'No')
-        : isVerified ? 'Yes' : 'No' 
+        ? (activeEntity.type === 'artist' ? 'Sí' : 'No')
+        : isVerified ? 'Sí' : 'No' 
     },
   ];
 

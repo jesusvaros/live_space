@@ -32,7 +32,7 @@ const SecondaryActions: React.FC<SecondaryActionsProps> = ({
         aria-pressed={followed}
       >
         {followed ? <IconHeartFilled className="app-icon" /> : <IconHeart className="app-icon" />}
-        <span>Follow</span>
+        <span>Seguir</span>
       </button>
       <button
         type="button"
@@ -46,7 +46,7 @@ const SecondaryActions: React.FC<SecondaryActionsProps> = ({
       </button>
       <button type="button" className="action-icon" onClick={onShare}>
         <IconShare className="app-icon" />
-        <span>Share</span>
+        <span>Compartir</span>
       </button>
     </div>
   );

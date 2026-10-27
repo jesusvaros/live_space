@@ -52,13 +52,13 @@ const MapFilterBar: React.FC<MapFilterBarProps> = ({
 
   return (
     <div className="flex items-center gap-1 overflow-hidden pb-1">
-      {renderChip('Events', showEvents, onToggleEvents)}
-      {renderChip('Today', filterToday, onToggleToday)}
-      {renderChip('Tomorrow', filterTomorrow, onToggleTomorrow)}
-      {renderChip('Free', filterFree, onToggleFree)}
+      {renderChip('Eventos', showEvents, onToggleEvents)}
+      {renderChip('Hoy', filterToday, onToggleToday)}
+      {renderChip('Mañana', filterTomorrow, onToggleTomorrow)}
+      {renderChip('Gratis', filterFree, onToggleFree)}
       <button
         type="button"
-        aria-label="Open filters"
+        aria-label="Abrir filtros"
         className={filterIconButton}
         onClick={onOpenFilters}
       >

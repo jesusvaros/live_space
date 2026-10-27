@@ -22,16 +22,16 @@ const SecondStack: React.FC<SecondStackProps> = ({ moments, selectedIndex, onSel
         >
           {moment.media_type === 'video' ? (
             moment.thumbnail_url ? (
-              <img src={moment.thumbnail_url} alt={moment.caption || 'Moment'} className="h-full w-full object-cover" />
+              <img src={moment.thumbnail_url} alt={moment.caption || 'Momento'} className="h-full w-full object-cover" />
             ) : (
               <video muted preload="metadata" className="h-full w-full object-cover">
                 <source src={moment.media_url} />
               </video>
             )
           ) : (
-            <img src={moment.media_url} alt={moment.caption || 'Moment'} className="h-full w-full object-cover" />
+            <img src={moment.media_url} alt={moment.caption || 'Momento'} className="h-full w-full object-cover" />
           )}
-          <span className="sr-only">Moment {index + 1}</span>
+          <span className="sr-only">Momento {index + 1}</span>
         </button>
       ))}
     </div>

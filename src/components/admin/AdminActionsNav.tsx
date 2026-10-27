@@ -7,10 +7,10 @@ interface AdminActionsNavProps {
 }
 
 const links: Array<{ key: AdminNavActive; label: string; href: string }> = [
-  { key: 'grant', label: 'Grant Access', href: '/admin/grants' },
-  { key: 'artist', label: 'Create Artist', href: '/admin/create-artist' },
-  { key: 'venue', label: 'Create Venue', href: '/admin/create-venue' },
-  { key: 'list', label: 'View Access Grants', href: '/admin/access-grants' }
+  { key: 'grant', label: 'Dar acceso', href: '/admin/grants' },
+  { key: 'artist', label: 'Crear artista', href: '/admin/create-artist' },
+  { key: 'venue', label: 'Crear sala', href: '/admin/create-venue' },
+  { key: 'list', label: 'Ver accesos', href: '/admin/access-grants' }
 ];
 
 const AdminActionsNav: React.FC<AdminActionsNavProps> = ({ active }) => {

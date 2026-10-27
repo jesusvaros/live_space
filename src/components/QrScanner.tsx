@@ -35,7 +35,7 @@ const QrScanner: React.FC<QrScannerProps> = ({ onDetected }) => {
           }
         }
       } catch (err) {
-        setError('Camera scan failed. Try manual input.');
+        setError('Falló el escaneo. Pega el enlace a mano.');
         stop();
         return;
       }
@@ -45,7 +45,7 @@ const QrScanner: React.FC<QrScannerProps> = ({ onDetected }) => {
 
     const init = async () => {
       if (!('BarcodeDetector' in window)) {
-        setError('QR scanning not supported on this browser. Use manual input.');
+        setError('Este navegador no puede escanear QR. Pega el enlace a mano.');
         return;
       }
 
@@ -61,7 +61,7 @@ const QrScanner: React.FC<QrScannerProps> = ({ onDetected }) => {
           scanLoop();
         }
       } catch (err) {
-        setError('Camera permission denied. Use manual input.');
+        setError('Sin permiso de cámara. Pega el enlace a mano.');
       }
     };
 
@@ -84,7 +84,7 @@ const QrScanner: React.FC<QrScannerProps> = ({ onDetected }) => {
       )}
 
       <label className="flex flex-col gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">Paste event link</span>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">Pega el enlace del evento</span>
         <input
           className="bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none"
           value={manualValue}
@@ -97,7 +97,7 @@ const QrScanner: React.FC<QrScannerProps> = ({ onDetected }) => {
         className="inline-flex w-full items-center justify-center bg-white/10 px-4 py-3 text-sm font-semibold text-white"
         onClick={() => manualValue && onDetected(manualValue)}
       >
-        Use link
+        Usar enlace
       </button>
     </div>
   );

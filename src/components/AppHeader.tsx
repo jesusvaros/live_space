@@ -34,7 +34,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, rightSlot, showBack }) => 
               type="button"
               className="flex items-center"
               onClick={handleBrandClick}
-              aria-label="Go to home"
+              aria-label="Ir al inicio"
             >
               <AppBrand />
             </button>
@@ -46,16 +46,16 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, rightSlot, showBack }) => 
             <button
               type="button"
               className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/80 transition-colors hover:border-white/35 hover:bg-white/10 hover:text-white"
-              aria-label={inAdminRoute ? 'Back to main' : 'Open admin actions'}
+              aria-label={inAdminRoute ? 'Volver a la app' : 'Abrir acciones de admin'}
               onClick={() => navigate(inAdminRoute ? '/tabs/events' : '/admin')}
             >
-              {inAdminRoute ? 'Main' : 'Admin'}
+              {inAdminRoute ? 'App' : 'Admin'}
             </button>
           ) : null}
           <button
             type="button"
             className="inline-flex items-center justify-center px-3 py-2 text-sm font-semibold text-white/80 disabled:cursor-not-allowed disabled:opacity-60"
-            aria-label="Notifications"
+            aria-label="Notificaciones"
             disabled
           >
             <IconBell className="h-4 w-4" />

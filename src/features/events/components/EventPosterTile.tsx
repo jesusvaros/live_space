@@ -21,7 +21,7 @@ type EventPosterTileProps = {
 };
 
 const formatEventDate = (iso: string) =>
-  new Date(iso).toLocaleString(undefined, {
+  new Date(iso).toLocaleString('es-ES', {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -60,7 +60,7 @@ const EventPosterTile: React.FC<EventPosterTileProps> = ({
 
   const resolvedSubtitle = useMemo(() => {
     if (subtitle) return subtitle;
-    return getVenueName(event) || 'Venue';
+    return getVenueName(event) || 'Sala';
   }, [event, subtitle]);
 
   const resolvedKicker = useMemo(() => {

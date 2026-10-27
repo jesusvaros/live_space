@@ -46,7 +46,7 @@ const withTimeout = async <T,>(promise: PromiseLike<T>, timeoutMs: number, label
   let timeoutId: number | null = null;
   const timeoutPromise = new Promise<T>((_resolve, reject) => {
     timeoutId = window.setTimeout(() => {
-      reject(new Error(`${label} timed out. Please try again.`));
+      reject(new Error(`${label}: tardó demasiado. Inténtalo de nuevo.`));
     }, timeoutMs);
   });
 
@@ -168,7 +168,7 @@ export const useCreateEventForm = ({
         .select('venue_place_id, subject_id, name, city, address, latitude, longitude, website_url, photos')
         .order('name', { ascending: true });
       if (venueError) {
-        setError('Unable to load venues.');
+        setError('No se pudieron cargar las salas.');
         setVenues([]);
       } else {
         setVenues((data || []).map((row: any) => mapVenue(row)));
@@ -187,7 +187,7 @@ export const useCreateEventForm = ({
         ? [
             {
               id: defaultArtistId,
-              display_name: defaultArtistName || 'Your artist profile',
+              display_name: defaultArtistName || 'Tu perfil de artista',
               username: null,
               role: 'artist' as ProfileRole,
             },
@@ -213,7 +213,7 @@ export const useCreateEventForm = ({
       }
 
       if (artistError) {
-        setError('Unable to load artists.');
+        setError('No se pudieron cargar los artistas.');
         setArtists([]);
         setArtistSearchCount(0);
       } else {
@@ -233,7 +233,7 @@ export const useCreateEventForm = ({
             ? [
                 {
                   id: defaultArtistId,
-                  display_name: defaultArtistName || 'Your artist profile',
+                  display_name: defaultArtistName || 'Tu perfil de artista',
                   username: null,
                   role: 'artist' as ProfileRole,
                 },
@@ -371,11 +371,11 @@ export const useCreateEventForm = ({
     const label = tierLabel.trim();
     const priceValue = Number(tierPrice);
     if (!label) {
-      setError('Price tier name is required.');
+      setError('Ponle nombre al tipo de entrada.');
       return;
     }
     if (!Number.isFinite(priceValue) || priceValue < 0) {
-      setError('Enter a valid price.');
+      setError('Introduce un precio válido.');
       return;
     }
     setPriceTiers(prev => [...prev, { label, price: priceValue }]);
@@ -389,36 +389,36 @@ export const useCreateEventForm = ({
 
   const handleCreate = async () => {
     if (!userId) {
-      setError('Sign in to create events.');
+      setError('Entra para crear eventos.');
       return null;
     }
     if (!eventName.trim()) {
-      setError('Event name is required.');
+      setError('Ponle nombre al evento.');
       return null;
     }
     if (!eventStart) {
-      setError('Start time is required.');
+      setError('Indica la hora de inicio.');
       return null;
     }
     if (!isFree && priceTiers.length === 0) {
-      setError('Add at least one price tier.');
+      setError('Añade al menos un tipo de entrada.');
       return null;
     }
     if (venueMode === 'existing' && !selectedVenue) {
-      setError('Select a venue place.');
+      setError('Elige una sala.');
       return null;
     }
     if (venueMode === 'new') {
       if (!newVenueName.trim()) {
-        setError('Venue name is required.');
+        setError('Ponle nombre a la sala.');
         return null;
       }
       if (!newVenueCity.trim()) {
-        setError('Venue city is required.');
+        setError('Indica la ciudad de la sala.');
         return null;
       }
       if (venueLat === null || venueLng === null) {
-        setError('Select a location on the map.');
+        setError('Elige una ubicación en el mapa.');
         return null;
       }
     }
@@ -429,13 +429,13 @@ export const useCreateEventForm = ({
         ? selectedArtistIds
         : fallbackArtistIds;
     if (artistIds.length === 0) {
-      setError('Select at least one artist.');
+      setError('Elige al menos un artista.');
       return null;
     }
 
     const startAt = new Date(eventStart);
     if (Number.isNaN(startAt.getTime())) {
-      setError('Invalid start time.');
+      setError('Hora de inicio no válida.');
       return null;
     }
 
@@ -443,11 +443,11 @@ export const useCreateEventForm = ({
     if (eventEnd) {
       const endDate = new Date(eventEnd);
       if (Number.isNaN(endDate.getTime())) {
-        setError('Invalid end time.');
+        setError('Hora de fin no válida.');
         return null;
       }
       if (endDate < startAt) {
-        setError('End time must be after the start time.');
+        setError('La hora de fin debe ser posterior a la de inicio.');
         return null;
       }
       endAtIso = endDate.toISOString();
@@ -475,7 +475,7 @@ export const useCreateEventForm = ({
             .select('id, name, city, address, latitude, longitude')
             .single(),
           20_000,
-          'Venue create'
+          'Crear la sala'
         );
 
         if (venueError) {
@@ -485,7 +485,7 @@ export const useCreateEventForm = ({
       }
 
       if (!venuePlaceId) {
-        throw new Error('Venue is required.');
+        throw new Error('Falta la sala.');
       }
 
       const genres = eventGenres
@@ -518,11 +518,11 @@ export const useCreateEventForm = ({
           .select('id')
           .single(),
         20_000,
-        'Event create'
+        'Crear el evento'
       );
 
       if (eventError || !eventData) {
-        throw eventError || new Error('Event creation failed.');
+        throw eventError || new Error('No se pudo crear el evento.');
       }
 
       // Insert artist relationships
@@ -535,7 +535,7 @@ export const useCreateEventForm = ({
             is_headliner: index === 0,
           }))),
           20_000,
-          'Lineup create'
+          'Guardar el cartel'
         );
 
         if (artistError) throw artistError;
@@ -551,13 +551,13 @@ export const useCreateEventForm = ({
             purpose: 'user',
           }),
           45_000,
-          'Poster upload'
+          'Subir el póster'
         );
       }
 
       return eventData.id;
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error occurred';
+      const message = err instanceof Error ? err.message : 'Ha ocurrido un error inesperado';
       setError(message);
       return null;
     } finally {

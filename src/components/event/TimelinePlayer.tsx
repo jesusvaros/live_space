@@ -41,7 +41,7 @@ const formatBucketLabel = (bucketTime: string | null, eventStart: Date | null) =
     const diff = (bucketDate.getTime() - eventStart.getTime()) / 1000;
     return formatRelative(diff);
   }
-  return bucketDate.toLocaleTimeString(undefined, {
+  return bucketDate.toLocaleTimeString('es-ES', {
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -55,7 +55,7 @@ const formatMomentLabel = (moment: PostWithSetlist | null, eventStart: Date | nu
     const diff = (date.getTime() - eventStart.getTime()) / 1000;
     return formatRelative(diff);
   }
-  return date.toLocaleTimeString(undefined, {
+  return date.toLocaleTimeString('es-ES', {
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -106,11 +106,11 @@ const TimelinePlayer: React.FC<TimelinePlayerProps> = ({
       <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/60">Timeline</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/60">Cronología</p>
             <p className="mt-1.5 font-display text-2xl font-bold text-white">
               {selectedBucketLabel || '+00:00'}
             </p>
-            {totalMoments > 0 && <p className="mt-1 text-xs text-white/55">{totalMoments} moments</p>}
+            {totalMoments > 0 && <p className="mt-1 text-xs text-white/55">{totalMoments} momentos</p>}
           </div>
           <div className="inline-flex items-center rounded-full border border-white/15 bg-black/25 p-1">
             {(['all', 'video', 'image'] as MediaFilter[]).map(filter => (
@@ -124,7 +124,7 @@ const TimelinePlayer: React.FC<TimelinePlayerProps> = ({
                 }`}
                 onClick={() => onFilterChange(filter)}
               >
-                {filter === 'all' ? 'All' : filter === 'video' ? 'Video' : 'Photos'}
+                {filter === 'all' ? 'Todo' : filter === 'video' ? 'Vídeos' : 'Fotos'}
               </button>
             ))}
           </div>
@@ -168,7 +168,7 @@ const TimelinePlayer: React.FC<TimelinePlayerProps> = ({
                   <source src={selectedMoment.media_url} />
                 </video>
               ) : (
-                <img src={selectedMoment.media_url} alt={selectedMoment.caption || 'Moment'} className="h-full w-full object-cover" />
+                <img src={selectedMoment.media_url} alt={selectedMoment.caption || 'Momento'} className="h-full w-full object-cover" />
               )}
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/55 to-transparent p-4">
                 {selectedMoment.resolved_song_title && (
@@ -183,21 +183,21 @@ const TimelinePlayer: React.FC<TimelinePlayerProps> = ({
                   {selectedMoment.actor_name ||
                     selectedMoment.profiles?.display_name ||
                     selectedMoment.profiles?.username ||
-                    'Anonymous'}
+                    'Anónimo'}
                 </h4>
               </div>
             </div>
           ) : (
             <div className="flex min-h-full flex-col items-center justify-center gap-2 px-6 text-center">
-              <p className="text-lg font-semibold text-white">No moments yet.</p>
-              <span className="text-xs text-white/55">Relive the show by adding the first clip.</span>
+              <p className="text-lg font-semibold text-white">Aún no hay momentos.</p>
+              <span className="text-xs text-white/55">Revive el concierto subiendo el primer vídeo.</span>
               {onAddMoments && (
                 <button
                   type="button"
                   className="mt-2 inline-flex items-center rounded-full border border-app-accent/40 bg-app-accent/20 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-app-accent"
                   onClick={onAddMoments}
                 >
-                  Add the first moment
+                  Sube el primer momento
                 </button>
               )}
             </div>

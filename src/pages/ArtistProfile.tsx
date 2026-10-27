@@ -97,7 +97,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
         }
       } catch (err) {
         console.error('Failed to load artist profile', err);
-        setError('Artist not found.');
+        setError('Artista no encontrado.');
         setArtist(null);
         setUpcomingShows([]);
         setPastShows([]);

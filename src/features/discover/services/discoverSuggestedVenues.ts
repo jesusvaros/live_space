@@ -85,7 +85,7 @@ export const getSuggestedVenues = async (options?: { location?: { lat: number; l
     }
     const ids = topVenueIdsFromEvents(nearEvents);
     const items = await fetchVenuesByIds(ids);
-    if (items.length > 0) sections.push({ key: 'venues_near_you', title: 'Venues near you', items });
+    if (items.length > 0) sections.push({ key: 'venues_near_you', title: 'Salas cerca de ti', items });
   }
 
   const weekEvents = events.filter(event => {
@@ -94,7 +94,7 @@ export const getSuggestedVenues = async (options?: { location?: { lat: number; l
   });
   const weekIds = topVenueIdsFromEvents(weekEvents);
   const weekItems = await fetchVenuesByIds(weekIds);
-  if (weekItems.length > 0) sections.push({ key: 'popular_venues_this_week', title: 'Popular venues this week', items: weekItems });
+  if (weekItems.length > 0) sections.push({ key: 'popular_venues_this_week', title: 'Salas populares esta semana', items: weekItems });
 
   const recentVenues = await cached(
     'discover:venues:recent',
@@ -111,7 +111,7 @@ export const getSuggestedVenues = async (options?: { location?: { lat: number; l
   );
   const recentVenuesWithPosters = await withVenueRecentPosters(recentVenues);
   if (recentVenuesWithPosters.length > 0) {
-    sections.push({ key: 'recently_added', title: 'Recently added venues', items: recentVenuesWithPosters });
+    sections.push({ key: 'recently_added', title: 'Salas añadidas hace poco', items: recentVenuesWithPosters });
   }
 
   const seen = new Set<string>();

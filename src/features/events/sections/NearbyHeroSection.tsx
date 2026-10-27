@@ -32,8 +32,8 @@ const NearbyHeroSection: React.FC<NearbyHeroSectionProps> = ({
     <section className="animate-fade-up space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 motion-reduce:animate-none">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">Concerts near you</p>
-          <p className="mt-2 text-sm text-white/65">Today + the next two weeks.</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">Conciertos cerca de ti</p>
+          <p className="mt-2 text-sm text-white/65">Hoy y las próximas dos semanas.</p>
         </div>
         {canCreateEvent && (
           <div className="flex flex-col items-end gap-2">
@@ -42,7 +42,7 @@ const NearbyHeroSection: React.FC<NearbyHeroSectionProps> = ({
               className="inline-flex items-center gap-2 rounded-full border border-app-accent/40 bg-app-accent/20 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-app-accent/30"
               onClick={() => navigate('/create-event')}
             >
-              Create event
+              Crear evento
             </button>
           </div>
         )}
@@ -60,8 +60,8 @@ const NearbyHeroSection: React.FC<NearbyHeroSectionProps> = ({
 
           {!location ? (
             <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
-              <p className="text-sm font-semibold text-white/90">See concerts near you</p>
-              <p className="mt-1 text-xs text-white/55">Use your location to get nearby events and distances.</p>
+              <p className="text-sm font-semibold text-white/90">Mira los conciertos cerca de ti</p>
+              <p className="mt-1 text-xs text-white/55">Usa tu ubicación para ver eventos cercanos y distancias.</p>
               <div className="mt-4 flex items-center gap-3">
                 <button
                   type="button"
@@ -69,28 +69,28 @@ const NearbyHeroSection: React.FC<NearbyHeroSectionProps> = ({
                   onClick={onRequestLocation}
                   disabled={locationLoading}
                 >
-                  Use my location
+                  Usar mi ubicación
                 </button>
                 <button
                   type="button"
                   className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white/90"
                   onClick={() => navigate('/tabs/map')}
                 >
-                  Explore map
+                  Explorar mapa
                 </button>
               </div>
             </div>
           ) : nearbyUpcoming.length === 0 ? (
             <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
-              <p className="text-sm font-semibold text-white/90">No concerts nearby today</p>
-              <p className="mt-1 text-xs text-white/55">Try the map to explore what’s happening around you.</p>
+              <p className="text-sm font-semibold text-white/90">Hoy no hay conciertos cerca</p>
+              <p className="mt-1 text-xs text-white/55">Mira el mapa para ver qué se mueve a tu alrededor.</p>
               <div className="mt-4 flex items-center gap-3">
                 <button
                   type="button"
                   className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white"
                   onClick={() => navigate('/tabs/map')}
                 >
-                  Explore map
+                  Explorar mapa
                 </button>
               </div>
             </div>

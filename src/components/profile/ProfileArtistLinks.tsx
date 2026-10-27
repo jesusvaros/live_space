@@ -18,7 +18,7 @@ const ProfileArtistLinks: React.FC<ProfileArtistLinksProps> = ({
       className="space-y-3 rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-4 shadow-[0_24px_50px_rgba(0,0,0,0.35)]"
       style={{ animationDelay: '0.16s' }}
     >
-      <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">Artist links</p>
+      <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">Enlaces del artista</p>
       <div className="space-y-2 text-sm text-slate-300">
         {linkWebsite && (
           <a

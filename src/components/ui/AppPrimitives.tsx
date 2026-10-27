@@ -53,7 +53,7 @@ type SpinnerProps = React.HTMLAttributes<HTMLSpanElement> & {
   label?: string;
 };
 
-export const Spinner: React.FC<SpinnerProps> = ({ className, label = 'Loading', ...props }) => (
+export const Spinner: React.FC<SpinnerProps> = ({ className, label = 'Cargando', ...props }) => (
   <span
     className={joinClasses(
       'inline-block h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent align-middle motion-reduce:animate-pulse',
@@ -81,7 +81,7 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   className,
   initialBreakpoint,
-  title = 'Dialog',
+  title = 'Diálogo',
 }) => {
   const isSheet = typeof initialBreakpoint === 'number' || className?.includes('sheet');
 
@@ -103,8 +103,8 @@ export const Modal: React.FC<ModalProps> = ({
           onOpenAutoFocus={event => event.preventDefault()}
         >
           <Dialog.Title className="sr-only">{title}</Dialog.Title>
-          <Dialog.Close data-modal-close className="sr-only" aria-label="Close dialog">
-            Close
+          <Dialog.Close data-modal-close className="sr-only" aria-label="Cerrar diálogo">
+            Cerrar
           </Dialog.Close>
           {children}
         </Dialog.Content>

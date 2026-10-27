@@ -70,14 +70,14 @@ const CreateEventVenueStep: React.FC<CreateEventVenueStepProps> = ({
     <section className="flex h-full min-h-0 flex-col gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/60">Venue</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/60">Sala</p>
         </div>
         <button
           type="button"
           className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-white/80 transition-colors hover:text-white"
           onClick={onToggleVenueMode}
         >
-          {venueMode === 'existing' ? 'Add New' : 'Use Existing'}
+          {venueMode === 'existing' ? 'Nueva sala' : 'Usar existente'}
         </button>
       </div>
 
@@ -90,7 +90,7 @@ const CreateEventVenueStep: React.FC<CreateEventVenueStepProps> = ({
             <input
               type="search"
               className="w-full bg-transparent px-1 py-1 text-sm text-white placeholder:text-white/45 focus:outline-none"
-              placeholder="Search venues"
+              placeholder="Busca salas"
               value={venueSearch}
               onChange={e => onVenueSearchChange(e.target.value)}
             />
@@ -130,11 +130,11 @@ const CreateEventVenueStep: React.FC<CreateEventVenueStepProps> = ({
           {venuesLoading ? (
             <div className="flex items-center gap-3 text-sm text-white/70">
               <Spinner />
-              Loading venues...
+              Cargando salas...
             </div>
           ) : visibleVenues.length === 0 ? (
             <p className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-sm text-white/60">
-              No venues found. Switch to &quot;New venue&quot; to add one.
+              No hay salas. Pulsa &quot;Nueva sala&quot; para añadir una.
             </p>
           ) : (
             <div className="h-full overflow-y-auto pr-1">
@@ -176,7 +176,7 @@ const CreateEventVenueStep: React.FC<CreateEventVenueStepProps> = ({
                       {venue.venue_type && (
                         <p className="text-xs text-white/55">
                           {venue.venue_type}
-                          {venue.capacity ? ` · Capacity: ${venue.capacity}` : ''}
+                          {venue.capacity ? ` · Aforo: ${venue.capacity}` : ''}
                         </p>
                       )}
                     </div>
@@ -197,31 +197,31 @@ const CreateEventVenueStep: React.FC<CreateEventVenueStepProps> = ({
         <div className="space-y-3 overflow-y-auto rounded-2xl border border-white/10 bg-white/[0.02] p-3">
           <label className="flex flex-col gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-              Venue name
+              Nombre de la sala
             </span>
             <input
               className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
               value={newVenueName}
               onChange={e => onNewVenueNameChange(e.target.value)}
-              placeholder="Venue name"
+              placeholder="Nombre de la sala"
             />
           </label>
           <label className="flex flex-col gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">City</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Ciudad</span>
             <input
               className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
               value={newVenueCity}
               onChange={e => onNewVenueCityChange(e.target.value)}
-              placeholder="City"
+              placeholder="Ciudad"
             />
           </label>
           <label className="flex flex-col gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Address</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Dirección</span>
             <input
               className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
               value={newVenueAddress}
               onChange={e => onNewVenueAddressChange(e.target.value)}
-              placeholder="Street address"
+              placeholder="Calle y número"
             />
           </label>
         </div>

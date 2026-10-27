@@ -25,7 +25,7 @@ const PostDetail: React.FC = () => {
         if (!data) throw new Error('Post not found');
         setPost(data);
       } catch {
-        setError('Post not found.');
+        setError('Publicación no encontrada.');
         setPost(null);
       } finally {
         setLoading(false);
@@ -58,18 +58,18 @@ const PostDetail: React.FC = () => {
                 <source src={post.media_url} />
               </video>
             ) : (
-              <img src={post.media_url} alt={post.caption || 'Moment'} className="absolute inset-0 h-full w-full object-cover" />
+              <img src={post.media_url} alt={post.caption || 'Momento'} className="absolute inset-0 h-full w-full object-cover" />
             )}
 
             <div className="absolute inset-x-0 bottom-0 bg-black/70 p-5">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Moment</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Momento</p>
               <h2 className="mt-2 font-display text-2xl font-bold text-white">
-                {post.caption || 'Relive the moment'}
+                {post.caption || 'Revive el momento'}
               </h2>
               <p className="mt-2 text-sm text-white/70">
-                {(post.profiles?.username ? `@${post.profiles.username}` : post.profiles?.display_name) || 'Anonymous'}
+                {(post.profiles?.username ? `@${post.profiles.username}` : post.profiles?.display_name) || 'Anónimo'}
                 {' · '}
-                {new Date(post.created_at).toLocaleString()}
+                {new Date(post.created_at).toLocaleString('es-ES')}
               </p>
             </div>
           </div>
@@ -81,14 +81,14 @@ const PostDetail: React.FC = () => {
                 className="inline-flex flex-1 items-center justify-center gap-2 bg-white/10 px-4 py-3 text-sm font-semibold text-white"
               >
                 <IconHeart className="h-4 w-4" />
-                Like
+                Me gusta
               </button>
               <button
                 type="button"
                 className="inline-flex flex-1 items-center justify-center gap-2 bg-white/10 px-4 py-3 text-sm font-semibold text-white"
               >
                 <IconShare className="h-4 w-4" />
-                Share
+                Compartir
               </button>
             </div>
 
@@ -98,12 +98,12 @@ const PostDetail: React.FC = () => {
                 onClick={() => navigate(`/event/${event.id}`)}
                 className="bg-white/5 p-4 text-left"
               >
-                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Event</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Evento</p>
                 <p className="mt-2 font-display text-lg font-bold text-white">{event.name}</p>
                 <p className="mt-1 text-sm text-white/70">
-                  {event.venue_place?.name || event.address || 'Venue'} · {new Date(event.starts_at).toLocaleString()}
+                  {event.venue_place?.name || event.address || 'Sala'} · {new Date(event.starts_at).toLocaleString('es-ES')}
                 </p>
-                <p className="mt-2 text-xs text-white/55">View event details</p>
+                <p className="mt-2 text-xs text-white/55">Ver detalles del evento</p>
               </button>
             )}
           </div>

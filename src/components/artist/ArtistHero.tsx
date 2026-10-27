@@ -91,21 +91,21 @@ const ArtistHero: React.FC<ArtistHeroProps> = ({
           className="absolute right-3 top-3 z-10 inline-flex items-center gap-2 rounded-full border border-white/25 bg-black/35 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/80 transition-colors hover:border-white/40 hover:text-white sm:right-4 sm:top-4"
         >
           <IconEdit size={14} />
-          Edit
+          Editar
         </button>
       )}
 
         <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/65">Artist</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/65">Artista</p>
           <h1 className="mt-2 font-display text-3xl font-bold leading-tight text-white sm:text-4xl">{artist.name}</h1>
           <p className="mt-2 text-sm font-semibold uppercase tracking-[0.18em] text-white/80 line-clamp-1">
-            {artist.city || (artist.artist_type === 'band' ? 'Band' : 'Solo artist')}
-            {playedCount > 0 ? ` · ${playedCount} shows` : ''}
+            {artist.city || (artist.artist_type === 'band' ? 'Banda' : 'Solista')}
+            {playedCount > 0 ? ` · ${playedCount} conciertos` : ''}
           </p>
           {verifiedBadge && (
             <div className="mt-2 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/80">
               <IconCheckCircle size={14} />
-              Verified
+              Verificado
             </div>
           )}
 
@@ -127,7 +127,7 @@ const ArtistHero: React.FC<ArtistHeroProps> = ({
                   apple_music: 'Apple Music',
                   instagram: 'Instagram',
                   youtube: 'YouTube',
-                  website: 'Website',
+                  website: 'Web',
                 };
                 return (
                   <a

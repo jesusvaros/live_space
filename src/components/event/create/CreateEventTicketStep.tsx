@@ -40,22 +40,22 @@ const CreateEventTicketStep: React.FC<CreateEventTicketStepProps> = ({
   return (
     <section className="h-full overflow-y-auto space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/60">Tickets</p>
-        <p className="mt-1 text-sm text-white/65">Essentials first. You can refine later.</p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/60">Entradas</p>
+        <p className="mt-1 text-sm text-white/65">Lo básico primero. Luego puedes afinarlo.</p>
       </div>
       <label className="flex flex-col gap-2">
         <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-          Event name
+          Nombre del evento
         </span>
         <input
           className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
           value={eventName}
           onChange={e => onEventNameChange(e.target.value)}
-          placeholder="Night Session"
+          placeholder="Sesión de noche"
         />
       </label>
       <label className="flex flex-col gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Starts at</span>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Empieza</span>
         <input
           className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/15"
           type="datetime-local"
@@ -64,7 +64,7 @@ const CreateEventTicketStep: React.FC<CreateEventTicketStepProps> = ({
         />
       </label>
       <label className="flex flex-col gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Event link</span>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Enlace del evento</span>
         <input
           className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
           value={eventUrl}
@@ -83,7 +83,7 @@ const CreateEventTicketStep: React.FC<CreateEventTicketStepProps> = ({
           />
           <span className="pointer-events-none absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5" />
         </span>
-        <span className="text-white/80">{isFree ? 'Free event' : 'Paid event'}</span>
+        <span className="text-white/80">{isFree ? 'Evento gratis' : 'Evento de pago'}</span>
       </label>
 
       {!isFree && (
@@ -91,17 +91,17 @@ const CreateEventTicketStep: React.FC<CreateEventTicketStepProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-2">
               <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                Tier name
+                Nombre de la tarifa
               </span>
               <input
                 className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
                 value={tierLabel}
                 onChange={e => onTierLabelChange(e.target.value)}
-                placeholder="Presale"
+                placeholder="Preventa"
               />
             </label>
             <label className="flex flex-col gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Price</span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Precio</span>
               <input
                 className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
                 value={tierPrice}
@@ -115,7 +115,7 @@ const CreateEventTicketStep: React.FC<CreateEventTicketStepProps> = ({
             className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15"
             onClick={onAddTier}
           >
-            Add tier
+            Añadir tarifa
           </button>
 
           {priceTiers.length > 0 && (
@@ -127,14 +127,14 @@ const CreateEventTicketStep: React.FC<CreateEventTicketStepProps> = ({
                 >
                   <div>
                     <p className="text-xs font-semibold text-white">{tier.label}</p>
-                    <p className="text-[10px] text-white/60">${tier.price.toFixed(2)}</p>
+                    <p className="text-[10px] text-white/60">{tier.price.toFixed(2)} €</p>
                   </div>
                   <button
                     type="button"
                     className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white/80 transition hover:bg-white/15 hover:text-white"
                     onClick={() => onRemoveTier(index)}
                   >
-                    Remove
+                    Quitar
                   </button>
                 </div>
               ))}

@@ -34,7 +34,7 @@ const SuggestedSectionList = <T,>({ sections, renderItem }: SuggestedSectionList
           className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/75"
           onClick={() => setExpanded(true)}
         >
-          Show {hiddenCount} more
+          Ver {hiddenCount} más
         </button>
       )}
       {expanded && sections.length > 2 && (
@@ -43,7 +43,7 @@ const SuggestedSectionList = <T,>({ sections, renderItem }: SuggestedSectionList
           className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/75"
           onClick={() => setExpanded(false)}
         >
-          Show less
+          Ver menos
         </button>
       )}
     </div>
