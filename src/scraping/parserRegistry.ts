@@ -21,6 +21,12 @@ import { heliogabalAgendaParser } from './parsers/heliogabalAgendaParser.js';
 import { salaVolAgendaParser } from './parsers/salaVolAgendaParser.js';
 import { freedoniaAgendaParser } from './parsers/freedoniaAgendaParser.js';
 import { sodaAgendaParser } from './parsers/sodaAgendaParser.js';
+import { jsonLdBillAgendaParser } from './parsers/jsonLdBillAgendaParser.js';
+import { sixteenToneladasAgendaParser } from './parsers/sixteenToneladasAgendaParser.js';
+import { wixEventsWarmupParser } from './parsers/wixEventsWarmupParser.js';
+import { repvbliccaAgendaParser } from './parsers/repvbliccaAgendaParser.js';
+import { jimmyGlassAgendaParser } from './parsers/jimmyGlassAgendaParser.js';
+import { radioCityAgendaParser } from './parsers/radioCityAgendaParser.js';
 
 const parserRegistry: Record<ParserKey, VenueParser> = {
   'apolo-agenda': apoloAgendaParser,
@@ -45,6 +51,12 @@ const parserRegistry: Record<ParserKey, VenueParser> = {
   'sala-vol-agenda': salaVolAgendaParser,
   'freedonia-agenda': freedoniaAgendaParser,
   'soda-agenda': sodaAgendaParser,
+  'json-ld-bill-agenda': jsonLdBillAgendaParser,
+  'sixteen-toneladas-agenda': sixteenToneladasAgendaParser,
+  'wix-events-warmup': wixEventsWarmupParser,
+  'repvblicca-agenda': repvbliccaAgendaParser,
+  'jimmy-glass-agenda': jimmyGlassAgendaParser,
+  'radio-city-agenda': radioCityAgendaParser,
 };
 
 export const getParser = (key: ParserKey): VenueParser => {

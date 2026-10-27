@@ -24,7 +24,13 @@ export type ParserKey =
   | 'heliogabal-agenda'
   | 'sala-vol-agenda'
   | 'freedonia-agenda'
-  | 'soda-agenda';
+  | 'soda-agenda'
+  | 'json-ld-bill-agenda'
+  | 'sixteen-toneladas-agenda'
+  | 'wix-events-warmup'
+  | 'repvblicca-agenda'
+  | 'jimmy-glass-agenda'
+  | 'radio-city-agenda';
 
 export type RawScrapedEvent = {
   sourceUrl: string;
