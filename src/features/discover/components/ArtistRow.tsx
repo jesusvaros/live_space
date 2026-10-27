@@ -1,6 +1,6 @@
 import React from 'react';
 import { DiscoverArtist } from '../types';
-import { IconUser } from '../../../components/icons';
+import Avatar from '../../../components/ui/Avatar';
 
 type ArtistRowProps = {
   artist: DiscoverArtist;
@@ -15,14 +15,13 @@ const ArtistRow: React.FC<ArtistRowProps> = ({
   artist,
   isFollowing,
   followLoading,
-  canFollow,
   onToggleFollow,
   onOpenProfile,
 }) => {
   const posters = artist.recent_posters || [];
 
   return (
-    <article className="overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(155deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02)_68%,rgba(255,107,74,0.08))] p-3">
+    <article className="overflow-hidden rounded-2xl border border-app-line bg-app-surface p-3">
       {posters.length > 0 && (
         <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1">
           {posters.slice(0, 6).map((poster, index) => (
@@ -49,13 +48,7 @@ const ArtistRow: React.FC<ArtistRowProps> = ({
           className="flex min-w-0 flex-1 items-center gap-3 text-left"
           onClick={onOpenProfile}
         >
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-white/10">
-            {artist.avatar_url ? (
-              <img src={artist.avatar_url} alt={artist.name} className="h-full w-full object-cover" />
-            ) : (
-              <IconUser className="h-5 w-5 text-white/65" />
-            )}
-          </div>
+          <Avatar name={artist.name} src={artist.avatar_url} className="h-12 w-12 text-[16px]" />
           <div className="min-w-0">
             <p className="font-display text-base font-bold text-white line-clamp-1">{artist.name}</p>
             <p className="mt-0.5 text-xs text-white/55 line-clamp-1">
@@ -66,18 +59,16 @@ const ArtistRow: React.FC<ArtistRowProps> = ({
 
         <button
           type="button"
-          disabled={!canFollow || followLoading}
+          disabled={followLoading}
           onClick={e => {
             e.stopPropagation();
             onToggleFollow();
           }}
-          className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] transition disabled:opacity-60 ${
-            isFollowing
-              ? 'border-white/25 bg-white/10 text-white/80'
-              : 'border-app-accent/35 bg-app-accent text-white'
+          className={`min-h-9 shrink-0 rounded-full px-3.5 text-[12px] font-semibold transition disabled:opacity-60 ${
+            isFollowing ? 'border border-app-line text-white/70' : 'bg-app-ink text-app-bg'
           }`}
         >
-          {followLoading ? 'Cargando…' : isFollowing ? 'Siguiendo' : 'Seguir'}
+          {isFollowing ? 'Siguiendo' : 'Seguir'}
         </button>
       </div>
     </article>

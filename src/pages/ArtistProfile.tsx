@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Spinner } from '../components/ui/AppPrimitives';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -17,6 +17,8 @@ import AboutSection from '../components/artist/AboutSection';
 import { fetchEventCards } from '../data/eventQueries';
 import { fetchPostCards } from '../data/postQueries';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
+import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
+import DetailHeader from '../components/ui/DetailHeader';
 
 type ArtistProfileProps = {
   artistId?: string;
@@ -28,6 +30,8 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
   const id = artistId || routeId;
   const navigate = useNavigate();
   const { managedEntities, activeWorkspace } = useWorkspace();
+  const { canFollow, isFollowing, isToggling, toggleFollowSubject } = useFollowedSubjects();
+  const contentRef = useRef<HTMLElement | null>(null);
 
   const [artist, setArtist] = useState<ArtistProfileArtist | null>(null);
   const [upcomingShows, setUpcomingShows] = useState<ArtistProfileEvent[]>([]);
@@ -135,15 +139,6 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
   const limitedUpcoming = upcomingShows.slice(0, 5);
   const limitedPast = pastShows.slice(0, 5);
 
-  const heroBackground = artist?.avatar_url
-    ? {
-        backgroundColor: '#06080d',
-        backgroundImage: `url(${artist.avatar_url})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }
-    : { backgroundColor: '#06080d' };
-
   const handleOpenMap = () => {
     if (!artist) return;
     navigate('/tabs/map', { state: {
@@ -156,6 +151,15 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
   };
 
   const playedCount = pastShows.length + upcomingShows.length;
+
+  const handleToggleFollow = async () => {
+    if (!artist?.subject_id) return;
+    if (!canFollow) {
+      navigate('/welcome');
+      return;
+    }
+    await toggleFollowSubject(artist.subject_id);
+  };
 
   const renderTabContent = () => {
     if (!artist) return null;
@@ -235,7 +239,6 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
               isManager={isManager}
               playedCount={playedCount}
               externalLinks={externalLinks}
-              heroStyle={heroBackground}
               onEdit={() => navigate('/tabs/profile?edit=artist')}
             />
             <ArtistTabs activeTab={activeTab} onSelect={key => setActiveTab(key)} />
@@ -247,7 +250,8 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
   }
 
   return (
-    <AppShell contentWrapperClassName={false}>
+    <AppShell headerProps={null} contentRef={contentRef} contentWrapperClassName={false}>
+      <DetailHeader title={artist?.name || 'Artista'} scrollRef={contentRef} fallbackHref="/tabs/discover" />
       {loading && (
         <div className="flex items-center justify-center py-12">
           <Spinner />
@@ -263,15 +267,16 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
             isManager={isManager}
             playedCount={playedCount}
             externalLinks={externalLinks}
-            heroStyle={heroBackground}
             immersive
+            isFollowing={artist.subject_id ? isFollowing(artist.subject_id) : false}
+            followLoading={artist.subject_id ? isToggling(artist.subject_id) : false}
+            onToggleFollow={handleToggleFollow}
             onEdit={() => navigate('/tabs/profile?edit=artist')}
           />
 
-          <div className="relative z-10 -mt-16 rounded-t-[28px] border-t border-white/10 bg-app-bg backdrop-blur-xl sm:-mt-20">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/[0.03] to-transparent" />
+          <div className="relative">
             <div className="relative flex flex-col gap-6 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
-              <div className="sticky top-[72px] z-20 -mx-4 border-b border-white/10 bg-app-bg/95 px-4 py-2 backdrop-blur-xl">
+              <div className="sticky top-[calc(64px+env(safe-area-inset-top,0px))] z-20 -mx-4 border-b border-app-line bg-app-bg/95 px-4 py-2 backdrop-blur-xl">
                 <ArtistTabs activeTab={activeTab} onSelect={key => setActiveTab(key)} />
               </div>
               <div>{renderTabContent()}</div>

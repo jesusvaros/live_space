@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import Avatar from '../components/ui/Avatar';
 import { Content, Modal, Spinner } from '../components/ui/AppPrimitives';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -544,7 +545,7 @@ const Profile: React.FC = () => {
       <div className="flex flex-col gap-4 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
             {!isManagementMode && (
               <div className="space-y-4 animate-fade-up motion-reduce:animate-none">
-                <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(155deg,rgba(255,107,74,0.2)_0%,rgba(255,107,74,0.08)_38%,rgba(9,13,22,0.95)_100%)] p-4 shadow-[0_18px_42px_rgba(2,6,13,0.35)]">
+                <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(155deg,rgba(255,91,46,0.2)_0%,rgba(255,91,46,0.08)_38%,rgba(9,13,22,0.95)_100%)] p-4 shadow-[0_18px_42px_rgba(2,6,13,0.35)]">
                   <button
                     type="button"
                     aria-label="Editar perfil"
@@ -554,13 +555,12 @@ const Profile: React.FC = () => {
                     <IconEdit className="h-4 w-4" />
                   </button>
                   <div className="flex items-start gap-4">
-                    <div className="h-20 w-20 overflow-hidden rounded-2xl border border-white/20 bg-white/10">
-                      <img
-                        src={profile?.avatar_url || `https://picsum.photos/seed/${profile?.id}/120/120`}
-                        alt="Foto de perfil"
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
+                    <Avatar
+                      name={profile?.display_name || profile?.username || 'Tú'}
+                      src={profile?.avatar_url}
+                      rounded="xl"
+                      className="h-20 w-20 text-[26px]"
+                    />
                     <div className="min-w-0 flex-1">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/65">
                         Perfil personal
@@ -601,19 +601,24 @@ const Profile: React.FC = () => {
                 >
                   <IconEdit className="h-4 w-4" />
                 </button>
-                <div className="h-16 w-16 overflow-hidden bg-white/10">
-                  <img
-                    src={
-                      activeEntity
-                        ? activeEntity.type === 'artist'
-                          ? activeEntity.artist?.avatar_url || `https://picsum.photos/seed/artist-${activeEntity.subject_id}/120/120`
-                          : activeEntity.venue?.photos?.[0] || `https://picsum.photos/seed/venue-${activeEntity.subject_id}/120/120`
-                        : profile?.avatar_url || `https://picsum.photos/seed/${profile?.id}/120/120`
-                    }
-                    alt="Foto de perfil"
-                    className="h-full w-full object-cover"
-                  />
-                </div>
+                <Avatar
+                  name={
+                    (activeEntity
+                      ? activeEntity.type === 'artist'
+                        ? activeEntity.artist?.name
+                        : activeEntity.venue?.name
+                      : profile?.display_name || profile?.username) || 'Tú'
+                  }
+                  src={
+                    activeEntity
+                      ? activeEntity.type === 'artist'
+                        ? activeEntity.artist?.avatar_url
+                        : activeEntity.venue?.photos?.[0]
+                      : profile?.avatar_url
+                  }
+                  rounded="xl"
+                  className="h-16 w-16 text-[22px]"
+                />
                 <div className="flex-1">
                   <h2 className="font-display text-xl font-bold text-white">
                     {activeEntity
@@ -819,7 +824,7 @@ const Profile: React.FC = () => {
                 type="button"
                 className={`rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] transition ${
                   editModalTab === 'config'
-                    ? 'bg-[#ff6b4a] text-white'
+                    ? 'bg-[#ff5b2e] text-white'
                     : 'text-white/65 hover:text-white'
                 }`}
                 onClick={() => setEditModalTab('config')}
@@ -830,7 +835,7 @@ const Profile: React.FC = () => {
                 type="button"
                 className={`rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] transition ${
                   editModalTab === 'logout'
-                    ? 'bg-[#ff6b4a] text-white'
+                    ? 'bg-[#ff5b2e] text-white'
                     : 'text-white/65 hover:text-white'
                 }`}
                 onClick={() => setEditModalTab('logout')}
@@ -841,7 +846,7 @@ const Profile: React.FC = () => {
                 type="button"
                 className={`rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] transition ${
                   editModalTab === 'premium'
-                    ? 'bg-[#ff6b4a] text-white'
+                    ? 'bg-[#ff5b2e] text-white'
                     : 'text-white/65 hover:text-white'
                 }`}
                 onClick={() => setEditModalTab('premium')}
@@ -1089,7 +1094,7 @@ const Profile: React.FC = () => {
 
                 <button
                   type="button"
-                  className="inline-flex w-full items-center justify-center rounded-xl bg-[#ff6b4a] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex w-full items-center justify-center rounded-xl bg-[#ff5b2e] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                   onClick={handleSave}
                   disabled={saving}
                 >

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Spinner } from '../components/ui/AppPrimitives';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -11,6 +11,24 @@ import { mapVenue } from '../data/canonicalMappers';
 import { fetchEventCards } from '../data/eventQueries';
 import { fetchPostCards } from '../data/postQueries';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
+import Button, { buttonClass } from '../components/ui/Button';
+import DetailHeader from '../components/ui/DetailHeader';
+import GeneratedPoster from '../components/ui/GeneratedPoster';
+
+const VENUE_TYPE_LABELS: Record<string, string> = {
+  music_venue: 'Sala de conciertos',
+  club: 'Club',
+  bar: 'Bar',
+  theater: 'Teatro',
+  theatre: 'Teatro',
+  auditorium: 'Auditorio',
+  arena: 'Pabellón',
+  stadium: 'Estadio',
+  festival: 'Festival',
+  outdoor: 'Al aire libre',
+};
+
+const venueTypeLabel = (type?: string | null) => (type ? VENUE_TYPE_LABELS[type] || 'Sala' : 'Sala');
 
 type VenueEvent = Event & {
   organizer?: Profile | null;
@@ -22,6 +40,7 @@ const VenueDetail: React.FC = () => {
   const id = useRouteEntityId();
   const navigate = useNavigate();
   const { user, profile: currentUserProfile } = useAuth();
+  const contentRef = useRef<HTMLElement | null>(null);
   
   const [venue, setVenue] = useState<VenuePlace | null>(null);
   const [events, setEvents] = useState<VenueEvent[]>([]);
@@ -141,7 +160,8 @@ const VenueDetail: React.FC = () => {
   }, [venue]);
 
   return (
-    <AppShell>
+    <AppShell headerProps={null} contentRef={contentRef}>
+      <DetailHeader title={venue?.name || 'Sala'} scrollRef={contentRef} fallbackHref="/tabs/discover" />
       {loading && (
         <div className="flex items-center justify-center py-12">
           <Spinner />
@@ -152,33 +172,40 @@ const VenueDetail: React.FC = () => {
 
       {!loading && venue && (
         <>
-          <section className="relative h-[340px] w-full overflow-hidden bg-black">
+          <section className="relative h-[46vh] min-h-[300px] w-full overflow-hidden">
             {(venue.photos || [])[0] ? (
-              <img src={(venue.photos || [])[0]} alt={venue.name} className="absolute inset-0 h-full w-full object-cover" />
-            ) : null}
-            <div className="absolute inset-x-0 bottom-0 bg-black/70 p-5">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Sala</p>
-              <h1 className="mt-2 font-display text-3xl font-bold text-white">{venue.name}</h1>
-              {addressLine && <p className="mt-2 text-sm text-white/70">{addressLine}</p>}
-              <div className="mt-3 flex items-center gap-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
-                  {followersCount} seguidores
-                </p>
-                {user && (
-                  <button
-                    type="button"
-                    disabled={followLoading}
-                    onClick={handleFollowToggle}
-                    className={`px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] disabled:opacity-60 ${
-                      isFollowing ? 'bg-white/10 text-white/80' : 'bg-[#ff6b4a] text-white'
-                    }`}
-                  >
-                    {followLoading ? <Spinner /> : (isFollowing ? 'Siguiendo' : 'Seguir')}
-                  </button>
-                )}
-              </div>
+              <img src={(venue.photos || [])[0]} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            ) : (
+              <GeneratedPoster title={venue.name} variant="hero" />
+            )}
+            <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-app-bg via-app-bg/60 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 px-4 pb-3">
+              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-app-accent">
+                {[venueTypeLabel(venue.venue_type), venue.capacity ? `aforo ${venue.capacity}` : null].filter(Boolean).join(' · ')}
+              </p>
+              <h1 className="mt-1 font-poster text-[44px] leading-[0.9] text-white">{venue.name}</h1>
+              {addressLine && <p className="mt-2 text-sm text-white/75">{addressLine}</p>}
             </div>
           </section>
+          <div className="flex flex-wrap items-center gap-2 px-4 pt-3">
+            <Button
+              variant={isFollowing ? 'secondary' : 'primary'}
+              disabled={followLoading}
+              onClick={user ? handleFollowToggle : () => navigate('/welcome')}
+            >
+              {isFollowing ? 'Siguiendo' : 'Seguir'}
+            </Button>
+            {venue.website_url && (
+              <a className={buttonClass('secondary')} href={venue.website_url} target="_blank" rel="noreferrer">
+                Web de la sala
+              </a>
+            )}
+            {followersCount > 0 && (
+              <span className="text-sm text-white/55">
+                {followersCount} {followersCount === 1 ? 'seguidor' : 'seguidores'}
+              </span>
+            )}
+          </div>
 
           <div className="flex flex-col gap-8 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
             {(venue.photos || []).length > 1 && (
@@ -191,30 +218,12 @@ const VenueDetail: React.FC = () => {
               </section>
             )}
 
-            {(venue.venue_type || venue.capacity) && (
-              <p className="text-xs text-white/55">
-                    {venue.venue_type || 'Sala'}{venue.capacity ? ` · aforo ${venue.capacity}` : ''}
-                  </p>
-                )}
-
-                {venue.website_url && (
-                  <a
-                    className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70 hover:text-white"
-                    href={venue.website_url}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {venue.website_url.replace(/^https?:\/\//, '')}
-                  </a>
-                )}
-
                 <section className="space-y-3">
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Eventos</p>
-                    <p className="mt-1 text-sm text-white/55">Próximos conciertos en esta sala.</p>
+                    <h2 className="font-display text-xl font-bold text-white">Próximos conciertos</h2>
                   </div>
                   {events.length === 0 ? (
-                    <p className="text-sm text-white/55">Aún no hay eventos aquí.</p>
+                    <p className="text-sm text-white/55">No hay conciertos anunciados ahora mismo.</p>
                   ) : (
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                       {events.map(event => (
@@ -231,11 +240,10 @@ const VenueDetail: React.FC = () => {
 
                 <section className="space-y-3">
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Momentos</p>
-                    <p className="mt-1 text-sm text-white/55">Lo último que se ha subido desde aquí.</p>
+                    <h2 className="font-display text-xl font-bold text-white">Momentos</h2>
                   </div>
                   {moments.length === 0 ? (
-                    <p className="text-sm text-white/55">Aún no hay momentos aquí.</p>
+                    <p className="text-sm text-white/55">Nadie ha subido nada desde aquí todavía. Graba en tu próximo concierto.</p>
                   ) : (
                     <div className="-mx-4 grid grid-cols-3 gap-1">
                       {moments.map(moment => (
@@ -262,13 +270,6 @@ const VenueDetail: React.FC = () => {
                   )}
                 </section>
 
-                <button
-                  type="button"
-                  className="bg-white/10 px-4 py-3 text-sm font-semibold text-white"
-                  onClick={() => navigate(-1)}
-                >
-                  Volver
-                </button>
               </div>
             </>
           )}

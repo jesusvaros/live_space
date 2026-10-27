@@ -40,7 +40,7 @@ export const Content = React.forwardRef<HTMLElement, ContentProps>(function Cont
     <main
       ref={ref}
       className={joinClasses(
-        'relative min-h-0 flex-1 bg-[radial-gradient(circle_at_30%_0%,#1b2232_0%,var(--app-bg)_55%,#0a0d14_100%)]',
+        'relative min-h-0 flex-1 bg-app-bg',
         scrollY ? 'overflow-y-auto overscroll-y-contain' : 'overflow-hidden',
         className,
       )}

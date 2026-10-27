@@ -55,7 +55,7 @@ const ArtistMapSection: React.FC<ArtistMapSectionProps> = ({
           <p className="text-sm text-white/55">
             Abre el mapa para ver dónde toca {artistName}. Empieza filtrado por este artista.
           </p>
-          <div className="mt-3 h-40 rounded-xl border border-white/10 bg-[radial-gradient(circle_at_25%_20%,rgba(255,107,74,0.2),transparent_50%),radial-gradient(circle_at_75%_18%,rgba(122,167,255,0.18),transparent_48%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(0,0,0,0.6))]" />
+          <div className="mt-3 h-40 rounded-xl border border-white/10 bg-[radial-gradient(circle_at_25%_20%,rgba(255,91,46,0.2),transparent_50%),radial-gradient(circle_at_75%_18%,rgba(122,167,255,0.18),transparent_48%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(0,0,0,0.6))]" />
         </div>
       )}
     </div>

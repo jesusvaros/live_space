@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Artist, Event, Profile, VenuePlace } from '../../../lib/types';
+import GeneratedPoster from '../../../components/ui/GeneratedPoster';
 
 type EventPosterTileArtist = Pick<Artist, 'id' | 'name' | 'avatar_url'>;
 
@@ -56,7 +57,7 @@ const EventPosterTile: React.FC<EventPosterTileProps> = ({
   const resolvedTitle = useMemo(() => {
     if (title) return title;
     return getPrimaryArtist(event) || event.name;
-  }, [event.name, title]);
+  }, [event, title]);
 
   const resolvedSubtitle = useMemo(() => {
     if (subtitle) return subtitle;
@@ -71,32 +72,26 @@ const EventPosterTile: React.FC<EventPosterTileProps> = ({
   return (
     <button
       type="button"
-      className={className || 'w-[220px] shrink-0'}
+      className={`${className || 'w-[168px] shrink-0'} text-left`}
       onClick={() => onSelect(event)}
     >
-      <div className="relative aspect-[4/5] overflow-hidden">
+      <div className="relative aspect-[4/5] overflow-hidden rounded-xl bg-app-surface">
         {imageUrl ? (
-          <img src={imageUrl} alt={event.name} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+          <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
         ) : (
-          <div className="absolute inset-0 bg-black" />
+          <GeneratedPoster title={resolvedTitle} />
         )}
         {badge && (
-          <div className="absolute left-3 top-3">
-            <span className="rounded-md bg-black/60 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/90">
-              {badge}
-            </span>
-          </div>
+          <span className="absolute left-2 top-2 rounded-full bg-black/70 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-white">
+            {badge}
+          </span>
         )}
-        <div className="absolute inset-x-0 bottom-0 bg-black/70 p-4 text-left">
-          <p className="font-display text-lg font-bold text-white line-clamp-2">{resolvedTitle}</p>
-          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-white/80 line-clamp-1">
-            {resolvedSubtitle}
-          </p>
-          <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/65 line-clamp-1">
-            {resolvedKicker}
-          </p>
-        </div>
       </div>
+      <p className="mt-2 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-app-accent line-clamp-1">
+        {resolvedKicker}
+      </p>
+      <p className="mt-0.5 font-display text-[15px] font-bold leading-snug text-white line-clamp-2">{resolvedTitle}</p>
+      <p className="mt-0.5 text-[13px] text-white/60 line-clamp-1">{resolvedSubtitle}</p>
     </button>
   );
 };

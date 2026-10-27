@@ -14,10 +14,11 @@
 
 :root {
   color-scheme: dark;
-  --app-bg: #0b0b0d;
-  --app-surface: #0b0b0d;
-  --app-surface-strong: #0b0b0d;
-  --app-ink: #ffffff;
+  --app-bg: #0d0e12;
+  --app-surface: #17191f;
+  --app-surface-strong: #1f222a;
+  --app-line: #2a2d36;
+  --app-ink: #f3efe7;
   --app-muted: rgba(255, 255, 255, 0.68);
   --app-accent: #ff5b2e;
   --app-accent-strong: #ff5b2e;
@@ -26,6 +27,8 @@
   --app-radius: 18px;
   --font-sans: "Instrument Sans", "Space Grotesk", sans-serif;
   --font-display: "Space Grotesk", "Instrument Sans", sans-serif;
+  --font-poster: "Archivo", "Space Grotesk", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
 html,
@@ -58,6 +61,28 @@ body {
 .font-display {
   font-family: var(--font-display);
   letter-spacing: -0.02em;
+}
+
+/* Condensed all-caps display, same as the landing's posters. */
+.font-poster {
+  font-family: var(--font-poster);
+  font-weight: 900;
+  font-stretch: 68%;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Dark basemap from the standard OSM tiles; markers stay untouched. */
+.map-dark .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9) saturate(0.6);
+}
+
+.map-dark.leaflet-container {
+  background: #0d0e12;
 }
 
 /* Map-specific styles (kept, not migrated to Tailwind) */
@@ -103,7 +128,7 @@ body {
 }
 
 .map-filter-chip.is-active {
-  background: rgba(255, 107, 74, 0.18);
+  background: rgba(255, 91, 46, 0.18);
   color: #ffffff;
 }
 

@@ -1,6 +1,8 @@
 import React from 'react';
 import { IconCheckCircle, IconEdit } from '../icons';
 import { ArtistProfileArtist } from './types';
+import Button from '../ui/Button';
+import GeneratedPoster from '../ui/GeneratedPoster';
 
 type LinkItem = { key: string; value: string };
 
@@ -9,8 +11,10 @@ type ArtistHeroProps = {
   isManager: boolean;
   playedCount: number;
   externalLinks: LinkItem[];
-  heroStyle: React.CSSProperties;
   immersive?: boolean;
+  isFollowing?: boolean;
+  followLoading?: boolean;
+  onToggleFollow?: () => void;
   onEdit?: () => void;
 };
 
@@ -46,7 +50,7 @@ const SocialIcon: React.FC<{ name: SocialKey }> = ({ name }) => {
     return (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
         <path d="M21 8.5s0-2-2-2.1C17.2 6.2 12 6.2 12 6.2s-5.2 0-7 .2C3 6.4 3 8.5 3 8.5S3 10.6 3 12v1.5s0 2 2 2.2c1.8.2 7 .2 7 .2s5.2 0 7-.2c2-.2 2-2.2 2-2.2V12s0-1.5 0-3.5z" />
-        <path d="M10 15l4-3-4-3v6z" fill="#0b0b0d" />
+        <path d="M10 15l4-3-4-3v6z" fill="#0d0e12" />
       </svg>
     );
   }
@@ -60,94 +64,84 @@ const SocialIcon: React.FC<{ name: SocialKey }> = ({ name }) => {
   );
 };
 
+const LINK_LABELS: Record<SocialKey, string> = {
+  spotify: 'Spotify',
+  apple_music: 'Apple Music',
+  instagram: 'Instagram',
+  youtube: 'YouTube',
+  website: 'Web',
+};
+
 const ArtistHero: React.FC<ArtistHeroProps> = ({
   artist,
   isManager,
   playedCount,
   externalLinks,
-  heroStyle,
   immersive = false,
+  isFollowing = false,
+  followLoading = false,
+  onToggleFollow,
   onEdit,
 }) => {
   const verifiedBadge = (artist as any)?.is_verified;
-  const wrapperClass = immersive
-    ? 'relative h-[70vh] overflow-hidden sm:h-[76vh]'
-    : 'relative min-h-[420px] overflow-hidden rounded-2xl';
-  const heroContainerClass = immersive
-    ? 'absolute inset-0 overflow-hidden'
-    : 'absolute inset-0 overflow-hidden';
+  const meta = [
+    artist.city || (artist.artist_type === 'band' ? 'Banda' : artist.artist_type === 'solo' ? 'Solista' : null),
+    playedCount > 0 ? `${playedCount} ${playedCount === 1 ? 'concierto' : 'conciertos'}` : null,
+  ].filter(Boolean);
 
   return (
-    <section className={wrapperClass}>
-      <div className={heroContainerClass} style={heroStyle}>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_8%,rgba(255,107,74,0.2),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_84%_12%,rgba(122,167,255,0.16),transparent_52%)]" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-black/24" />
-
-      {isManager && (
-        <button
-          type="button"
-          onClick={onEdit}
-          className="absolute right-3 top-3 z-10 inline-flex items-center gap-2 rounded-full border border-white/25 bg-black/35 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/80 transition-colors hover:border-white/40 hover:text-white sm:right-4 sm:top-4"
-        >
-          <IconEdit size={14} />
-          Editar
-        </button>
-      )}
-
-        <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/65">Artista</p>
-          <h1 className="mt-2 font-display text-3xl font-bold leading-tight text-white sm:text-4xl">{artist.name}</h1>
-          <p className="mt-2 text-sm font-semibold uppercase tracking-[0.18em] text-white/80 line-clamp-1">
-            {artist.city || (artist.artist_type === 'band' ? 'Banda' : 'Solista')}
-            {playedCount > 0 ? ` · ${playedCount} conciertos` : ''}
+    <section>
+      <div className={`relative overflow-hidden ${immersive ? 'h-[52vh] min-h-[320px]' : 'h-[300px] rounded-2xl'}`}>
+        {artist.avatar_url ? (
+          <img src={artist.avatar_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        ) : (
+          <GeneratedPoster title={artist.name} variant="hero" />
+        )}
+        <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-app-bg via-app-bg/60 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 px-4 pb-3">
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-app-accent">
+            Artista{verifiedBadge ? ' · verificado' : ''}
           </p>
-          {verifiedBadge && (
-            <div className="mt-2 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/80">
-              <IconCheckCircle size={14} />
-              Verificado
-            </div>
-          )}
-
-          {artist.bio && (
-            <p
-              className="mt-3 text-sm text-white/80"
-              style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
-            >
-              {artist.bio}
-            </p>
-          )}
-
-          {externalLinks.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {externalLinks.map(link => {
-                const key = link.key as SocialKey;
-                const labelMap: Record<SocialKey, string> = {
-                  spotify: 'Spotify',
-                  apple_music: 'Apple Music',
-                  instagram: 'Instagram',
-                  youtube: 'YouTube',
-                  website: 'Web',
-                };
-                return (
-                  <a
-                    key={key}
-                    href={link.value}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/30 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/80 transition-colors hover:border-white/35 hover:text-white"
-                  >
-                    <SocialIcon name={key} />
-                    {labelMap[key]}
-                  </a>
-                );
-              })}
-            </div>
-          )}
+          <h1 className="mt-1 font-poster text-[48px] leading-[0.88] text-white">{artist.name}</h1>
+          {meta.length > 0 ? <p className="mt-2 text-sm text-white/75">{meta.join(' · ')}</p> : null}
         </div>
       </div>
-      {!immersive && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/80 to-transparent" />
+
+      <div className="flex flex-wrap items-center gap-2 px-4 pt-3">
+        {onToggleFollow ? (
+          <Button
+            variant={isFollowing ? 'secondary' : 'primary'}
+            disabled={followLoading}
+            onClick={onToggleFollow}
+            icon={isFollowing ? <IconCheckCircle size={16} /> : null}
+          >
+            {isFollowing ? 'Siguiendo' : 'Seguir'}
+          </Button>
+        ) : null}
+        {isManager && (
+          <Button variant="secondary" onClick={onEdit} icon={<IconEdit size={16} />}>
+            Editar
+          </Button>
+        )}
+        {externalLinks.map(link => {
+          const key = link.key as SocialKey;
+          return (
+            <a
+              key={key}
+              href={link.value}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={LINK_LABELS[key]}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-app-line bg-app-surface text-white/85"
+            >
+              <SocialIcon name={key} />
+            </a>
+          );
+        })}
+      </div>
+
+      {artist.bio && (
+        <p className="px-4 pt-3 text-sm text-white/75 line-clamp-3">{artist.bio}</p>
       )}
     </section>
   );
