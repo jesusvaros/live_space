@@ -33,7 +33,15 @@ export type ParserKey =
   | 'radio-city-agenda'
   | 'sala-custom-agenda'
   | 'rollercoaster-agenda'
-  | 'malandar-agenda';
+  | 'malandar-agenda'
+  | 'honky-tonk-agenda'
+  | 'wurlitzer-agenda'
+  | 'intruso-agenda'
+  | 'maravillas-agenda'
+  | 'libertad8-agenda'
+  | 'moby-dick-agenda'
+  | 'tribe-events-lineup'
+  | 'cafe-central-agenda';
 
 export type RawScrapedEvent = {
   sourceUrl: string;

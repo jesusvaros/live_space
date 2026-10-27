@@ -239,4 +239,57 @@ export const seedSources: SeedSource[] = [
     reviewedAt: LOCAL_SCENE_REVIEW,
     structuredDataVerified: true,
   }),
+  // Madrid local scene (agent): own parsers for agendas the auto-probe could
+  // not read. robots.txt allows every agenda path. Costello (empty agenda),
+  // Copérnico (no dates after May 2026), Sala Vesta (ticketing widget only)
+  // and RockVille (monthly poster image only) stay out.
+  source('Wurlitzer Ballroom', 'https://wurlitzerballroom.com/agenda', 'Madrid', 'https://wurlitzerballroom.com/', {
+    parserKey: 'wurlitzer-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Honky Tonk', 'https://clubhonky.com/programacion/', 'Madrid', 'https://clubhonky.com/', {
+    parserKey: 'honky-tonk-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('El Intruso', 'https://www.intrusobar.com/', 'Madrid', 'https://www.intrusobar.com/', {
+    parserKey: 'intruso-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Maravillas Club', 'https://www.maravillasclub.com/category/conciertos/', 'Madrid', 'https://www.maravillasclub.com/', {
+    parserKey: 'maravillas-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Tempo Club', 'https://tempoclub.es/conciertos/', 'Madrid', 'https://tempoclub.es/', {
+    parserKey: 'tribe-events-lineup',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+    categoryAllowlist: ['Conciertos'],
+  }),
+  source('Café Libertad 8', 'https://libertad8cafe.es/eventos/', 'Madrid', 'https://libertad8cafe.es/', {
+    parserKey: 'libertad8-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Moby Dick Club', 'https://www.mobydickclub.com/programacion.php', 'Madrid', 'https://www.mobydickclub.com/', {
+    parserKey: 'moby-dick-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
+  source('Café Central', 'https://cafecentralmadrid.com/programacion/', 'Madrid', 'https://cafecentralmadrid.com/', {
+    parserKey: 'cafe-central-agenda',
+    ready: true,
+    reviewedAt: LOCAL_SCENE_REVIEW,
+    structuredDataVerified: true,
+  }),
 ];

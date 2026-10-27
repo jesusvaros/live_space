@@ -58,10 +58,23 @@ El 27 de octubre de 2026 se añadieron salas pequeñas de la escena local, que e
 el foco del producto: Café La Palma, Sala Galileo Galilei y Gruta 77 en Madrid;
 Marula Café, Sidecar y Wolf en Barcelona. Todas tienen agenda pública y su
 `robots.txt` lo permite. Sala Villanos se descartó porque su `robots.txt` bloquea
-cualquier robot que no sea un buscador. Wurlitzer, Costello, Copérnico,
-Heliogàbal, Sala Vol, Upload, Meteoro, Honky Tonk, El Intruso y Bóveda necesitan
-un parser propio. El Perro de la Parte de Atrás del Coche solo publica en
-Instagram. Las nuevas fuentes entran en la base con `npm run scrape:seed`.
+cualquier robot que no sea un buscador. El Perro de la Parte de Atrás del Coche
+solo publica en Instagram. Las nuevas fuentes entran en la base con
+`npm run scrape:seed`.
+
+El mismo día se escribieron parsers propios para las agendas que el sondeo no
+sabía leer. En Madrid se añadieron Wurlitzer Ballroom, Honky Tonk, El Intruso,
+Maravillas Club, Tempo Club, Café Libertad 8, Moby Dick Club y Café Central. Se
+descartaron Costello (agenda vacía), Copérnico (sin fechas desde mayo de 2026),
+Sala Vesta (solo un widget de venta) y RockVille (un cartel mensual en imagen).
+En Barcelona, Marula, Wolf y Sidecar pasan a parsers estructurados y se suman
+Heliogàbal, Sala Vol, Freedonia y Soda Acústic. Se descartaron La Nau y Harlem
+porque su `robots.txt` bloquea cualquier robot que no sea un buscador. También
+23 Robadors y Salamandra, que ponen una comprobación anti-bot que no se esquiva.
+Upload y La Textil tienen el dominio en venta, y Bóveda y Meteoro no publican
+conciertos con fecha. Todos devuelven un `sourceEventId` estable, la fecha con
+año y todos los artistas de la noche, con el cabeza de cartel primero, para que
+se publiquen sin revisión.
 
 Valencia abre con seis salas de la escena local, todas con agenda propia y
 `robots.txt` que lo permite: Loco Club (`json-ld-bill-agenda`, JSON-LD que

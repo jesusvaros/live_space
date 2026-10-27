@@ -30,6 +30,14 @@ import { radioCityAgendaParser } from './parsers/radioCityAgendaParser.js';
 import { salaCustomAgendaParser } from './parsers/salaCustomAgendaParser.js';
 import { rollercoasterAgendaParser } from './parsers/rollercoasterAgendaParser.js';
 import { malandarAgendaParser } from './parsers/malandarAgendaParser.js';
+import { honkyTonkAgendaParser } from './parsers/honkyTonkAgendaParser.js';
+import { wurlitzerAgendaParser } from './parsers/wurlitzerAgendaParser.js';
+import { intrusoAgendaParser } from './parsers/intrusoAgendaParser.js';
+import { maravillasAgendaParser } from './parsers/maravillasAgendaParser.js';
+import { libertad8AgendaParser } from './parsers/libertad8AgendaParser.js';
+import { mobyDickAgendaParser } from './parsers/mobyDickAgendaParser.js';
+import { tribeEventsLineupParser } from './parsers/tribeEventsLineupParser.js';
+import { cafeCentralAgendaParser } from './parsers/cafeCentralAgendaParser.js';
 
 const parserRegistry: Record<ParserKey, VenueParser> = {
   'apolo-agenda': apoloAgendaParser,
@@ -63,6 +71,14 @@ const parserRegistry: Record<ParserKey, VenueParser> = {
   'sala-custom-agenda': salaCustomAgendaParser,
   'rollercoaster-agenda': rollercoasterAgendaParser,
   'malandar-agenda': malandarAgendaParser,
+  'honky-tonk-agenda': honkyTonkAgendaParser,
+  'wurlitzer-agenda': wurlitzerAgendaParser,
+  'intruso-agenda': intrusoAgendaParser,
+  'maravillas-agenda': maravillasAgendaParser,
+  'libertad8-agenda': libertad8AgendaParser,
+  'moby-dick-agenda': mobyDickAgendaParser,
+  'tribe-events-lineup': tribeEventsLineupParser,
+  'cafe-central-agenda': cafeCentralAgendaParser,
 };
 
 export const getParser = (key: ParserKey): VenueParser => {
