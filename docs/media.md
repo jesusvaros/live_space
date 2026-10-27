@@ -43,3 +43,9 @@ comprobación silenciosa cuenta los clips (si ya hay acceso a la galería) y
 sustituye el aviso genérico por «Hemos encontrado N vídeos…», o lo cancela si no
 hay nada. Si la app no se abre, el aviso genérico programado hace de respaldo.
 La confirmación llama a `enqueueMomentUploads` (`src/media/uploadQueue.ts`).
+
+## Clips importados
+
+Los vídeos de Instagram, TikTok y YouTube no se descargan ni se re-alojan: se
+guarda el enlace y los metadatos oEmbed y se reproduce el original. Ver
+[Importar clips](./importar-clips.md).

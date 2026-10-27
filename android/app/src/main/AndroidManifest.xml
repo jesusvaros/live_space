@@ -39,6 +39,15 @@
                 <data android:scheme="com.livespace.app" android:host="upload" />
             </intent-filter>
 
+            <!-- Share sheet: Instagram/TikTok/YouTube -> Compartir -> Live Space.
+                 The link arrives as EXTRA_TEXT; @capgo/capacitor-share-target hands it to
+                 src/features/socialImport/ShareTargetListener.tsx, which opens /importar. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+
         </activity>
 
         <provider

@@ -5,6 +5,7 @@ import { Event, PostWithRelations, VenuePlace } from '../lib/types';
 import AppShell from '../components/AppShell';
 import { IconHeart, IconShare } from '../components/icons';
 import { fetchPostCardById } from '../data/postQueries';
+import { ExternalMomentCard, isExternalPost } from '../features/socialImport';
 import { MomentReuseControls } from '../features/community';
 
 const PostDetail: React.FC = () => {
@@ -48,6 +49,7 @@ const PostDetail: React.FC = () => {
 
       {!loading && post && (
         <>
+          {isExternalPost(post) ? <ExternalMomentCard post={post} /> : (
           <div className="relative aspect-[4/5] w-full overflow-hidden bg-black">
             {post.media_type === 'video' ? (
               <video
@@ -74,6 +76,7 @@ const PostDetail: React.FC = () => {
               </p>
             </div>
           </div>
+          )}
 
           <div className="flex flex-col gap-6 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
             <div className="flex gap-2">

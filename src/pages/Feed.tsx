@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAppResume } from '../shared/hooks/useAppResume';
 import { supabase } from '../lib/supabase';
 import { fetchPostCards } from '../data/postQueries';
+import { ExternalMomentCard, isExternalPost } from '../features/socialImport';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { useFollowedEntities } from '../hooks/useFollowedEntities';
 import ShareSheet from '../components/ShareSheet';
@@ -94,7 +95,9 @@ const MomentSlide: React.FC<SlideProps> = ({ post, songNumber, group, liked, onL
 
   return (
     <article ref={ref} className="relative h-full w-full shrink-0 snap-start snap-always overflow-hidden bg-black">
-      {post.media_type === 'video' ? (
+      {isExternalPost(post) ? (
+        <ExternalMomentCard post={post} variant="media" />
+      ) : post.media_type === 'video' ? (
         <video
           ref={videoRef}
           muted

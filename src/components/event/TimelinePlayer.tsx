@@ -3,6 +3,7 @@ import { Spinner } from '../ui/AppPrimitives';
 import { PostWithSetlist } from '../../lib/types';
 import TimelineScrubber, { TimelineBucket } from './TimelineScrubber';
 import SecondStack from './SecondStack';
+import { ExternalMomentCard, isExternalPost } from '../../features/socialImport';
 
 export type MediaFilter = 'all' | 'video' | 'image';
 
@@ -130,7 +131,9 @@ const TimelinePlayer: React.FC<TimelinePlayerProps> = ({
             className="absolute inset-0 animate-[timeline-fade_0.35s_ease] motion-reduce:animate-none"
             onClick={togglePlayback}
           >
-            {selectedMoment.media_type === 'video' ? (
+            {isExternalPost(selectedMoment) ? (
+              <ExternalMomentCard post={selectedMoment} variant="media" />
+            ) : selectedMoment.media_type === 'video' ? (
               <video
                 ref={videoRef}
                 playsInline
@@ -161,7 +164,7 @@ const TimelinePlayer: React.FC<TimelinePlayerProps> = ({
             {stageChip}
           </div>
         ) : null}
-        {selectedMoment?.media_type === 'video' && paused && !loading ? (
+        {selectedMoment?.media_type === 'video' && !isExternalPost(selectedMoment) && paused && !loading ? (
           <button
             type="button"
             aria-label="Reproducir"

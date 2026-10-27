@@ -19,6 +19,7 @@ import SetlistAttribution from '../components/event/SetlistAttribution';
 import { enableMomentNudges } from '../features/moments/momentNudge';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { EventStatsCard, VenueFeedbackPrompt } from '../features/community';
+import { EventTagBadge } from '../features/socialImport';
 
 type EventDetailData = Event & {
   organizer?: Profile | null;
@@ -723,6 +724,7 @@ const EventDetail: React.FC = () => {
               )}
               {engagementError && <p className="px-4 pt-3 text-sm text-rose-400">{engagementError}</p>}
               <div className="px-4 pt-5 empty:hidden">
+                <EventTagBadge eventId={event.id} event={event} className="mb-3" />
                 <EventStatsCard eventId={event.id} />
               </div>
             </div>
@@ -793,6 +795,8 @@ const EventDetail: React.FC = () => {
                     Al subirlo lo colocamos en su canción, junto a lo que grabó el resto del público.
                   </p>
                 </div>
+
+                <EventTagBadge eventId={event.id} event={event} />
 
                 <EventStatsCard eventId={event.id} />
 
