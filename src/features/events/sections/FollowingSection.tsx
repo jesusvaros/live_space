@@ -98,11 +98,14 @@ const FollowingSection: React.FC<FollowingSectionProps> = ({ events, entities, s
               onClick={() => navigate(entity.kind === 'artist' ? `/tabs/artist/${entity.id}` : `/tabs/venue/${entity.id}`)}
               className="flex w-[68px] shrink-0 flex-col items-center gap-1.5 text-app-ink"
             >
-              <span className={`rounded-full border-2 p-0.5 ${ringed ? 'border-app-accent' : 'border-app-line'}`}>
-                <Avatar name={entity.name} src={entity.imageUrl} className="h-[60px] w-[60px] text-[22px]" />
+              <span className={`${entity.kind === 'venue' ? 'rounded-[18px]' : 'rounded-full'} border-2 p-0.5 ${ringed ? 'border-app-accent' : 'border-app-line'}`}>
+                <Avatar name={entity.name} src={entity.imageUrl} kind={entity.kind} badge className="h-[60px] w-[60px] text-[22px]" />
               </span>
               <span className={`w-full truncate text-center text-xs font-semibold ${ringed ? '' : 'text-[#c9c5bd]'}`}>
                 {entity.name}
+              </span>
+              <span className="-mt-1 font-mono text-[9px] font-semibold uppercase tracking-[0.08em] text-[#8f8b84]">
+                {entity.kind === 'artist' ? 'Artista' : 'Sala'}
               </span>
             </button>
           );

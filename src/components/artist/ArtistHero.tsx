@@ -1,5 +1,5 @@
 import React from 'react';
-import { IconCheckCircle, IconEdit } from '../icons';
+import { IconCheckCircle, IconEdit, IconMic } from '../icons';
 import { ArtistProfileArtist } from './types';
 import Button from '../ui/Button';
 import GeneratedPoster from '../ui/GeneratedPoster';
@@ -103,7 +103,8 @@ const ArtistHero: React.FC<ArtistHeroProps> = ({
         <div className="absolute inset-0 bg-[linear-gradient(to_top,#0d0e12_4%,rgba(13,14,18,0.25)_60%,rgba(13,14,18,0.5))]" />
         <div className="absolute inset-x-4 bottom-1.5">
           <PhotoCredit credit={artist.avatar_url ? artist.avatar_credit : null} className="mb-2" />
-          <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-app-accent">
+          <p className="flex items-center gap-1.5 font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-app-accent">
+            <IconMic size={14} />
             {kicker.join(' · ')}
           </p>
           <h1 className={`mt-1.5 font-poster leading-[0.86] text-app-ink ${artist.name.length > 16 ? 'text-[40px]' : 'text-[56px]'}`}>

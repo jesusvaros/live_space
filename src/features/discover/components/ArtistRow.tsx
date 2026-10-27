@@ -15,7 +15,7 @@ type ArtistRowProps = {
 const ArtistRow: React.FC<ArtistRowProps> = ({ artist, isFollowing, followLoading, onToggleFollow, onOpenProfile }) => (
   <div className="flex min-w-0 flex-col items-center gap-1 text-center">
     <button type="button" onClick={onOpenProfile} className="flex w-full min-w-0 flex-col items-center gap-1.5 text-app-ink">
-      <Avatar name={artist.name} src={artist.avatar_url} className="h-[92px] w-[92px] text-[30px]" />
+      <Avatar name={artist.name} src={artist.avatar_url} kind="artist" className="h-[92px] w-[92px] text-[30px]" />
       <span className="w-full truncate text-[13px] font-semibold">{artist.name}</span>
     </button>
     <button

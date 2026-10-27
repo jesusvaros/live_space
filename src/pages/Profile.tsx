@@ -443,7 +443,7 @@ const Profile: React.FC = () => {
                 onClick={() => navigate(entity.kind === 'artist' ? `/tabs/artist/${entity.id}` : `/tabs/venue/${entity.id}`)}
                 className="flex w-full items-center gap-3 px-3 py-2.5 text-left"
               >
-                <Avatar name={entity.name} src={entity.imageUrl} rounded={entity.kind === 'venue' ? 'xl' : 'full'} className="h-11 w-11 text-[15px]" />
+                <Avatar name={entity.name} src={entity.imageUrl} kind={entity.kind} badge className="h-11 w-11 text-[15px]" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-display text-[15px] font-bold text-app-ink">{entity.name}</span>
                   <span className="block truncate text-xs text-[#8f8b84]">

@@ -9,7 +9,7 @@ import AppShell from '../components/AppShell';
 import { EventListItem } from '../features/events/types';
 import { getEventCoverImage, getPrimaryArtistName } from '../features/events/utils';
 import MomentGrid from '../components/ui/MomentGrid';
-import { IconCheckCircle } from '../components/icons';
+import { IconCheckCircle, IconMap } from '../components/icons';
 import { VenueFeedbackSummary } from '../features/community';
 import { mapVenue } from '../data/canonicalMappers';
 import { fetchEventCards } from '../data/eventQueries';
@@ -197,7 +197,8 @@ const VenueDetail: React.FC = () => {
             <div className="absolute inset-0 bg-[linear-gradient(to_top,#0d0e12_4%,rgba(13,14,18,0)_60%)]" />
             <div className="absolute inset-x-4 bottom-1.5">
               <PhotoCredit credit={venueCover ? venue.cover_credit : null} className="mb-2" />
-              <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-app-accent">
+              <p className="flex items-center gap-1.5 font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-app-accent">
+                <IconMap size={14} />
                 {[venueTypeLabel(venue.venue_type), venue.city].filter(Boolean).join(' · ')}
               </p>
               <h1 className={`mt-1.5 font-poster leading-[0.86] text-app-ink ${venue.name.length > 16 ? 'text-[44px]' : 'text-[60px]'}`}>
