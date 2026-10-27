@@ -1,342 +1,253 @@
 import React from 'react';
-import { Content, Modal } from '../ui/AppPrimitives';
+import { Modal } from '../ui/AppPrimitives';
 import { supabase } from '../../lib/supabase';
+import { MAP_WHEN_LABELS, type MapArtistFilter, type MapWhen } from '../../hooks/useMapFilters';
+import { chipClass } from './MapFilterBar';
 
 type MapFilterModalProps = {
   isOpen: boolean;
   onDismiss: () => void;
-  filterGenres: string;
-  onGenresChange: (value: string) => void;
-  priceMin: string;
-  priceMax: string;
-  onPriceMinChange: (value: string) => void;
-  onPriceMaxChange: (value: string) => void;
-  filterDayPart: 'day' | 'night' | '';
-  onDayPartChange: (value: 'day' | 'night' | '') => void;
-  filterBandOnly: boolean;
-  onToggleBand: (value: boolean) => void;
-  selectedArtists: { id: string; name: string; avatar_url: string | null }[];
-  onAddArtist: (artist: { id: string; name: string; avatar_url: string | null }) => void;
-  onRemoveArtist: (id: string) => void;
   autoFocusArtist?: boolean;
-  filterGoing: boolean;
-  filterAttended: boolean;
-  onToggleGoing: (value: boolean) => void;
-  onToggleAttended: (value: boolean) => void;
+  when: MapWhen;
+  onWhenChange: (value: MapWhen) => void;
+  city: string | null;
+  cities: string[];
+  onCityChange: (value: string | null) => void;
+  artists: MapArtistFilter[];
+  onAddArtist: (artist: MapArtistFilter) => void;
+  onRemoveArtist: (id: string) => void;
+  includePast: boolean;
+  onIncludePastChange: (value: boolean) => void;
+  resultCount: number;
   onClear: () => void;
-  disableAttendance: boolean;
-  filterDate: string;
-  onDateChange: (value: string) => void;
-  showVenues: boolean;
-  onToggleVenues: (value: boolean) => void;
 };
+
+const sectionLabel = 'font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-app-ink/50';
 
 const MapFilterModal: React.FC<MapFilterModalProps> = ({
   isOpen,
   onDismiss,
-  filterGenres,
-  onGenresChange,
-  priceMin,
-  priceMax,
-  onPriceMinChange,
-  onPriceMaxChange,
-  filterDayPart,
-  onDayPartChange,
-  filterBandOnly,
-  onToggleBand,
-  selectedArtists,
+  autoFocusArtist = false,
+  when,
+  onWhenChange,
+  city,
+  cities,
+  onCityChange,
+  artists,
   onAddArtist,
   onRemoveArtist,
-  autoFocusArtist = false,
-  filterGoing,
-  filterAttended,
-  onToggleGoing,
-  onToggleAttended,
+  includePast,
+  onIncludePastChange,
+  resultCount,
   onClear,
-  disableAttendance,
-  filterDate,
-  onDateChange,
-  showVenues,
-  onToggleVenues,
 }) => {
   const [artistQuery, setArtistQuery] = React.useState('');
-  const [artistResults, setArtistResults] = React.useState<
-    { id: string; name: string; avatar_url: string | null }[]
-  >([]);
+  const [artistResults, setArtistResults] = React.useState<MapArtistFilter[]>([]);
   const [searching, setSearching] = React.useState(false);
   const artistInputRef = React.useRef<HTMLInputElement | null>(null);
 
   React.useEffect(() => {
-    if (isOpen && autoFocusArtist && artistInputRef.current) {
-      artistInputRef.current.focus();
-    }
+    if (isOpen && autoFocusArtist) artistInputRef.current?.focus();
   }, [isOpen, autoFocusArtist]);
 
-  const handleArtistSearch = async () => {
+  React.useEffect(() => {
     const term = artistQuery.trim();
     if (!term) {
       setArtistResults([]);
       return;
     }
-    try {
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
       setSearching(true);
-      const { data } = await supabase
-        .from('v_subject_artists')
-        .select('artist_id, name, avatar_url, artist_type')
-        .ilike('name', `%${term}%`)
-        .order('name', { ascending: true })
-        .limit(6);
-      setArtistResults(
-        (data || []).map((item: any) => ({
-          id: item.artist_id,
-          name: item.name,
-          avatar_url: item.avatar_url ?? null,
-        }))
-      );
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  React.useEffect(() => {
-    if (!artistQuery.trim()) {
-      setArtistResults([]);
-      return;
-    }
-    const timer = window.setTimeout(() => handleArtistSearch(), 350);
-    return () => window.clearTimeout(timer);
+      try {
+        const { data } = await supabase
+          .from('v_subject_artists')
+          .select('artist_id, name, avatar_url')
+          .ilike('name', `%${term}%`)
+          .order('name', { ascending: true })
+          .limit(6);
+        if (cancelled) return;
+        setArtistResults(
+          (data || []).map((item: any) => ({
+            id: String(item.artist_id),
+            name: String(item.name ?? ''),
+            avatar_url: item.avatar_url ?? null,
+          }))
+        );
+      } finally {
+        if (!cancelled) setSearching(false);
+      }
+    }, 300);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [artistQuery]);
 
+  const whenOptions: { value: MapWhen; label: string }[] = [
+    { value: 'all', label: 'Cualquier fecha' },
+    ...(Object.keys(MAP_WHEN_LABELS) as Exclude<MapWhen, 'all'>[]).map(value => ({
+      value,
+      label: MAP_WHEN_LABELS[value],
+    })),
+  ];
+
   return (
-    <Modal isOpen={isOpen} onDidDismiss={onDismiss} title="Filtros del mapa">
-      <Content fullscreen>
-        <div className="min-h-full bg-app-bg p-5">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="font-display text-lg font-bold text-white">Filtros</h2>
-            <button
-              type="button"
-              className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70"
-              onClick={onDismiss}
-            >
-              Cerrar
-            </button>
-          </div>
-
-          <div className="mt-6 space-y-6">
-            <div className="space-y-3 bg-white/5 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/65">Mostrar</p>
-              <label className="flex items-center justify-between gap-3 text-sm text-white/80">
-                <span className="flex items-center gap-2">Salas</span>
-                <span className="relative inline-flex h-6 w-11 items-center">
-                  <input
-                    type="checkbox"
-                    className="peer sr-only"
-                    checked={showVenues}
-                    onChange={e => onToggleVenues(e.target.checked)}
-                  />
-                  <span className="h-full w-full rounded-full bg-white/10 transition peer-checked:bg-[#ff6b4a]/80" />
-                  <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5" />
-                </span>
-              </label>
-            </div>
-            <div className="space-y-3 bg-white/5 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/65">Cuándo</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  className={`bg-white/10 px-3 py-2 text-sm font-semibold ${
-                    filterDayPart === 'day' ? 'text-app-accent' : 'text-white/75'
-                  }`}
-                  onClick={() => onDayPartChange(filterDayPart === 'day' ? '' : 'day')}
-                >
-                  Día
-                </button>
-                <button
-                  type="button"
-                  className={`bg-white/10 px-3 py-2 text-sm font-semibold ${
-                    filterDayPart === 'night' ? 'text-app-accent' : 'text-white/75'
-                  }`}
-                  onClick={() => onDayPartChange(filterDayPart === 'night' ? '' : 'night')}
-                >
-                  Noche
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <label className="flex items-center gap-2 text-sm text-white/80">
-                  <input
-                    type="checkbox"
-                    checked={filterGoing}
-                    onChange={e => onToggleGoing(e.target.checked)}
-                    disabled={disableAttendance}
-                    className="accent-[#ff6b4a]"
-                  />
-                  <span>Voy</span>
-                </label>
-                <label className="flex items-center gap-2 text-sm text-white/80">
-                  <input
-                    type="checkbox"
-                    checked={filterAttended}
-                    onChange={e => onToggleAttended(e.target.checked)}
-                    disabled={disableAttendance}
-                    className="accent-[#ff6b4a]"
-                  />
-                  <span>Asistidos</span>
-                </label>
-              </div>
-              <label className="flex flex-col gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
-                  Fecha concreta
-                </span>
-                <input
-                  type="date"
-                  value={filterDate}
-                  onChange={e => onDateChange(e.target.value)}
-                  className="w-full bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none"
-                />
-              </label>
-            </div>
-
-            <div className="space-y-4 bg-white/5 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/65">Cartel</p>
-              <label className="flex flex-col gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
-                  Géneros (separados por comas)
-                </span>
-                <input
-                  className="w-full bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none"
-                  value={filterGenres}
-                  onChange={e => onGenresChange(e.target.value)}
-                  placeholder="Jazz, Rock"
-                />
-              </label>
-              <label className="flex items-center justify-between gap-3 text-sm text-white/80">
-                <span className="flex items-center gap-2">Solo bandas</span>
-                <span className="relative inline-flex h-6 w-11 items-center">
-                  <input
-                    type="checkbox"
-                    className="peer sr-only"
-                    checked={filterBandOnly}
-                    onChange={e => onToggleBand(e.target.checked)}
-                  />
-                  <span className="h-full w-full rounded-full bg-white/10 transition peer-checked:bg-[#ff6b4a]/80" />
-                  <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5" />
-                </span>
-              </label>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <input
-                    className="flex-1 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none"
-                    value={artistQuery}
-                    onChange={e => setArtistQuery(e.target.value)}
-                    ref={artistInputRef}
-                    placeholder="Busca un artista"
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleArtistSearch();
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="bg-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-white"
-                    onClick={handleArtistSearch}
-                    disabled={searching}
-                  >
-                    {searching ? 'Buscando…' : 'Buscar'}
-                  </button>
-                </div>
-                {artistResults.length > 0 && (
-                  <div className="bg-white/5 p-3 text-sm text-white">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/65">Resultados</p>
-                    <div className="mt-2 space-y-2">
-                      {artistResults.map(artist => (
-                        <button
-                          key={artist.id}
-                          type="button"
-                          className="flex w-full items-center gap-3 bg-white/5 px-3 py-2 text-left hover:bg-white/10"
-                          onClick={() => {
-                            onAddArtist(artist);
-                            setArtistQuery('');
-                            setArtistResults([]);
-                          }}
-                        >
-                          <div className="h-8 w-8 overflow-hidden rounded-full bg-white/10">
-                            {artist.avatar_url ? (
-                              <img src={artist.avatar_url} alt={artist.name} className="h-full w-full object-cover" />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center text-[10px] text-white/60">A</div>
-                            )}
-                          </div>
-                          <span>{artist.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {selectedArtists.length > 0 && (
-                  <div className="bg-white/5 p-3 text-sm text-white">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/65">Activos</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {selectedArtists.map(artist => (
-                        <span
-                          key={artist.id}
-                          className="inline-flex items-center gap-2 bg-white/10 px-3 py-1 text-xs"
-                        >
-                          {artist.name}
-                          <button
-                            type="button"
-                            className="text-white/70 hover:text-white"
-                            onClick={() => onRemoveArtist(artist.id)}
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-3 bg-white/5 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/65">Precio</p>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="flex flex-col gap-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
-                    Mín.
-                  </span>
-                  <input
-                    className="w-full bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none"
-                    value={priceMin}
-                    onChange={e => onPriceMinChange(e.target.value)}
-                    placeholder="0"
-                  />
-                </label>
-                <label className="flex flex-col gap-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
-                    Máx.
-                  </span>
-                  <input
-                    className="w-full bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none"
-                    value={priceMax}
-                    onChange={e => onPriceMaxChange(e.target.value)}
-                    placeholder="50"
-                  />
-                </label>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              className="inline-flex w-full items-center justify-center bg-white/10 px-4 py-3 text-sm font-semibold text-white"
-              onClick={onClear}
-            >
-              Borrar filtros
-            </button>
-          </div>
+    <Modal isOpen={isOpen} onDidDismiss={onDismiss} title="Filtros del mapa" className="sheet">
+      <div className="flex max-h-[90dvh] flex-col bg-app-bg text-app-ink">
+        <div className="flex items-center justify-between px-5 pt-3">
+          <div className="mx-auto h-1 w-10 rounded-full bg-white/20" aria-hidden="true" />
         </div>
-      </Content>
+        <div className="flex items-center justify-between gap-4 px-5 pt-2">
+          <h2 className="font-display text-xl font-bold">Filtros</h2>
+          <button
+            type="button"
+            className="inline-flex h-11 items-center rounded-full px-3 text-sm font-semibold text-app-ink/70 hover:text-app-ink"
+            onClick={onDismiss}
+          >
+            Cerrar
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 pb-4 pt-4">
+          <section className="space-y-3">
+            <p className={sectionLabel}>Cuándo</p>
+            <div className="flex flex-wrap gap-2">
+              {whenOptions.map(option => (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={when === option.value}
+                  className={chipClass(when === option.value)}
+                  onClick={() => onWhenChange(option.value)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {cities.length > 0 ? (
+            <section className="space-y-3">
+              <p className={sectionLabel}>Ciudad</p>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" aria-pressed={!city} className={chipClass(!city)} onClick={() => onCityChange(null)}>
+                  Todas
+                </button>
+                {cities.map(name => (
+                  <button
+                    key={name}
+                    type="button"
+                    aria-pressed={city === name}
+                    className={chipClass(city === name)}
+                    onClick={() => onCityChange(name)}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          <section className="space-y-3">
+            <p className={sectionLabel}>Artista</p>
+            <input
+              ref={artistInputRef}
+              type="text"
+              inputMode="search"
+              aria-label="Buscar artista"
+              placeholder="Busca un artista"
+              value={artistQuery}
+              onChange={event => setArtistQuery(event.target.value)}
+              className="h-12 w-full appearance-none rounded-full border border-[var(--app-line,#2a2d36)] bg-app-surface px-4 text-[15px] text-app-ink outline-none placeholder:text-app-ink/45 focus:border-app-accent/70"
+            />
+            {artists.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {artists.map(artist => (
+                  <span key={artist.id} className={`${chipClass(true)} pr-1`}>
+                    {artist.name}
+                    <button
+                      type="button"
+                      aria-label={`Quitar ${artist.name}`}
+                      onClick={() => onRemoveArtist(artist.id)}
+                      className="inline-flex h-9 items-center rounded-full bg-black/20 px-3 text-[12px] font-semibold"
+                    >
+                      Quitar
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            {searching ? <p className="text-sm text-app-ink/50">Buscando…</p> : null}
+            {artistResults.length > 0 ? (
+              <ul className="divide-y divide-[var(--app-line,#2a2d36)] overflow-hidden rounded-2xl border border-[var(--app-line,#2a2d36)] bg-app-surface">
+                {artistResults.map(artist => {
+                  const selected = artists.some(item => item.id === artist.id);
+                  return (
+                    <li key={artist.id}>
+                      <button
+                        type="button"
+                        disabled={selected}
+                        onClick={() => {
+                          onAddArtist(artist);
+                          setArtistQuery('');
+                        }}
+                        className="flex min-h-12 w-full items-center gap-3 px-4 py-2 text-left text-[15px] text-app-ink disabled:opacity-50"
+                      >
+                        {artist.avatar_url ? (
+                          <img src={artist.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover" />
+                        ) : (
+                          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10 font-mono text-xs">
+                            {artist.name.slice(0, 1).toUpperCase()}
+                          </span>
+                        )}
+                        <span className="min-w-0 flex-1 truncate font-semibold">{artist.name}</span>
+                        <span className="text-xs text-app-ink/50">{selected ? 'Añadido' : 'Añadir'}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
+          </section>
+
+          <section>
+            <label className="flex min-h-12 cursor-pointer items-center justify-between gap-4 rounded-2xl border border-[var(--app-line,#2a2d36)] bg-app-surface px-4 py-3">
+              <span>
+                <span className="block text-[15px] font-semibold">Incluir conciertos pasados</span>
+                <span className="block text-xs text-app-ink/50">Por defecto solo ves lo que viene</span>
+              </span>
+              <input
+                type="checkbox"
+                className="peer sr-only"
+                checked={includePast}
+                onChange={event => onIncludePastChange(event.target.checked)}
+              />
+              <span
+                aria-hidden="true"
+                className="relative h-7 w-12 shrink-0 rounded-full bg-white/15 transition-colors after:absolute after:left-1 after:top-1 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-transform after:content-[''] peer-checked:bg-app-accent peer-checked:after:translate-x-5 peer-focus-visible:ring-2 peer-focus-visible:ring-app-accent"
+              />
+            </label>
+          </section>
+        </div>
+
+        <div className="flex gap-3 border-t border-[var(--app-line,#2a2d36)] px-5 pb-[calc(16px+env(safe-area-inset-bottom,0px))] pt-3">
+          <button
+            type="button"
+            onClick={onClear}
+            className="inline-flex h-12 items-center justify-center rounded-full border border-[var(--app-line,#2a2d36)] px-5 text-sm font-semibold text-app-ink/80"
+          >
+            Quitar filtros
+          </button>
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="inline-flex h-12 flex-1 items-center justify-center rounded-full bg-app-accent px-5 text-sm font-bold text-white"
+          >
+            Ver {resultCount} {resultCount === 1 ? 'concierto' : 'conciertos'}
+          </button>
+        </div>
+      </div>
     </Modal>
   );
 };
