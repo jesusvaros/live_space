@@ -1,4 +1,5 @@
 import React from 'react';
+import Avatar from '../../../components/ui/Avatar';
 import { DiscoverVenue } from '../types';
 
 type VenueRowProps = {
@@ -14,7 +15,6 @@ const VenueRow: React.FC<VenueRowProps> = ({
   venue,
   isFollowing,
   followLoading,
-  canFollow,
   onToggleFollow,
   onOpenProfile,
 }) => {
@@ -22,16 +22,10 @@ const VenueRow: React.FC<VenueRowProps> = ({
   const posters = venue.recent_posters || [];
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+    <div className="rounded-2xl border border-app-line bg-app-surface p-3">
       <div className="flex items-center justify-between gap-4">
         <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={onOpenProfile}>
-          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/5">
-            {cover ? (
-              <img src={cover} alt={venue.name} className="h-full w-full object-cover" />
-            ) : (
-              <div className="h-full w-full bg-white/10" />
-            )}
-          </div>
+          <Avatar name={venue.name} src={cover} rounded="xl" className="h-12 w-12 text-[16px]" />
           <div className="min-w-0">
             <p className="font-display text-base font-bold text-white line-clamp-1">{venue.name}</p>
             <p className="mt-0.5 text-xs text-white/55 line-clamp-1">{venue.city}</p>
@@ -40,24 +34,22 @@ const VenueRow: React.FC<VenueRowProps> = ({
 
         <button
           type="button"
-          disabled={!canFollow || followLoading}
+          disabled={followLoading}
           onClick={e => {
             e.stopPropagation();
             onToggleFollow();
           }}
-          className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] disabled:opacity-60 ${
-            isFollowing
-              ? 'border-white/25 bg-white/10 text-white/80'
-              : 'border-app-accent/35 bg-app-accent text-white'
+          className={`min-h-9 shrink-0 rounded-full px-3.5 text-[12px] font-semibold transition disabled:opacity-60 ${
+            isFollowing ? 'border border-app-line text-white/70' : 'bg-app-ink text-app-bg'
           }`}
         >
-          {followLoading ? 'Cargando…' : isFollowing ? 'Siguiendo' : 'Seguir'}
+          {isFollowing ? 'Siguiendo' : 'Seguir'}
         </button>
       </div>
 
       {posters.length > 0 && (
         <div className="mt-3 border-t border-white/10 pt-3">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/55">Últimos pósters</p>
+          <p className="mb-2 text-[12px] text-white/55">Últimos carteles</p>
           <div className="flex items-center gap-2">
             {posters.slice(0, 3).map((poster, index) => (
               <div

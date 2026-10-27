@@ -8,7 +8,7 @@ import {
   Routes,
   useLocation,
 } from 'react-router-dom';
-import { IconCalendar, IconUser, IconCompass, IconPlus, IconPlay } from './components/icons';
+import { IconCalendar, IconUser, IconCompass, IconMap, IconPlay } from './components/icons';
 import { Spinner } from './components/ui/AppPrimitives';
 import { useAuth } from './contexts/AuthContext';
 import { useWorkspace } from './contexts/WorkspaceContext';
@@ -106,11 +106,11 @@ const TabsLayout: React.FC<TabsLayoutProps> = ({
   isArtistWorkspace,
 }) => {
   const navItemClass = ({ isActive }: { isActive: boolean }) =>
-    `flex min-h-11 flex-1 flex-col items-center justify-center gap-1 rounded-xl text-[10px] transition-colors ${
-      isActive ? 'bg-app-accent/20 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
+    `flex min-h-12 flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${
+      isActive ? 'text-app-accent' : 'text-white/55 hover:text-white'
     }`;
 
-  const createHref = isArtistWorkspace ? '/tabs/create-event' : '/tabs/upload';
+  void isArtistWorkspace;
 
   return (
     <div className="flex h-dvh min-h-0 flex-col bg-app-bg text-white">
@@ -118,26 +118,26 @@ const TabsLayout: React.FC<TabsLayoutProps> = ({
         {deferredPage(<Outlet />)}
       </div>
       <nav
-        className="z-[2000] grid shrink-0 grid-cols-5 gap-1 border-t border-white/10 bg-[#0b0b0d]/95 px-2 pb-[calc(8px+env(safe-area-inset-bottom,0px))] pt-2 backdrop-blur"
-        aria-label="Primary navigation"
+        className="z-[2000] grid shrink-0 grid-cols-5 gap-1 border-t border-app-line bg-app-bg/95 px-2 pb-[calc(4px+env(safe-area-inset-bottom,0px))] pt-1 backdrop-blur"
+        aria-label="Navegación principal"
       >
-        <NavLink to={mainTabHref} className={navItemClass} aria-label="Home">
+        <NavLink to={mainTabHref} className={navItemClass} aria-label="Inicio">
           <IconCalendar className="h-5 w-5" />
           <span>Inicio</span>
         </NavLink>
-        <NavLink to="/tabs/discover" className={navItemClass} aria-label="Explore">
+        <NavLink to="/tabs/discover" className={navItemClass} aria-label="Explorar">
           <IconCompass className="h-5 w-5" />
           <span>Explorar</span>
         </NavLink>
-        <NavLink to={createHref} className={navItemClass} aria-label="Create">
-          <IconPlus className="h-5 w-5" />
-          <span>Crear</span>
+        <NavLink to="/tabs/map" className={navItemClass} aria-label="Mapa">
+          <IconMap className="h-5 w-5" />
+          <span>Mapa</span>
         </NavLink>
-        <NavLink to="/tabs/feed" className={navItemClass} aria-label="Moments">
+        <NavLink to="/tabs/feed" className={navItemClass} aria-label="Momentos">
           <IconPlay className="h-5 w-5" />
           <span>Momentos</span>
         </NavLink>
-        <NavLink to={profileTabHref} className={navItemClass} aria-label="Profile">
+        <NavLink to={profileTabHref} className={navItemClass} aria-label="Perfil">
           <IconUser className="h-5 w-5" />
           <span>Perfil</span>
         </NavLink>

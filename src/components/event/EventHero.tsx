@@ -1,5 +1,6 @@
 import React from 'react';
 import { Profile } from '../../lib/types';
+import GeneratedPoster from '../ui/GeneratedPoster';
 
 export type EventEntity = {
   id: string;
@@ -8,32 +9,19 @@ export type EventEntity = {
 };
 
 type EventHeroProps = {
+  title: string;
   coverImageUrl?: string | null;
-  actions?: React.ReactNode;
 };
 
-const EventHero: React.FC<EventHeroProps> = ({
-  coverImageUrl,
-  actions,
-}) => {
-  return (
-    <section className="relative h-[70vh] sm:h-[76vh]">
-      <div className="fixed inset-x-0 top-[calc(56px+env(safe-area-inset-top,0px))] z-0 h-[70vh] overflow-hidden sm:h-[76vh]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_6%,rgba(255,107,74,0.24),transparent_52%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_12%,rgba(122,167,255,0.18),transparent_54%)]" />
-        {coverImageUrl ? (
-          <img src={coverImageUrl} alt="Portada del evento" className="absolute inset-0 h-full w-full object-cover" />
-        ) : null}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/62 to-black/24" />
-
-        {actions ? (
-          <div className="absolute right-3 top-3 z-10 flex items-center gap-2 sm:right-4 sm:top-4 sm:gap-3">
-            {actions}
-          </div>
-        ) : null}
-      </div>
-    </section>
-  );
-};
+const EventHero: React.FC<EventHeroProps> = ({ title, coverImageUrl }) => (
+  <section className="relative h-[46vh] min-h-[300px] overflow-hidden">
+    {coverImageUrl ? (
+      <img src={coverImageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+    ) : (
+      <GeneratedPoster title={title} variant="hero" />
+    )}
+    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-app-bg to-transparent" />
+  </section>
+);
 
 export default EventHero;

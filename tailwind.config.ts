@@ -17,6 +17,7 @@ export default {
           accent: 'var(--app-accent)',
           accentStrong: 'var(--app-accent-strong)',
           ring: 'var(--app-ring)',
+          line: 'var(--app-line)',
         },
       },
       borderRadius: {

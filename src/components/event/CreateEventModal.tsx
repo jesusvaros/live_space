@@ -191,7 +191,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   return (
     <div className="relative flex h-full max-h-[100vh] flex-col overflow-hidden bg-app-bg">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-52 bg-[radial-gradient(circle_at_8%_8%,rgba(255,107,74,0.2),transparent_56%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-52 bg-[radial-gradient(circle_at_8%_8%,rgba(255,91,46,0.2),transparent_56%)]" />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(circle_at_92%_10%,rgba(122,167,255,0.16),transparent_62%)]" />
 
       <div className="relative z-10 flex flex-1 flex-col overflow-hidden">

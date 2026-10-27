@@ -1,4 +1,5 @@
 import React from 'react';
+import Avatar from '../ui/Avatar';
 import { Profile, ManagedEntity } from '../../lib/types';
 import { IconEdit } from '../icons';
 
@@ -19,9 +20,9 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
 }) => {
   const avatarUrl = isManagementMode && activeEntity
     ? activeEntity.type === 'artist'
-      ? activeEntity.artist?.avatar_url || `https://picsum.photos/seed/artist-${activeEntity.subject_id}/120/120`
-      : activeEntity.venue?.photos?.[0] || `https://picsum.photos/seed/venue-${activeEntity.subject_id}/120/120`
-    : profile?.avatar_url || `https://picsum.photos/seed/${profile?.id}/120/120`;
+      ? activeEntity.artist?.avatar_url || null
+      : activeEntity.venue?.photos?.[0] || null
+    : profile?.avatar_url || null;
 
   const displayName = isManagementMode && activeEntity
     ? activeEntity.type === 'artist'
@@ -37,13 +38,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
 
   return (
     <div className="flex items-center gap-4 animate-fade-up motion-reduce:animate-none">
-      <div className="h-16 w-16 overflow-hidden rounded-full bg-slate-800 ring-2 ring-white/5">
-        <img
-          src={avatarUrl}
-          alt="Foto de perfil"
-          className="h-full w-full object-cover"
-        />
-      </div>
+      <Avatar name={displayName || 'Tú'} src={avatarUrl} className="h-16 w-16 text-[22px]" />
       <div className="flex-1">
         <h2 className="font-display text-xl text-slate-50">
           {displayName}
@@ -55,7 +50,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
       <div className="flex flex-col gap-2">
         <button
           type="button"
-          className="inline-flex items-center gap-2 rounded-xl border border-[#ff6b4a]/40 px-3 py-1.5 text-xs font-semibold text-[#ffd1c4] transition hover:bg-[#ff6b4a]/10"
+          className="inline-flex items-center gap-2 rounded-xl border border-[#ff5b2e]/40 px-3 py-1.5 text-xs font-semibold text-[#ffd1c4] transition hover:bg-[#ff5b2e]/10"
           onClick={onEditClick}
         >
           <IconEdit className="h-4 w-4" />

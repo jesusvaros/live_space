@@ -4,7 +4,7 @@ const config: CapacitorConfig = {
   appId: 'com.livespace.app',
   appName: 'Live Space',
   webDir: 'dist',
-  backgroundColor: '#0b0b0d',
+  backgroundColor: '#0d0e12',
   plugins: {
     CapacitorHttp: {
       enabled: true

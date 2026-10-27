@@ -119,7 +119,7 @@ const TimelinePlayer: React.FC<TimelinePlayerProps> = ({
                 type="button"
                 className={`rounded-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] transition-all ${
                   mediaFilter === filter
-                    ? 'bg-app-accent text-white shadow-[0_4px_10px_rgba(255,107,74,0.22)]'
+                    ? 'bg-app-accent text-white shadow-[0_4px_10px_rgba(255,91,46,0.22)]'
                     : 'text-white/60 hover:text-white'
                 }`}
                 onClick={() => onFilterChange(filter)}

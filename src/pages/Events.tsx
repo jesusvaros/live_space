@@ -1,12 +1,12 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import AppShell from '../components/AppShell';
 import { useNavigate } from 'react-router-dom';
-import { useWorkspace } from '../contexts/WorkspaceContext';
 import { useLastKnownLocation } from '../shared/hooks/useLastKnownLocation';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { calculateDistanceKm, getEventCoverImage, formatDate, getPrimaryArtistName, toNumber } from '../features/events/utils';
 import { NearbyEventListItem } from '../features/events/types';
-import NearbyHeroSection from '../features/events/sections/NearbyHeroSection';
+import CityListingSection, { LISTING_CITIES } from '../features/events/sections/CityListingSection';
+import { useAuth } from '../contexts/AuthContext';
 import TrendingSection from '../features/events/sections/TrendingSection';
 import DiscoverSection from '../features/events/sections/DiscoverSection';
 import FollowedFromArtistsSection from '../features/events/sections/FollowedFromArtistsSection';
@@ -26,7 +26,11 @@ const EVENTS_LOOKBACK_DAYS = 4;
 
 const Events: React.FC = () => {
   const navigate = useNavigate();
-  const { canCreateEvent } = useWorkspace();
+  const { profile } = useAuth();
+  const [city, setCity] = useState<string>(() => {
+    const preferred = profile?.primary_city;
+    return LISTING_CITIES.find(option => option.toLowerCase() === preferred?.toLowerCase()) || 'Madrid';
+  });
 
   const startOfToday = useMemo(() => {
     const date = new Date();
@@ -54,12 +58,7 @@ const Events: React.FC = () => {
   );
   const endIso = useMemo(() => endOfEventsWindow.toISOString(), [endOfEventsWindow]);
 
-  const {
-    location,
-    loading: locationLoading,
-    error: locationError,
-    requestLocation,
-  } = useLastKnownLocation();
+  const { location } = useLastKnownLocation();
 
   const { events, loading, error: loadError } = useEventsList({ startIso, endIso });
   const { hero, nextUpcoming, dismissPendingMoments } = useUserConcertHero({ events });
@@ -83,8 +82,19 @@ const Events: React.FC = () => {
     return items;
   }, [endOfNearbyWindow, events, location, startOfToday]);
 
+  // Without location, the preview shows the listing city's next two weeks.
   const mapPins = useMemo(() => {
-    return nearbyUpcoming
+    const source = nearbyUpcoming.length
+      ? nearbyUpcoming
+      : events.filter(event => {
+          const startsAt = new Date(event.starts_at);
+          return (
+            (event.city || '').toLowerCase() === city.toLowerCase() &&
+            startsAt >= startOfToday &&
+            startsAt <= endOfNearbyWindow
+          );
+        });
+    return source
       .map(event => {
         const lat = toNumber(event.latitude ?? event.venue_place?.latitude ?? null);
         const lng = toNumber(event.longitude ?? event.venue_place?.longitude ?? null);
@@ -92,8 +102,8 @@ const Events: React.FC = () => {
         return { id: event.id, lat, lng };
       })
       .filter(Boolean)
-      .slice(0, 12) as { id: string; lat: number; lng: number }[];
-  }, [nearbyUpcoming]);
+      .slice(0, 24) as { id: string; lat: number; lng: number }[];
+  }, [city, endOfNearbyWindow, events, nearbyUpcoming, startOfToday]);
 
   // Hero photos: nearby first, then anything upcoming that has a cover.
   const featured = useMemo(() => {
@@ -139,11 +149,8 @@ const Events: React.FC = () => {
       />
 
       {hero.kind !== 'just_attended' && (
-        <div className="relative z-10 -mt-16 rounded-t-[28px] border-t border-white/10 bg-app-bg/95 backdrop-blur-xl sm:-mt-20">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/[0.03] to-transparent" />
+        <div className="relative z-10">
           <div className="relative flex flex-col gap-8 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
-            <h2 className="font-display text-2xl font-bold text-white sm:text-3xl">Tu próxima noche</h2>
-
             {hero.kind !== 'cold_start' && nextUpcoming && (
               <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                 <div>
@@ -165,18 +172,13 @@ const Events: React.FC = () => {
               </section>
             )}
 
-            {hero.kind === 'cold_start' && (
-              <NearbyHeroSection
-                canCreateEvent={canCreateEvent}
-                loading={loading}
-                loadError={loadError}
-                location={location}
-                locationLoading={locationLoading}
-                locationError={locationError}
-                onRequestLocation={requestLocation}
-                nearbyUpcoming={nearbyUpcoming}
-              />
-            )}
+            <CityListingSection
+              events={events}
+              city={city}
+              onCityChange={setCity}
+              loading={loading}
+              error={loadError}
+            />
 
             <React.Suspense fallback={<div className="h-56 rounded-2xl bg-white/[0.03]" />}>
               <MapPreviewSection
@@ -186,11 +188,14 @@ const Events: React.FC = () => {
               />
             </React.Suspense>
 
-            <TrendingSection loading={trendingLoading} trending={trending} meta={trendingMeta} />
+            {trending.length > 0 && (
+              <TrendingSection loading={trendingLoading} trending={trending} meta={trendingMeta} />
+            )}
 
             <DiscoverSection
               loading={suggestionsLoading}
               canFollow={canFollow}
+              city={city}
               followedSubjectIds={followedSubjectIds}
               suggestedArtists={suggestedArtists}
               suggestedVenues={suggestedVenues}

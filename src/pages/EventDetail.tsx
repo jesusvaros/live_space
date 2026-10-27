@@ -6,14 +6,15 @@ import { Event, PostWithSetlist, Profile, VenuePlace, EventSetlistEntry, Artist 
 import { clearCached } from '../lib/requestCache';
 import { eventService } from '../services/event.service';
 import { useAuth } from '../contexts/AuthContext';
-import { useWorkspace } from '../contexts/WorkspaceContext';
 import { buildMomentItems, parseDatetimeLocalValue, MomentItem } from '../lib/moments';
 import AppShell from '../components/AppShell';
 import EventHero, { EventEntity } from '../components/event/EventHero';
 import TimelinePlayer, { MediaFilter } from '../components/event/TimelinePlayer';
 import { TimelineBucket } from '../components/event/TimelineScrubber';
 import ShareSheet from '../components/ShareSheet';
-import { IconBookmark, IconBookmarkFilled, IconCalendar, IconCompass, IconMap, IconPlus, IconTicket, IconUser } from '../components/icons';
+import { IconBookmark, IconBookmarkFilled, IconPlus, IconShare, IconTicket } from '../components/icons';
+import Button from '../components/ui/Button';
+import DetailHeader from '../components/ui/DetailHeader';
 import { fetchEventCardById } from '../data/eventQueries';
 import { createConfiguredCloudinaryMediaProvider, uploadEventPost } from '../media';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
@@ -34,7 +35,6 @@ const EventDetail: React.FC = () => {
   const locationState = location.state as EventDetailLocationState | null;
   const id = useRouteEntityId() || '';
   const { user } = useAuth();
-  const { activeWorkspace } = useWorkspace();
   const [event, setEvent] = useState<EventDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -64,25 +64,12 @@ const EventDetail: React.FC = () => {
   const [engagementError, setEngagementError] = useState('');
   const [showReliveBanner, setShowReliveBanner] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const contentRef = useRef<HTMLElement | null>(null);
   const momentItemsRef = useRef<MomentItem[]>([]);
   const followFxTimerRef = useRef<number | null>(null);
   const attendanceFxTimerRef = useRef<number | null>(null);
   const bucketCacheRef = useRef<Record<string, PostWithSetlist[]>>({});
   const bucketLoadingRef = useRef<Record<string, boolean>>({});
-  const activeArtistId = activeWorkspace?.type === 'artist'
-    ? (activeWorkspace.artist as any)?.id || (activeWorkspace.artist as any)?.artist_id || null
-    : null;
-  const activeVenueId = activeWorkspace?.type === 'venue'
-    ? (activeWorkspace.venue as any)?.id || (activeWorkspace.venue as any)?.venue_place_id || null
-    : null;
-  const isArtistWorkspace = activeWorkspace?.type === 'artist';
-  const mainTabHref = isArtistWorkspace ? '/tabs/mySpace' : '/tabs/events';
-  const profileTabHref =
-    activeWorkspace?.type === 'artist' && activeArtistId
-      ? `/tabs/artist/${activeArtistId}`
-      : activeWorkspace?.type === 'venue' && activeVenueId
-        ? `/tabs/venue/${activeVenueId}`
-        : '/tabs/profile';
 
   const scrollToTop = () => {
     document.querySelector<HTMLElement>('.event-detail-content')?.scrollTo({ top: 0, behavior: 'auto' });
@@ -670,11 +657,6 @@ const EventDetail: React.FC = () => {
   const attendanceTarget: 'going' | 'attended' = isPastEvent ? 'attended' : 'going';
   const attendanceLabel = isPastEvent ? 'Fui' : 'Voy';
   const attendanceActive = attendanceStatus === attendanceTarget;
-  const baseHeroChipClass = 'relative inline-flex items-center gap-2 overflow-hidden rounded-full border px-3 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-white/90 backdrop-blur-md transition-all duration-200 hover:border-white/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none';
-  const neutralHeroChipClass = 'border-white/25 bg-[linear-gradient(145deg,rgba(3,6,12,0.72),rgba(12,18,30,0.82))]';
-  const followActiveHeroChipClass = 'border-[#ff6b4a]/80 bg-[linear-gradient(140deg,rgba(255,107,74,0.3),rgba(255,107,74,0.16)_65%,rgba(13,18,30,0.88))] text-white shadow-[0_0_0_1px_rgba(255,107,74,0.2),0_4px_12px_rgba(0,0,0,0.18)]';
-  const attendanceActiveHeroChipClass = 'border-[#25d47b]/80 bg-[linear-gradient(140deg,rgba(37,212,123,0.28),rgba(37,212,123,0.14)_65%,rgba(13,18,30,0.88))] text-white shadow-[0_0_0_1px_rgba(37,212,123,0.2),0_4px_12px_rgba(0,0,0,0.18)]';
-  const attendancePastActiveHeroChipClass = 'border-[#f3bf4a]/80 bg-[linear-gradient(140deg,rgba(243,191,74,0.26),rgba(243,191,74,0.13)_65%,rgba(13,18,30,0.88))] text-white shadow-[0_0_0_1px_rgba(243,191,74,0.2),0_4px_12px_rgba(0,0,0,0.18)]';
 
   const triggerEngagementFx = (action: 'follow' | 'attendance') => {
     if (action === 'follow') {
@@ -725,7 +707,7 @@ const EventDetail: React.FC = () => {
   };
 
   return (
-    <AppShell contentWrapperClassName={false} contentClassName="event-detail-content">
+    <AppShell headerProps={null} contentRef={contentRef} contentWrapperClassName={false} contentClassName="event-detail-content">
           {loading && (
             <div className="flex items-center justify-center py-12">
               <Spinner />
@@ -736,65 +718,28 @@ const EventDetail: React.FC = () => {
 
           {!loading && event && (
             <>
-              <EventHero
-                coverImageUrl={event.cover_image_url ?? undefined}
-                actions={
-                  <>
-                    <button
-                      type="button"
-                      className={`${baseHeroChipClass} ${followed ? followActiveHeroChipClass : neutralHeroChipClass} ${
-                        followAnimating ? 'scale-[1.02]' : ''
-                      }`}
-                      onClick={handleFollowClick}
-                      disabled={followLoading}
-                      aria-pressed={followed}
-                    >
-                      <span
-                        className={`pointer-events-none absolute inset-0 rounded-full border border-current ${
-                          followAnimating ? 'animate-ping opacity-40 motion-reduce:animate-none' : 'opacity-0'
-                        }`}
-                      />
-                      <span className={`inline-flex items-center justify-center ${followAnimating ? 'animate-pulse motion-reduce:animate-none' : ''}`}>
-                        {followed ? (
-                          <IconBookmarkFilled className="h-[19px] w-[19px]" />
-                        ) : (
-                          <IconBookmark className="h-[19px] w-[19px]" />
-                        )}
-                      </span>
-                      <span>Guardar</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`${baseHeroChipClass} ${
-                        attendanceActive
-                          ? isPastEvent
-                            ? attendancePastActiveHeroChipClass
-                            : attendanceActiveHeroChipClass
-                          : neutralHeroChipClass
-                      } ${attendanceAnimating ? 'scale-[1.02]' : ''}`}
-                      onClick={handleAttendanceClick}
-                      disabled={attendanceLoading}
-                      aria-pressed={attendanceActive}
-                    >
-                      <span
-                        className={`pointer-events-none absolute inset-0 rounded-full border border-current ${
-                          attendanceAnimating ? 'animate-ping opacity-40 motion-reduce:animate-none' : 'opacity-0'
-                        }`}
-                      />
-                      <span className={`inline-flex items-center justify-center ${attendanceAnimating ? 'animate-pulse motion-reduce:animate-none' : ''}`}>
-                        <IconTicket className="h-[19px] w-[19px]" />
-                      </span>
-                      <span>{attendanceLabel}</span>
-                    </button>
-                  </>
-                }
+              <DetailHeader
+                title={heroTitle}
+                scrollRef={contentRef}
+                actions={(
+                  <button
+                    type="button"
+                    aria-label="Compartir"
+                    className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-black/45 text-white backdrop-blur-md"
+                    onClick={() => setShowShare(true)}
+                  >
+                    <IconShare size={19} />
+                  </button>
+                )}
               />
+              <EventHero title={heroTitle} coverImageUrl={event.cover_image_url} />
 
-              <div className="relative z-10 -mt-16 rounded-t-[28px] border-t border-white/10 bg-app-bg/95 backdrop-blur-xl sm:-mt-20">
+              <div className="relative z-10 -mt-10">
                 <div className="flex flex-col gap-6 p-4 pb-[calc(110px+env(safe-area-inset-bottom,0px))]">
                   <div className="space-y-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/65">Evento</p>
-                    <h1 className="font-display text-3xl font-bold leading-tight text-white sm:text-4xl">{heroTitle}</h1>
+                    <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-app-accent">Concierto</p>
+                    <h1 className="font-poster text-[44px] leading-[0.9] text-white">{heroTitle}</h1>
+                    {!event.name.toLowerCase().includes(heroTitle.toLowerCase()) ? <p className="text-sm text-white/70">{event.name}</p> : null}
                     {heroMeta ? <div className="text-sm text-white/80">{heroMeta}</div> : null}
                     {entities.length > 0 && (
                       <div className="flex flex-wrap gap-2 pt-1">
@@ -813,7 +758,7 @@ const EventDetail: React.FC = () => {
                   </div>
 
                   {showReliveBanner && (
-                    <div className="rounded-2xl border border-app-accent/30 bg-[linear-gradient(135deg,rgba(255,107,74,0.18),rgba(255,107,74,0.06)_60%,rgba(255,255,255,0.02))] p-4 shadow-[0_8px_18px_rgba(0,0,0,0.18)]">
+                    <div className="rounded-2xl border border-app-accent/30 bg-[linear-gradient(135deg,rgba(255,91,46,0.18),rgba(255,91,46,0.06)_60%,rgba(255,255,255,0.02))] p-4 shadow-[0_8px_18px_rgba(0,0,0,0.18)]">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-app-accent">Revívelo</p>
                       <p className="mt-2 font-display text-lg font-bold text-white">Añade tus momentos</p>
                       <p className="mt-1 text-xs text-white/70">Comparte lo que viviste antes de que se te olvide.</p>
@@ -877,65 +822,38 @@ const EventDetail: React.FC = () => {
                 </div>
               </div>
 
-              {!showAddMoments && (
+              <div className="fixed inset-x-0 bottom-0 z-[1300] flex items-center gap-2 border-t border-app-line bg-app-bg/95 px-4 pb-[calc(10px+env(safe-area-inset-bottom,0px))] pt-2.5 backdrop-blur-xl">
                 <button
                   type="button"
-                  onClick={handlePrimaryCtaClick}
-                  className="fixed bottom-[calc(82px+env(safe-area-inset-bottom,0px))] right-4 z-[1400] inline-flex items-center gap-2 rounded-full border border-app-accent/45 bg-[linear-gradient(135deg,rgba(255,107,74,0.95),rgba(255,138,110,0.92))] px-4 py-3 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(255,107,74,0.3)] transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98] motion-reduce:transition-none"
+                  aria-label={followed ? 'Quitar de guardados' : 'Guardar'}
+                  aria-pressed={followed}
+                  disabled={followLoading}
+                  onClick={handleFollowClick}
+                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition ${
+                    followed ? 'border-app-accent bg-app-accent/15 text-app-accent' : 'border-app-line bg-app-surface text-white'
+                  } ${followAnimating ? 'scale-105' : ''}`}
                 >
-                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/20">
-                    <IconPlus className="h-4 w-4" />
-                  </span>
-                  <span>Añadir momento</span>
+                  {followed ? <IconBookmarkFilled className="h-5 w-5" /> : <IconBookmark className="h-5 w-5" />}
                 </button>
-              )}
-
-              <div className="fixed inset-x-0 bottom-0 z-[1300] border-t border-white/10 bg-[rgba(11,11,13,0.92)] backdrop-blur-xl">
-                <div className="grid h-16 grid-cols-4 items-center px-4 pb-[env(safe-area-inset-bottom,0px)]">
-                  <button
-                    type="button"
-                    aria-label="Inicio"
-                    className="inline-flex items-center justify-center text-app-accent"
-                    onClick={() => navigate(mainTabHref)}
-                  >
-                    <IconCalendar className="h-5 w-5" />
-                  </button>
-                  {isArtistWorkspace ? (
-                    <button
-                      type="button"
-                      aria-label="Crear evento"
-                      className="inline-flex items-center justify-center text-white/75 transition-colors hover:text-white"
-                      onClick={() => navigate('/tabs/create-event')}
-                    >
-                      <IconPlus className="h-5 w-5" />
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      aria-label="Descubrir"
-                      className="inline-flex items-center justify-center text-white/75 transition-colors hover:text-white"
-                      onClick={() => navigate('/tabs/discover')}
-                    >
-                      <IconCompass className="h-5 w-5" />
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    aria-label="Mapa"
-                    className="inline-flex items-center justify-center text-white/75 transition-colors hover:text-white"
-                    onClick={() => navigate('/tabs/map')}
-                  >
-                    <IconMap className="h-5 w-5" />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Perfil"
-                    className="inline-flex items-center justify-center text-white/75 transition-colors hover:text-white"
-                    onClick={() => navigate(profileTabHref)}
-                  >
-                    <IconUser className="h-5 w-5" />
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  aria-pressed={attendanceActive}
+                  disabled={attendanceLoading}
+                  onClick={handleAttendanceClick}
+                  className={`flex h-12 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition ${
+                    attendanceActive
+                      ? isPastEvent
+                        ? 'border-[#f3bf4a] bg-[#f3bf4a]/15 text-[#f3bf4a]'
+                        : 'border-[#25d47b] bg-[#25d47b]/15 text-[#25d47b]'
+                      : 'border-app-line bg-app-surface text-white'
+                  } ${attendanceAnimating ? 'scale-105' : ''}`}
+                >
+                  <IconTicket className="h-5 w-5" />
+                  {attendanceLabel}
+                </button>
+                <Button size="lg" className="flex-1" icon={<IconPlus className="h-5 w-5" />} onClick={handlePrimaryCtaClick}>
+                  Momento
+                </Button>
               </div>
             </>
           )}
@@ -1029,7 +947,7 @@ const EventDetail: React.FC = () => {
 
               <button
                 type="button"
-                className="mt-4 inline-flex w-full items-center justify-center bg-[#ff6b4a] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-4 inline-flex w-full items-center justify-center bg-[#ff5b2e] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={handleUploadMoments}
                 disabled={uploading || momentItems.length === 0}
               >
