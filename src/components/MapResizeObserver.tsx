@@ -15,10 +15,6 @@ const MapResizeObserver = () => {
       }
       rafId = requestAnimationFrame(() => {
         map.invalidateSize();
-        const maplibreMap = (map as any)._maplibreMap;
-        if (maplibreMap?.resize) {
-          maplibreMap.resize();
-        }
       });
     };
 

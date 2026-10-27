@@ -22,10 +22,7 @@ const nearbyZoom = 14;
 const mapViewKey = 'live_space.map.view.v2';
 const EMPTY_EVENTS: MapEvent[] = [];
 
-// OSM raster darkened to match the app. Only the tile pane is filtered so pins
-// keep the accent colour.
-const darkTiles =
-  '[&_.leaflet-tile-pane]:[filter:invert(1)_hue-rotate(180deg)_brightness(0.85)_contrast(0.9)_saturate(0.6)]';
+// `.map-dark` (index.css) darkens the OSM tiles only, so pins keep the accent colour.
 const darkAttribution =
   '[&_.leaflet-control-attribution]:!bg-black/50 [&_.leaflet-control-attribution]:!text-[10px] [&_.leaflet-control-attribution]:!text-white/55 [&_.leaflet-control-attribution_a]:!text-white/70';
 
@@ -144,7 +141,7 @@ const Map: React.FC = () => {
         <MapContainer
           center={initialView?.center ?? defaultCenter}
           zoom={initialView?.zoom ?? defaultZoom}
-          className={`h-full w-full ${darkTiles} ${darkAttribution}`}
+          className={`map-dark h-full w-full ${darkAttribution}`}
           zoomControl={false}
           ref={setMapInstance}
         >
@@ -170,7 +167,7 @@ const Map: React.FC = () => {
             onOpenFilters={() => setShowFilters(true)}
           />
           {!eventsQuery.loading && venueGroups.length === 0 && events.length > 0 ? (
-            <p className="mx-auto mt-3 w-fit rounded-full border border-[var(--app-line,#2a2d36)] bg-app-surface/90 px-4 py-2 text-sm text-app-ink/70 backdrop-blur-md">
+            <p className="mx-auto mt-3 w-fit rounded-full border border-app-line bg-app-surface/90 px-4 py-2 text-sm text-app-ink/70 backdrop-blur-md">
               Ningún concierto con estos filtros
             </p>
           ) : null}

@@ -21,7 +21,7 @@ export const chipClass = (active: boolean) =>
   `inline-flex h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-4 text-[13px] font-semibold transition-colors ${
     active
       ? 'border-app-accent bg-app-accent text-white'
-      : 'border-[var(--app-line,#2a2d36)] bg-app-surface/90 text-app-ink/80 backdrop-blur-md hover:text-app-ink'
+      : 'border-app-line bg-app-surface/90 text-app-ink/80 backdrop-blur-md hover:text-app-ink'
   }`;
 
 const SearchGlyph = () => (
@@ -47,7 +47,7 @@ const MapFilterBar: React.FC<MapFilterBarProps> = ({
 }) => (
   <div className="flex flex-col gap-2">
     <div className="flex items-center gap-2 px-4">
-      <label className="flex h-12 min-w-0 flex-1 items-center gap-2 rounded-full border border-[var(--app-line,#2a2d36)] bg-app-surface/90 pl-4 pr-2 text-app-ink/60 shadow-[0_8px_24px_rgba(0,0,0,0.45)] backdrop-blur-md focus-within:border-app-accent/70">
+      <label className="flex h-12 min-w-0 flex-1 items-center gap-2 rounded-full border border-app-line bg-app-surface/90 pl-4 pr-2 text-app-ink/60 shadow-[0_8px_24px_rgba(0,0,0,0.45)] backdrop-blur-md focus-within:border-app-accent/70">
         <SearchGlyph />
         <input
           type="text"
@@ -74,7 +74,7 @@ const MapFilterBar: React.FC<MapFilterBarProps> = ({
         type="button"
         aria-label="Abrir filtros"
         onClick={onOpenFilters}
-        className="relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[var(--app-line,#2a2d36)] bg-app-surface/90 text-app-ink shadow-[0_8px_24px_rgba(0,0,0,0.45)] backdrop-blur-md"
+        className="relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-app-line bg-app-surface/90 text-app-ink shadow-[0_8px_24px_rgba(0,0,0,0.45)] backdrop-blur-md"
       >
         <IconFilters size={18} />
         {activeFilterCount > 0 ? (

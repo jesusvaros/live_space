@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import type { MapVenueGroup } from '../../hooks/useMapFilters';
 import type { MapEvent } from '../../data/eventQueries';
+import GeneratedPoster from '../ui/GeneratedPoster';
 
 type MapSelectionSheetProps = {
   group: MapVenueGroup | null;
@@ -21,23 +22,12 @@ const formatDate = (iso: string) => {
 
 const Poster: React.FC<{ event: MapEvent }> = ({ event }) => {
   const image = event.cover_image_url ?? event.artist?.avatar_url ?? null;
-  const title = event.artist?.name || event.name;
   if (image) {
     return <img src={image} alt="" loading="lazy" className="h-[72px] w-14 shrink-0 rounded-lg object-cover" />;
   }
-  const initials = title
-    .split(/\s+/)
-    .filter(word => /[\p{L}\p{N}]/u.test(word))
-    .slice(0, 2)
-    .map(word => word.replace(/[^\p{L}\p{N}]/gu, '').slice(0, 1))
-    .join('')
-    .toUpperCase();
   return (
-    <span
-      aria-hidden="true"
-      className="flex h-[72px] w-14 shrink-0 items-center justify-center rounded-lg border border-[var(--app-line,#2a2d36)] bg-[linear-gradient(160deg,#2a2d36,#17191f)] font-poster text-[22px] font-bold uppercase leading-none text-app-accent"
-    >
-      {initials || '♪'}
+    <span className="relative h-[72px] w-14 shrink-0 overflow-hidden rounded-lg">
+      <GeneratedPoster title={event.artist?.name || event.name} variant="thumb" />
     </span>
   );
 };
@@ -52,7 +42,7 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({ group, onClose })
     <section
       role="dialog"
       aria-label={group.name}
-      className="absolute inset-x-0 bottom-0 z-[1100] flex max-h-[62%] flex-col rounded-t-3xl border-t border-[var(--app-line,#2a2d36)] bg-app-surface text-app-ink shadow-[0_-12px_40px_rgba(0,0,0,0.55)]"
+      className="absolute inset-x-0 bottom-0 z-[1100] flex max-h-[62%] flex-col rounded-t-3xl border-t border-app-line bg-app-surface text-app-ink shadow-[0_-12px_40px_rgba(0,0,0,0.55)]"
       onKeyDown={event => {
         if (event.key === 'Escape') onClose();
       }}
@@ -88,13 +78,13 @@ const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({ group, onClose })
         </div>
         <Link
           to={`/tabs/venue/${group.id}`}
-          className="mt-3 inline-flex h-11 items-center rounded-full border border-[var(--app-line,#2a2d36)] px-4 text-sm font-semibold text-app-ink hover:border-app-accent/60"
+          className="mt-3 inline-flex h-11 items-center rounded-full border border-app-line px-4 text-sm font-semibold text-app-ink hover:border-app-accent/60"
         >
           Ver sala →
         </Link>
       </div>
 
-      <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-[var(--app-line,#2a2d36)] px-3 pb-4">
+      <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-app-line px-3 pb-4">
         {group.events.map(event => (
           <li key={event.id}>
             <Link

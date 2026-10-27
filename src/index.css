@@ -155,11 +155,6 @@ body {
   background: #0b0e14;
 }
 
-.maplibregl-canvas {
-  width: 100% !important;
-  height: 100% !important;
-}
-
 .tab-icon {
   width: 20px;
   height: 20px;

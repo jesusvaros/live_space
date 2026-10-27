@@ -159,7 +159,7 @@ const MapFilterModal: React.FC<MapFilterModalProps> = ({
               placeholder="Busca un artista"
               value={artistQuery}
               onChange={event => setArtistQuery(event.target.value)}
-              className="h-12 w-full appearance-none rounded-full border border-[var(--app-line,#2a2d36)] bg-app-surface px-4 text-[15px] text-app-ink outline-none placeholder:text-app-ink/45 focus:border-app-accent/70"
+              className="h-12 w-full appearance-none rounded-full border border-app-line bg-app-surface px-4 text-[15px] text-app-ink outline-none placeholder:text-app-ink/45 focus:border-app-accent/70"
             />
             {artists.length > 0 ? (
               <div className="flex flex-wrap gap-2">
@@ -180,7 +180,7 @@ const MapFilterModal: React.FC<MapFilterModalProps> = ({
             ) : null}
             {searching ? <p className="text-sm text-app-ink/50">Buscando…</p> : null}
             {artistResults.length > 0 ? (
-              <ul className="divide-y divide-[var(--app-line,#2a2d36)] overflow-hidden rounded-2xl border border-[var(--app-line,#2a2d36)] bg-app-surface">
+              <ul className="divide-y divide-app-line overflow-hidden rounded-2xl border border-app-line bg-app-surface">
                 {artistResults.map(artist => {
                   const selected = artists.some(item => item.id === artist.id);
                   return (
@@ -212,7 +212,7 @@ const MapFilterModal: React.FC<MapFilterModalProps> = ({
           </section>
 
           <section>
-            <label className="flex min-h-12 cursor-pointer items-center justify-between gap-4 rounded-2xl border border-[var(--app-line,#2a2d36)] bg-app-surface px-4 py-3">
+            <label className="flex min-h-12 cursor-pointer items-center justify-between gap-4 rounded-2xl border border-app-line bg-app-surface px-4 py-3">
               <span>
                 <span className="block text-[15px] font-semibold">Incluir conciertos pasados</span>
                 <span className="block text-xs text-app-ink/50">Por defecto solo ves lo que viene</span>
@@ -231,11 +231,11 @@ const MapFilterModal: React.FC<MapFilterModalProps> = ({
           </section>
         </div>
 
-        <div className="flex gap-3 border-t border-[var(--app-line,#2a2d36)] px-5 pb-[calc(16px+env(safe-area-inset-bottom,0px))] pt-3">
+        <div className="flex gap-3 border-t border-app-line px-5 pb-[calc(16px+env(safe-area-inset-bottom,0px))] pt-3">
           <button
             type="button"
             onClick={onClear}
-            className="inline-flex h-12 items-center justify-center rounded-full border border-[var(--app-line,#2a2d36)] px-5 text-sm font-semibold text-app-ink/80"
+            className="inline-flex h-12 items-center justify-center rounded-full border border-app-line px-5 text-sm font-semibold text-app-ink/80"
           >
             Quitar filtros
           </button>
