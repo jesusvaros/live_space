@@ -14,6 +14,8 @@ type FollowingSectionProps = {
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_NEXT = 3;
+// Announced in the last few days: flagged so a new date does not go unnoticed.
+const NEW_MS = 3 * 24 * 60 * 60 * 1000;
 
 const Chevron = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="shrink-0 opacity-70">
@@ -165,7 +167,14 @@ const FollowingSection: React.FC<FollowingSectionProps> = ({ events, entities, s
                     <span className="block font-poster text-[26px] leading-none">{startsAt.getDate()}</span>
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-display text-base font-bold">{artist}</span>
+                    <span className="flex items-center gap-2">
+                      <span className="truncate font-display text-base font-bold">{artist}</span>
+                      {Date.now() - Date.parse(event.created_at) < NEW_MS ? (
+                        <span className="shrink-0 rounded-full bg-app-accent px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-[#14151a]">
+                          Nuevo
+                        </span>
+                      ) : null}
+                    </span>
                     <span className="block truncate text-[13px] text-[#c9c5bd]">{venue} · {reason}</span>
                   </span>
                   <Chevron />

@@ -14,6 +14,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useEventsList } from '../features/events/hooks/useEventsList';
 import { useUserConcertHero } from '../features/events/hooks/useUserConcertHero';
 import TimelineHeroSection from '../features/events/sections/TimelineHeroSection';
+import GoingSection from '../features/events/sections/GoingSection';
+import { HomeCustomizer, HomeSectionKey, useHomeLayout } from '../features/events/homeLayout';
 
 const NEARBY_RADIUS_KM = 50;
 const EVENTS_LOOKBACK_DAYS = 4;
@@ -148,8 +150,22 @@ const Events: React.FC = () => {
     return ordered.slice(0, 6);
   }, [endOfNearbyWindow, events, nearbyUpcoming, startOfToday]);
 
+  const { layout, setLayout, reset: resetLayout } = useHomeLayout();
+  const [customizing, setCustomizing] = useState(false);
+
   const { followedSubjectIds } = useFollowedSubjects();
   const { entities: followedEntities } = useFollowedEntities(followedSubjectIds);
+
+  const sections: Record<HomeSectionKey, React.ReactNode> = {
+    going: <GoingSection userId={user?.id ?? null} />,
+    following: <FollowingSection events={events} entities={followedEntities} signedIn={Boolean(user)} />,
+    festivals: <FestivalsSection />,
+    listings: (
+      <div className="px-4 pt-[22px]">
+        <CityListingSection events={events} city={city} onCityChange={pickCity} loading={loading} error={loadError} />
+      </div>
+    ),
+  };
 
   return (
     <AppShell contentWrapperClassName={false}>
@@ -159,19 +175,29 @@ const Events: React.FC = () => {
         onDismissPendingMoments={hero.kind === 'just_attended' ? dismissPendingMoments : undefined}
       />
 
-      <FollowingSection events={events} entities={followedEntities} signedIn={Boolean(user)} />
+      {layout.order
+        .filter(key => !layout.hidden.includes(key))
+        .map(key => (
+          <React.Fragment key={key}>{sections[key]}</React.Fragment>
+        ))}
 
-      <FestivalsSection />
-
-      <div className={`px-4 pt-[22px] ${NAV_CLEARANCE}`}>
-        <CityListingSection
-          events={events}
-          city={city}
-          onCityChange={pickCity}
-          loading={loading}
-          error={loadError}
-        />
+      <div className={`flex justify-center px-4 pt-8 ${NAV_CLEARANCE}`}>
+        <button
+          type="button"
+          onClick={() => setCustomizing(true)}
+          className="inline-flex min-h-11 items-center rounded-full border border-app-line px-4 text-sm font-semibold text-white/70"
+        >
+          Personalizar inicio
+        </button>
       </div>
+
+      <HomeCustomizer
+        isOpen={customizing}
+        onDismiss={() => setCustomizing(false)}
+        layout={layout}
+        onChange={setLayout}
+        onReset={resetLayout}
+      />
     </AppShell>
   );
 };

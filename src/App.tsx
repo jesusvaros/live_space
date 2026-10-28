@@ -14,6 +14,7 @@ import { useWorkspace } from './contexts/WorkspaceContext';
 import AppBackHandler from './app/AppBackHandler';
 import AuthDeepLinks from './app/AuthDeepLinks';
 import MomentNudges from './features/moments/MomentNudges';
+import ConcertAlertsListener from './features/alerts/ConcertAlertsListener';
 import ShareTargetListener from './features/socialImport/ShareTargetListener';
 import Welcome from './pages/Welcome';
 import Events from './pages/Events';
@@ -156,6 +157,7 @@ const AppRoutes = () => {
       <AppBackHandler mainTabPath={mainTabHref} />
       <AuthDeepLinks />
       <MomentNudges />
+      <ConcertAlertsListener />
       <ShareTargetListener />
       <React.Suspense fallback={<div className="h-dvh bg-app-bg" />}>
         <Routes>

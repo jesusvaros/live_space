@@ -18,6 +18,7 @@ import DetailHeader from '../components/ui/DetailHeader';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
 import PhotoCredit from '../components/ui/PhotoCredit';
 import ClaimProfileLink from '../components/pro/ClaimProfileLink';
+import { enableConcertAlerts } from '../features/alerts/concertAlerts';
 
 const VENUE_TYPE_LABELS: Record<string, string> = {
   music_venue: 'Sala de conciertos',
@@ -148,6 +149,7 @@ const VenueDetail: React.FC = () => {
         setFollowersCount(prev => Math.max(0, prev - 1));
       } else {
         await socialService.follow(currentUserProfile.subject_id, venue.subject_id);
+        void enableConcertAlerts();
         setIsFollowing(true);
         setFollowersCount(prev => prev + 1);
       }

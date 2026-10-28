@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { socialService } from '../services/social.service';
 import { useAuth } from '../contexts/AuthContext';
 import { cached, setCached } from '../lib/requestCache';
+import { enableConcertAlerts } from '../features/alerts/concertAlerts';
 
 export const useFollowedSubjects = () => {
   const { user, profile } = useAuth();
@@ -72,7 +73,10 @@ export const useFollowedSubjects = () => {
 
       try {
         if (wasFollowing) await socialService.unfollow(followerSubjectId, targetSubjectId);
-        else await socialService.follow(followerSubjectId, targetSubjectId);
+        else {
+          await socialService.follow(followerSubjectId, targetSubjectId);
+          void enableConcertAlerts();
+        }
 
         setCached(`follows:${followerSubjectId}`, Array.from(next), { ttlMs: 10_000 });
         return { ok: true as const };
