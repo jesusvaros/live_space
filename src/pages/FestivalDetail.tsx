@@ -8,6 +8,7 @@ import GeneratedPoster from '../components/ui/GeneratedPoster';
 import MomentGrid from '../components/ui/MomentGrid';
 import PhotoCredit from '../components/ui/PhotoCredit';
 import ClaimProfileLink from '../components/pro/ClaimProfileLink';
+import { enableConcertAlerts } from '../features/alerts/concertAlerts';
 import { IconCheckCircle, IconEdit, IconFlag } from '../components/icons';
 import { useAuth } from '../contexts/AuthContext';
 import type { EventListItem } from '../features/events/types';
@@ -125,7 +126,10 @@ const FestivalDetail: React.FC = () => {
     setFollowLoading(true);
     try {
       if (isFollowing) await socialService.unfollow(profile.subject_id, festival.subjectId);
-      else await socialService.follow(profile.subject_id, festival.subjectId);
+      else {
+        await socialService.follow(profile.subject_id, festival.subjectId);
+        void enableConcertAlerts();
+      }
       setIsFollowing(!isFollowing);
     } finally {
       setFollowLoading(false);
