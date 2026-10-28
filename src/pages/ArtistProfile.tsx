@@ -125,6 +125,8 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
       apple_music: links.apple_music || (links as any).appleMusic,
       instagram: links.instagram,
       youtube: links.youtube,
+      tiktok: links.tiktok,
+      bandcamp: links.bandcamp,
       website: links.website,
     };
     return Object.entries(normalized)
@@ -157,10 +159,13 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
     await toggleFollowSubject(artist.subject_id);
   };
 
+  // Info only when it has something to say; its managers always see it to
+  // fill it in.
+  const hasInfo = Boolean(artist?.bio) || externalLinks.length > 0 || isManager;
   const tabs: { key: ArtistTab; label: string }[] = [
     { key: 'shows', label: 'Conciertos' },
     { key: 'moments', label: 'Momentos' },
-    { key: 'about', label: 'Info' },
+    ...(hasInfo ? [{ key: 'about' as const, label: 'Info' }] : []),
   ];
 
   const concertSubtitle = (event: ArtistProfileEvent) => {
@@ -310,8 +315,9 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
           <div className="px-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))] pt-4">
             {tabBar}
             <div className="pt-3.5">{renderTabContent()}</div>
-            {/* Claiming is for the few who are the artist: tucked away under Info. */}
-            {activeTab === 'about' ? (
+            {/* Claiming is for the few who are the artist: tucked away under
+                Info, or at the end of the concerts when there is no Info. */}
+            {activeTab === 'about' || (!hasInfo && activeTab === 'shows') ? (
               <ClaimProfileLink type="artist" entityId={artist.id} subjectId={artist.subject_id} className="pt-6" />
             ) : null}
           </div>

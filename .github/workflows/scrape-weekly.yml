@@ -57,6 +57,16 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
+      # Artist links (Spotify, Instagram, YouTube…) from MusicBrainz. Only
+      # fills empty links; ~1 request per second.
+      - name: Enrich artist links
+        if: always()
+        continue-on-error: true
+        run: npm run enrich:links
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
       # Setlists for concerts of the last 3 days that still have none. Skips
       # itself (one log line) when the SETLISTFM_API_KEY secret is not set.
       - name: Fallback setlists from setlist.fm

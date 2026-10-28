@@ -245,6 +245,32 @@ fuente. Si no hay ninguna, la app dibuja el cartel generado.
 Encontrar un artista en una agenda española no demuestra su nacionalidad: las
 altas sin identidad verificada usan `country_code = ZZ` hasta el enriquecimiento.
 
+### Redes de los artistas
+
+`npm run enrich:links` (paso del workflow, `continue-on-error`) rellena
+`artists.external_links` (Spotify, Instagram, YouTube, TikTok, Bandcamp, Apple
+Music y web). Solo añade claves vacías: nunca pisa un enlace puesto por el
+gestor del artista. Dos fuentes:
+
+1. **Agendas de las salas** ya scrapeadas (`staging_events.raw_payload`), sin
+   peticiones nuevas. Un enlace va a un artista si su usuario se parece al
+   nombre (`@blueperro` → Blue Perro) o si es el único de su tipo en una noche
+   de un solo artista y no aparece con otros artistas (eso es la cuenta de la
+   propia sala). Ver `src/pipeline/stagingArtistLinks.ts`.
+2. **MusicBrainz** (datos CC0), una petición cada 1,5 s con User-Agent
+   identificable. Acepta un candidato si enlaza el mismo artista de Deezer que
+   ya teníamos, o si es el único con ese nombre exacto, de varias palabras y sin
+   desambiguación. Guarda `external_ids.musicbrainz` y
+   `external_ids.links_checked_at`, y no vuelve a consultar al artista hasta 60
+   días después.
+
+En la primera prueba (dry-run) las agendas dieron enlaces para 57 artistas y
+MusicBrainz encontró sobre todo a los conocidos. `-- --dry-run` solo registra;
+`--limit=N` limita las consultas a MusicBrainz (por defecto 200).
+
+En la ficha del artista la pestaña Info solo aparece si hay biografía o
+enlaces, o si quien la mira la gestiona.
+
 ## Setlists de setlist.fm
 
 `npm run setlists:fallback` (paso del workflow diario, `continue-on-error`) busca

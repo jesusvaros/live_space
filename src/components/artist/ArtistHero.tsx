@@ -19,7 +19,7 @@ type ArtistHeroProps = {
   onEdit?: () => void;
 };
 
-export type SocialKey = 'spotify' | 'apple_music' | 'instagram' | 'youtube' | 'website';
+export type SocialKey = 'spotify' | 'apple_music' | 'instagram' | 'youtube' | 'tiktok' | 'bandcamp' | 'website';
 
 export const SocialIcon: React.FC<{ name: SocialKey }> = ({ name }) => {
   if (name === 'spotify') {
@@ -55,6 +55,21 @@ export const SocialIcon: React.FC<{ name: SocialKey }> = ({ name }) => {
       </svg>
     );
   }
+  if (name === 'tiktok') {
+    return (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+        <path d="M14 4v10.5a3.5 3.5 0 1 1-3.5-3.5" />
+        <path d="M14 4c.4 2.4 2 4 4.5 4.2" />
+      </svg>
+    );
+  }
+  if (name === 'bandcamp') {
+    return (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M8 6h13l-5 12H3z" />
+      </svg>
+    );
+  }
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
       <path d="M10 14l-4 4m0 0h4m-4 0v-4" />
@@ -70,6 +85,8 @@ export const LINK_LABELS: Record<SocialKey, string> = {
   apple_music: 'Apple Music',
   instagram: 'Instagram',
   youtube: 'YouTube',
+  tiktok: 'TikTok',
+  bandcamp: 'Bandcamp',
   website: 'Web',
 };
 
