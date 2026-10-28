@@ -33,6 +33,7 @@
     "scrape:approve-probed": "npm run scrape:build && node dist-scraper/scripts/approveAutoProbedSources.js",
     "scrape:maintenance": "npm run scrape:build && node dist-scraper/scripts/runScraperMaintenance.js",
     "enrich:images": "npm run scrape:build && node dist-scraper/scripts/enrichImages.js",
+    "enrich:links": "npm run scrape:build && node dist-scraper/scripts/enrichArtistLinks.js",
     "setlists:fallback": "npm run scrape:build && node dist-scraper/scripts/fillSetlists.js",
     "artists:cleanup": "npm run scrape:build && node dist-scraper/scripts/cleanupArtistNames.js",
     "venues:discover": "npm run scrape:build && node dist-scraper/scripts/discoverVenues.js",
