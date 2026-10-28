@@ -114,3 +114,4 @@ aparecer en la hoja de compartir:
    `UserDefaults(suiteName:)` con la clave `share-target-data` y abre
    `com.livespace.app://share` (el esquema ya está registrado para auth).
 4. El plugin entrega el evento `shareReceived` y `ShareTargetListener` hace el resto.
+5. Para el Wrapped, la regla también acepta imágenes (ver [wrapped.md](./wrapped.md)).

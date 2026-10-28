@@ -99,6 +99,33 @@ export const useFollowedSubjects = () => {
     [followerSubjectId, followedSubjectIds, user]
   );
 
+  // Follows several subjects at once (e.g. the artists of a Spotify Wrapped).
+  const followMany = useCallback(
+    async (targetSubjectIds: string[]) => {
+      if (!user || !followerSubjectId) return { ok: false as const, reason: 'not-authenticated' as const };
+      const targets = targetSubjectIds.filter(id => id && !followedSubjectIds.has(id));
+      if (targets.length === 0) return { ok: true as const };
+      setTogglingIds(prev => new Set([...prev, ...targets]));
+      try {
+        await socialService.followMany(followerSubjectId, targets);
+        const next = new Set([...followedSubjectIds, ...targets]);
+        setFollowedSubjectIds(next);
+        setCached(`follows:${followerSubjectId}`, Array.from(next), { ttlMs: 10_000 });
+        void enableConcertAlerts();
+        return { ok: true as const };
+      } catch {
+        return { ok: false as const, reason: 'network' as const };
+      } finally {
+        setTogglingIds(prev => {
+          const copy = new Set(prev);
+          targets.forEach(id => copy.delete(id));
+          return copy;
+        });
+      }
+    },
+    [followerSubjectId, followedSubjectIds, user]
+  );
+
   return useMemo(
     () => ({
       canFollow,
@@ -107,8 +134,9 @@ export const useFollowedSubjects = () => {
       isFollowing,
       isToggling,
       toggleFollowSubject,
+      followMany,
     }),
-    [canFollow, followedSubjectIds, isFollowing, isToggling, loading, toggleFollowSubject]
+    [canFollow, followMany, followedSubjectIds, isFollowing, isToggling, loading, toggleFollowSubject]
   );
 };
 

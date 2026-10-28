@@ -2,7 +2,8 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { useAuth } from '../../contexts/AuthContext';
-import { extractFirstUrl } from './socialUrl';
+import { extractFirstUrl, parseSocialUrl } from './socialUrl';
+import { WRAPPED_PATH, wrappedPathFor } from '../wrapped/sharedImage';
 
 const PENDING_KEY = 'ls:pending-import';
 
@@ -26,7 +27,7 @@ export const takePendingImport = (): string | null => {
   try {
     const value = localStorage.getItem(PENDING_KEY);
     if (value) localStorage.removeItem(PENDING_KEY);
-    return value?.startsWith('/importar?') ? value : null;
+    return value?.startsWith('/importar?') || value?.startsWith(`${WRAPPED_PATH}?`) ? value : null;
   } catch {
     return null;
   }
@@ -36,6 +37,8 @@ export const takePendingImport = (): string | null => {
 // shared text through the ACTION_SEND intent filter on MainActivity; iOS will
 // once the Share Extension exists (docs/importar-clips.md). The plugin retains
 // a cold-start share until this listener registers.
+// A shared image (a Spotify Wrapped card) opens /wrapped instead, unless the
+// share also carries a clip link (docs/wrapped.md).
 const ShareTargetListener: React.FC = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -50,6 +53,11 @@ const ShareTargetListener: React.FC = () => {
         CapacitorShareTarget.addListener('shareReceived', event => {
           const text = [event.title, ...(event.texts ?? [])].filter(Boolean).join('\n');
           const url = extractFirstUrl(text);
+          const image = (event.files ?? []).find(file => file.mimeType?.startsWith('image/') && file.uri);
+          if (image && !(url && parseSocialUrl(url))) {
+            navigate(wrappedPathFor(image.uri));
+            return;
+          }
           if (!url) return;
           navigate(importPathFor(url, text));
         }),
