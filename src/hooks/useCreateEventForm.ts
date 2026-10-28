@@ -1,292 +1,113 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import L from 'leaflet';
-import { supabase } from '../lib/supabase';
-import { ProfileRole, VenuePlace } from '../lib/types';
-import { buildPinIcon } from '../components/event/create/MapHelpers';
-import { mapVenue } from '../data/canonicalMappers';
-import { normalizeForMatching } from '../normalize/normalizeText';
+import { useEffect, useMemo, useState } from 'react';
 import { createConfiguredCloudinaryMediaProvider } from '../media';
+import {
+  ArtistPick,
+  concertsService,
+  CreateConcertResult,
+  VenueOption,
+} from '../services/concerts.service';
 
-export type ArtistOption = {
-  id: string;
-  display_name: string | null;
-  username: string | null;
-  role: ProfileRole;
-  avatar_url?: string | null;
+export type ConcertWorkspace = {
+  type: 'artist' | 'venue';
+  subjectId: string;
+  artist?: { id: string; name: string } | null;
+  venue?: VenueOption | null;
 };
-
-export type PriceTier = { label: string; price: number };
 
 type UseCreateEventFormOptions = {
   userId?: string | null;
-  profileRole?: ProfileRole | null;
-  profileCity?: string | null;
-  defaultArtistId?: string | null;
-  defaultArtistName?: string | null;
-  initialCenter?: [number, number] | null;
+  workspace: ConcertWorkspace | null;
 };
 
-const defaultCenter: [number, number] = [41.3874, 2.1686];
-const lastCenterKey = 'createEvent:lastMapCenter';
+const SEARCH_DELAY_MS = 300;
+const DEFAULT_TIME = '21:00';
 
-const formatLocalDateTime = (value: Date) => {
-  const offset = value.getTimezoneOffset();
-  const adjusted = new Date(value.getTime() - offset * 60000);
-  return adjusted.toISOString().slice(0, 16);
+const todayValue = () => {
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 };
 
-const toNumber = (value: number | string | null | undefined) => {
-  if (value === null || value === undefined) return null;
-  if (typeof value === 'number') return Number.isNaN(value) ? null : value;
-  const parsed = Number(value);
-  return Number.isNaN(parsed) ? null : parsed;
-};
-
-const withTimeout = async <T,>(promise: PromiseLike<T>, timeoutMs: number, label: string): Promise<T> => {
-  let timeoutId: number | null = null;
-  const timeoutPromise = new Promise<T>((_resolve, reject) => {
-    timeoutId = window.setTimeout(() => {
-      reject(new Error(`${label}: tardó demasiado. Inténtalo de nuevo.`));
-    }, timeoutMs);
-  });
-
+const isHttpUrl = (value: string) => {
   try {
-    return await Promise.race([Promise.resolve(promise), timeoutPromise]);
-  } finally {
-    if (timeoutId !== null) {
-      window.clearTimeout(timeoutId);
-    }
+    const url = new URL(value);
+    return url.protocol === 'https:' || url.protocol === 'http:';
+  } catch {
+    return false;
   }
 };
 
-export const useCreateEventForm = ({
-  userId,
-  profileRole,
-  profileCity,
-  defaultArtistId = null,
-  defaultArtistName = null,
-  initialCenter = null,
-}: UseCreateEventFormOptions) => {
-  const [venues, setVenues] = useState<VenuePlace[]>([]);
-  const [artists, setArtists] = useState<ArtistOption[]>([]);
-  const [venuesLoading, setVenuesLoading] = useState(false);
-  const [artistsLoading, setArtistsLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+const sameName = (left: string, right: string) =>
+  left.trim().toLocaleLowerCase('es') === right.trim().toLocaleLowerCase('es');
 
-  const [venueSearch, setVenueSearch] = useState('');
-  const [selectedVenue, setSelectedVenue] = useState<VenuePlace | null>(null);
-  const [venueMode, setVenueMode] = useState<'existing' | 'new'>('existing');
-  const [newVenueName, setNewVenueName] = useState('');
-  const [newVenueCity, setNewVenueCity] = useState(profileCity || '');
-  const [newVenueAddress, setNewVenueAddress] = useState('');
-  const [newVenueLat, setNewVenueLat] = useState('');
-  const [newVenueLng, setNewVenueLng] = useState('');
-
-  const [eventName, setEventName] = useState('');
-  const [eventStart, setEventStart] = useState(formatLocalDateTime(new Date()));
-  const [eventEnd, setEventEnd] = useState('');
-  const [eventDescription, setEventDescription] = useState('');
-  const [eventUrl, setEventUrl] = useState('');
-  const [posterFile, setPosterFile] = useState<File | null>(null);
-  const [posterPreview, setPosterPreview] = useState<string | null>(null);
-  const [eventGenres, setEventGenres] = useState('');
-  const [isFree, setIsFree] = useState(true);
-  const [priceTiers, setPriceTiers] = useState<PriceTier[]>([]);
-  const [tierLabel, setTierLabel] = useState('');
-  const [tierPrice, setTierPrice] = useState('');
-
-  const [selectedArtistIds, setSelectedArtistIds] = useState<string[]>(defaultArtistId ? [defaultArtistId] : []);
-  const [artistMode, setArtistMode] = useState<'existing' | 'new'>('existing');
-  const [newArtistName, setNewArtistName] = useState('');
-  const [newArtistUsername, setNewArtistUsername] = useState('');
-  const [artistSearch, setArtistSearch] = useState('');
-  const [artistSearchCount, setArtistSearchCount] = useState<number | null>(null);
-  const loadStoredCenter = (): [number, number] | null => {
-    if (typeof window === 'undefined') return null;
-    try {
-      const raw = window.localStorage.getItem(lastCenterKey);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      if (
-        Array.isArray(parsed) &&
-        parsed.length === 2 &&
-        Number.isFinite(Number(parsed[0])) &&
-        Number.isFinite(Number(parsed[1]))
-      ) {
-        return [Number(parsed[0]), Number(parsed[1])];
-      }
-    } catch {
-      return null;
-    }
-    return null;
-  };
-
-  const storedCenter = useMemo(() => loadStoredCenter(), [initialCenter]);
-  const preferredCenter = storedCenter || initialCenter || null;
-
-  const [mapCenter, setMapCenter] = useState<[number, number]>(preferredCenter || defaultCenter);
-  const [mapBounds, setMapBounds] = useState<L.LatLngBounds | null>(null);
+// Debounced search that ignores stale answers.
+const useSearch = <T,>(query: string, search: (value: string) => Promise<T[]>) => {
+  const [results, setResults] = useState<T[]>([]);
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
-    setError('');
-    setVenueSearch('');
-    setSelectedVenue(null);
-    setVenueMode('existing');
-    setNewVenueName('');
-    setNewVenueCity(profileCity || '');
-    setNewVenueAddress('');
-    setNewVenueLat('');
-    setNewVenueLng('');
-    setEventName('');
-    setEventStart(formatLocalDateTime(new Date()));
-    setEventEnd('');
-    setEventDescription('');
-    setEventUrl('');
-    setPosterFile(null);
-    setPosterPreview(null);
-    setEventGenres('');
-    setIsFree(true);
-    setPriceTiers([]);
-    setTierLabel('');
-    setTierPrice('');
-    setSelectedArtistIds(defaultArtistId ? [defaultArtistId] : []);
-    setArtistSearch('');
-    setArtistSearchCount(null);
-    if (preferredCenter) {
-      setMapCenter(preferredCenter);
-    } else {
-      setMapCenter(defaultCenter);
-    }
-  }, [profileCity, defaultArtistId, preferredCenter]);
-
-  useEffect(() => {
-    const loadVenues = async () => {
-      setVenuesLoading(true);
-      const { data, error: venueError } = await supabase
-        .from('v_subject_venues')
-        .select('venue_place_id, subject_id, name, city, address, latitude, longitude, website_url, photos')
-        .order('name', { ascending: true });
-      if (venueError) {
-        setError('No se pudieron cargar las salas.');
-        setVenues([]);
-      } else {
-        setVenues((data || []).map((row: any) => mapVenue(row)));
-      }
-      setVenuesLoading(false);
-    };
-
-    loadVenues();
-  }, []);
-
-  useEffect(() => {
-    const query = artistSearch.trim();
-    setArtistSearchCount(null);
-    if (!query) {
-      const baseList = defaultArtistId
-        ? [
-            {
-              id: defaultArtistId,
-              display_name: defaultArtistName || 'Tu perfil de artista',
-              username: null,
-              role: 'artist' as ProfileRole,
-            },
-          ]
-        : [];
-      setArtists(baseList);
-      setArtistsLoading(false);
+    const term = query.trim();
+    if (term.length < 2) {
+      setResults([]);
+      setSearching(false);
       return;
     }
-
     let cancelled = false;
-    const handle = window.setTimeout(async () => {
-      setArtistsLoading(true);
-      const artistQuery = supabase
-        .from('v_subject_artists')
-        .select('artist_id, name, avatar_url')
-        .order('name', { ascending: true });
-
-      const { data, error: artistError } = await artistQuery.ilike('name', `%${query}%`);
-
-      if (cancelled) {
-        return;
-      }
-
-      if (artistError) {
-        setError('No se pudieron cargar los artistas.');
-        setArtists([]);
-        setArtistSearchCount(0);
-      } else {
-        const artistOptions = (data || []).map(row => ({
-          id: row.artist_id,
-          display_name: row.name,
-          username: null,
-          role: 'artist' as ProfileRole,
-          avatar_url: row.avatar_url ?? null,
-        })) as ArtistOption[];
-        setArtistSearchCount(artistOptions.length);
-        const hasDefault = defaultArtistId
-          ? artistOptions.some(artist => artist.id === defaultArtistId)
-          : false;
-        const withDefault =
-          defaultArtistId && !hasDefault
-            ? [
-                {
-                  id: defaultArtistId,
-                  display_name: defaultArtistName || 'Tu perfil de artista',
-                  username: null,
-                  role: 'artist' as ProfileRole,
-                },
-                ...artistOptions,
-              ]
-            : artistOptions;
-        setArtists(withDefault);
-      }
-      setArtistsLoading(false);
-    }, 700);
-
+    setSearching(true);
+    const handle = window.setTimeout(() => {
+      search(term)
+        .then(rows => {
+          if (!cancelled) setResults(rows);
+        })
+        .catch(() => {
+          if (!cancelled) setResults([]);
+        })
+        .finally(() => {
+          if (!cancelled) setSearching(false);
+        });
+    }, SEARCH_DELAY_MS);
     return () => {
       cancelled = true;
       window.clearTimeout(handle);
     };
-  }, [artistSearch, defaultArtistId, defaultArtistName]);
+  }, [query, search]);
 
+  return { results, searching };
+};
+
+// One-screen form to add a concert: venue, day and time, line-up and,
+// optionally, name, ticket link and poster. Whether it is published or
+// proposed to the venue is decided by create_concert() in the database.
+export const useCreateEventForm = ({ userId, workspace }: UseCreateEventFormOptions) => {
+  const fixedVenue = workspace?.type === 'venue' ? workspace.venue ?? null : null;
+  const ownArtist = workspace?.type === 'artist' ? workspace.artist ?? null : null;
+
+  const [venue, setVenue] = useState<VenueOption | null>(fixedVenue);
+  const [venueQuery, setVenueQuery] = useState('');
+  const [date, setDate] = useState(todayValue());
+  const [time, setTime] = useState(DEFAULT_TIME);
+  const [lineup, setLineup] = useState<ArtistPick[]>(ownArtist ? [{ id: ownArtist.id, name: ownArtist.name }] : []);
+  const [artistQuery, setArtistQuery] = useState('');
+  const [name, setName] = useState('');
+  const [ticketUrl, setTicketUrl] = useState('');
+  const [posterFile, setPosterFile] = useState<File | null>(null);
+  const [posterPreview, setPosterPreview] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState<CreateConcertResult | null>(null);
+
+  // The workspace arrives after the first render on a cold start.
   useEffect(() => {
-    if (defaultArtistId && selectedArtistIds.length === 0) {
-      setSelectedArtistIds([defaultArtistId]);
-    }
-  }, [defaultArtistId, selectedArtistIds.length]);
-
-  const persistCenter = useCallback((center: [number, number]) => {
-    setMapCenter(center);
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(lastCenterKey, JSON.stringify(center));
-    }
-  }, []);
-
-  const persistCenterOnly = useCallback((center: [number, number]) => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(lastCenterKey, JSON.stringify(center));
-    }
-  }, []);
-
+    if (fixedVenue) setVenue(fixedVenue);
+  }, [fixedVenue?.id]);
   useEffect(() => {
-    if (initialCenter && !storedCenter) {
-      persistCenter(initialCenter);
+    if (ownArtist) {
+      setLineup(prev => (prev.some(pick => pick.id === ownArtist.id) ? prev : [{ id: ownArtist.id, name: ownArtist.name }, ...prev]));
     }
-  }, [initialCenter, storedCenter, persistCenter]);
+  }, [ownArtist?.id]);
 
-  useEffect(() => {
-    if (preferredCenter) return;
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      position => {
-        persistCenter([position.coords.latitude, position.coords.longitude]);
-      },
-      () => undefined,
-      { enableHighAccuracy: true, timeout: 5000 }
-    );
-  }, [preferredCenter, persistCenter]);
+  const venueSearch = useSearch(venueQuery, concertsService.searchVenues);
+  const artistSearch = useSearch(artistQuery, concertsService.searchArtists);
 
   useEffect(() => {
     if (!posterFile) {
@@ -298,341 +119,127 @@ export const useCreateEventForm = ({
     return () => URL.revokeObjectURL(previewUrl);
   }, [posterFile]);
 
-  const filteredVenues = useMemo(() => {
-    const query = venueSearch.trim().toLowerCase();
-    if (!query) return venues;
-    return venues.filter(venue => {
-      return (
-        venue.name.toLowerCase().includes(query) ||
-        venue.city.toLowerCase().includes(query) ||
-        venue.address?.toLowerCase().includes(query)
-      );
-    });
-  }, [venues, venueSearch]);
+  const defaultName = useMemo(() => lineup.map(pick => pick.name.trim()).filter(Boolean).join(' + ').slice(0, 160), [lineup]);
 
-  const visibleVenues = useMemo(() => {
-    if (!mapBounds) return filteredVenues;
-    return filteredVenues.filter(venue => {
-      const lat = toNumber(venue.latitude);
-      const lng = toNumber(venue.longitude);
-      if (lat === null || lng === null) return false;
-      return mapBounds.contains(L.latLng(lat, lng));
-    });
-  }, [filteredVenues, mapBounds]);
+  const artistSuggestions = useMemo(
+    () => artistSearch.results.filter(option => !lineup.some(pick => pick.id === option.id)),
+    [artistSearch.results, lineup],
+  );
+  const term = artistQuery.trim();
+  const canAddNewArtist =
+    term.length >= 2 &&
+    !artistSearch.searching &&
+    !artistSearch.results.some(option => sameName(option.name, term)) &&
+    !lineup.some(pick => sameName(pick.name, term));
 
-  const venueMarkers = useMemo(() => {
-    return visibleVenues
-      .map(venue => {
-        const lat = toNumber(venue.latitude);
-        const lng = toNumber(venue.longitude);
-        if (lat === null || lng === null) return null;
-        return {
-          venue,
-          position: [lat, lng] as [number, number],
-          icon: buildPinIcon('venue'),
-        };
-      })
-      .filter(Boolean) as { venue: VenuePlace; position: [number, number]; icon: L.DivIcon }[];
-  }, [visibleVenues]);
-
-  const handleBoundsChange = useCallback((bounds: L.LatLngBounds) => {
-    setMapBounds(bounds);
-    const center = bounds.getCenter();
-    if (center && Number.isFinite(center.lat) && Number.isFinite(center.lng)) {
-      persistCenterOnly([center.lat, center.lng]);
-    }
-  }, [persistCenterOnly]);
-
-  const selectVenue = useCallback((venue: VenuePlace) => {
-    setSelectedVenue(venue);
-    setVenueMode('existing');
-    const lat = toNumber(venue.latitude);
-    const lng = toNumber(venue.longitude);
-    if (lat !== null && lng !== null) {
-      persistCenter([lat, lng]);
-    }
-  }, [persistCenter]);
-
-  const handleMapSelect = useCallback((lat: number, lng: number) => {
-    setVenueMode('new');
-    setSelectedVenue(null);
-    setNewVenueLat(lat.toFixed(6));
-    setNewVenueLng(lng.toFixed(6));
-    persistCenter([lat, lng]);
-  }, [persistCenter]);
-
-  const venueCity = venueMode === 'existing' ? selectedVenue?.city || '' : newVenueCity.trim();
-  const venueAddress = venueMode === 'existing' ? selectedVenue?.address || '' : newVenueAddress.trim();
-  const venueLat = venueMode === 'existing' ? toNumber(selectedVenue?.latitude) : toNumber(newVenueLat);
-  const venueLng = venueMode === 'existing' ? toNumber(selectedVenue?.longitude) : toNumber(newVenueLng);
-
-  const addPriceTier = () => {
+  const addArtist = (pick: ArtistPick) => {
+    setLineup(prev => (prev.some(item => (pick.id ? item.id === pick.id : sameName(item.name, pick.name))) ? prev : [...prev, pick]));
+    setArtistQuery('');
     setError('');
-    const label = tierLabel.trim();
-    const priceValue = Number(tierPrice);
-    if (!label) {
-      setError('Ponle nombre al tipo de entrada.');
-      return;
-    }
-    if (!Number.isFinite(priceValue) || priceValue < 0) {
-      setError('Introduce un precio válido.');
-      return;
-    }
-    setPriceTiers(prev => [...prev, { label, price: priceValue }]);
-    setTierLabel('');
-    setTierPrice('');
   };
 
-  const removePriceTier = (index: number) => {
-    setPriceTiers(prev => prev.filter((_, idx) => idx !== index));
+  const removeArtist = (index: number) => {
+    setLineup(prev => prev.filter((pick, idx) => idx !== index || (ownArtist && pick.id === ownArtist.id)));
   };
 
-  const handleCreate = async () => {
-    if (!userId) {
-      setError('Entra para crear eventos.');
-      return null;
-    }
-    if (!eventName.trim()) {
-      setError('Ponle nombre al evento.');
-      return null;
-    }
-    if (!eventStart) {
-      setError('Indica la hora de inicio.');
-      return null;
-    }
-    if (!isFree && priceTiers.length === 0) {
-      setError('Añade al menos un tipo de entrada.');
-      return null;
-    }
-    if (venueMode === 'existing' && !selectedVenue) {
-      setError('Elige una sala.');
-      return null;
-    }
-    if (venueMode === 'new') {
-      if (!newVenueName.trim()) {
-        setError('Ponle nombre a la sala.');
-        return null;
-      }
-      if (!newVenueCity.trim()) {
-        setError('Indica la ciudad de la sala.');
-        return null;
-      }
-      if (venueLat === null || venueLng === null) {
-        setError('Elige una ubicación en el mapa.');
-        return null;
-      }
-    }
-    const fallbackArtistIds =
-      defaultArtistId && profileRole === 'artist' ? [defaultArtistId] : [];
-    const artistIds =
-      selectedArtistIds.length > 0
-        ? selectedArtistIds
-        : fallbackArtistIds;
-    if (artistIds.length === 0) {
-      setError('Elige al menos un artista.');
-      return null;
-    }
+  const chooseVenue = (option: VenueOption | null) => {
+    setVenue(option);
+    setVenueQuery('');
+    setError('');
+  };
 
-    const startAt = new Date(eventStart);
-    if (Number.isNaN(startAt.getTime())) {
-      setError('Hora de inicio no válida.');
+  const submit = async (): Promise<CreateConcertResult | null> => {
+    if (!userId || !workspace) {
+      setError('Elige qué perfil gestionas para añadir conciertos.');
       return null;
     }
-
-    let endAtIso: string | null = null;
-    if (eventEnd) {
-      const endDate = new Date(eventEnd);
-      if (Number.isNaN(endDate.getTime())) {
-        setError('Hora de fin no válida.');
-        return null;
-      }
-      if (endDate < startAt) {
-        setError('La hora de fin debe ser posterior a la de inicio.');
-        return null;
-      }
-      endAtIso = endDate.toISOString();
+    if (!venue) {
+      setError('Elige la sala.');
+      return null;
+    }
+    const startsAt = date && time ? new Date(`${date}T${time}`) : null;
+    if (!startsAt || Number.isNaN(startsAt.getTime())) {
+      setError('Indica el día y la hora.');
+      return null;
+    }
+    if (lineup.length === 0) {
+      setError('Añade al menos un artista.');
+      return null;
+    }
+    const finalName = name.trim() || defaultName;
+    if (finalName.length < 2) {
+      setError('Ponle nombre al concierto.');
+      return null;
+    }
+    const ticket = ticketUrl.trim();
+    if (ticket && !isHttpUrl(ticket)) {
+      setError('El enlace de entradas tiene que empezar por https://');
+      return null;
     }
 
     setSaving(true);
     setError('');
-
     try {
-      let venuePlaceId = selectedVenue?.id || null;
-
-      if (venueMode === 'new') {
-        const { data: newVenue, error: venueError } = await withTimeout(
-          supabase
-            .from('venue_places')
-            .insert({
-              name: newVenueName.trim(),
-              normalized_name: normalizeForMatching(newVenueName),
-              city: newVenueCity.trim(),
-              address: newVenueAddress.trim() || null,
-              latitude: venueLat,
-              longitude: venueLng,
-              created_by: userId,
-            })
-            .select('id, name, city, address, latitude, longitude')
-            .single(),
-          20_000,
-          'Crear la sala'
-        );
-
-        if (venueError) {
-          throw venueError;
-        }
-        venuePlaceId = (newVenue as VenuePlace).id;
-      }
-
-      if (!venuePlaceId) {
-        throw new Error('Falta la sala.');
-      }
-
-      const genres = eventGenres
-        .split(',')
-        .map(item => item.trim())
-        .filter(Boolean);
-
-      const { data: eventData, error: eventError } = await withTimeout(
-        supabase
-          .from('events')
-          .insert({
-            venue_place_id: venuePlaceId,
-            name: eventName.trim(),
-            normalized_name: normalizeForMatching(eventName),
-            description: eventDescription.trim() || null,
-            source_url: eventUrl.trim() || null,
-            city: venueCity || (profileCity || ''),
-            address: venueAddress || null,
-            latitude: venueLat,
-            longitude: venueLng,
-            genres,
-            is_free: isFree,
-            price_tiers: isFree ? [] : priceTiers,
-            starts_at: startAt.toISOString(),
-            ends_at: endAtIso,
-            status: profileRole === 'admin' ? 'published' : 'review',
-            published_at: profileRole === 'admin' ? new Date().toISOString() : null,
-            created_by: userId,
-          })
-          .select('id')
-          .single(),
-        20_000,
-        'Crear el evento'
-      );
-
-      if (eventError || !eventData) {
-        throw eventError || new Error('No se pudo crear el evento.');
-      }
-
-      // Insert artist relationships
-      if (artistIds.length > 0) {
-        const { error: artistError } = await withTimeout(
-          supabase.from('event_artists').insert(artistIds.map((artistId, index) => ({
-            event_id: eventData.id,
-            artist_id: artistId,
-            billing_order: index,
-            is_headliner: index === 0,
-          }))),
-          20_000,
-          'Guardar el cartel'
-        );
-
-        if (artistError) throw artistError;
-      }
-
+      let imageUrl: string | null = null;
       if (posterFile) {
-        const mediaProvider = createConfiguredCloudinaryMediaProvider();
-        await withTimeout(
-          mediaProvider.upload({
-            file: posterFile,
-            kind: 'image',
-            eventId: eventData.id,
-            purpose: 'user',
-          }),
-          45_000,
-          'Subir el póster'
-        );
+        const provider = createConfiguredCloudinaryMediaProvider();
+        const upload = await provider.upload({ file: posterFile, kind: 'image', subjectId: workspace.subjectId, purpose: 'catalog' });
+        imageUrl = upload.secureUrl;
       }
-
-      return eventData.id;
+      const created = await concertsService.createConcert(
+        {
+          venueId: venue.id,
+          startsAt,
+          name: finalName,
+          lineup,
+          ticketUrl: ticket || null,
+          imageUrl,
+          asArtistId: ownArtist?.id ?? null,
+        },
+        userId,
+      );
+      setResult(created);
+      return created;
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Ha ocurrido un error inesperado';
-      setError(message);
+      setError(err instanceof Error ? err.message : 'Ha ocurrido un error inesperado.');
       return null;
     } finally {
       setSaving(false);
     }
   };
 
-      
   return {
-    artists,
-    artistsLoading,
-    venuesLoading,
-    error,
-    saving,
-    venueSearch,
-    venueMode,
-    selectedVenue,
-    newVenueName,
-    newVenueCity,
-    newVenueAddress,
-    newVenueLat,
-    newVenueLng,
-    eventName,
-    eventStart,
-    eventEnd,
-    eventDescription,
-    eventUrl,
+    venue,
+    venueLocked: Boolean(fixedVenue),
+    venueQuery,
+    venueResults: venueSearch.results,
+    venueSearching: venueSearch.searching,
+    date,
+    time,
+    lineup,
+    ownArtistId: ownArtist?.id ?? null,
+    artistQuery,
+    artistSuggestions,
+    artistSearching: artistSearch.searching,
+    canAddNewArtist,
+    name,
+    defaultName,
+    ticketUrl,
     posterFile,
     posterPreview,
-    eventGenres,
-    isFree,
-    priceTiers,
-    tierLabel,
-    tierPrice,
-    selectedArtistIds,
-    artistMode,
-    newArtistName,
-    newArtistUsername,
-    artistSearch,
-    artistSearchCount,
-    mapCenter,
-    mapBounds,
-    visibleVenues,
-    venueMarkers,
-    venueLat,
-    venueLng,
-    setVenueSearch,
-    setVenueMode,
-    setSelectedVenue,
-    setNewVenueName,
-    setNewVenueCity,
-    setNewVenueAddress,
-    setNewVenueLat,
-    setNewVenueLng,
-    setEventName,
-    setEventStart,
-    setEventEnd,
-    setEventDescription,
-    setEventUrl,
+    saving,
+    error,
+    result,
+    setVenueQuery,
+    chooseVenue,
+    setDate,
+    setTime,
+    setArtistQuery,
+    addArtist,
+    removeArtist,
+    setName,
+    setTicketUrl,
     setPosterFile,
-    setEventGenres,
-    setIsFree,
-    setTierLabel,
-    setTierPrice,
-    setSelectedArtistIds,
-    setArtistMode,
-    setNewArtistName,
-    setNewArtistUsername,
-    setArtistSearch,
-    setError,
-    handleBoundsChange,
-    addPriceTier,
-    removePriceTier,
-    selectVenue,
-    handleMapSelect,
-    handleCreate,
+    submit,
   };
 };

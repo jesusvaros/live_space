@@ -7,6 +7,7 @@ import { Spinner } from '../components/ui/AppPrimitives';
 import { IconChevronLeft } from '../components/icons';
 import EventEditForm from '../components/pro/EventEditForm';
 import SetlistEditor from '../components/pro/SetlistEditor';
+import ConcertProposals from '../components/pro/ConcertProposals';
 import { EntityStatsSummary, EventStatsCard } from '../features/community';
 import { useAuth } from '../contexts/AuthContext';
 import { useWorkspace } from '../contexts/WorkspaceContext';
@@ -208,6 +209,12 @@ const Management: React.FC = () => {
     body = (
       <>
         <EntityStatsSummary key={entity.subject_id} subjectId={entity.subject_id} className="mx-4 mt-4" />
+        {currentEntityId && entity.type === 'venue' ? (
+          <ConcertProposals key={`venue-${currentEntityId}`} mode="venue" venueId={currentEntityId} onDecided={loadEvents} />
+        ) : null}
+        {currentEntityId && entity.type === 'artist' ? (
+          <ConcertProposals key={`artist-${currentEntityId}`} mode="artist" artistId={currentEntityId} />
+        ) : null}
         <div role="tablist" aria-label="Eventos" className="flex items-center gap-1.5 px-4 pt-4">
           {([
             ['upcoming', `Próximos${upcoming.length ? ` · ${upcoming.length}` : ''}`],
@@ -231,7 +238,7 @@ const Management: React.FC = () => {
             className="ml-auto font-bold"
             onClick={() => navigate('/tabs/create-event', { state: { from: '/gestion' } })}
           >
-            + Evento
+            + Concierto
           </Button>
         </div>
 
@@ -239,7 +246,7 @@ const Management: React.FC = () => {
         {loading ? <div className="flex justify-center py-12"><Spinner /></div> : null}
         {!loading && !error && visible.length === 0 ? (
           <p className="mx-4 mt-6 text-sm text-white/60">
-            {tab === 'upcoming' ? 'No hay conciertos próximos. Crea uno con «+ Evento».' : 'Aún no hay conciertos pasados.'}
+            {tab === 'upcoming' ? 'No hay conciertos próximos. Añade uno con «+ Concierto».' : 'Aún no hay conciertos pasados.'}
           </p>
         ) : null}
 
@@ -279,7 +286,13 @@ const Management: React.FC = () => {
                     ) : (
                       <p className="mt-0.5 truncate text-xs text-white/50">
                         {entity.type === 'artist' ? event.venue_name || event.city : event.headliner?.name || event.city}
-                        {event.status !== 'published' ? ' · Borrador' : ''}
+                        {event.status === 'review'
+                          ? ' · Pendiente'
+                          : event.status === 'archived'
+                            ? ' · Archivado'
+                            : event.status !== 'published'
+                              ? ' · Borrador'
+                              : ''}
                       </p>
                     )}
                   </div>
