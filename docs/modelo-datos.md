@@ -18,6 +18,7 @@ raíz son históricos y no se aplican al piloto.
 | Reclamaciones | `entity_claims` (solicitud de gestionar un artista o sala) |
 | Subida por QR | `event_upload_tokens` (token privado del QR de cada concierto) |
 | Festivales | `festivals` (edición con fechas y recinto), `events.festival_id` y `events.room` (escenario) |
+| Alta de conciertos | `event_proposals` (concierto propuesto por un artista a una sala) |
 
 `subjects` ofrece una identidad social uniforme para usuario, artista, sala y
 festival.
@@ -47,6 +48,33 @@ reutilización permitida y su crédito.
 
 La migración va en dos pasos. `20261028060100` añade `festival` a los enums y
 debe ejecutarse sola. `20261028060200` crea el resto.
+
+## Alta de conciertos
+
+Los conciertos los añade quien los hace, siempre con `create_concert()`, que
+crea evento y cartel de una vez (busca o crea por nombre normalizado los
+artistas nuevos) y decide en la base de datos si se publica:
+
+- Quien gestiona la sala (owner, admin o editor; también admins) publica al
+  momento.
+- Quien gestiona un artista propone: el evento queda en `review` y se crea una
+  fila en `event_proposals` (`pending`). Si la sala tiene gestores
+  (`reviewer = 'venue'`) la ven en su panel; si no, va a moderación
+  (`reviewer = 'moderation'`, pestaña «Conciertos» del panel de admin). Si la
+  sala se reclama mientras espera, la propuesta pasa a la sala.
+- La sala (o un admin) decide con `review_concert_proposal()`: aceptar publica
+  el evento; rechazar lo archiva y guarda un motivo opcional (máx. 280) que ve
+  el artista. Ambas dejan auditoría en `moderation_actions`.
+- Si el evento cambia de estado por otra vía (un admin lo publica a mano, el
+  artista lo cancela), un trigger cierra la propuesta como `accepted`,
+  `rejected` o `withdrawn`.
+
+`events_guard_publish` cierra el atajo del cliente: desde la app nadie inserta
+un evento publicado, lo pasa a `published`, lo reabre desde `archived` ni lo
+mueve de sala si no gestiona esa sala. Las funciones `SECURITY DEFINER` (estas,
+las de festivales) y los workers no pasan por esa comprobación. Antes de
+aplicar la migración `20261028080100` la app crea el evento en `review` como
+hasta ahora.
 
 ## Datos de comunidad
 

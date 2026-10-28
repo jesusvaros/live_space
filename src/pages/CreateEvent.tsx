@@ -1,20 +1,20 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Content, Page, Spinner } from '../components/ui/AppPrimitives';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import CreateEventModal from '../components/event/CreateEventModal';
-import { ManagedEntity, Profile } from '../lib/types';
+import { ManagedEntity } from '../lib/types';
+import { ConcertWorkspace } from '../hooks/useCreateEventForm';
 
 const CreateEventPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const locationState = location.state as { from?: string } | null;
-  const { user, profile, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { canCreateEvent, activeWorkspace, loading: workspaceLoading, ready: workspaceReady } = useWorkspace();
   const lastCanCreateRef = useRef<boolean | null>(null);
   const lastWorkspaceRef = useRef<ManagedEntity | null>(null);
-  const lastProfileRef = useRef<Profile | null>(null);
   const fallbackRoute = locationState?.from || '/tabs/mySpace';
 
   useEffect(() => {
@@ -27,7 +27,6 @@ const CreateEventPage: React.FC = () => {
     if (!user) {
       lastCanCreateRef.current = null;
       lastWorkspaceRef.current = null;
-      lastProfileRef.current = null;
     }
   }, [user]);
 
@@ -37,31 +36,26 @@ const CreateEventPage: React.FC = () => {
     }
   }, [activeWorkspace]);
 
-  useEffect(() => {
-    if (profile) {
-      lastProfileRef.current = profile;
-    }
-  }, [profile]);
-
   const canCreateStable = workspaceReady ? canCreateEvent : (lastCanCreateRef.current ?? false);
   const stableWorkspace = activeWorkspace ?? lastWorkspaceRef.current;
-  const stableProfile = profile ?? lastProfileRef.current;
 
-  const activeArtistId = stableWorkspace?.type === 'artist'
-    ? (stableWorkspace.artist as any)?.id || (stableWorkspace.artist as any)?.artist_id || null
-    : null;
-  const activeVenueLat = stableWorkspace?.type === 'venue'
-    ? Number((stableWorkspace.venue as any)?.latitude ?? (stableWorkspace.venue as any)?.lat ?? null)
-    : null;
-  const activeVenueLng = stableWorkspace?.type === 'venue'
-    ? Number((stableWorkspace.venue as any)?.longitude ?? (stableWorkspace.venue as any)?.lng ?? null)
-    : null;
-  const activeVenueCenter =
-    stableWorkspace?.type === 'venue' &&
-    Number.isFinite(activeVenueLat) &&
-    Number.isFinite(activeVenueLng)
-      ? [activeVenueLat, activeVenueLng] as [number, number]
-      : null;
+  const workspace = useMemo<ConcertWorkspace | null>(() => {
+    if (stableWorkspace?.type === 'artist' && stableWorkspace.artist) {
+      return {
+        type: 'artist',
+        subjectId: stableWorkspace.subject_id,
+        artist: { id: stableWorkspace.artist.id, name: stableWorkspace.artist.name },
+      };
+    }
+    if (stableWorkspace?.type === 'venue' && stableWorkspace.venue) {
+      return {
+        type: 'venue',
+        subjectId: stableWorkspace.subject_id,
+        venue: { id: stableWorkspace.venue.id, name: stableWorkspace.venue.name, city: stableWorkspace.venue.city || null },
+      };
+    }
+    return null;
+  }, [stableWorkspace]);
 
   if (authLoading && !user) {
     return (
@@ -105,19 +99,9 @@ const CreateEventPage: React.FC = () => {
             <div className="h-full sm:overflow-hidden sm:rounded-3xl sm:border sm:border-white/10 sm:bg-black/20 sm:backdrop-blur-xl">
               <CreateEventModal
                 onDismiss={() => navigate(fallbackRoute)}
-                onCreated={eventId => {
-                  if (eventId) {
-                    navigate(`/event/${eventId}`);
-                  } else {
-                    navigate(fallbackRoute);
-                  }
-                }}
+                onCreated={result => navigate(`/event/${result.eventId}`)}
                 userId={user?.id}
-                profileRole={stableWorkspace?.type || stableProfile?.role || null}
-                profileCity={stableWorkspace?.venue?.city || stableProfile?.primary_city || null}
-                profileName={stableWorkspace?.artist?.name || stableWorkspace?.venue?.name || stableProfile?.display_name || stableProfile?.username || null}
-                defaultArtistId={activeArtistId}
-                initialMapCenter={activeVenueCenter}
+                workspace={workspace}
               />
             </div>
           </div>
