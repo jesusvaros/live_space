@@ -132,7 +132,11 @@ const Welcome: React.FC = () => {
         }
         const { data } = await supabase.auth.getSession();
         if (!data.session) {
-          setNotice('Te hemos enviado un email para confirmar la cuenta. Ábrelo desde este móvil y volverás a la app.');
+          // The link may be opened on another device (a laptop): the account
+          // is confirmed anyway, so leave the form ready to sign in here and
+          // come back to where the user was (a concert QR, for instance).
+          setMode('signin');
+          setNotice('Te hemos enviado un email. Pulsa el enlace (en este móvil o en otro dispositivo) y vuelve aquí para pulsar «Entrar».');
           return;
         }
         // From a concert QR the upload comes first; the setup appears later on the home.

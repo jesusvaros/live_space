@@ -254,3 +254,28 @@ El frontend vuelve al artefacto anterior. Las migraciones de datos no se reviert
 ciegamente: se aplica una migración compensatoria revisada. Los cambios de RLS se
 prueban antes y después. Borrado físico, fusiones y moderación irreversible exigen
 aprobación humana y backup verificado.
+
+## Correos de autenticación
+
+Las plantillas con la imagen de Live Space están en `supabase/templates/`
+(confirmación, nueva contraseña, enlace mágico, cambio de email e invitación).
+En local las carga `supabase/config.toml`. En producción hay que pegarlas a mano
+en Dashboard → Authentication → Emails, con estos asuntos:
+
+| Plantilla | Asunto |
+| --- | --- |
+| Confirm signup → `confirmation.html` | Confirma tu cuenta de Live Space |
+| Reset password → `recovery.html` | Tu nueva contraseña de Live Space |
+| Magic link → `magic_link.html` | Tu enlace para entrar en Live Space |
+| Change email → `email_change.html` | Confirma tu nuevo email en Live Space |
+| Invite user → `invite.html` | Te esperan en Live Space |
+
+El servicio de correo que Supabase trae de serie solo envía unos pocos correos
+por hora y llega tarde. Antes de abrir el registro al público hay que
+configurar un SMTP propio (p. ej. Resend con un dominio verificado) en
+Authentication → SMTP Settings; las credenciales las pone una persona.
+
+Si el enlace de confirmación se abre en otro dispositivo, la cuenta queda
+confirmada igualmente: la app deja el formulario en «Entrar» con el email
+puesto y, al entrar, vuelve a donde estaba la persona (por ejemplo, el concierto
+del QR).
