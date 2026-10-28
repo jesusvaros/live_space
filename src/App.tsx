@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   BrowserRouter,
   Navigate,
@@ -13,6 +13,7 @@ import { useAuth } from './contexts/AuthContext';
 import { useWorkspace } from './contexts/WorkspaceContext';
 import AppBackHandler from './app/AppBackHandler';
 import AuthDeepLinks from './app/AuthDeepLinks';
+import { clearReturnTo, readReturnTo, rememberReturnTo } from './auth/returnTo';
 import MomentNudges from './features/moments/MomentNudges';
 import ConcertAlertsListener from './features/alerts/ConcertAlertsListener';
 import ShareTargetListener from './features/socialImport/ShareTargetListener';
@@ -75,6 +76,10 @@ const CreateEventRedirect = () => {
 
 const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
+  useEffect(() => {
+    if (user) clearReturnTo();
+  }, [user]);
   if (loading) {
     return (
       <div className="flex h-full min-h-48 items-center justify-center bg-app-bg text-white">
@@ -82,7 +87,12 @@ const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       </div>
     );
   }
-  return user ? <>{children}</> : <Navigate to="/welcome" replace />;
+  if (!user) {
+    // Back here after signing in (e.g. a concert QR scanned without an account).
+    rememberReturnTo(`${location.pathname}${location.search}`);
+    return <Navigate to="/welcome" replace />;
+  }
+  return <>{children}</>;
 };
 
 const WelcomeRoute = () => {
@@ -94,7 +104,7 @@ const WelcomeRoute = () => {
       </div>
     );
   }
-  return user ? <Navigate to="/tabs/events" replace /> : <Welcome />;
+  return user ? <Navigate to={readReturnTo()} replace /> : <Welcome />;
 };
 
 const ProfileRoute: React.FC<{
