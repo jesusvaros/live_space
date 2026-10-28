@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AppShell from '../components/AppShell';
 import { NAV_CLEARANCE } from '../components/BottomNav';
 import { useLastKnownLocation } from '../shared/hooks/useLastKnownLocation';
+import { readStoredLocation } from '../shared/hooks/useStoredLocation';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { useFollowedEntities } from '../hooks/useFollowedEntities';
 import { calculateDistanceKm, getEventCoverImage, toNumber } from '../features/events/utils';
@@ -17,10 +18,32 @@ import TimelineHeroSection from '../features/events/sections/TimelineHeroSection
 const NEARBY_RADIUS_KM = 50;
 const EVENTS_LOOKBACK_DAYS = 4;
 const DEFAULT_CITY = 'Madrid';
+const cityKey = 'live_space.city';
+
+const readStoredCity = () => {
+  try {
+    return window.localStorage.getItem(cityKey);
+  } catch {
+    return null;
+  }
+};
+
+const persistCity = (city: string) => {
+  try {
+    window.localStorage.setItem(cityKey, city);
+  } catch {
+    // ignore storage failures
+  }
+};
 
 const Events: React.FC = () => {
   const { user, profile } = useAuth();
-  const [pickedCity, setPickedCity] = useState<string | null>(null);
+  // A city the visitor picked sticks across visits and back navigation.
+  const [pickedCity, setPickedCity] = useState<string | null>(() => readStoredCity());
+  const pickCity = (next: string) => {
+    setPickedCity(next);
+    persistCity(next);
+  };
 
   const startOfToday = useMemo(() => {
     const date = new Date();
@@ -48,27 +71,49 @@ const Events: React.FC = () => {
   );
   const endIso = useMemo(() => endOfEventsWindow.toISOString(), [endOfEventsWindow]);
 
-  const { location } = useLastKnownLocation();
+  const { location, requestLocation } = useLastKnownLocation();
+
+  // Nothing picked and no saved position: ask once, so the listings open on their city.
+  const askedLocation = useRef(false);
+  useEffect(() => {
+    if (askedLocation.current || pickedCity || readStoredLocation()) return;
+    askedLocation.current = true;
+    requestLocation();
+  }, [pickedCity, requestLocation]);
 
   const { events, loading, error: loadError } = useEventsList({ startIso, endIso });
   const { hero, dismissPendingMoments } = useUserConcertHero({ events });
 
-  // The profile's city when the data has it, else the busiest one.
+  // The city of the closest concert, when it is within reach.
+  const nearestCity = useMemo(() => {
+    if (!location) return null;
+    let best: { city: string; distanceKm: number } | null = null;
+    for (const event of events) {
+      const name = (event.city || event.venue_place?.city || '').trim();
+      const eventLat = toNumber(event.latitude ?? event.venue_place?.latitude ?? null);
+      const eventLng = toNumber(event.longitude ?? event.venue_place?.longitude ?? null);
+      if (!name || eventLat === null || eventLng === null) continue;
+      const distanceKm = calculateDistanceKm(location.lat, location.lng, eventLat, eventLng);
+      if (!best || distanceKm < best.distanceKm) best = { city: name, distanceKm };
+    }
+    return best && best.distanceKm <= NEARBY_RADIUS_KM ? best.city : null;
+  }, [events, location]);
+
+  // Picked city, else where the visitor is, else the profile's city, else Madrid.
   const cities = useMemo(() => deriveCities(events), [events]);
   const city = useMemo(() => {
-    if (pickedCity) return pickedCity;
-    const preferred = profile?.primary_city?.toLowerCase();
+    const find = (name?: string | null) =>
+      name ? cities.find(option => option.name.toLowerCase() === name.toLowerCase())?.name : undefined;
     return (
-      cities.find(option => option.name.toLowerCase() === preferred)?.name ||
-      cities.find(option => option.name.toLowerCase() === DEFAULT_CITY.toLowerCase())?.name ||
+      find(pickedCity) ||
+      find(nearestCity) ||
+      find(profile?.primary_city) ||
+      find(DEFAULT_CITY) ||
       cities[0]?.name ||
+      pickedCity ||
       DEFAULT_CITY
     );
-  }, [cities, pickedCity, profile?.primary_city]);
-
-  useEffect(() => {
-    setPickedCity(null);
-  }, [profile?.primary_city]);
+  }, [cities, nearestCity, pickedCity, profile?.primary_city]);
 
   const nearbyUpcoming = useMemo(() => {
     if (!location) return [] as NearbyEventListItem[];
@@ -122,7 +167,7 @@ const Events: React.FC = () => {
         <CityListingSection
           events={events}
           city={city}
-          onCityChange={setPickedCity}
+          onCityChange={pickCity}
           loading={loading}
           error={loadError}
         />

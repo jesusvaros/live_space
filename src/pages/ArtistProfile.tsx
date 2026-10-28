@@ -307,7 +307,10 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
           <div className="px-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))] pt-4">
             {tabBar}
             <div className="pt-3.5">{renderTabContent()}</div>
-            <ClaimProfileLink type="artist" entityId={artist.id} subjectId={artist.subject_id} className="pt-6" />
+            {/* Claiming is for the few who are the artist: tucked away under Info. */}
+            {activeTab === 'about' ? (
+              <ClaimProfileLink type="artist" entityId={artist.id} subjectId={artist.subject_id} className="pt-6" />
+            ) : null}
           </div>
         </>
       )}
