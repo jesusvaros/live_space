@@ -55,5 +55,14 @@ verify_jwt = true
 [functions.media-r2-complete]
 verify_jwt = true
 
+[functions.merch-seller]
+verify_jwt = true
+
+[functions.merch-checkout]
+verify_jwt = true
+
+[functions.merch-stripe-webhook]
+verify_jwt = false
+
 [analytics]
 enabled = false

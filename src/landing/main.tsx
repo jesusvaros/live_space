@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Landing from './pages/Landing';
 import FestivalLanding from './pages/FestivalLanding';
 import UploadHandoff from './pages/UploadHandoff';
+import MerchHandoff from './pages/MerchHandoff';
 
 import '../index.css';
 
@@ -18,6 +19,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Route path="/" element={<Landing />} />
         <Route path="/festival/:slug" element={<FestivalLanding />} />
         <Route path="/upload" element={<UploadHandoff />} />
+        <Route path="/vuelta" element={<MerchHandoff />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

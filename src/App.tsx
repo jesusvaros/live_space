@@ -20,6 +20,9 @@ import Welcome from './pages/Welcome';
 import Events from './pages/Events';
 
 const Feed = React.lazy(() => import('./pages/Feed'));
+const MerchOrder = React.lazy(() => import('./pages/MerchOrder'));
+const MerchOrders = React.lazy(() => import('./pages/MerchOrders'));
+const MerchManage = React.lazy(() => import('./pages/MerchManage'));
 const Profile = React.lazy(() => import('./pages/Profile'));
 const Discover = React.lazy(() => import('./pages/Discover'));
 const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
@@ -175,6 +178,9 @@ const AppRoutes = () => {
           <Route path="/admin/create-venue" element={<Navigate to="/admin" replace />} />
           <Route path="/admin/access-grants" element={<Navigate to="/admin" replace />} />
           <Route path="/reset" element={<ResetPassword />} />
+          <Route path="/gestion/merch" element={<RequireAuth>{deferredPage(<MerchManage />)}</RequireAuth>} />
+          <Route path="/pedidos" element={<RequireAuth>{deferredPage(<MerchOrders />)}</RequireAuth>} />
+          <Route path="/pedidos/:id" element={<RequireAuth>{deferredPage(<MerchOrder />)}</RequireAuth>} />
           <Route path="/gestion/estadisticas" element={<RequireAuth>{deferredPage(<GestionEstadisticas />)}</RequireAuth>} />
           <Route path="/legal/licencia-momentos" element={deferredPage(<LicenciaMomentos />)} />
           <Route path="/create-event" element={<RequireAuth><CreateEventRedirect /></RequireAuth>} />

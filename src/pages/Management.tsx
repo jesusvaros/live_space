@@ -127,6 +127,12 @@ const Management: React.FC = () => {
           >
             Estadísticas
           </Link>
+          <Link
+            to="/gestion/merch"
+            className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-app-line px-3.5 text-[13px] font-semibold text-app-ink"
+          >
+            Merch
+          </Link>
           {entityChoices.length > 1 ? (
             <label className="relative">
               <span className="sr-only">Cambiar de perfil</span>

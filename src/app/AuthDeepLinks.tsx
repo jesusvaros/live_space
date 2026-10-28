@@ -2,8 +2,9 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 import { handleAuthCallbackUrl } from '../auth/nativeAuth';
-import { uploadDeepLinkPath } from '../lib/uploadQr';
+import { merchDeepLinkPath, uploadDeepLinkPath } from '../lib/uploadQr';
 
 // Catches com.livespace.app://auth/callback links (Google/Apple sign-in,
 // email confirmation, password reset) whether they wake the app or start it.
@@ -18,6 +19,12 @@ const AuthDeepLinks: React.FC = () => {
       const upload = uploadDeepLinkPath(url);
       if (upload) {
         navigate(upload);
+        return;
+      }
+      const merch = merchDeepLinkPath(url);
+      if (merch) {
+        void Browser.close().catch(() => undefined);
+        navigate(merch);
         return;
       }
       const result = await handleAuthCallbackUrl(url);
