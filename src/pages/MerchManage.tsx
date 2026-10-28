@@ -6,6 +6,7 @@ import { IconChevronLeft } from '../components/icons';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import { eventManagementService, ManagedEvent } from '../services/eventManagement.service';
 import { formatEuros, MERCH_STATUS_LABELS, MerchItem, MerchOrder, merchService } from '../services/merch.service';
+import { canGoBack } from '../app/useGoBack';
 
 const fieldClass =
   'min-h-12 w-full rounded-xl border border-app-line bg-app-surface px-3.5 text-[15px] text-app-ink placeholder:text-white/35 focus:border-app-accent focus:outline-none';
@@ -184,7 +185,7 @@ const MerchManage: React.FC = () => {
     return (
       <div className="min-h-screen bg-app-bg p-4 pt-[calc(16px+env(safe-area-inset-top,0px))] text-app-ink">
         <p className="text-sm text-white/60">Elige primero el artista o la sala que gestionas.</p>
-        <Button className="mt-4" onClick={() => navigate('/gestion')}>
+        <Button className="mt-4" onClick={() => (canGoBack() ? navigate(-1) : navigate('/gestion', { replace: true }))}>
           Ir a gestión
         </Button>
       </div>
@@ -196,7 +197,7 @@ const MerchManage: React.FC = () => {
       <header className="flex items-center gap-3 px-3 pb-2 pt-[calc(10px+env(safe-area-inset-top,0px))]">
         <button
           type="button"
-          onClick={() => navigate('/gestion')}
+          onClick={() => (canGoBack() ? navigate(-1) : navigate('/gestion', { replace: true }))}
           aria-label="Volver"
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-app-line bg-app-surface"
         >

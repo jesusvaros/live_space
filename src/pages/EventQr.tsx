@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { buildUploadQrUrl } from '../lib/uploadQr';
 import { fallbackShareTag, POSTER_COLORS, PosterVariant, qrSvg, renderPosterPng } from '../lib/qrPoster';
 import { eventManagementService, ManagedEvent } from '../services/eventManagement.service';
+import { canGoBack } from '../app/useGoBack';
 
 const posterDate = (iso: string) =>
   new Date(iso)
@@ -96,7 +97,7 @@ const EventQr: React.FC = () => {
   const colors = POSTER_COLORS[variant];
 
   const goBack = () => {
-    if (window.history.state && window.history.state.idx > 0) navigate(-1);
+    if (canGoBack()) navigate(-1);
     else navigate('/gestion', { replace: true });
   };
 
@@ -186,7 +187,7 @@ const EventQr: React.FC = () => {
                 />
               </div>
               <p className="mt-3 text-center font-display text-[13px] font-bold print:text-[18pt]">
-                Etiqueta tus stories con <span style={{ color: colors.accent }}>{content.shareTag}</span>
+                Etiqueta tus vídeos con <span style={{ color: colors.accent }}>{content.shareTag}</span>
               </p>
               <div className="mt-3 flex items-center justify-between gap-3 border-t-2 pt-2.5" style={{ borderColor: colors.ink }}>
                 <span className="min-w-0 truncate font-poster text-[22px] print:text-[32pt]">{content.artist}</span>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useGoBack } from '../../app/useGoBack';
 import { IconChevronLeft } from '../icons';
 
 type DetailHeaderProps = {
@@ -10,10 +10,10 @@ type DetailHeaderProps = {
   fallbackHref?: string;
 };
 
-// Floating back bar over a detail page's hero. Solid with the title once the
-// hero has scrolled away.
+// Back bar pinned to the top of a detail page, over its hero. Solid with the
+// title once the hero has scrolled away.
 const DetailHeader: React.FC<DetailHeaderProps> = ({ title, actions, scrollRef, fallbackHref = '/tabs/events' }) => {
-  const navigate = useNavigate();
+  const goBack = useGoBack(fallbackHref);
   const [solid, setSolid] = useState(false);
 
   useEffect(() => {
@@ -25,14 +25,9 @@ const DetailHeader: React.FC<DetailHeaderProps> = ({ title, actions, scrollRef, 
     return () => node.removeEventListener('scroll', onScroll);
   }, [scrollRef]);
 
-  const goBack = () => {
-    if (window.history.state && window.history.state.idx > 0) navigate(-1);
-    else navigate(fallbackHref, { replace: true });
-  };
-
   return (
     <div
-      className={`absolute inset-x-0 top-0 z-[1300] flex items-center gap-2 px-3 pb-2 pt-[calc(8px+env(safe-area-inset-top,0px))] transition-colors ${
+      className={`fixed inset-x-0 top-0 z-[1300] flex items-center gap-2 px-3 pb-2 pt-[calc(8px+env(safe-area-inset-top,0px))] transition-colors ${
         solid ? 'border-b border-app-line bg-app-bg/95 backdrop-blur' : 'bg-gradient-to-b from-black/55 to-transparent'
       }`}
     >

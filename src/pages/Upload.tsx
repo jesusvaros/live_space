@@ -17,6 +17,7 @@ import { ReuseConsentCheckbox } from '../features/community';
 import { getEventCoverImage, getPrimaryArtistName } from '../features/events/utils';
 import { parseScannedUploadValue } from '../lib/uploadQr';
 import { eventManagementService } from '../services/eventManagement.service';
+import { canGoBack } from '../app/useGoBack';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 // Detected only if the media was captured within this distance of the concert.
@@ -271,7 +272,7 @@ const Upload: React.FC = () => {
   };
 
   const close = () => {
-    if (window.history.state && window.history.state.idx > 0) navigate(-1);
+    if (canGoBack()) navigate(-1);
     else navigate('/tabs/feed', { replace: true });
   };
 

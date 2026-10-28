@@ -11,6 +11,7 @@ import {
   ClaimVerificationMethod,
   EntityClaim,
 } from '../services/claims.service';
+import { canGoBack } from '../app/useGoBack';
 
 const ROLES: Record<ClaimEntityType, string[]> = {
   artist: ['Soy el artista o miembro del grupo', 'Management', 'Sello o discográfica', 'Comunicación o prensa', 'Booking'],
@@ -90,7 +91,7 @@ const ClaimProfile: React.FC = () => {
   }, [id, type, user?.id]);
 
   const close = () => {
-    if (window.history.state && window.history.state.idx > 0) navigate(-1);
+    if (canGoBack()) navigate(-1);
     else navigate(id ? `/tabs/${type}/${id}` : '/tabs/events', { replace: true });
   };
 

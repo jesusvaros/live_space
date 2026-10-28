@@ -19,9 +19,9 @@ type ArtistHeroProps = {
   onEdit?: () => void;
 };
 
-type SocialKey = 'spotify' | 'apple_music' | 'instagram' | 'youtube' | 'website';
+export type SocialKey = 'spotify' | 'apple_music' | 'instagram' | 'youtube' | 'website';
 
-const SocialIcon: React.FC<{ name: SocialKey }> = ({ name }) => {
+export const SocialIcon: React.FC<{ name: SocialKey }> = ({ name }) => {
   if (name === 'spotify') {
     return (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -65,7 +65,7 @@ const SocialIcon: React.FC<{ name: SocialKey }> = ({ name }) => {
   );
 };
 
-const LINK_LABELS: Record<SocialKey, string> = {
+export const LINK_LABELS: Record<SocialKey, string> = {
   spotify: 'Spotify',
   apple_music: 'Apple Music',
   instagram: 'Instagram',
