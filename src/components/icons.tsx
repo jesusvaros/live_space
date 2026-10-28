@@ -30,6 +30,14 @@ export const IconMap: React.FC<IconProps> = ({ className, size = 20 }) => (
   </svg>
 );
 
+export const IconLocate: React.FC<IconProps> = ({ className, size = 20 }) => (
+  <svg {...baseProps(size)} className={className}>
+    <circle cx="12" cy="12" r="7" />
+    <circle cx="12" cy="12" r="2.5" />
+    <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+  </svg>
+);
+
 export const IconMic: React.FC<IconProps> = ({ className, size = 20 }) => (
   <svg {...baseProps(size)} className={className}>
     <rect x="9" y="3" width="6" height="11" rx="3" />

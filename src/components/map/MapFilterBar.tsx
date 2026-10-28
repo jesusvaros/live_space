@@ -1,15 +1,10 @@
 import React from 'react';
 import { IconFilters } from '../icons';
-import { MAP_WHEN_LABELS, type MapArtistFilter, type MapWhen } from '../../hooks/useMapFilters';
+import type { MapArtistFilter } from '../../hooks/useMapFilters';
 
 type MapFilterBarProps = {
   search: string;
   onSearchChange: (value: string) => void;
-  when: MapWhen;
-  onWhenChange: (value: MapWhen) => void;
-  city: string | null;
-  cities: string[];
-  onCityChange: (value: string | null) => void;
   artists: MapArtistFilter[];
   onRemoveArtist: (id: string) => void;
   onClearArtists: () => void;
@@ -34,11 +29,6 @@ const SearchGlyph = () => (
 const MapFilterBar: React.FC<MapFilterBarProps> = ({
   search,
   onSearchChange,
-  when,
-  onWhenChange,
-  city,
-  cities,
-  onCityChange,
   artists,
   onRemoveArtist,
   onClearArtists,
@@ -85,53 +75,31 @@ const MapFilterBar: React.FC<MapFilterBarProps> = ({
       </button>
     </div>
 
-    <div className="flex gap-2 overflow-x-auto px-4 pb-1">
-      {artists.map(artist => (
-        <span key={artist.id} className={`${chipClass(true)} pr-1`}>
-          {artist.avatar_url ? (
-            <img src={artist.avatar_url} alt="" className="h-6 w-6 rounded-full object-cover" />
-          ) : null}
-          {artist.name}
-          <button
-            type="button"
-            onClick={() => onRemoveArtist(artist.id)}
-            aria-label={`Quitar ${artist.name}`}
-            className="inline-flex h-9 items-center rounded-full bg-black/20 px-3 text-[12px] font-semibold"
-          >
-            Quitar
-          </button>
-        </span>
-      ))}
-      {artists.length > 1 ? (
-        <button type="button" className={chipClass(false)} onClick={onClearArtists}>
-          Quitar filtro
-        </button>
-      ) : null}
-      {(Object.keys(MAP_WHEN_LABELS) as Exclude<MapWhen, 'all'>[]).map(key => (
-        <button
-          key={key}
-          type="button"
-          aria-pressed={when === key}
-          className={chipClass(when === key)}
-          onClick={() => onWhenChange(when === key ? 'all' : key)}
-        >
-          {MAP_WHEN_LABELS[key]}
-        </button>
-      ))}
-      {cities.length > 1
-        ? cities.map(name => (
+    {artists.length > 0 ? (
+      <div className="flex gap-2 overflow-x-auto px-4 pb-1">
+        {artists.map(artist => (
+          <span key={artist.id} className={`${chipClass(true)} pr-1`}>
+            {artist.avatar_url ? (
+              <img src={artist.avatar_url} alt="" className="h-6 w-6 rounded-full object-cover" />
+            ) : null}
+            {artist.name}
             <button
-              key={name}
               type="button"
-              aria-pressed={city === name}
-              className={chipClass(city === name)}
-              onClick={() => onCityChange(city === name ? null : name)}
+              onClick={() => onRemoveArtist(artist.id)}
+              aria-label={`Quitar ${artist.name}`}
+              className="inline-flex h-9 items-center rounded-full bg-black/20 px-3 text-[12px] font-semibold"
             >
-              {name}
+              Quitar
             </button>
-          ))
-        : null}
-    </div>
+          </span>
+        ))}
+        {artists.length > 1 ? (
+          <button type="button" className={chipClass(false)} onClick={onClearArtists}>
+            Quitar filtro
+          </button>
+        ) : null}
+      </div>
+    ) : null}
   </div>
 );
 

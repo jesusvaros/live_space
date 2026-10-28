@@ -4,7 +4,7 @@ const locationStorageKey = 'live_space.last_location';
 
 export type StoredLocation = { lat: number; lng: number };
 
-const readStoredLocation = (): StoredLocation | null => {
+export const readStoredLocation = (): StoredLocation | null => {
   try {
     const raw = window.localStorage.getItem(locationStorageKey);
     if (!raw) return null;
