@@ -84,6 +84,8 @@ const Welcome: React.FC = () => {
   const [primaryCity, setPrimaryCity] = useState('');
   const [busy, setBusy] = useState<null | 'email' | OAuthProvider | 'reset'>(null);
   const location = useLocation();
+  // Arrived from a concert QR without an account.
+  const fromConcertQr = readReturnTo().startsWith('/tabs/upload');
   const linkError = searchParams.get('error');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -201,7 +203,11 @@ const Welcome: React.FC = () => {
             <br />
             <span style={{ color: ACCENT }}>Súbelo.</span>
           </h1>
-          <p className="m-0 text-base text-white/75">Tus fotos y vídeos del concierto, ordenados por canción.</p>
+          <p className="m-0 text-base text-white/75">
+            {fromConcertQr
+              ? 'Entra o crea tu cuenta en un minuto y sube lo que grabes en este concierto.'
+              : 'Tus fotos y vídeos del concierto, ordenados por canción.'}
+          </p>
         </div>
 
         {anyProvider ? (
