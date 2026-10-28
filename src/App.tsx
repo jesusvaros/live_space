@@ -45,6 +45,7 @@ const Management = React.lazy(() => import('./pages/Management'));
 const FestivalDetail = React.lazy(() => import('./pages/FestivalDetail'));
 const FestivalTimetable = React.lazy(() => import('./pages/FestivalTimetable'));
 const EventQr = React.lazy(() => import('./pages/EventQr'));
+const AgendaSetup = React.lazy(() => import('./pages/AgendaSetup'));
 
 const deferredPage = (page: React.ReactNode) => (
   <React.Suspense
@@ -201,6 +202,7 @@ const AppRoutes = () => {
           <Route path="/gestion" element={<RequireAuth>{deferredPage(<Management />)}</RequireAuth>} />
           <Route path="/gestion/festival/:id" element={<RequireAuth>{deferredPage(<FestivalTimetable />)}</RequireAuth>} />
           <Route path="/gestion/evento/:id/qr" element={<RequireAuth>{deferredPage(<EventQr />)}</RequireAuth>} />
+          <Route path="/empezar" element={<RequireAuth>{deferredPage(<AgendaSetup />)}</RequireAuth>} />
           <Route path="/importar" element={deferredPage(<Import />)} />
           <Route
             path="/tabs"
