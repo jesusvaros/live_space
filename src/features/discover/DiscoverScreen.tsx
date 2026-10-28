@@ -13,6 +13,7 @@ import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useDiscoverResults } from './hooks/useDiscoverResults';
 import { useStoredLocation } from '../../shared/hooks/useStoredLocation';
 import { useFollowedSubjects } from '../../hooks/useFollowedSubjects';
+import WrappedCard from '../wrapped/WrappedCard';
 
 type RouteState = { initialTab?: DiscoverTabKey } | undefined;
 
@@ -111,6 +112,8 @@ const DiscoverScreen: React.FC = () => {
       />
 
       <DiscoverSegmentedControl value={tab} onChange={setTab} />
+
+      {tab === 'artists' && !query.trim() ? <WrappedCard /> : null}
 
       <div className="flex flex-col gap-[22px] pt-2">
         {loading && <DiscoverSkeletonList rows={6} />}

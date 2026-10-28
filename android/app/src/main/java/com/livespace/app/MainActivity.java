@@ -6,6 +6,7 @@ import androidx.activity.OnBackPressedCallback;
 import com.getcapacitor.BridgeActivity;
 import com.livespace.app.gallery.GalleryScanPlugin;
 import com.livespace.app.media.LiveSpaceMediaPlugin;
+import com.livespace.app.ocr.TextScanPlugin;
 
 public class MainActivity extends BridgeActivity {
   private static final String MAIN_ROUTE_PATH = "/tabs/events";
@@ -36,6 +37,7 @@ public class MainActivity extends BridgeActivity {
     // Local plugins must be registered before the bridge starts.
     registerPlugin(GalleryScanPlugin.class);
     registerPlugin(LiveSpaceMediaPlugin.class);
+    registerPlugin(TextScanPlugin.class);
     super.onCreate(savedInstanceState);
 
     getOnBackPressedDispatcher().addCallback(

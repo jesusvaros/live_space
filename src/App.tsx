@@ -38,6 +38,7 @@ const Map = React.lazy(() => import('./pages/Map'));
 const Upload = React.lazy(() => import('./pages/Upload'));
 const SuggestedUpload = React.lazy(() => import('./pages/SuggestedUpload'));
 const Import = React.lazy(() => import('./pages/Import'));
+const Wrapped = React.lazy(() => import('./pages/Wrapped'));
 const GestionEstadisticas = React.lazy(() => import('./pages/GestionEstadisticas'));
 const LicenciaMomentos = React.lazy(() => import('./pages/LicenciaMomentos'));
 const ClaimProfile = React.lazy(() => import('./pages/ClaimProfile'));
@@ -204,6 +205,7 @@ const AppRoutes = () => {
           <Route path="/gestion/evento/:id/qr" element={<RequireAuth>{deferredPage(<EventQr />)}</RequireAuth>} />
           <Route path="/empezar" element={<RequireAuth>{deferredPage(<AgendaSetup />)}</RequireAuth>} />
           <Route path="/importar" element={deferredPage(<Import />)} />
+          <Route path="/wrapped" element={deferredPage(<Wrapped />)} />
           <Route
             path="/tabs"
             element={(

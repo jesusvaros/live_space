@@ -36,6 +36,7 @@ export default defineConfig({
           { text: 'Licencia de los momentos', link: '/legal/licencia-momentos' },
           { text: 'Moderación', link: '/moderacion' },
           { text: 'Importar clips', link: '/importar-clips' },
+          { text: 'Importar el Wrapped', link: '/wrapped' },
           { text: 'Runbooks', link: '/runbooks' },
         ],
       },

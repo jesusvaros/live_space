@@ -48,7 +48,22 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
 
+            <!-- Share sheet: Spotify Wrapped card (or any image) -> Compartir -> Live Space.
+                 The plugin copies it to cache/shared_files; ShareTargetListener opens /wrapped,
+                 which reads the artist names on the device (docs/wrapped.md). -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+
         </activity>
+
+        <!-- Wrapped import: Play Services downloads the ML Kit text model at install
+             time instead of on the first scan (unbundled model, APK stays small). -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="ocr" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
