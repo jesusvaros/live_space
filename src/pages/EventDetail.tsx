@@ -21,6 +21,7 @@ import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { EventStatsCard, VenueFeedbackPrompt } from '../features/community';
 import { EventTagBadge } from '../features/socialImport';
 import { festivalService } from '../services/festival.service';
+import EventMerchSection from '../features/merch/EventMerchSection';
 
 type EventDetailData = Event & {
   organizer?: Profile | null;
@@ -741,6 +742,9 @@ const EventDetail: React.FC = () => {
               )}
               {engagementError && <p className="px-4 pt-3 text-sm text-rose-400">{engagementError}</p>}
               <div className="px-4 pt-5 empty:hidden">
+                <EventMerchSection eventId={event.id} startsAt={event.starts_at} />
+              </div>
+              <div className="px-4 pt-5 empty:hidden">
                 <EventTagBadge eventId={event.id} event={event} className="mb-3" />
                 <EventStatsCard eventId={event.id} />
               </div>
@@ -825,6 +829,8 @@ const EventDetail: React.FC = () => {
                     Al subirlo lo colocamos en su canción, junto a lo que grabó el resto del público.
                   </p>
                 </div>
+
+                <EventMerchSection eventId={event.id} startsAt={event.starts_at} />
 
                 <EventTagBadge eventId={event.id} event={event} />
 

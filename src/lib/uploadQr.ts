@@ -42,6 +42,21 @@ export const parseScannedUploadValue = (raw: string): ScannedUploadTarget => {
   }
 };
 
+// Back from Stripe (through the public /vuelta page):
+// com.livespace.app://merch?pedido=<id> or ?cobros=1.
+export const merchDeepLinkPath = (rawUrl: string) => {
+  if (!rawUrl.startsWith('com.livespace.app://merch')) return null;
+  try {
+    const url = new URL(rawUrl.replace(/^com\.livespace\.app:\/\//, 'https://app/'));
+    const order = url.searchParams.get('pedido');
+    if (order && UUID.test(order)) return `/pedidos/${order}`;
+    if (url.searchParams.get('cobros')) return '/gestion/merch';
+    return '/pedidos';
+  } catch {
+    return null;
+  }
+};
+
 // Concert QR links: com.livespace.app://upload?qr=… (from the public /upload
 // page) or https://<site>/upload?qr=… (App Links / Universal Links).
 export const uploadDeepLinkPath = (rawUrl: string) => {

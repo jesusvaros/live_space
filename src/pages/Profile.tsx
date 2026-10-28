@@ -561,6 +561,17 @@ const Profile: React.FC = () => {
           </button>
         ) : null}
 
+        {!isManagementMode ? (
+          <button
+            type="button"
+            onClick={() => navigate('/pedidos')}
+            className="mx-4 mt-3.5 flex min-h-12 items-center justify-between rounded-[14px] border border-app-line bg-app-surface px-3.5 text-left text-sm font-semibold text-app-ink"
+          >
+            <span>Mis pedidos de merch</span>
+            <span className="font-mono text-[11px] font-semibold uppercase text-app-accent">Recoger · recuerdos</span>
+          </button>
+        ) : null}
+
         {!isManagementMode && nextConcert ? (
           <button
             type="button"

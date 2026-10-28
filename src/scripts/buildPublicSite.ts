@@ -417,6 +417,13 @@ const run = async () => {
       .replace(/<title>[\s\S]*?<\/title>/, '<title>Sube tu momento · Live Space</title>')
       .replace('</head>', '<meta name="robots" content="noindex" />\n  </head>'),
   );
+  // /vuelta: Stripe sends people back here after paying merch; it reopens the app.
+  writePage(
+    '/vuelta/',
+    landingTemplate
+      .replace(/<title>[\s\S]*?<\/title>/, '<title>Vuelve a Live Space</title>')
+      .replace('</head>', '<meta name="robots" content="noindex" />\n  </head>'),
+  );
   writeFileSync(
     path.join(DIST, '_redirects'),
     [...redirects, ...appRoutes.map((route) => `${route} / 302`), ''].join('\n'),
