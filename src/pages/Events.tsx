@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import { NAV_CLEARANCE } from '../components/BottomNav';
 import { useLastKnownLocation } from '../shared/hooks/useLastKnownLocation';
@@ -16,30 +17,27 @@ import { useUserConcertHero } from '../features/events/hooks/useUserConcertHero'
 import TimelineHeroSection from '../features/events/sections/TimelineHeroSection';
 import GoingSection from '../features/events/sections/GoingSection';
 import { HomeCustomizer, HomeSectionKey, useHomeLayout } from '../features/events/homeLayout';
+import ForYouSection from '../features/events/sections/ForYouSection';
+import { isSetupDone, nearestEventCity, persistCity, readStoredCity, readTastes } from '../features/agenda/agendaPrefs';
+import { useConcertHistory } from '../features/agenda/useConcertHistory';
 
 const NEARBY_RADIUS_KM = 50;
 const EVENTS_LOOKBACK_DAYS = 4;
 const DEFAULT_CITY = 'Madrid';
-const cityKey = 'live_space.city';
-
-const readStoredCity = () => {
-  try {
-    return window.localStorage.getItem(cityKey);
-  } catch {
-    return null;
-  }
-};
-
-const persistCity = (city: string) => {
-  try {
-    window.localStorage.setItem(cityKey, city);
-  } catch {
-    // ignore storage failures
-  }
-};
+// Accounts this young get the agenda setup once, wherever they signed up.
+const NEW_ACCOUNT_MS = 3 * 24 * 60 * 60 * 1000;
 
 const Events: React.FC = () => {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user || !profile || isSetupDone(user.id)) return;
+    const createdAt = Date.parse(profile.created_at);
+    if (Number.isFinite(createdAt) && Date.now() - createdAt < NEW_ACCOUNT_MS) {
+      navigate('/empezar', { replace: true, state: { returnTo: '/tabs/events' } });
+    }
+  }, [navigate, profile, user]);
   // A city the visitor picked sticks across visits and back navigation.
   const [pickedCity, setPickedCity] = useState<string | null>(() => readStoredCity());
   const pickCity = (next: string) => {
@@ -88,16 +86,7 @@ const Events: React.FC = () => {
 
   // The city of the closest concert, when it is within reach.
   const nearestCity = useMemo(() => {
-    if (!location) return null;
-    let best: { city: string; distanceKm: number } | null = null;
-    for (const event of events) {
-      const name = (event.city || event.venue_place?.city || '').trim();
-      const eventLat = toNumber(event.latitude ?? event.venue_place?.latitude ?? null);
-      const eventLng = toNumber(event.longitude ?? event.venue_place?.longitude ?? null);
-      if (!name || eventLat === null || eventLng === null) continue;
-      const distanceKm = calculateDistanceKm(location.lat, location.lng, eventLat, eventLng);
-      if (!best || distanceKm < best.distanceKm) best = { city: name, distanceKm };
-    }
+    const best = location ? nearestEventCity(events, location) : null;
     return best && best.distanceKm <= NEARBY_RADIUS_KM ? best.city : null;
   }, [events, location]);
 
@@ -155,9 +144,21 @@ const Events: React.FC = () => {
 
   const { followedSubjectIds } = useFollowedSubjects();
   const { entities: followedEntities } = useFollowedEntities(followedSubjectIds);
+  const { history } = useConcertHistory(user?.id ?? null);
+  const tastes = useMemo(() => readTastes(), []);
 
   const sections: Record<HomeSectionKey, React.ReactNode> = {
     going: <GoingSection userId={user?.id ?? null} />,
+    forYou: (
+      <ForYouSection
+        events={events}
+        city={city}
+        entities={followedEntities}
+        tastes={tastes}
+        frequentVenues={history.venues}
+        signedIn={Boolean(user)}
+      />
+    ),
     following: <FollowingSection events={events} entities={followedEntities} signedIn={Boolean(user)} />,
     festivals: <FestivalsSection />,
     listings: (

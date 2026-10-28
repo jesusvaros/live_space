@@ -135,6 +135,8 @@ const Welcome: React.FC = () => {
           setNotice('Te hemos enviado un email para confirmar la cuenta. Ábrelo desde este móvil y volverás a la app.');
           return;
         }
+        navigate('/empezar', { replace: true, state: { returnTo: '/tabs/events' } });
+        return;
       } else {
         const { error: signInError } = await signIn(email, password);
         if (signInError) {

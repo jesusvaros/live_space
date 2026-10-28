@@ -18,6 +18,7 @@ import { useAppResume } from '../shared/hooks/useAppResume';
 import { fetchQuery } from '../lib/queryClient';
 import { fetchEventCards } from '../data/eventQueries';
 import { fetchPostCards } from '../data/postQueries';
+import ConcertHistorySection from '../features/agenda/ConcertHistorySection';
 
 const Profile: React.FC = () => {
   const { 
@@ -572,6 +573,17 @@ const Profile: React.FC = () => {
           </button>
         ) : null}
 
+        {!isManagementMode ? (
+          <button
+            type="button"
+            onClick={() => navigate('/empezar', { state: { returnTo: '/tabs/profile' } })}
+            className="mx-4 mt-2 flex min-h-12 items-center justify-between rounded-[14px] border border-app-line bg-app-surface px-3.5 text-left text-sm font-semibold text-app-ink"
+          >
+            <span>Tu agenda</span>
+            <span className="font-mono text-[11px] font-semibold uppercase text-app-accent">Ciudad · gustos · seguir</span>
+          </button>
+        ) : null}
+
         {!isManagementMode && nextConcert ? (
           <button
             type="button"
@@ -604,6 +616,8 @@ const Profile: React.FC = () => {
             </span>
           </button>
         ) : null}
+
+        {!isManagementMode && user ? <ConcertHistorySection userId={user.id} /> : null}
 
         <div role="tablist" aria-label="Secciones del perfil" className="flex gap-1.5 overflow-x-auto px-4 pb-3 pt-[18px]">
           {tabs.map(tab => (

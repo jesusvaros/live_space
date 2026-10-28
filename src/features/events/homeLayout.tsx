@@ -2,16 +2,17 @@ import React, { useState } from 'react';
 import { Modal } from '../../components/ui/AppPrimitives';
 import { IconChevronDown, IconChevronUp } from '../../components/icons';
 
-export type HomeSectionKey = 'going' | 'following' | 'festivals' | 'listings';
+export type HomeSectionKey = 'going' | 'forYou' | 'following' | 'festivals' | 'listings';
 
 export const HOME_SECTION_LABELS: Record<HomeSectionKey, string> = {
   going: 'Voy',
+  forYou: 'Para ti',
   following: 'Lo que sigues',
   festivals: 'Festivales',
   listings: 'Cartelera de tu ciudad',
 };
 
-const DEFAULT_ORDER: HomeSectionKey[] = ['going', 'following', 'festivals', 'listings'];
+const DEFAULT_ORDER: HomeSectionKey[] = ['going', 'forYou', 'following', 'festivals', 'listings'];
 const layoutKey = 'live_space.home.layout.v1';
 
 export type HomeLayout = { order: HomeSectionKey[]; hidden: HomeSectionKey[] };
@@ -26,10 +27,13 @@ const readLayout = (): HomeLayout => {
     const known = (keys: unknown) =>
       (Array.isArray(keys) ? keys : []).filter((key): key is HomeSectionKey => DEFAULT_ORDER.includes(key));
     const order = known(parsed.order);
-    return {
-      order: [...order, ...DEFAULT_ORDER.filter(key => !order.includes(key))],
-      hidden: known(parsed.hidden),
-    };
+    // A new section lands after the one it follows by default.
+    DEFAULT_ORDER.forEach((key, index) => {
+      if (order.includes(key)) return;
+      const previous = DEFAULT_ORDER.slice(0, index).reverse().find(item => order.includes(item));
+      order.splice(previous ? order.indexOf(previous) + 1 : 0, 0, key);
+    });
+    return { order, hidden: known(parsed.hidden) };
   } catch {
     return DEFAULT_LAYOUT;
   }
