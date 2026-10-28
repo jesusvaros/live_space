@@ -11,7 +11,8 @@ begin;
 --
 -- The publish decision lives in the database: events_guard_publish stops a
 -- signed-in client from inserting or flipping an event to 'published' unless
--- they manage its venue. Writes made by SECURITY DEFINER functions (this
+-- can_publish_at_venue() (admin, or manager of a published venue), and
+-- freezes the content and line-up of an accepted proposal for everyone else. Writes made by SECURITY DEFINER functions (this
 -- migration's RPCs and any other) and by workers are not affected.
 --
 -- Additive: no existing function or policy is replaced.
@@ -91,7 +92,56 @@ as $$
 $$;
 
 revoke all on function public.venue_has_managers(uuid) from public;
+revoke execute on function public.venue_has_managers(uuid) from anon, authenticated;
 grant execute on function public.venue_has_managers(uuid) to service_role;
+
+-- Publishing at a venue: admins anywhere; a venue's managers only once the
+-- venue itself is published (a venue someone just created and manages is not
+-- vouched for yet). Called by the guards below as the signed-in user.
+create or replace function public.can_publish_at_venue(p_venue_place_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select public.current_user_is_admin() or (
+    public.can_manage_venue(p_venue_place_id)
+    and exists (
+      select 1 from public.venue_places v
+      where v.id = p_venue_place_id and v.status = 'published'
+    )
+  );
+$$;
+
+revoke all on function public.can_publish_at_venue(uuid) from public;
+revoke execute on function public.can_publish_at_venue(uuid) from anon;
+grant execute on function public.can_publish_at_venue(uuid) to authenticated, service_role;
+
+-- True for a published event that came in as a proposal and that the caller
+-- cannot publish: its content is what the venue approved, so it is frozen
+-- for everyone but the venue. Events without a proposal (scraped, created by
+-- the venue) keep the usual editing rules.
+create or replace function public.event_frozen_for_caller(p_event_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.events e
+    join public.event_proposals p on p.event_id = e.id
+    where e.id = p_event_id
+      and e.status = 'published'
+      and not public.can_publish_at_venue(e.venue_place_id)
+  );
+$$;
+
+revoke all on function public.event_frozen_for_caller(uuid) from public;
+revoke execute on function public.event_frozen_for_caller(uuid) from anon;
+grant execute on function public.event_frozen_for_caller(uuid) to authenticated, service_role;
 
 -- Guard on direct writes from the app (role authenticated). Not SECURITY
 -- DEFINER on purpose: inside a SECURITY DEFINER function current_user is the
@@ -105,7 +155,7 @@ begin
   if current_user not in ('authenticated', 'anon') then
     return new;
   end if;
-  if public.can_manage_venue(new.venue_place_id) then
+  if public.can_publish_at_venue(new.venue_place_id) then
     return new;
   end if;
 
@@ -125,21 +175,68 @@ begin
   ) then
     raise exception using errcode = '42501', message = 'Only the venue managers can publish this concert';
   end if;
+  if old.status = 'published' and public.event_frozen_for_caller(old.id) and (
+    new.name is distinct from old.name
+    or new.starts_at is distinct from old.starts_at
+    or new.ends_at is distinct from old.ends_at
+    or new.ticket_url is distinct from old.ticket_url
+    or new.image_url is distinct from old.image_url
+    or new.description is distinct from old.description
+  ) then
+    raise exception using errcode = '42501', message = 'The venue accepted this concert; ask the venue to change it';
+  end if;
   new.published_at := old.published_at;
   return new;
 end;
 $$;
 
 revoke all on function public.events_guard_publish() from public;
+revoke execute on function public.events_guard_publish() from anon, authenticated;
 
 drop trigger if exists events_guard_publish on public.events;
 create trigger events_guard_publish
-  before insert or update of status, venue_place_id, published_at on public.events
+  before insert or update of status, venue_place_id, published_at, name, starts_at, ends_at,
+    ticket_url, image_url, description on public.events
   for each row execute function public.events_guard_publish();
 
+-- Same rule for the line-up of an accepted proposal.
+create or replace function public.event_artists_guard_accepted()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if current_user in ('authenticated', 'anon') and (
+    (tg_op <> 'INSERT' and public.event_frozen_for_caller(old.event_id))
+    or (tg_op <> 'DELETE' and public.event_frozen_for_caller(new.event_id))
+  ) then
+    raise exception using errcode = '42501', message = 'The venue accepted this concert; ask the venue to change the line-up';
+  end if;
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.event_artists_guard_accepted() from public;
+revoke execute on function public.event_artists_guard_accepted() from anon, authenticated;
+
+drop trigger if exists event_artists_guard_accepted on public.event_artists;
+create trigger event_artists_guard_accepted
+  before insert or update or delete on public.event_artists
+  for each row execute function public.event_artists_guard_accepted();
+
+-- Ticket links are web links. NOT VALID: checked on every new write, existing
+-- rows are left alone (validate once they are cleaned up).
+alter table public.events drop constraint if exists events_ticket_url_http;
+alter table public.events
+  add constraint events_ticket_url_http check (ticket_url is null or ticket_url ~* '^https?://') not valid;
+
 -- Keeps a pending proposal in step when its event changes status outside
--- review_concert_proposal() (an admin publishing it by hand, the proposer
--- cancelling it).
+-- review_concert_proposal(). Only the venue's managers or staff (or a write
+-- without a user, from the dashboard or a worker) accept or reject; anyone
+-- else ending the event withdraws the proposal.
 create or replace function public.sync_event_proposal_status()
 returns trigger
 language plpgsql
@@ -148,14 +245,16 @@ set search_path = ''
 as $$
 declare
   actor uuid := auth.uid();
+  decides boolean;
 begin
-  if new.status = 'published' then
+  decides := actor is null or public.current_user_is_staff() or public.can_publish_at_venue(new.venue_place_id);
+  if new.status = 'published' and decides then
     update public.event_proposals
     set status = 'accepted', reviewed_by = actor, reviewed_at = now()
     where event_id = new.id and status = 'pending';
   elsif new.status in ('archived', 'cancelled') then
     update public.event_proposals p
-    set status = case when actor is not null and actor = p.proposed_by then 'withdrawn' else 'rejected' end,
+    set status = case when decides then 'rejected' else 'withdrawn' end,
         reviewed_by = actor,
         reviewed_at = now()
     where p.event_id = new.id and p.status = 'pending';
@@ -165,6 +264,7 @@ end;
 $$;
 
 revoke all on function public.sync_event_proposal_status() from public;
+revoke execute on function public.sync_event_proposal_status() from anon, authenticated;
 
 drop trigger if exists events_sync_proposal_status on public.events;
 create trigger events_sync_proposal_status
@@ -173,7 +273,7 @@ create trigger events_sync_proposal_status
   when (new.status is distinct from old.status)
   execute function public.sync_event_proposal_status();
 
--- A venue claimed while proposals wait in moderation takes them over.
+-- A published venue claimed while proposals wait in moderation takes them over.
 create or replace function public.route_proposals_to_new_venue_manager()
 returns trigger
 language plpgsql
@@ -185,8 +285,10 @@ begin
     update public.event_proposals p
     set reviewer = 'venue'
     from public.subjects s
+    join public.venue_places v on v.id = s.venue_place_id
     where s.id = new.subject_id
       and s.type = 'venue'
+      and v.status = 'published'
       and p.venue_place_id = s.venue_place_id
       and p.status = 'pending'
       and p.reviewer = 'moderation';
@@ -196,6 +298,7 @@ end;
 $$;
 
 revoke all on function public.route_proposals_to_new_venue_manager() from public;
+revoke execute on function public.route_proposals_to_new_venue_manager() from anon, authenticated;
 
 drop trigger if exists entity_memberships_route_proposals on public.entity_memberships;
 create trigger entity_memberships_route_proposals
@@ -206,7 +309,9 @@ create trigger entity_memberships_route_proposals
 -- proposal. p_new_artists is a JSON array of {"name", "normalized_name"} for
 -- names that are not in the catalog yet (looked up by normalized name first).
 -- p_as_artist_id is the artist the caller acts for when they do not manage
--- the venue; it is always part of the line-up.
+-- the venue; it is always part of the line-up. Published straight away only
+-- when the caller can publish at the venue (can_publish_at_venue); otherwise
+-- it becomes a proposal, rate-limited per proposer.
 create or replace function public.create_concert(
   p_venue_place_id uuid,
   p_starts_at timestamptz,
@@ -232,6 +337,7 @@ declare
   ticket text := nullif(trim(coalesce(p_ticket_url, '')), '');
   poster text := nullif(trim(coalesce(p_image_url, '')), '');
   is_venue_manager boolean;
+  can_publish boolean;
   lineup uuid[] := '{}';
   candidate uuid;
   new_artist jsonb;
@@ -254,6 +360,7 @@ begin
   end if;
 
   is_venue_manager := public.can_manage_venue(venue.id);
+  can_publish := public.can_publish_at_venue(venue.id);
   if not is_venue_manager and (p_as_artist_id is null or not public.can_manage_artist(p_as_artist_id)) then
     raise exception using errcode = '42501', message = 'Only venue or artist managers can add concerts';
   end if;
@@ -305,7 +412,9 @@ begin
     limit 1;
     if candidate is null then
       insert into public.artists (name, normalized_name, status, created_by)
-      values (artist_name, artist_key, 'published', editor)
+      -- No created_by: typing a name never makes it yours; ownership only
+      -- comes through entity_claims.
+      values (artist_name, artist_key, 'published', null)
       on conflict (normalized_name, country_code) where status <> 'archived' do nothing
       returning id into candidate;
       if candidate is null then
@@ -324,18 +433,41 @@ begin
     raise exception using errcode = '22023', message = 'Add at least one artist';
   end if;
 
-  -- A double tap or a second person adding the same night.
+  -- A double tap or a second person adding the same night. Only events the
+  -- caller could already see count, so this cannot reveal unannounced ones.
   if exists (
     select 1 from public.events e
     where e.venue_place_id = venue.id
       and e.normalized_name = event_key
       and e.starts_at between p_starts_at - interval '3 hours' and p_starts_at + interval '3 hours'
       and e.status in ('draft', 'review', 'published')
+      and (e.status = 'published' or public.can_manage_event(e.id))
   ) then
     raise exception using errcode = '23505', message = 'That concert is already in the agenda';
   end if;
 
-  v_status := case when is_venue_manager then 'published' else 'review' end;
+  -- Proposal limits, serialised per proposer so parallel calls cannot slip
+  -- past the counts.
+  if not can_publish then
+    perform pg_advisory_xact_lock(hashtextextended('create_concert:' || editor::text, 0));
+    if (select count(*) from public.event_proposals p where p.proposed_by = editor and p.status = 'pending') >= 10 then
+      raise exception using errcode = '54000', message = 'Too many pending proposals';
+    end if;
+    if (
+      select count(*) from public.event_proposals p
+      where p.proposed_by = editor and p.venue_place_id = venue.id and p.status = 'pending'
+    ) >= 3 then
+      raise exception using errcode = '54000', message = 'Too many pending proposals at this venue';
+    end if;
+    if (
+      select count(*) from public.event_proposals p
+      where p.proposed_by = editor and p.created_at > now() - interval '1 day'
+    ) >= 20 then
+      raise exception using errcode = '54000', message = 'Daily proposal limit reached';
+    end if;
+  end if;
+
+  v_status := case when can_publish then 'published' else 'review' end;
   if ticket is not null then locked := array_append(locked, 'ticket_url'); end if;
   if poster is not null then locked := array_append(locked, 'image_url'); end if;
 
@@ -346,7 +478,7 @@ begin
   values (
     venue.id, event_name, event_key, p_starts_at, p_ends_at, venue.city, venue.address, venue.latitude, venue.longitude,
     ticket, poster, case when poster is null then null else 'manual' end, v_status,
-    case when is_venue_manager then now() else null end, editor, locked
+    case when can_publish then now() else null end, editor, locked
   )
   returning id into v_event;
 
@@ -356,8 +488,11 @@ begin
     idx := idx + 1;
   end loop;
 
-  if not is_venue_manager then
-    v_reviewer := case when public.venue_has_managers(venue.id) then 'venue' else 'moderation' end;
+  if not can_publish then
+    v_reviewer := case
+      when venue.status = 'published' and public.venue_has_managers(venue.id) then 'venue'
+      else 'moderation'
+    end;
     insert into public.event_proposals (event_id, venue_place_id, artist_id, proposed_by, reviewer)
     values (v_event, venue.id, p_as_artist_id, editor, v_reviewer)
     returning id into v_proposal;
@@ -373,11 +508,13 @@ end;
 $$;
 
 revoke all on function public.create_concert(uuid, timestamptz, text, text, uuid[], jsonb, timestamptz, text, text, uuid) from public;
+revoke execute on function public.create_concert(uuid, timestamptz, text, text, uuid[], jsonb, timestamptz, text, text, uuid) from anon;
 grant execute on function public.create_concert(uuid, timestamptz, text, text, uuid[], jsonb, timestamptz, text, text, uuid)
   to authenticated, service_role;
 
 -- Accept publishes the event; reject archives it (kept, not deleted, so the
--- proposer still sees it with the reason). Venue managers and admins decide.
+-- proposer still sees it with the reason). Admins, and the managers of a
+-- published venue, decide.
 create or replace function public.review_concert_proposal(
   p_proposal_id uuid,
   p_accept boolean,
@@ -404,7 +541,7 @@ begin
   if proposal.id is null then
     raise exception using errcode = 'P0002', message = 'Proposal not found';
   end if;
-  if not public.can_manage_venue(proposal.venue_place_id) then
+  if not public.can_publish_at_venue(proposal.venue_place_id) then
     raise exception using errcode = '42501', message = 'Only the venue managers can review this proposal';
   end if;
   if proposal.status <> 'pending' then
@@ -442,6 +579,7 @@ end;
 $$;
 
 revoke all on function public.review_concert_proposal(uuid, boolean, text) from public;
+revoke execute on function public.review_concert_proposal(uuid, boolean, text) from anon;
 grant execute on function public.review_concert_proposal(uuid, boolean, text) to authenticated, service_role;
 
 commit;

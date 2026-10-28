@@ -52,29 +52,47 @@ debe ejecutarse sola. `20261028060200` crea el resto.
 ## Alta de conciertos
 
 Los conciertos los añade quien los hace, siempre con `create_concert()`, que
-crea evento y cartel de una vez (busca o crea por nombre normalizado los
-artistas nuevos) y decide en la base de datos si se publica:
+crea evento y cartel de una vez y decide en la base de datos si se publica.
+Los nombres de artista nuevos se buscan o crean por nombre normalizado sin
+`created_by`: escribir un nombre no da su gestión, que solo llega por
+`entity_claims`.
 
-- Quien gestiona la sala (owner, admin o editor; también admins) publica al
-  momento.
+- Publica al momento quien puede publicar en la sala
+  (`can_publish_at_venue`): un admin, o quien gestiona la sala (owner, admin o
+  editor) si la sala está publicada. Una sala recién creada por alguien sigue
+  en borrador y sus conciertos van a moderación.
 - Quien gestiona un artista propone: el evento queda en `review` y se crea una
-  fila en `event_proposals` (`pending`). Si la sala tiene gestores
-  (`reviewer = 'venue'`) la ven en su panel; si no, va a moderación
-  (`reviewer = 'moderation'`, pestaña «Conciertos» del panel de admin). Si la
-  sala se reclama mientras espera, la propuesta pasa a la sala.
-- La sala (o un admin) decide con `review_concert_proposal()`: aceptar publica
-  el evento; rechazar lo archiva y guarda un motivo opcional (máx. 280) que ve
-  el artista. Ambas dejan auditoría en `moderation_actions`.
-- Si el evento cambia de estado por otra vía (un admin lo publica a mano, el
-  artista lo cancela), un trigger cierra la propuesta como `accepted`,
-  `rejected` o `withdrawn`.
+  fila en `event_proposals` (`pending`). Si la sala está publicada y tiene
+  gestores (`reviewer = 'venue'`) la ven en su panel; si no, va a moderación
+  (`reviewer = 'moderation'`, pestaña «Conciertos» del panel de admin). Si una
+  sala publicada se reclama mientras espera, la propuesta pasa a la sala.
+- Límites por quien propone, serializados con un advisory lock: 10 propuestas
+  pendientes, 3 pendientes en la misma sala y 20 nuevas al día. Las colas se
+  ordenan por turnos entre proponentes para que nadie entierre al resto.
+- La sala (si está publicada) o un admin decide con
+  `review_concert_proposal()`: aceptar publica el evento; rechazar lo archiva y
+  guarda un motivo opcional (máx. 280) que ve el artista. Ambas dejan auditoría
+  en `moderation_actions`.
+- Si el evento cambia de estado por otra vía, un trigger cierra la propuesta:
+  `accepted`/`rejected` solo si quien lo cambia puede publicar en la sala, es
+  staff o es un proceso sin usuario; si no, `withdrawn` (cancelarla el propio
+  artista).
+- El aviso de duplicado (mismo nombre en la sala ±3 h) solo cuenta conciertos
+  publicados o que quien llama ya gestiona, para no revelar los no anunciados.
 
-`events_guard_publish` cierra el atajo del cliente: desde la app nadie inserta
-un evento publicado, lo pasa a `published`, lo reabre desde `archived` ni lo
-mueve de sala si no gestiona esa sala. Las funciones `SECURITY DEFINER` (estas,
-las de festivales) y los workers no pasan por esa comprobación. Antes de
-aplicar la migración `20261028080100` la app crea el evento en `review` como
-hasta ahora.
+`events_guard_publish` y `event_artists_guard_accepted` cierran los atajos del
+cliente. Desde la app, quien no puede publicar en la sala no inserta un evento
+publicado, no lo pasa a `published`, no lo reabre desde `archived` ni lo mueve
+de sala. Y en un concierto publicado que llegó como propuesta no cambia nombre,
+horas, entradas, cartel ni descripción, ni toca el cartel de artistas: lo que
+la sala aceptó solo lo cambia la sala. Los eventos sin propuesta (scraper,
+creados por la sala) mantienen las reglas de edición de siempre. Las funciones
+`SECURITY DEFINER` (estas, las de festivales) y los workers no pasan por esas
+comprobaciones. `events.ticket_url` lleva un CHECK `^https?://` en modo
+`NOT VALID`: vale para toda escritura nueva y no revisa las filas antiguas.
+
+Antes de aplicar la migración `20261028080100` la app crea el evento en
+`review` como hasta ahora.
 
 ## Datos de comunidad
 

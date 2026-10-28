@@ -105,6 +105,9 @@ export const eventManagementService = {
     const payload: Record<string, unknown> = { ...updates };
     if ('image_url' in updates) payload.image_source = updates.image_url ? 'manual' : null;
     const { error } = await supabase.from('events').update(payload).eq('id', eventId);
+    if (error && /venue accepted this concert/i.test(error.message || '')) {
+      throw new Error('La sala aceptó este concierto tal cual: pídele a la sala que lo cambie.');
+    }
     if (error) throw error;
   },
 

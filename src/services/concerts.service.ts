@@ -10,6 +10,7 @@ export type ConcertProposal = {
   event_id: string;
   venue_place_id: string;
   artist_id: string | null;
+  proposed_by: string | null;
   reviewer: ProposalReviewer;
   status: ProposalStatus;
   review_note: string | null;
@@ -48,7 +49,7 @@ export type CreateConcertResult = {
 };
 
 const PROPOSAL_COLUMNS =
-  'id,event_id,venue_place_id,artist_id,reviewer,status,review_note,created_at,reviewed_at,' +
+  'id,event_id,venue_place_id,artist_id,proposed_by,reviewer,status,review_note,created_at,reviewed_at,' +
   'event:events(id,name,starts_at,ticket_url,image_url,lineup:event_artists(billing_order,artist:artists(name))),' +
   'venue:venue_places(id,name,city),artist:artists(id,name)';
 
@@ -57,6 +58,7 @@ const mapProposal = (row: any): ConcertProposal => ({
   event_id: row.event_id,
   venue_place_id: row.venue_place_id,
   artist_id: row.artist_id ?? null,
+  proposed_by: row.proposed_by ?? null,
   reviewer: row.reviewer,
   status: row.status,
   review_note: row.review_note ?? null,
@@ -89,6 +91,22 @@ const listProposals = async (
     throw error;
   }
   return (data || []).map(mapProposal);
+};
+
+// Round-robin by proposer, oldest first within each: someone sending many
+// proposals cannot bury the others at the end of the queue.
+const interleaveByProposer = (rows: ConcertProposal[]) => {
+  const groups = new Map<string, ConcertProposal[]>();
+  for (const row of rows) {
+    const key = row.proposed_by ?? row.id;
+    groups.set(key, [...(groups.get(key) || []), row]);
+  }
+  const queues = [...groups.values()];
+  const result: ConcertProposal[] = [];
+  for (let round = 0; result.length < rows.length; round += 1) {
+    for (const queue of queues) if (queue[round]) result.push(queue[round]);
+  }
+  return result;
 };
 
 // Strips characters that would break a PostgREST or() filter.
@@ -166,11 +184,14 @@ const CREATE_ERRORS: Array<[RegExp, string]> = [
   [/Artist not found/i, 'Uno de los artistas ya no existe.'],
   [/Invalid ticket link/i, 'El enlace de entradas tiene que empezar por https://'],
   [/must end after/i, 'La hora de fin debe ser posterior a la de inicio.'],
+  [/pending proposals at this venue/i, 'Ya tienes 3 propuestas esperando en esta sala. Espera a que respondan.'],
+  [/Too many pending proposals/i, 'Tienes demasiadas propuestas pendientes. Espera a que se resuelvan.'],
+  [/Daily proposal limit/i, 'Has llegado al límite de propuestas de hoy. Prueba mañana.'],
 ];
 
 const REVIEW_ERRORS: Array<[RegExp, string]> = [
   [/already reviewed|no longer waiting/i, 'Esta propuesta ya se ha resuelto.'],
-  [/Only the venue managers/i, 'Solo quien gestiona la sala puede decidir.'],
+  [/Only the venue managers/i, 'Solo quien gestiona la sala (ya publicada) puede decidir.'],
   [/Reason too long/i, 'El motivo es demasiado largo (máx. 280).'],
 ];
 
@@ -235,10 +256,11 @@ export const concertsService = {
   },
 
   // Pending only: what the venue still has to decide.
-  listForVenue(venuePlaceId: string) {
-    return listProposals(query =>
-      query.eq('venue_place_id', venuePlaceId).eq('status', 'pending').order('created_at', { ascending: true }).limit(50),
+  async listForVenue(venuePlaceId: string) {
+    const rows = await listProposals(query =>
+      query.eq('venue_place_id', venuePlaceId).eq('status', 'pending').order('created_at', { ascending: true }).limit(200),
     );
+    return interleaveByProposer(rows);
   },
 
   listForArtist(artistId: string) {
@@ -247,10 +269,11 @@ export const concertsService = {
     );
   },
 
-  listForModeration() {
-    return listProposals(query =>
-      query.eq('status', 'pending').order('created_at', { ascending: true }).limit(100),
+  async listForModeration() {
+    const rows = await listProposals(query =>
+      query.eq('status', 'pending').order('created_at', { ascending: true }).limit(500),
     );
+    return interleaveByProposer(rows);
   },
 
   async review(proposalId: string, accept: boolean, note?: string | null): Promise<void> {

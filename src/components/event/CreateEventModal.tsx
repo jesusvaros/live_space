@@ -39,7 +39,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ onDismiss, onCreate
         <p className="text-sm text-white/70">
           {waitsForVenue
             ? 'Quien gestiona la sala verá tu propuesta en su panel y podrá aceptarla o rechazarla. Mientras tanto no aparece en la agenda.'
-            : 'Esta sala aún no tiene a nadie gestionándola en Live Space, así que una persona del equipo revisa el concierto antes de publicarlo.'}
+            : 'Una persona del equipo revisa el concierto antes de publicarlo (la sala aún no está verificada en Live Space).'}
         </p>
         <p className="text-sm text-white/70">Puedes seguir el estado en tu panel de gestión.</p>
         <Button onClick={onDismiss}>Volver al panel</Button>
