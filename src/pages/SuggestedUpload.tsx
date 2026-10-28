@@ -19,6 +19,7 @@ import {
   type GalleryPermission,
 } from '../media/native/gallery';
 import { enqueueMomentUploads } from '../media/uploadQueue';
+import { canGoBack } from '../app/useGoBack';
 
 // /subir/sugerido?event=<id> — the clips of last night, found in the camera
 // roll, preselected and assigned to songs. Opened from the morning nudge.
@@ -70,7 +71,7 @@ const SuggestedUpload: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const close = useCallback(() => {
-    if (window.history.state && window.history.state.idx > 0) navigate(-1);
+    if (canGoBack()) navigate(-1);
     else navigate(eventId ? `/event/${eventId}` : '/tabs/events', { replace: true });
   }, [eventId, navigate]);
 

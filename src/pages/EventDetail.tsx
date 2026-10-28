@@ -60,12 +60,6 @@ const kickerDate = (date: Date) => {
   return [dayWord(date), full, time].filter(Boolean).join(' · ').toUpperCase();
 };
 
-const Chevron = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="shrink-0 text-white/50">
-    <path d="M9 6l6 6-6 6" />
-  </svg>
-);
-
 const thumbOf = (moment: SongMoment) =>
   moment.thumbnail_url || (moment.media_type === 'image' ? moment.media_url : null);
 
@@ -783,46 +777,58 @@ const EventDetail: React.FC = () => {
                     </span>
                   </button>
                 ) : null}
-                {venue ? (
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/tabs/venue/${venue.id}`)}
-                    className="flex items-center gap-3 rounded-2xl border border-app-line bg-app-surface p-3 text-left"
-                  >
-                    <Avatar name={venue.name} src={venue.cover_image_url || (venue.photos || [])[0]} kind="venue" badge className="h-11 w-11 text-[15px]" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-display text-[15px] font-bold text-app-ink">{venue.name}</span>
-                      <span className="block truncate text-[13px] text-[#c9c5bd]">
-                        {[venue.address, venue.city].filter(Boolean).join(' · ')}
-                      </span>
-                    </span>
-                    <Chevron />
-                  </button>
+                {venue || artists.length ? (
+                  <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-1 pt-1 [scrollbar-width:none]">
+                    {artists.map(artist => (
+                      <button
+                        key={artist.id}
+                        type="button"
+                        onClick={() => navigate(`/tabs/artist/${artist.id}`)}
+                        className="flex w-[84px] shrink-0 flex-col items-center gap-1.5 text-center"
+                      >
+                        <Avatar name={artist.name} src={artist.avatar_url} kind="artist" className="h-[76px] w-[76px] text-2xl" />
+                        <span className="line-clamp-2 text-[13px] font-semibold leading-tight text-app-ink">{artist.name}</span>
+                        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.06em] text-app-accent">
+                          {artist.subject_id && isFollowing(artist.subject_id) ? 'Lo sigues' : 'Artista'}
+                        </span>
+                      </button>
+                    ))}
+                    {venue ? (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/tabs/venue/${venue.id}`)}
+                        className="flex w-[84px] shrink-0 flex-col items-center gap-1.5 text-center"
+                      >
+                        <Avatar
+                          name={venue.name}
+                          src={venue.cover_image_url || (venue.photos || [])[0]}
+                          kind="venue"
+                          className="h-[76px] w-[76px] text-2xl"
+                        />
+                        <span className="line-clamp-2 text-[13px] font-semibold leading-tight text-app-ink">{venue.name}</span>
+                        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.06em] text-[#a9a59d]">
+                          {venue.city || 'Sala'}
+                        </span>
+                      </button>
+                    ) : null}
+                  </div>
                 ) : null}
 
-                {artists.map(artist => (
-                  <button
-                    key={artist.id}
-                    type="button"
-                    onClick={() => navigate(`/tabs/artist/${artist.id}`)}
-                    className="flex items-center gap-3 rounded-2xl border border-app-line bg-app-surface p-3 text-left"
+                <div className="pt-1">
+                  <span
+                    className={`inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-[11px] font-bold tracking-[0.08em] ${
+                      isPastEvent ? 'bg-app-line text-app-ink' : 'bg-app-accent text-[#14151a]'
+                    }`}
                   >
-                    <Avatar name={artist.name} src={artist.avatar_url} kind="artist" badge className="h-11 w-11 text-[15px]" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-display text-[15px] font-bold text-app-ink">{artist.name}</span>
-                      <span className="block truncate text-[13px] text-[#c9c5bd]">
-                        {artist.subject_id && isFollowing(artist.subject_id) ? 'Lo sigues' : 'Artista'}
+                    {!isPastEvent && eventStart && sameDay(eventStart, now) ? (
+                      <span className="relative flex h-2 w-2">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#14151a]/60" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-[#14151a]" />
                       </span>
-                    </span>
-                    <Chevron />
-                  </button>
-                ))}
-
-                <div className="rounded-[18px] border border-dashed border-app-accent bg-app-accent/[0.08] p-4">
-                  <p className="font-mono text-[11px] font-semibold tracking-[0.06em] text-app-accent">
+                    ) : null}
                     {isPastEvent ? '¿ESTUVISTE?' : eventStart && sameDay(eventStart, now) ? 'ESTA NOCHE' : 'EL DÍA DEL CONCIERTO'}
-                  </p>
-                  <p className="mt-1.5 font-display text-lg font-bold text-app-ink">
+                  </span>
+                  <p className="mt-2 font-display text-xl font-bold text-app-ink">
                     {isPastEvent ? 'Sube lo que grabaste' : 'Graba lo que quieras recordar'}
                   </p>
                   <p className="mt-1 text-sm text-[#c9c5bd]">

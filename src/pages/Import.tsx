@@ -19,6 +19,7 @@ import {
 } from '../features/socialImport/resolveConcert';
 import { importPathFor, rememberPendingImport } from '../features/socialImport/ShareTargetListener';
 import { parseSocialUrl, SOURCE_LABEL } from '../features/socialImport/socialUrl';
+import { canGoBack } from '../app/useGoBack';
 
 type Step =
   | { kind: 'paste' }
@@ -100,7 +101,7 @@ const Import: React.FC = () => {
   const isIos = Capacitor.getPlatform() === 'ios';
 
   const goBack = () => {
-    if (window.history.state && window.history.state.idx > 0) navigate(-1);
+    if (canGoBack()) navigate(-1);
     else navigate('/tabs/upload', { replace: true });
   };
 

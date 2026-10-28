@@ -118,7 +118,7 @@ export const renderPosterPng = async (content: PosterContent, variant: PosterVar
   context.drawImage(qrCanvas, qrX + 32, qrTop + 32, qrBox - 64, qrBox - 64);
 
   // Hashtag line under the QR
-  const tagLine = `Etiqueta tus stories con ${content.shareTag}`;
+  const tagLine = `Etiqueta tus vídeos con ${content.shareTag}`;
   context.fillStyle = colors.ink;
   fitFont(context, tagLine, grotesk, 40, width - pad * 2);
   context.textAlign = 'center';

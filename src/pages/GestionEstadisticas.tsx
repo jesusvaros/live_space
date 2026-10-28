@@ -7,6 +7,7 @@ import { Spinner } from '../components/ui/AppPrimitives';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import { EntityStatsPanel } from '../features/community/EntityStats';
 import type { ManagedEntity } from '../lib/types';
+import { canGoBack } from '../app/useGoBack';
 
 const entityName = (entity: ManagedEntity) => entity.artist?.name || entity.venue?.name || 'Sin nombre';
 
@@ -35,7 +36,7 @@ const GestionEstadisticas: React.FC = () => {
             type="button"
             aria-label="Volver"
             onClick={() => {
-              if (window.history.state && window.history.state.idx > 0) navigate(-1);
+              if (canGoBack()) navigate(-1);
               else navigate('/tabs/profile', { replace: true });
             }}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-app-line bg-app-surface text-app-ink"

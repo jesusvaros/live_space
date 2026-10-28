@@ -184,7 +184,10 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
         <AboutSection
           artist={artist}
           isManager={isManager}
-          playedCount={playedCount}
+          externalLinks={externalLinks}
+          pastCount={pastShows.length}
+          onShowConcerts={() => setActiveTab('shows')}
+          onEditLinks={() => navigate('/tabs/profile?edit=artist')}
           onCreateShow={() => navigate('/create-event', { state: { from: `/tabs/artist/${id}` } })}
           onOpenMap={handleOpenMap}
         />

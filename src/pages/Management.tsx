@@ -14,6 +14,7 @@ import { useWorkspace } from '../contexts/WorkspaceContext';
 import { ManagedEntity } from '../lib/types';
 import { claimsService } from '../services/claims.service';
 import { eventManagementService, ManagedEvent } from '../services/eventManagement.service';
+import { canGoBack } from '../app/useGoBack';
 
 type Panel = 'edit' | 'setlist' | 'stats';
 // An event counts as upcoming until six hours after it starts.
@@ -87,7 +88,7 @@ const Management: React.FC = () => {
   const visible = tab === 'upcoming' ? upcoming : past;
 
   const goBack = () => {
-    if (window.history.state && window.history.state.idx > 0) navigate(-1);
+    if (canGoBack()) navigate(-1);
     else navigate('/tabs/profile', { replace: true });
   };
 

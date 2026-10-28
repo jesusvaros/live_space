@@ -6,6 +6,7 @@ import { IconChevronLeft } from '../components/icons';
 import type { EventListItem } from '../features/events/types';
 import { getPrimaryArtistName } from '../features/events/utils';
 import { Festival, festivalService } from '../services/festival.service';
+import { canGoBack } from '../app/useGoBack';
 
 const fieldClass =
   'min-h-12 w-full rounded-xl border border-app-line bg-app-surface px-3.5 text-[15px] text-app-ink placeholder:text-white/35 focus:border-app-accent focus:outline-none';
@@ -137,7 +138,7 @@ const FestivalTimetable: React.FC = () => {
       <header className="flex items-center gap-3 px-3 pb-2 pt-[calc(10px+env(safe-area-inset-top,0px))]">
         <button
           type="button"
-          onClick={() => navigate(festival ? `/tabs/festival/${festival.id}` : '/tabs/events')}
+          onClick={() => (canGoBack() ? navigate(-1) : navigate(festival ? `/tabs/festival/${festival.id}` : '/tabs/events', { replace: true }))}
           aria-label="Volver"
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-app-line bg-app-surface text-app-ink"
         >

@@ -13,6 +13,7 @@ import { matchWrappedArtists, type CatalogArtist, type WrappedMatch } from '../f
 import { recognizeImageText, usesNativeOcr } from '../features/wrapped/recognizeText';
 import { loadSharedImage, WRAPPED_PATH, wrappedPathFor } from '../features/wrapped/sharedImage';
 import { renderWrappedStory, shareWrappedStory } from '../features/wrapped/shareCard';
+import { canGoBack } from '../app/useGoBack';
 
 type Step =
   | { kind: 'pick'; error?: string }
@@ -44,7 +45,7 @@ const Wrapped: React.FC = () => {
   }, [preview]);
 
   const goBack = () => {
-    if (window.history.state && window.history.state.idx > 0) navigate(-1);
+    if (canGoBack()) navigate(-1);
     else navigate('/tabs/discover', { replace: true });
   };
 
