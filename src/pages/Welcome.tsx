@@ -135,7 +135,9 @@ const Welcome: React.FC = () => {
           setNotice('Te hemos enviado un email para confirmar la cuenta. Ábrelo desde este móvil y volverás a la app.');
           return;
         }
-        navigate('/empezar', { replace: true, state: { returnTo: '/tabs/events' } });
+        // From a concert QR the upload comes first; the setup appears later on the home.
+        if (fromConcertQr) navigate(readReturnTo(), { replace: true });
+        else navigate('/empezar', { replace: true, state: { returnTo: '/tabs/events' } });
         return;
       } else {
         const { error: signInError } = await signIn(email, password);
