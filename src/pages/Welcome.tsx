@@ -2,6 +2,7 @@ import React, { useEffect, useId, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Spinner } from '../components/ui/AppPrimitives';
 import { useAuth } from '../contexts/AuthContext';
+import { readReturnTo } from '../auth/returnTo';
 import { supabase } from '../lib/supabase';
 import { fetchEnabledProviders, signInWithProvider, type OAuthProvider } from '../auth/nativeAuth';
 
@@ -139,7 +140,7 @@ const Welcome: React.FC = () => {
           return;
         }
       }
-      navigate('/tabs/events', { replace: true });
+      navigate(readReturnTo(), { replace: true });
     } catch {
       setError('Algo ha fallado. Vuelve a intentarlo.');
     } finally {

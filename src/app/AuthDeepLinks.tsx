@@ -4,6 +4,7 @@ import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { handleAuthCallbackUrl } from '../auth/nativeAuth';
+import { readReturnTo } from '../auth/returnTo';
 import { merchDeepLinkPath, uploadDeepLinkPath } from '../lib/uploadQr';
 
 // Catches com.livespace.app://auth/callback links (Google/Apple sign-in,
@@ -29,7 +30,7 @@ const AuthDeepLinks: React.FC = () => {
       }
       const result = await handleAuthCallbackUrl(url);
       if (result.kind === 'recovery') navigate('/reset', { replace: true });
-      else if (result.kind === 'signed-in') navigate('/tabs/events', { replace: true });
+      else if (result.kind === 'signed-in') navigate(readReturnTo(), { replace: true });
       else if (result.kind === 'error') navigate(`/welcome?error=${encodeURIComponent(result.message)}`, { replace: true });
     };
 
