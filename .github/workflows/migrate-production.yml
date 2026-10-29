@@ -19,6 +19,10 @@ on:
         description: "Versions already applied by hand, space separated (optional)"
         required: false
         default: ""
+      apply:
+        description: "Apply pending migrations (off: only list them)"
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -66,10 +70,15 @@ jobs:
           [[ "$REPAIR_APPLIED" =~ ^[0-9\ ]+$ ]] || { echo "repair_applied must be versions separated by spaces"; exit 1; }
           supabase migration repair --db-url "$SUPABASE_DB_URL" --status applied $REPAIR_APPLIED
 
+      - name: Show migration history
+        if: steps.configured.outputs.ready == 'true'
+        run: supabase migration list --db-url "$SUPABASE_DB_URL"
+
       - name: Show pending migrations
         if: steps.configured.outputs.ready == 'true'
         run: supabase db push --db-url "$SUPABASE_DB_URL" --dry-run
 
       - name: Apply migrations
-        if: steps.configured.outputs.ready == 'true'
+        # A push to main always applies; a manual run only when "apply" is on.
+        if: steps.configured.outputs.ready == 'true' && (github.event_name == 'push' || inputs.apply)
         run: supabase db push --db-url "$SUPABASE_DB_URL" --yes
