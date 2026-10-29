@@ -7,8 +7,10 @@ import {
   createMultipartUpload,
   deleteObject,
   loadLiveReservation,
+  maxStoredBytes,
   MULTIPART_THRESHOLD_BYTES,
   objectKeyFor,
+  r2ReservedBytes,
   type R2Reservation,
   readR2Config,
   RESERVATION_COLUMNS,
@@ -21,7 +23,8 @@ import {
 /**
  * Authorizes a fan video upload to Cloudflare R2.
  *
- * - start:  same reservation, terms, pause and quota checks as
+ * - start:  refuses when the bucket would pass its cap (maxStoredBytes), then
+ *           the same reservation, terms, pause and quota checks as
  *           cloudinary-sign-upload (reserve_media_upload RPC), then a presigned
  *           PUT, or presigned multipart part URLs for files over 10 MB.
  *           Answers { provider: "cloudinary" } without reserving anything when
@@ -90,6 +93,13 @@ Deno.serve(async (request) => {
       const declaredDuration = body.durationSeconds == null ? null : Number(body.durationSeconds);
       if (declaredDuration !== null && (!Number.isFinite(declaredDuration) || declaredDuration < 0)) {
         return jsonResponse({ error: "durationSeconds is invalid" }, 400, cors);
+      }
+
+      // Before reserving, so a full bucket costs nobody a quota slot. The app
+      // reads "paused" as "keep the clip queued and retry later".
+      if ((await r2ReservedBytes(service)) + sizeBytes > maxStoredBytes()) {
+        console.warn("R2 storage cap reached; video uploads paused");
+        return jsonResponse({ error: "Uploads paused: storage limit reached" }, 403, cors);
       }
 
       const { data, error } = await callerClient(token).rpc("reserve_media_upload", {

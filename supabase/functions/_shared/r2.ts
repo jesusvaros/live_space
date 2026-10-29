@@ -103,6 +103,40 @@ export const resolveVideoProvider = async (service: SupabaseClient): Promise<"cl
   return data?.video_provider === "r2" ? "r2" : "cloudinary";
 };
 
+// Hard cap on what R2 may hold while we are on the free tier (10 GB). The
+// default leaves 1 GB of margin for concurrent uploads; R2_MAX_STORED_BYTES
+// overrides it. Counted from the reservations, not from R2 itself: every
+// completed upload (completion checks the exact size) plus the ones still in
+// flight. Completed objects are never assumed deleted, so this over-counts.
+const DEFAULT_MAX_STORED_BYTES = 9_000_000_000;
+const PAGE_SIZE = 1000;
+
+export const maxStoredBytes = () => {
+  const fromEnv = Number(Deno.env.get("R2_MAX_STORED_BYTES"));
+  return Number.isSafeInteger(fromEnv) && fromEnv > 0 ? fromEnv : DEFAULT_MAX_STORED_BYTES;
+};
+
+export const r2ReservedBytes = async (service: SupabaseClient, now = new Date()): Promise<number> => {
+  // Unfinished uploads can resume for 24 h and their staging objects live 2 days.
+  const inFlightSince = new Date(now.getTime() - 2 * 86_400_000).toISOString();
+  let total = 0;
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await service
+      .from("media_upload_reservations")
+      .select("expected_bytes")
+      .eq("storage_provider", "r2")
+      .is("rejected_reason", null)
+      .or(`consumed_at.not.is.null,created_at.gte.${inFlightSince}`)
+      .order("id", { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as Array<{ expected_bytes: number | null }>;
+    for (const row of rows) total += Number(row.expected_bytes ?? 0);
+    if (rows.length < PAGE_SIZE) break;
+  }
+  return total;
+};
+
 const objectUrl = (config: R2Config, key: string, query: Record<string, string> = {}) => {
   const url = new URL(
     `https://${config.accountId}.${config.jurisdiction ? `${config.jurisdiction}.` : ""}r2.cloudflarestorage.com/${
