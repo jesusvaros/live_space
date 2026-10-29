@@ -19,7 +19,6 @@ import SetlistAttribution from '../components/event/SetlistAttribution';
 import { enableMomentNudges } from '../features/moments/momentNudge';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { EventStatsCard, VenueFeedbackPrompt } from '../features/community';
-import { EventTagBadge } from '../features/socialImport';
 import { festivalService } from '../services/festival.service';
 import EventMerchSection from '../features/merch/EventMerchSection';
 
@@ -739,7 +738,6 @@ const EventDetail: React.FC = () => {
                 <EventMerchSection eventId={event.id} startsAt={event.starts_at} />
               </div>
               <div className="px-4 pt-5 empty:hidden">
-                <EventTagBadge eventId={event.id} event={event} className="mb-3" />
                 <EventStatsCard eventId={event.id} />
               </div>
             </div>
@@ -837,8 +835,6 @@ const EventDetail: React.FC = () => {
                 </div>
 
                 <EventMerchSection eventId={event.id} startsAt={event.starts_at} />
-
-                <EventTagBadge eventId={event.id} event={event} />
 
                 <EventStatsCard eventId={event.id} />
 

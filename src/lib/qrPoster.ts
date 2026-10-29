@@ -6,21 +6,6 @@ export type PosterContent = {
   url: string;
   kicker: string; // "LA RIVIERA · JUE 29 OCT"
   artist: string;
-  shareTag: string; // "#LSRIV29"
-};
-
-// TODO: switch to getEventTag(event) from feat/social-import once it lands.
-// Fallback tag: #LS + first three letters of the venue + day of the month.
-export const fallbackShareTag = (venueName: string | null, startsAt: string) => {
-  const letters = (venueName || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/^(sala|la|el|los|las|the)\s+/i, '')
-    .replace(/[^a-z0-9]/gi, '')
-    .slice(0, 3)
-    .toUpperCase();
-  const day = new Date(startsAt).toLocaleDateString('es-ES', { day: 'numeric', timeZone: 'Europe/Madrid' });
-  return `#LS${letters || 'EVT'}${day}`;
 };
 
 export const POSTER_COLORS: Record<PosterVariant, { ground: string; ink: string; accent: string }> = {
@@ -117,8 +102,8 @@ export const renderPosterPng = async (content: PosterContent, variant: PosterVar
   context.imageSmoothingEnabled = false;
   context.drawImage(qrCanvas, qrX + 32, qrTop + 32, qrBox - 64, qrBox - 64);
 
-  // Hashtag line under the QR
-  const tagLine = `Etiqueta tus vídeos con ${content.shareTag}`;
+  // Call to action under the QR
+  const tagLine = 'Escanea y sube tus vídeos del concierto';
   context.fillStyle = colors.ink;
   fitFont(context, tagLine, grotesk, 40, width - pad * 2);
   context.textAlign = 'center';
