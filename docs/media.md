@@ -56,6 +56,14 @@ Constantes en `src/media/limits.ts`.
 | `complete` | `media-r2-complete` | reclama la reserva, completa el multipart, hace `HEAD` y exige tamaño exacto y tipo; copia el objeto a `v/…` y borra el de `incoming/`; crea el `media_assets` `pending_review` con `storage_provider = 'r2'` y consume la reserva, igual que el webhook de Cloudinary; idempotente |
 | `abort` | `media-r2-sign` | cancela si `complete` no la ha reclamado, borra el objeto y libera el hueco de cuota |
 
+- **Tope de almacenamiento (fase de pruebas): nunca más de 10 GB en R2**, lo
+  gratuito. `start` suma los bytes de todas las subidas completadas a R2 y de las
+  que siguen en curso (últimas 48 h) y, si con el nuevo vídeo se pasaría de
+  `R2_MAX_STORED_BYTES` (por defecto 9.000.000.000, 1 GB de margen para subidas
+  simultáneas), responde 403 «Uploads paused: storage limit reached» **antes de
+  reservar**: no gasta cupo y no cae a Cloudinary. La app lo trata como pausa:
+  deja el vídeo en cola y lo reintenta más tarde. Para subir el tope hace falta
+  cambiar el secreto a propósito.
 - Nada se publica sin pasar por `complete`: lo que se suba y no se confirme se
   queda en `incoming/` y lo borra la regla de ciclo de vida.
 - Una reserva caducada solo se reactiva (`resume`/`complete`) si la cuota
@@ -85,6 +93,7 @@ rompe los vídeos ya subidos a R2.
 | `R2_PUBLIC_BASE_URL` | `https://` del dominio público del bucket, sin barra final |
 | `R2_JURISDICTION` | opcional: `eu` si el bucket se creó con jurisdicción UE |
 | `VIDEO_PROVIDER` | opcional: `r2` o `cloudinary`; si falta, manda `platform_settings` |
+| `R2_MAX_STORED_BYTES` | opcional: tope de bytes en R2; por defecto 9.000.000.000 (por debajo de los 10 GB gratis) |
 
 Alta paso a paso en [Runbooks → Alta de Cloudflare R2](./runbooks.md#alta-de-cloudflare-r2).
 
