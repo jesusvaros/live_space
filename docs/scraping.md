@@ -261,8 +261,14 @@ gestor del artista. Dos fuentes:
    identificable. Acepta un candidato si enlaza el mismo artista de Deezer que
    ya teníamos, o si es el único con ese nombre exacto, de varias palabras y sin
    desambiguación. Guarda `external_ids.musicbrainz` y
-   `external_ids.links_checked_at`, y no vuelve a consultar al artista hasta 60
-   días después.
+   `external_ids.links_checked_at`. Para no repetir peticiones cada semana:
+   - si ya está identificado (tiene `musicbrainz`), a los 180 días se refresca
+     con una sola petición por su id, sin volver a buscar;
+   - si no se encontró, se vuelve a buscar a los 90 días (por si alguien lo ha
+     dado de alta en MusicBrainz);
+   - si ya tiene todos los enlaces, o su nombre sigue siendo un cartel o un
+     título de evento, se marca revisado sin ninguna petición;
+   - si la consulta falla, no se marca y se reintenta la semana siguiente.
 
 En la primera prueba (dry-run) las agendas dieron enlaces para 57 artistas y
 MusicBrainz encontró sobre todo a los conocidos. `-- --dry-run` solo registra;

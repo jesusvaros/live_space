@@ -89,11 +89,20 @@ export class MusicBrainzClient {
 
     const nameOnly = exact.length === 1 && key.includes(' ') && !exact[0].disambiguation;
     for (const candidate of exact) {
-      const full = await this.get<MbArtist>(`/artist/${candidate.id}?fmt=json&inc=url-rels`);
-      const { links, deezerIds } = linksFromRelations(full.relations || []);
+      const { links, deezerIds } = await this.relationsOf(candidate.id);
       if (deezerId && deezerIds.includes(String(deezerId))) return { mbid: candidate.id, links, evidence: 'deezer' };
       if (nameOnly && !(deezerId && deezerIds.length)) return { mbid: candidate.id, links, evidence: 'name' };
     }
     return null;
+  }
+
+  // One request: the links of an artist we already identified, no search.
+  async linksForMbid(mbid: string): Promise<ArtistLinks> {
+    return (await this.relationsOf(mbid)).links;
+  }
+
+  private async relationsOf(mbid: string) {
+    const full = await this.get<MbArtist>(`/artist/${mbid}?fmt=json&inc=url-rels`);
+    return linksFromRelations(full.relations || []);
   }
 }
