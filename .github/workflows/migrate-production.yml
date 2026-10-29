@@ -1,0 +1,75 @@
+name: Migrate production database
+
+# Applies new files in supabase/migrations to live-space-pilot when they land
+# on main, so nobody pastes SQL into the dashboard. Needs the SUPABASE_DB_URL
+# secret (the same one the weekly backup uses); without it the job is skipped.
+#
+# Run it by hand with "repair_applied" to mark migrations that were already
+# applied from the SQL Editor (space separated versions, e.g. 20261029010100)
+# so push does not run them twice.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+  workflow_dispatch:
+    inputs:
+      repair_applied:
+        description: "Versions already applied by hand, space separated (optional)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migrate-production
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      REPAIR_APPLIED: ${{ inputs.repair_applied }}
+
+    steps:
+      - name: Check configuration
+        id: configured
+        shell: bash
+        run: |
+          if [ -n "$SUPABASE_DB_URL" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Migration skipped: configure SUPABASE_DB_URL."
+          fi
+
+      - name: Checkout
+        if: steps.configured.outputs.ready == 'true'
+        uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        if: steps.configured.outputs.ready == 'true'
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.0
+
+      - name: Mark migrations applied by hand
+        if: steps.configured.outputs.ready == 'true' && env.REPAIR_APPLIED != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Only digits and spaces: the input goes straight to the CLI.
+          [[ "$REPAIR_APPLIED" =~ ^[0-9\ ]+$ ]] || { echo "repair_applied must be versions separated by spaces"; exit 1; }
+          supabase migration repair --db-url "$SUPABASE_DB_URL" --status applied $REPAIR_APPLIED
+
+      - name: Show pending migrations
+        if: steps.configured.outputs.ready == 'true'
+        run: supabase db push --db-url "$SUPABASE_DB_URL" --dry-run
+
+      - name: Apply migrations
+        if: steps.configured.outputs.ready == 'true'
+        run: supabase db push --db-url "$SUPABASE_DB_URL" --yes

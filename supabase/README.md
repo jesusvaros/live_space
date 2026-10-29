@@ -37,6 +37,12 @@ Para probar `cloudinary-sign-upload`, el usuario debe haber aceptado términos (
    supabase db push
    ```
 
+   Desde entonces las migraciones se aplican solas: al mergear a `main` un
+   cambio en `supabase/migrations/`, el workflow `migrate-production.yml` hace
+   `supabase db push` contra producción con el secreto `SUPABASE_DB_URL`. Una
+   migración aplicada a mano desde el SQL Editor se marca como aplicada lanzando
+   el workflow a mano con su versión en `repair_applied`.
+
 3. Configurar secretos sin pegarlos en código, documentación o chat:
 
    ```bash
