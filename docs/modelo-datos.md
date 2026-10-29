@@ -23,7 +23,8 @@ raíz son históricos y no se aplican al piloto.
 `subjects` ofrece una identidad social uniforme para usuario, artista, sala y
 festival.
 `entity_memberships` separa quién inicia sesión de la entidad que puede gestionar.
-Los activos Cloudinary existen antes que el post y pasan por `pending_review`.
+Los activos de subida nacen `pending_review`; al crear su post (`source = 'upload'`)
+el trigger `publish_uploaded_post` publica el post y el activo a la vez.
 Un evento importado conserva fuente e identificador externo para idempotencia.
 
 ## Festivales

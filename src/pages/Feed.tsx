@@ -7,6 +7,7 @@ import { useAppResume } from '../shared/hooks/useAppResume';
 import { supabase } from '../lib/supabase';
 import { fetchPostCards } from '../data/postQueries';
 import { ExternalMomentCard, isExternalPost } from '../features/socialImport';
+import { ReportMomentButton } from '../features/community';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { useFollowedEntities } from '../hooks/useFollowedEntities';
 import ShareSheet from '../components/ShareSheet';
@@ -134,6 +135,7 @@ const MomentSlide: React.FC<SlideProps> = ({ post, songNumber, group, liked, onL
         >
           <IconShare size={22} />
         </button>
+        {isExternalPost(post) ? null : <ReportMomentButton postId={post.id} authorId={post.user_id} variant="round" />}
       </div>
 
       <div className="absolute bottom-[calc(84px+env(safe-area-inset-bottom,0px))] left-4 right-[76px] flex flex-col gap-2">

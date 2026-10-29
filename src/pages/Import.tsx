@@ -413,7 +413,7 @@ const Import: React.FC = () => {
               Elegir el vídeo de mi galería
             </Button>
             <p className="mt-2 text-center text-[12px] text-white/50">
-              El original que grabaste. Lo revisamos antes de publicarlo.
+              El original que grabaste, en su concierto al momento.
             </p>
           </div>
         </div>
