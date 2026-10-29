@@ -1,21 +1,31 @@
-# Importar clips de Instagram, TikTok y YouTube
+# Vídeos que ya están en Instagram, TikTok y YouTube
 
-La gente ya graba el concierto y lo sube a sus redes. En vez de pedirle que lo
-vuelva a subir, Live Space acepta el **enlace**: guarda la URL y los metadatos
-oficiales (oEmbed) y reproduce el original con el reproductor de la plataforma.
-**Nunca se descarga ni se re-aloja el vídeo**, por las condiciones de uso de las
-plataformas y para no gastar cuota de Cloudinary.
+La gente ya graba el concierto y lo sube a sus redes. **Live Space no muestra
+enlaces ni reproductores de otras plataformas**: la app tiene que verse viva por sí
+misma, con vídeos propios. El enlace compartido solo sirve para saber de qué
+concierto y canción es el clip; después la persona elige **el vídeo original de
+su galería** y se sube como cualquier otro (comprimido en el móvil, ver
+[media.md](./media.md)).
+
+Copiar el vídeo desde la plataforma no está permitido sin permiso del autor
+(condiciones de Meta, TikTok y YouTube). Para recibir clips solos, el camino
+previsto son las menciones a la cuenta de Live Space en Instagram (Mentions API y
+menciones en historias), con permiso por DM; necesita el App Review de Meta.
 
 ## Cómo entra un clip
 
 | Entrada | Plataforma | Dónde |
 | --- | --- | --- |
 | Hoja de compartir → Live Space | Android | `intent-filter` `ACTION_SEND` `text/plain` en `MainActivity` + `@capgo/capacitor-share-target` → `ShareTargetListener` abre `/importar?url=…` |
-| Copiar enlace → «Pegar» | Android, iOS | `/importar` (botón en Subir: «Pegar enlace de Instagram, TikTok o YouTube») |
+| Copiar enlace → «Pegar» | Android, iOS | `/importar` (botón en Subir: «¿Ya lo subiste a Instagram o TikTok?») |
 | Hoja de compartir → Live Space | iOS | **pendiente**: Share Extension (ver abajo) |
 
 Si llega un enlace sin sesión, `/importar` lo guarda en `localStorage` y lo
 retoma al iniciar sesión.
+
+Con el concierto (y la canción) decididos, «Elegir el vídeo de mi galería» abre
+`/tabs/upload?event=<id>&song=<posición>` y la subida sigue el flujo normal. No
+se crea ningún post con enlace.
 
 ## Metadatos (solo oEmbed oficial)
 
@@ -64,11 +74,16 @@ Canción opcional: `#LSRIV29s07` (posición 7 del setlist) o `#cancion7`.
 
 `match_method` (`tag`, `time_text`, `manual`) queda en el post para moderación.
 
-Para otras pantallas: `getEventTag(event)` y `<EventTagBadge eventId />`
-(`src/features/socialImport`). El badge muestra «Etiqueta tus stories con
-#LSRIV29» con botón Copiar, o solo la etiqueta con `variant="inline"`.
+La etiqueta ya no se pide en la ficha del concierto ni en el póster QR (el póster
+dice «Escanea y sube tus vídeos del concierto»). Se sigue reconociendo si viene en
+el texto, y `events.share_tag` queda para el futuro aviso de menciones.
+`<EventTagBadge />` sigue en `src/features/socialImport` sin usarse.
 
 ## Datos y moderación
+
+> Desde el 29 de octubre de 2026 la app ya no crea posts con enlace. Lo que sigue
+> describe el esquema, que se mantiene para los posts existentes (ninguno en
+> producción).
 
 Migración `20261028040100_social_import.sql` (aditiva):
 

@@ -5,12 +5,11 @@ import AppShell from '../components/AppShell';
 import { Spinner } from '../components/ui/AppPrimitives';
 import Button from '../components/ui/Button';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
-import { IconCheckCircle, IconChevronLeft } from '../components/icons';
+import { IconChevronLeft } from '../components/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { setlistService } from '../services/setlist.service';
 import type { EventSetlistEntry } from '../lib/types';
 import PlatformIcon from '../features/socialImport/components/PlatformIcon';
-import { importExternalPost, type ImportResult } from '../features/socialImport/importPost';
 import { lookupSocialMetadata, SocialLookupError, type SocialMetadata } from '../features/socialImport/oembed';
 import {
   resolveConcert,
@@ -21,12 +20,13 @@ import { importPathFor, rememberPendingImport } from '../features/socialImport/S
 import { parseSocialUrl, SOURCE_LABEL } from '../features/socialImport/socialUrl';
 import { canGoBack } from '../app/useGoBack';
 
+// A shared reel/TikTok/YouTube link only tells us which concert and song the
+// clip is from. Live Space never shows the link: the person then picks the
+// original video from their gallery and it is uploaded like any other clip.
 type Step =
   | { kind: 'paste' }
   | { kind: 'loading' }
-  | { kind: 'review'; metadata: SocialMetadata; resolution: ConcertResolution }
-  | { kind: 'saving'; metadata: SocialMetadata; resolution: ConcertResolution }
-  | { kind: 'done'; result: ImportResult; event: ConcertCandidate; metadata: SocialMetadata };
+  | { kind: 'review'; metadata: SocialMetadata; resolution: ConcertResolution };
 
 const formatEventDate = (iso: string) =>
   new Date(iso).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
@@ -95,7 +95,6 @@ const Import: React.FC = () => {
   const [setlist, setSetlist] = useState<EventSetlistEntry[]>([]);
   const [setlistLoading, setSetlistLoading] = useState(false);
   const [songPosition, setSongPosition] = useState<number | null>(null);
-  const [saveError, setSaveError] = useState('');
   const startedFor = useRef<string | null>(null);
 
   const isIos = Capacitor.getPlatform() === 'ios';
@@ -107,7 +106,6 @@ const Import: React.FC = () => {
 
   const start = async (raw: string) => {
     setInputError('');
-    setSaveError('');
     const parsed = parseSocialUrl(raw);
     if (!parsed) {
       setInputError('Ese enlace no es de Instagram, TikTok ni YouTube.');
@@ -170,36 +168,11 @@ const Import: React.FC = () => {
     }
   };
 
-  const save = async () => {
-    if ((step.kind !== 'review') || !selectedEvent || !user) return;
-    const { metadata, resolution } = step;
-    setSaveError('');
-    setStep({ kind: 'saving', metadata, resolution });
-    const song = setlist.find(entry => entry.ordinal === songPosition) ?? null;
-    const matchMethod = resolution.event?.id === selectedEvent.id && resolution.method ? resolution.method : 'manual';
-    try {
-      const result = await importExternalPost({
-        metadata,
-        event: selectedEvent,
-        authorId: user.id,
-        songId: song?.song_id ?? null,
-        songOffsetMs: song?.starts_offset_ms ?? null,
-        matchMethod,
-      });
-      setStep({ kind: 'done', result, event: selectedEvent, metadata });
-    } catch {
-      setSaveError('No se pudo guardar. Inténtalo de nuevo.');
-      setStep({ kind: 'review', metadata, resolution });
-    }
-  };
-
-  const reset = () => {
-    startedFor.current = null;
-    setInput('');
-    setSelectedEvent(null);
-    setSongPosition(null);
-    setStep({ kind: 'paste' });
-    navigate('/importar', { replace: true });
+  const pickOriginal = () => {
+    if (!selectedEvent) return;
+    const query = new URLSearchParams({ event: selectedEvent.id });
+    if (songPosition) query.set('song', String(songPosition));
+    navigate(`/tabs/upload?${query.toString()}`, { replace: true });
   };
 
   const header = (
@@ -212,7 +185,7 @@ const Import: React.FC = () => {
       >
         <IconChevronLeft size={22} />
       </button>
-      <p className="font-display text-base font-bold text-white">Importar clip</p>
+      <p className="font-display text-base font-bold text-white">Desde tus redes</p>
     </div>
   );
 
@@ -221,8 +194,8 @@ const Import: React.FC = () => {
       <AppShell headerProps={null}>
         {header}
         <div className="flex flex-col gap-4 p-4">
-          <h1 className="font-poster text-[40px] leading-[0.9] text-white">Inicia sesión para importar tu clip</h1>
-          <p className="text-[15px] text-white/70">Guardamos el enlace para que lo pongas en su concierto en cuanto entres.</p>
+          <h1 className="font-poster text-[40px] leading-[0.9] text-white">Inicia sesión para subir tu vídeo</h1>
+          <p className="text-[15px] text-white/70">Guardamos el enlace para buscar su concierto en cuanto entres.</p>
           <Button
             size="lg"
             block
@@ -238,7 +211,7 @@ const Import: React.FC = () => {
     );
   }
 
-  const reviewing = step.kind === 'review' || step.kind === 'saving' ? step : null;
+  const reviewing = step.kind === 'review' ? step : null;
 
   return (
     <AppShell headerProps={null}>
@@ -253,9 +226,9 @@ const Import: React.FC = () => {
               <PlatformIcon source="youtube" size={14} />
               Instagram · TikTok · YouTube
             </p>
-            <h1 className="font-poster text-[44px] leading-[0.9] text-white">Trae tu vídeo del concierto</h1>
+            <h1 className="font-poster text-[44px] leading-[0.9] text-white">¿Ya lo subiste a tus redes?</h1>
             <p className="text-[15px] leading-relaxed text-white/70">
-              Pega el enlace de tu reel, TikTok o vídeo. Lo ponemos en su concierto y su canción; el vídeo se queda donde está.
+              Pega el enlace de tu reel, TikTok o vídeo: buscamos de qué concierto y canción es. Luego eliges el vídeo original de tu galería y se ve aquí, en Live Space.
             </p>
           </div>
 
@@ -305,13 +278,11 @@ const Import: React.FC = () => {
             </li>
             <li className="flex gap-3">
               <span className="font-mono text-app-accent">02</span>
-              <span>
-                ¿Pusiste la etiqueta del concierto, como <span className="font-mono text-white">#LSRIV29</span>? Lo colocamos solos, hasta en su canción.
-              </span>
+              Te decimos su concierto y su canción.
             </li>
             <li className="flex gap-3">
               <span className="font-mono text-app-accent">03</span>
-              Guardamos el enlace y lo reproducimos desde la plataforma, con tu nombre.
+              Elige el vídeo original de tu galería y súbelo.
             </li>
           </ol>
         </div>
@@ -339,7 +310,7 @@ const Import: React.FC = () => {
                 <p className="mt-1 line-clamp-3 text-[14px] leading-snug text-white/70">{reviewing.metadata.title}</p>
               ) : (
                 <p className="mt-1 text-[13px] text-white/50">
-                  {reviewing.metadata.degraded ? 'Sin vista previa: se mostrará como enlace.' : 'Sin descripción.'}
+                  Sin descripción.
                 </p>
               )}
             </div>
@@ -437,48 +408,13 @@ const Import: React.FC = () => {
             </section>
           ) : null}
 
-          {saveError ? <p className="text-sm text-rose-400" role="alert">{saveError}</p> : null}
-
           <div className="fixed inset-x-0 bottom-0 z-[1300] border-t border-app-line bg-app-bg/95 px-4 pb-[calc(10px+env(safe-area-inset-bottom,0px))] pt-3 backdrop-blur-xl">
-            <Button size="lg" block disabled={!selectedEvent || choosing || step.kind === 'saving'} onClick={save}>
-              {step.kind === 'saving' ? <Spinner label="Guardando" className="h-4 w-4" /> : null}
-              Añadir a Momentos
+            <Button size="lg" block disabled={!selectedEvent || choosing} onClick={pickOriginal}>
+              Elegir el vídeo de mi galería
             </Button>
             <p className="mt-2 text-center text-[12px] text-white/50">
-              Guardamos el enlace, no el vídeo. Lo revisamos antes de publicarlo.
+              El original que grabaste. Lo revisamos antes de publicarlo.
             </p>
-          </div>
-        </div>
-      )}
-
-      {step.kind === 'done' && (
-        <div className="flex flex-col gap-5 p-4 pt-10">
-          <IconCheckCircle size={44} className="text-app-accent" />
-          {step.result.kind === 'created' ? (
-            <>
-              <h1 className="font-poster text-[44px] leading-[0.9] text-white">Enviado a revisión</h1>
-              <p className="text-[15px] text-white/70">
-                Cuando lo aprobemos, tu clip de {SOURCE_LABEL[step.metadata.source]} aparecerá en Momentos y en{' '}
-                <span className="text-white">{step.event.artists[0] || step.event.name}</span>.
-              </p>
-            </>
-          ) : (
-            <>
-              <h1 className="font-poster text-[44px] leading-[0.9] text-white">Este clip ya está en Live Space</h1>
-              <p className="text-[15px] text-white/70">
-                {step.result.status === 'review' || !step.result.postId
-                  ? 'Alguien lo importó antes y lo estamos revisando.'
-                  : 'Ya lo importaron antes; no hace falta repetirlo.'}
-              </p>
-            </>
-          )}
-          <div className="flex flex-col gap-2">
-            {step.result.kind === 'duplicate' && step.result.postId && step.result.status === 'published' ? (
-              <Button size="lg" block onClick={() => navigate(`/post/${(step.result as { postId: string }).postId}`)}>Ver el clip</Button>
-            ) : (
-              <Button size="lg" block onClick={() => navigate(`/event/${step.event.id}`)}>Ver el concierto</Button>
-            )}
-            <Button size="lg" variant="secondary" block onClick={reset}>Importar otro</Button>
           </div>
         </div>
       )}

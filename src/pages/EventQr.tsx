@@ -6,7 +6,7 @@ import { Spinner } from '../components/ui/AppPrimitives';
 import { IconChevronLeft } from '../components/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { buildUploadQrUrl } from '../lib/uploadQr';
-import { fallbackShareTag, POSTER_COLORS, PosterVariant, qrSvg, renderPosterPng } from '../lib/qrPoster';
+import { POSTER_COLORS, PosterVariant, qrSvg, renderPosterPng } from '../lib/qrPoster';
 import { eventManagementService, ManagedEvent } from '../services/eventManagement.service';
 import { canGoBack } from '../app/useGoBack';
 
@@ -42,7 +42,6 @@ const EventQr: React.FC = () => {
   const [event, setEvent] = useState<ManagedEvent | null>(null);
   const [link, setLink] = useState('');
   const [svg, setSvg] = useState('');
-  const [shareTag, setShareTag] = useState<string | null>(null);
   const [variant, setVariant] = useState<PosterVariant>('paper');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -60,9 +59,7 @@ const EventQr: React.FC = () => {
         const token = await eventManagementService.getOrCreateUploadToken(id, user.id);
         const url = buildUploadQrUrl({ token, eventId: id });
         const markup = await qrSvg(url);
-        const tag = await eventManagementService.getShareTag(id).catch(() => null);
         if (cancelled) return;
-        setShareTag(tag);
         setEvent(found);
         setLink(url);
         setSvg(markup);
@@ -90,9 +87,8 @@ const EventQr: React.FC = () => {
       url: link,
       kicker,
       artist: event.headliner?.name || event.name,
-      shareTag: shareTag || fallbackShareTag(event.venue_name, event.starts_at),
     };
-  }, [event, link, shareTag]);
+  }, [event, link]);
 
   const colors = POSTER_COLORS[variant];
 
@@ -187,7 +183,7 @@ const EventQr: React.FC = () => {
                 />
               </div>
               <p className="mt-3 text-center font-display text-[13px] font-bold print:text-[18pt]">
-                Etiqueta tus vídeos con <span style={{ color: colors.accent }}>{content.shareTag}</span>
+                Escanea y <span style={{ color: colors.accent }}>sube tus vídeos</span> del concierto
               </p>
               <div className="mt-3 flex items-center justify-between gap-3 border-t-2 pt-2.5" style={{ borderColor: colors.ink }}>
                 <span className="min-w-0 truncate font-poster text-[22px] print:text-[32pt]">{content.artist}</span>

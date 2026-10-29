@@ -58,7 +58,9 @@ const ExternalMomentCard: React.FC<ExternalMomentCardProps> = ({ post, variant =
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const [reportState, setReportState] = useState<'idle' | 'confirm' | 'sending' | 'sent' | 'error'>('idle');
 
-  const source = (SOURCES.includes(post.source as SocialSource) ? post.source : 'youtube') as SocialSource;
+  // An unknown source must never fall back to another platform's player.
+  const knownSource = SOURCES.includes(post.source as SocialSource);
+  const source = (knownSource ? post.source : 'youtube') as SocialSource;
   const label = SOURCE_LABEL[source];
   const url = post.external_url || post.media_url || '';
   const thumbnail = thumbnailFailed ? null : post.external_thumbnail_url || post.thumbnail_url || null;
@@ -67,7 +69,7 @@ const ExternalMomentCard: React.FC<ExternalMomentCardProps> = ({ post, variant =
   const author = handle ? `@${handle}` : post.external_author_name || null;
   const credit = author ?? `Clip de ${label}`;
   const song = post.resolved_song_title || post.song_title || null;
-  const canEmbed = !!post.external_id;
+  const canEmbed = knownSource && !!post.external_id;
   const fill = variant === 'fill' || variant === 'media';
   const bare = variant === 'media';
 

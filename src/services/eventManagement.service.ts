@@ -203,18 +203,6 @@ export const eventManagementService = {
     return created.token as string;
   },
 
-  // events.share_tag comes from another branch (social import); null until
-  // that column exists.
-  async getShareTag(eventId: string): Promise<string | null> {
-    const { data, error } = await supabase.from('events').select('share_tag').eq('id', eventId).maybeSingle();
-    if (error) {
-      if (isMissingRelation(error)) return null;
-      throw error;
-    }
-    const tag = (data as { share_tag?: string | null } | null)?.share_tag;
-    return tag ? (tag.startsWith('#') ? tag : `#${tag}`) : null;
-  },
-
   async resolveUploadToken(token: string): Promise<string | null> {
     const { data, error } = await supabase.rpc('resolve_event_upload_token', { p_token: token });
     if (error) {

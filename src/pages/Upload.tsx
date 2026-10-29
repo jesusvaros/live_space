@@ -376,7 +376,7 @@ const Upload: React.FC = () => {
               onClick={() => navigate('/importar')}
               className="flex min-h-11 items-center justify-center gap-2 rounded-full border border-app-line px-4 text-sm font-semibold text-app-ink"
             >
-              Pegar enlace de Instagram, TikTok o YouTube
+              ¿Ya lo subiste a Instagram o TikTok?
             </button>
           </div>
         ) : (
