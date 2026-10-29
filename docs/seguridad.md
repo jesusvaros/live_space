@@ -27,7 +27,14 @@
 
 Antes de la beta deben existir aceptación de términos, reporte de contenido y
 usuario, bloqueo, ocultación provisional, revisión, apelación y SLA interno. El
-usuario confirma derechos de subida. Un recurso de catálogo necesita procedencia,
+usuario confirma derechos de subida.
+
+Los momentos se publican al subirlos, sin revisión previa: como alojamiento
+actuamos al recibir aviso. Publicar guarda la aceptación de las condiciones
+(`profiles.terms_accepted_at`). Cualquiera con cuenta puede reportar un momento
+(«Reportar», en `moderation_reports`); con tres personas distintas el trigger
+`hide_reported_post` lo pasa a `review` y deja de verse hasta que alguien de
+staff lo revise. Una persona solo tiene un reporte abierto por momento. Un recurso de catálogo necesita procedencia,
 autor, licencia y atribución; si faltan se usa placeholder.
 
 ## Backups y datos heredados

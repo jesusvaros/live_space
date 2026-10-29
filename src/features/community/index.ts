@@ -6,6 +6,7 @@ export { default as EventStatsCard } from './EventStatsCard';
 export { EntityStatsPanel, EntityStatsSummary } from './EntityStats';
 export { default as ReuseConsentCheckbox } from './ReuseConsentCheckbox';
 export { default as MomentReuseControls } from './MomentReuseControls';
+export { default as ReportMomentButton } from './ReportMomentButton';
 export { default as VenueFeedbackPrompt } from './VenueFeedbackPrompt';
 export { default as VenueFeedbackSummary } from './VenueFeedbackSummary';
 export { LICENCE_TERMS_PATH } from './licence';

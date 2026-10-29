@@ -6,7 +6,7 @@ import AppShell from '../components/AppShell';
 import { IconHeart, IconShare } from '../components/icons';
 import { fetchPostCardById } from '../data/postQueries';
 import { ExternalMomentCard, isExternalPost } from '../features/socialImport';
-import { MomentReuseControls } from '../features/community';
+import { MomentReuseControls, ReportMomentButton } from '../features/community';
 
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -97,6 +97,7 @@ const PostDetail: React.FC = () => {
             </div>
 
             <MomentReuseControls postId={post.id} />
+            {isExternalPost(post) ? null : <ReportMomentButton postId={post.id} authorId={post.user_id} />}
             {event && (
               <button
                 type="button"

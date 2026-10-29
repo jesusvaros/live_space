@@ -69,7 +69,7 @@ Constantes en `src/media/limits.ts`.
 - Una reserva caducada solo se reactiva (`resume`/`complete`) si la cuota
   mensual y la pausa global lo permiten, con la misma regla que la RPC.
 - R2 no analiza el vídeo: la duración es la que midió el cliente (en la app,
-  después de recortar). Se rechaza si supera 45,5 s; la moderación revisa todo.
+  después de recortar). Se rechaza si supera 45,5 s.
 - El póster queda como `media_assets` de imagen sin evento y con
   `attribution.role = 'video_thumbnail'`; `thumbnail_url` del vídeo apunta a él.
 - `secure_url` = `R2_PUBLIC_BASE_URL/<clave>`; `cloudinary_public_id` guarda el
@@ -103,7 +103,8 @@ Alta paso a paso en [Runbooks → Alta de Cloudflare R2](./runbooks.md#alta-de-c
 ruta nativa en la app), comprime, sube por partes con reintentos y espera
 exponencial, persiste cada parte terminada y retoma tras reiniciar la app, al
 volver la red o al volver la app a primer plano. Opción «solo con wifi»
-(`@capacitor/network`). Al terminar crea el post (`posts.status = 'review'`) y
+(`@capacitor/network`). Al terminar crea el post, que se publica al momento (trigger
+`publish_uploaded_post`), y
 borra los temporales. Es «segundo plano» dentro de la app: si el sistema
 suspende la app, la subida sigue al volver.
 
