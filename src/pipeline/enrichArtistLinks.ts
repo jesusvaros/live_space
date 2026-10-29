@@ -10,18 +10,27 @@ import { linksFromStaging } from './stagingArtistLinks.js';
 // from MusicBrainz. Idempotent: it only adds keys
 // that are still empty, so links written by the artist's managers are never
 // overwritten. external_ids keeps the MusicBrainz id and links_checked_at, so
-// each artist is looked up again only after `recheckDays`.
+// no artist is searched twice in a row:
+// - identified artists (musicbrainz id) are refreshed with one request every
+//   `matchedRecheckDays`, without searching again;
+// - artists not found are searched again only after `recheckDays`, in case
+//   someone added them to MusicBrainz;
+// - artists with every link already filled, or whose name is still a bill
+//   or an event title, are marked checked without any request.
 
 export type EnrichArtistLinksOptions = {
   dryRun?: boolean;
   limit?: number;
   recheckDays?: number;
+  matchedRecheckDays?: number;
   stagingRows?: number;
   now?: Date;
 };
 
 export type EnrichArtistLinksSummary = {
   checked: number;
+  refreshed: number;
+  skipped: number;
   matched: number;
   fromAgendas: number;
   linksAdded: number;
@@ -42,45 +51,75 @@ export const enrichArtistLinks = async (
   musicBrainz = new MusicBrainzClient(),
 ): Promise<EnrichArtistLinksSummary> => {
   const now = options.now || new Date();
-  const recheckBefore = new Date(now.getTime() - (options.recheckDays ?? 60) * 86_400_000).toISOString();
-  const summary: EnrichArtistLinksSummary = { checked: 0, matched: 0, fromAgendas: 0, linksAdded: 0, errors: 0 };
+  const daysAgo = (days: number) => new Date(now.getTime() - days * 86_400_000).toISOString();
+  const recheckBefore = daysAgo(options.recheckDays ?? 90);
+  const matchedRecheckBefore = daysAgo(options.matchedRecheckDays ?? 180);
+  const summary: EnrichArtistLinksSummary = {
+    checked: 0,
+    refreshed: 0,
+    skipped: 0,
+    matched: 0,
+    fromAgendas: 0,
+    linksAdded: 0,
+    errors: 0,
+  };
 
   await fillFromAgendas(supabase, options, logger, summary);
 
   const { data, error } = await supabase
     .from('artists')
     .select('id,name,external_ids,external_links')
-    .or(`external_ids->>links_checked_at.is.null,external_ids->>links_checked_at.lt.${recheckBefore}`)
+    .or(
+      [
+        'external_ids->>links_checked_at.is.null',
+        `and(external_ids->>musicbrainz.is.null,external_ids->>links_checked_at.lt.${recheckBefore})`,
+        `and(external_ids->>musicbrainz.not.is.null,external_ids->>links_checked_at.lt.${matchedRecheckBefore})`,
+      ].join(','),
+    )
     .order('created_at', { ascending: false })
     .limit(options.limit ?? 200);
   if (error) throw error;
 
   for (const artist of (data || []) as ArtistRow[]) {
-    // Names that are still event titles or bills are skipped until cleaned.
-    const cleanup = cleanArtistName(artist.name);
-    if (cleanup.names.length !== 1 || cleanup.names[0] !== artist.name) continue;
-    summary.checked += 1;
-
     const externalIds = { ...(artist.external_ids || {}) };
     const deezerId = (externalIds.deezer as string | number | undefined) ?? null;
+    const knownMbid = typeof externalIds.musicbrainz === 'string' ? externalIds.musicbrainz : null;
     const current = { ...(artist.external_links || {}) };
     let added: ArtistLinkKey[] = [];
 
+    // Names that are still event titles or bills, and artists with nothing
+    // left to fill, cost no request.
+    const cleanup = cleanArtistName(artist.name);
+    const cleanName = cleanup.names.length === 1 && cleanup.names[0] === artist.name;
+    const complete = LINK_KEYS.every((key) => current[key]);
+
     try {
-      const match = await musicBrainz.findLinks(artist.name, deezerId);
-      if (match) {
-        summary.matched += 1;
-        externalIds.musicbrainz = match.mbid;
-        added = (Object.keys(match.links) as ArtistLinkKey[]).filter((key) => !current[key]);
-        for (const key of added) current[key] = match.links[key] as string;
+      if (!cleanName || complete) {
+        summary.skipped += 1;
+      } else if (knownMbid) {
+        summary.refreshed += 1;
+        const links = await musicBrainz.linksForMbid(knownMbid);
+        added = (Object.keys(links) as ArtistLinkKey[]).filter((key) => !current[key]);
+        for (const key of added) current[key] = links[key] as string;
         summary.linksAdded += added.length;
-        logger.info('Artist links from MusicBrainz', {
-          artistId: artist.id,
-          artist: artist.name,
-          mbid: match.mbid,
-          evidence: match.evidence,
-          added,
-        });
+        if (added.length) logger.info('Artist links refreshed', { artistId: artist.id, artist: artist.name, added });
+      } else {
+        summary.checked += 1;
+        const match = await musicBrainz.findLinks(artist.name, deezerId);
+        if (match) {
+          summary.matched += 1;
+          externalIds.musicbrainz = match.mbid;
+          added = (Object.keys(match.links) as ArtistLinkKey[]).filter((key) => !current[key]);
+          for (const key of added) current[key] = match.links[key] as string;
+          summary.linksAdded += added.length;
+          logger.info('Artist links from MusicBrainz', {
+            artistId: artist.id,
+            artist: artist.name,
+            mbid: match.mbid,
+            evidence: match.evidence,
+            added,
+          });
+        }
       }
     } catch (lookupError) {
       summary.errors += 1;
@@ -99,6 +138,8 @@ export const enrichArtistLinks = async (
   logger.info('Artist links enrichment finished', { ...summary, dryRun: Boolean(options.dryRun) });
   return summary;
 };
+
+const LINK_KEYS: ArtistLinkKey[] = ['spotify', 'apple_music', 'instagram', 'youtube', 'tiktok', 'bandcamp', 'website'];
 
 const PAGE_SIZE = 500;
 
