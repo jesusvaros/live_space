@@ -126,6 +126,9 @@ export type UploadQueueSnapshot = {
 type QueueDeps = {
   provider: () => R2MediaProvider;
   currentUserId: () => Promise<string | null>;
+  // Records that the user accepted the terms; the server refuses uploads
+  // until profiles.terms_accepted_at is set.
+  acceptTerms: (userId: string) => Promise<void>;
   waitForAsset: (reservationId: string, kind: MediaKind) => Promise<string>;
   resolveSongId: (setlistItemId: string) => Promise<string | null>;
   createPost: (input: {
@@ -269,6 +272,8 @@ export class UploadQueue {
     const ownerId = await this.deps.currentUserId();
     if (!ownerId) throw new MediaUploadError('authentication_required', 'Entra en tu cuenta para subir momentos.');
     this.userId = ownerId;
+    // Publishing is the acceptance: the upload screens say so next to the button.
+    await this.deps.acceptTerms(ownerId);
     const now = Date.now();
     const defaultReuse = getReuseConsent();
     const created: UploadJob[] = [];
@@ -800,6 +805,15 @@ const defaultDeps: QueueDeps = {
   currentUserId: async () => {
     const { data } = await supabase.auth.getSession();
     return data.session?.user.id ?? null;
+  },
+  acceptTerms: async (userId) => {
+    // Only the first time: later calls match no row and keep the original date.
+    const { error } = await supabase
+      .from('profiles')
+      .update({ terms_accepted_at: new Date().toISOString() })
+      .eq('id', userId)
+      .is('terms_accepted_at', null);
+    if (error) throw error;
   },
   waitForAsset: (reservationId, kind) =>
     // Cloudinary assets appear when its webhook arrives; videos take longer.

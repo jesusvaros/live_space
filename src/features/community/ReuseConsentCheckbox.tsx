@@ -34,7 +34,7 @@ const ReuseConsentCheckbox: React.FC<ReuseConsentCheckboxProps> = ({ className =
         </span>
       </label>
       <p className="m-0 mt-1 pl-8 text-xs text-white/55">
-        Puedes cambiarlo después en cada momento.{' '}
+        Puedes cambiarlo después en cada momento. Al publicar aceptas las{' '}
         {/* New tab: the files picked for upload stay selected here. */}
         <a
           href={LICENCE_TERMS_PATH}
@@ -42,8 +42,9 @@ const ReuseConsentCheckbox: React.FC<ReuseConsentCheckboxProps> = ({ className =
           rel="noreferrer"
           className="font-semibold text-app-accent underline-offset-2 hover:underline"
         >
-          Condiciones de uso
+          condiciones de uso
         </a>
+        .
       </p>
     </div>
   );
