@@ -30,3 +30,13 @@ export type SuggestedSection<T> = {
   title: string;
   items: T[];
 };
+
+export type StyleShelf = {
+  style: string;
+  items: DiscoverArtist[];
+};
+
+export type SuggestedArtists = {
+  sections: SuggestedSection<DiscoverArtist>[];
+  styles: StyleShelf[];
+};
