@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { DiscoverArtist, DiscoverTabKey, DiscoverVenue, SuggestedSection } from '../types';
+import { DiscoverArtist, DiscoverTabKey, DiscoverVenue, SuggestedArtists, SuggestedSection } from '../types';
 import { discoverService } from '../services/discover.service';
 import { StoredLocation } from '../../../shared/hooks/useStoredLocation';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -29,13 +29,13 @@ export const useDiscoverResults = ({ tab, query, location }: UseDiscoverResultsO
     }
   );
 
-  const artistsSuggestedQuery = useQuery<SuggestedSection<DiscoverArtist>[]>(
-    ['discover:artists:suggested', locationKey],
+  const artistsSuggestedQuery = useQuery<SuggestedArtists>(
+    ['discover:artists:suggested:v2', locationKey],
     () => discoverService.getSuggestedArtists({ location }),
     {
       enabled: !authLoading && tab === 'artists' && !isSearching,
       ttlMs: 30_000,
-      initialData: [],
+      initialData: { sections: [], styles: [] },
     }
   );
 
@@ -69,7 +69,8 @@ export const useDiscoverResults = ({ tab, query, location }: UseDiscoverResultsO
     loading,
     artists: artistsSearchQuery.data || [],
     venues: venuesSearchQuery.data || [],
-    suggestedArtistSections: artistsSuggestedQuery.data || [],
+    suggestedArtistSections: artistsSuggestedQuery.data?.sections || [],
+    styleShelves: artistsSuggestedQuery.data?.styles || [],
     suggestedVenueSections: venuesSuggestedQuery.data || [],
     isSearching,
   };

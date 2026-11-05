@@ -17,6 +17,10 @@ import WrappedCard from '../wrapped/WrappedCard';
 
 type RouteState = { initialTab?: DiscoverTabKey } | undefined;
 
+// Explorar shows the first styles as short rows; a chip opens the whole style.
+const SHELVES_ON_HOME = 3;
+const SHELF_PREVIEW = 6;
+
 const DiscoverScreen: React.FC = () => {
   const navigate = useNavigate();
   const locationState = useLocation().state as RouteState;
@@ -25,6 +29,7 @@ const DiscoverScreen: React.FC = () => {
 
   const [tab, setTab] = useState<DiscoverTabKey>('artists');
   const [query, setQuery] = useState('');
+  const [style, setStyle] = useState<string | null>(null);
   const debouncedQuery = useDebouncedValue(query, 350);
 
   const { canFollow, isFollowing, isToggling, toggleFollowSubject } = useFollowedSubjects();
@@ -35,6 +40,7 @@ const DiscoverScreen: React.FC = () => {
     venues,
     suggestedArtistSections,
     suggestedVenueSections,
+    styleShelves,
     isSearching,
   } = useDiscoverResults({ tab, query: debouncedQuery, location: storedLocation });
 
@@ -43,6 +49,8 @@ const DiscoverScreen: React.FC = () => {
       setTab(locationState.initialTab);
     }
   }, []);
+
+  const selectedShelf = style ? styleShelves.find(shelf => shelf.style === style) ?? null : null;
 
   const onToggleFollow = async (subjectId: string) => {
     if (!canFollow) {
@@ -113,7 +121,29 @@ const DiscoverScreen: React.FC = () => {
 
       <DiscoverSegmentedControl value={tab} onChange={setTab} />
 
-      {tab === 'artists' && !query.trim() ? <WrappedCard /> : null}
+      {tab === 'artists' && !query.trim() && styleShelves.length > 0 ? (
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4" role="tablist" aria-label="Estilo">
+          {[null, ...styleShelves.map(shelf => shelf.style)].map(option => {
+            const selected = style === option;
+            return (
+              <button
+                key={option ?? 'all'}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => setStyle(option)}
+                className={`min-h-9 shrink-0 rounded-full px-3.5 text-[13px] font-semibold transition-colors ${
+                  selected ? 'bg-app-accent text-app-bg' : 'bg-white/[0.06] text-[#c9c5bd]'
+                }`}
+              >
+                {option ?? 'Todo'}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {tab === 'artists' && !query.trim() && !selectedShelf ? <WrappedCard /> : null}
 
       <div className="flex flex-col gap-[22px] pt-2">
         {loading && <DiscoverSkeletonList rows={6} />}
@@ -121,18 +151,42 @@ const DiscoverScreen: React.FC = () => {
         {!loading && tab === 'artists' && (
           isSearching ? (
             artists.length === 0 ? noResults : artistGrid(artists)
-          ) : suggestedArtistSections.length === 0 ? (
+          ) : selectedShelf ? (
+            <section>
+              <h2 className="mb-3 font-display text-xl font-bold text-app-ink">{selectedShelf.style}</h2>
+              {artistGrid(selectedShelf.items)}
+            </section>
+          ) : suggestedArtistSections.length === 0 && styleShelves.length === 0 ? (
             <DiscoverEmptyState
               title="Aún no hay artistas sugeridos"
               description="Busca por nombre para encontrar un artista."
             />
           ) : (
-            suggestedArtistSections.map(section => (
-              <section key={section.key}>
-                <h2 className="mb-3 font-display text-xl font-bold text-app-ink">{section.title}</h2>
-                {artistGrid(section.items)}
-              </section>
-            ))
+            <>
+              {suggestedArtistSections.map(section => (
+                <section key={section.key}>
+                  <h2 className="mb-3 font-display text-xl font-bold text-app-ink">{section.title}</h2>
+                  {artistGrid(section.items)}
+                </section>
+              ))}
+              {styleShelves.slice(0, SHELVES_ON_HOME).map(shelf => (
+                <section key={shelf.style}>
+                  <div className="mb-3 flex items-baseline justify-between gap-3">
+                    <h2 className="font-display text-xl font-bold text-app-ink">{shelf.style}</h2>
+                    {shelf.items.length > SHELF_PREVIEW ? (
+                      <button
+                        type="button"
+                        onClick={() => setStyle(shelf.style)}
+                        className="min-h-8 font-mono text-[11px] font-medium uppercase text-app-accent"
+                      >
+                        Ver todos
+                      </button>
+                    ) : null}
+                  </div>
+                  {artistGrid(shelf.items.slice(0, SHELF_PREVIEW))}
+                </section>
+              ))}
+            </>
           )
         )}
 
