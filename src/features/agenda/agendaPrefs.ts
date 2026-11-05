@@ -25,6 +25,13 @@ const write = (key: string, value: string) => {
 
 export const readStoredCity = () => read(cityKey);
 export const persistCity = (city: string) => write(cityKey, city);
+export const clearCity = () => {
+  try {
+    window.localStorage.removeItem(cityKey);
+  } catch {
+    // ignore storage failures
+  }
+};
 
 // Genres are kept lowercased so they match however the catalogue spells them.
 export const genreKey = (genre: string) => genre.trim().toLocaleLowerCase('es');

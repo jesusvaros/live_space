@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 const locationStorageKey = 'live_space.last_location';
 
@@ -22,12 +22,9 @@ export const readStoredLocation = (): StoredLocation | null => {
 };
 
 export const useStoredLocation = () => {
-  const [location, setLocation] = useState<StoredLocation | null>(null);
-
-  useEffect(() => {
-    setLocation(readStoredLocation());
-  }, []);
-
+  // Read on the first render, so screens that key their queries on it do not
+  // load once without a position and again with it.
+  const [location] = useState<StoredLocation | null>(readStoredLocation);
   return location;
 };
 

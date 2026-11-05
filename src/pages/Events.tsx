@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import { NAV_CLEARANCE } from '../components/BottomNav';
@@ -18,7 +18,7 @@ import TimelineHeroSection from '../features/events/sections/TimelineHeroSection
 import GoingSection from '../features/events/sections/GoingSection';
 import { HomeCustomizer, HomeSectionKey, useHomeLayout } from '../features/events/homeLayout';
 import ForYouSection from '../features/events/sections/ForYouSection';
-import { isSetupDone, nearestEventCity, persistCity, readStoredCity, readTastes } from '../features/agenda/agendaPrefs';
+import { clearCity, isSetupDone, nearestEventCity, persistCity, readStoredCity, readTastes } from '../features/agenda/agendaPrefs';
 import { useConcertHistory } from '../features/agenda/useConcertHistory';
 
 const NEARBY_RADIUS_KM = 50;
@@ -73,12 +73,28 @@ const Events: React.FC = () => {
 
   const { location, requestLocation } = useLastKnownLocation();
 
-  // Nothing picked and no saved position: ask once, so the listings open on their city.
-  const askedLocation = useRef(false);
-  useEffect(() => {
-    if (askedLocation.current || pickedCity || readStoredLocation()) return;
-    askedLocation.current = true;
+  // The only place Inicio asks for the position: the visitor chose it.
+  const followMyLocation = () => {
+    setPickedCity(null);
+    clearCity();
     requestLocation();
+  };
+
+  // Nothing picked and no saved position: refresh it only when the visitor
+  // already allowed it. Opening the app never pops the permission dialog; the
+  // city picker and "Personalizar inicio" ask when the visitor wants it.
+  useEffect(() => {
+    if (pickedCity || readStoredLocation()) return;
+    let cancelled = false;
+    navigator.permissions
+      ?.query({ name: 'geolocation' })
+      .then(status => {
+        if (!cancelled && status.state === 'granted') requestLocation();
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
   }, [pickedCity, requestLocation]);
 
   const { events, loading, error: loadError } = useEventsList({ startIso, endIso });
@@ -163,7 +179,14 @@ const Events: React.FC = () => {
     festivals: <FestivalsSection />,
     listings: (
       <div className="px-4 pt-[22px]">
-        <CityListingSection events={events} city={city} onCityChange={pickCity} loading={loading} error={loadError} />
+        <CityListingSection
+          events={events}
+          city={city}
+          onCityChange={pickCity}
+          onUseLocation={followMyLocation}
+          loading={loading}
+          error={loadError}
+        />
       </div>
     ),
   };
