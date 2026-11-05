@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Spinner } from '../components/ui/AppPrimitives';
+import { DetailSkeleton } from '../components/ui/AppPrimitives';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Event, Profile, VenuePlace, PostWithSetlist, Artist } from '../lib/types';
@@ -13,6 +13,7 @@ import { IconCheckCircle, IconMap } from '../components/icons';
 import { VenueFeedbackSummary } from '../features/community';
 import { mapVenue } from '../data/canonicalMappers';
 import { fetchEventCards } from '../data/eventQueries';
+import { readCache, venueCacheKey, writeCache } from '../data/pageCache';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
 import DetailHeader from '../components/ui/DetailHeader';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
@@ -41,92 +42,114 @@ type VenueEvent = Event & {
   event_artists?: { artist: Artist | null }[];
 };
 
+type VenueSnapshot = {
+  venue: VenuePlace;
+  events: VenueEvent[];
+  moments: PostWithSetlist[];
+  followersCount: number;
+};
+
 const VenueDetail: React.FC = () => {
   const id = useRouteEntityId();
   const navigate = useNavigate();
   const { user, profile: currentUserProfile } = useAuth();
   const contentRef = useRef<HTMLElement | null>(null);
   
-  const [venue, setVenue] = useState<VenuePlace | null>(null);
-  const [events, setEvents] = useState<VenueEvent[]>([]);
-  const [moments, setMoments] = useState<PostWithSetlist[]>([]);
-  const [loading, setLoading] = useState(true);
+  const initial = readCache<VenueSnapshot>(venueCacheKey(id || ''));
+  const [venue, setVenue] = useState<VenuePlace | null>(initial?.venue ?? null);
+  const [events, setEvents] = useState<VenueEvent[]>(initial?.events ?? []);
+  const [moments, setMoments] = useState<PostWithSetlist[]>(initial?.moments ?? []);
+  const [loading, setLoading] = useState(!initial);
   const [error, setError] = useState('');
   
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
-  const [followersCount, setFollowersCount] = useState(0);
+  const [followersCount, setFollowersCount] = useState(initial?.followersCount ?? 0);
 
   useEffect(() => {
     const loadVenue = async () => {
-      setLoading(true);
+      // Seen before in this session: paint it now, refresh behind.
+      const cached = readCache<VenueSnapshot>(venueCacheKey(id || ''));
+      setVenue(cached?.venue ?? null);
+      setEvents(cached?.events ?? []);
+      setMoments(cached?.moments ?? []);
+      setFollowersCount(cached?.followersCount ?? 0);
+      setLoading(!cached);
       setError('');
       try {
-        const { data: venueData, error: venueError } = await supabase
-          .from('v_subject_venues')
-          .select('*')
-          .eq('venue_place_id', id)
-          .single();
-
-        if (venueError || !venueData) {
-          throw venueError;
-        }
-
-        const mappedVenue = mapVenue(venueData);
-        const venueSubjectId = mappedVenue.subject_id ?? null;
         const startOfToday = new Date();
         startOfToday.setHours(0, 0, 0, 0);
-        setVenue(mappedVenue);
 
-        const [eventsResult, socialResult] = await Promise.allSettled([
-          fetchEventCards({ venueId: mappedVenue.id, startIso: startOfToday.toISOString() }),
-          venueSubjectId
-            ? Promise.all([
+        // The venue, its listings and its moments only need the venue id.
+        const [venueResult, eventsResult, momentsResult] = await Promise.allSettled([
+          supabase.from('v_subject_venues').select('*').eq('venue_place_id', id).single(),
+          fetchEventCards({ venueId: id, startIso: startOfToday.toISOString() }),
+          // Everything recorded here, past concerts included.
+          supabase
+            .from('v_post_cards')
+            .select('*')
+            .eq('events->venue_place->>id', id)
+            .order('created_at', { ascending: false })
+            .limit(16),
+        ]);
+
+        if (venueResult.status === 'rejected' || venueResult.value.error || !venueResult.value.data) {
+          throw venueResult.status === 'rejected' ? venueResult.reason : venueResult.value.error;
+        }
+
+        const mappedVenue = mapVenue(venueResult.value.data);
+        const venueSubjectId = mappedVenue.subject_id ?? null;
+
+        const eventsData =
+          eventsResult.status === 'fulfilled' ? (eventsResult.value as VenueEvent[]) : [];
+        if (eventsResult.status === 'rejected') {
+          console.warn('Failed to load venue events', eventsResult.reason);
+        }
+
+        let momentsData: PostWithSetlist[] = [];
+        if (momentsResult.status === 'fulfilled' && !momentsResult.value.error) {
+          momentsData = (momentsResult.value.data || []) as unknown as PostWithSetlist[];
+        } else {
+          console.warn('Failed to load venue moments', momentsResult.status === 'rejected' ? momentsResult.reason : momentsResult.value.error);
+        }
+
+        setVenue(mappedVenue);
+        setEvents(eventsData);
+        setMoments(momentsData);
+        setLoading(false);
+
+        let count = 0;
+        try {
+          const [followers, following] = venueSubjectId
+            ? await Promise.all([
                 socialService.getFollowersCount(venueSubjectId),
                 user && currentUserProfile?.subject_id
                   ? socialService.isFollowing(currentUserProfile.subject_id, venueSubjectId)
                   : Promise.resolve(false),
               ])
-            : Promise.resolve([0, false] as const),
-        ]);
-
-        const eventsData =
-          eventsResult.status === 'fulfilled' ? (eventsResult.value as VenueEvent[]) : [];
-        setEvents(eventsData);
-
-        if (eventsResult.status === 'rejected') {
-          console.warn('Failed to load venue events', eventsResult.reason);
-        }
-
-        if (socialResult.status === 'fulfilled') {
-          const [count, following] = socialResult.value;
-          setFollowersCount(count);
+            : [0, false];
+          count = followers;
+          setFollowersCount(followers);
           setIsFollowing(following);
-        } else {
-          console.warn('Failed to load venue social data', socialResult.reason);
+        } catch (socialError) {
+          console.warn('Failed to load venue social data', socialError);
           setFollowersCount(0);
           setIsFollowing(false);
         }
 
-        // Everything recorded here, past concerts included.
-        try {
-          const { data: momentRows, error: momentsError } = await supabase
-            .from('v_post_cards')
-            .select('*')
-            .eq('events->venue_place->>id', mappedVenue.id)
-            .order('created_at', { ascending: false })
-            .limit(16);
-          if (momentsError) throw momentsError;
-          setMoments((momentRows || []) as unknown as PostWithSetlist[]);
-        } catch (momentsError) {
-          console.warn('Failed to load venue moments', momentsError);
+        writeCache<VenueSnapshot>(venueCacheKey(id || ''), {
+          venue: mappedVenue,
+          events: eventsData,
+          moments: momentsData,
+          followersCount: count,
+        });
+      } catch (err) {
+        if (!cached) {
+          setError('Sala no encontrada.');
+          setVenue(null);
+          setEvents([]);
           setMoments([]);
         }
-      } catch (err) {
-        setError('Sala no encontrada.');
-        setVenue(null);
-        setEvents([]);
-        setMoments([]);
       } finally {
         setLoading(false);
       }
@@ -180,11 +203,7 @@ const VenueDetail: React.FC = () => {
   return (
     <AppShell headerProps={null} contentRef={contentRef}>
       <DetailHeader title={venue?.name || 'Sala'} scrollRef={contentRef} fallbackHref="/tabs/discover" />
-      {loading && (
-        <div className="flex items-center justify-center py-12">
-          <Spinner />
-        </div>
-      )}
+      {loading && <DetailSkeleton />}
 
       {!loading && error && <div className="p-4"><p className="text-sm text-rose-400">{error}</p></div>}
 
