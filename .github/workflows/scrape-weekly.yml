@@ -67,6 +67,16 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
+      # Styles for artists (Deezer albums, then the nights they lead) and
+      # upcoming concerts (venue tags + artists). Only fills empty genres.
+      - name: Enrich genres
+        if: always()
+        continue-on-error: true
+        run: npm run enrich:genres
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
       # Setlists for concerts of the last 3 days that still have none. Skips
       # itself (one log line) when the SETLISTFM_API_KEY secret is not set.
       - name: Fallback setlists from setlist.fm
