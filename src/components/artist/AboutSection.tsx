@@ -1,7 +1,7 @@
 import React from 'react';
 import { ArtistProfileArtist } from './types';
 import { IconMap } from '../icons';
-import { LINK_LABELS, SocialIcon, type SocialKey } from './ArtistHero';
+import { BRAND_COLORS, LINK_LABELS, SocialIcon, type SocialKey } from './ArtistHero';
 
 type AboutSectionProps = {
   artist: ArtistProfileArtist;
@@ -15,13 +15,24 @@ type AboutSectionProps = {
 };
 
 // What a fan wants from a band besides the dates: where to listen and follow.
-// "@name" for profiles, the bare domain for anything else.
+// The handle for social profiles, a plain hint for streaming pages (their URLs
+// are opaque ids) and the bare domain for anything else.
 const linkDetail = (key: string, url: string) => {
   try {
     const parsed = new URL(url);
-    const first = parsed.pathname.split('/').filter(Boolean)[0];
-    if ((key === 'instagram' || key === 'youtube') && first) return first.startsWith('@') ? first : `@${first}`;
-    return parsed.hostname.replace(/^www\./, '');
+    const parts = parsed.pathname.split('/').filter(Boolean);
+    const host = parsed.hostname.replace(/^www\./, '');
+    if (key === 'spotify' || key === 'apple_music') return 'Escuchar sus canciones';
+    if (key === 'instagram' || key === 'tiktok') {
+      return parts[0] ? (parts[0].startsWith('@') ? parts[0] : `@${parts[0]}`) : host;
+    }
+    if (key === 'youtube') {
+      if (parts[0]?.startsWith('@')) return parts[0];
+      // /user/name and /c/name carry a readable name; /channel/UC… does not.
+      if ((parts[0] === 'user' || parts[0] === 'c') && parts[1]) return `@${parts[1]}`;
+      return 'Ver sus vídeos';
+    }
+    return host;
   } catch {
     return url;
   }
@@ -49,8 +60,11 @@ const AboutSection: React.FC<AboutSectionProps> = ({
             return (
               <li key={key}>
                 <a href={link.value} target="_blank" rel="noreferrer" className="flex min-h-[56px] items-center gap-3.5">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-app-accent/15 text-app-accent">
-                    <SocialIcon name={key} />
+                  <span
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/[0.07]"
+                    style={{ color: BRAND_COLORS[key] }}
+                  >
+                    <SocialIcon name={key} size={20} />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-[15px] font-semibold text-app-ink">{LINK_LABELS[key]}</span>
