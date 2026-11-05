@@ -84,6 +84,21 @@ export class DeezerClient {
     return Array.isArray(payload.data) ? payload.data : [];
   }
 
+  // Deezer has no genre per artist, but every album carries one; the albums
+  // list is enough to tell what someone plays.
+  async albumGenreIds(artistId: number | string): Promise<number[]> {
+    const wait = this.lastRequestAt + this.minIntervalMs - Date.now();
+    if (wait > 0) await sleep(wait);
+    this.lastRequestAt = Date.now();
+
+    const url = `https://api.deezer.com/artist/${encodeURIComponent(String(artistId))}/albums?limit=25`;
+    const response = await this.fetchImpl(url, { headers: { Accept: 'application/json' } });
+    if (!response.ok) throw new Error(`Deezer albums returned HTTP ${response.status}`);
+    const payload = (await response.json()) as { data?: Array<{ genre_id?: number }>; error?: { message?: string } };
+    if (payload.error) throw new Error(`Deezer albums error: ${payload.error.message || 'unknown'}`);
+    return (payload.data || []).map((album) => album.genre_id).filter((id): id is number => typeof id === 'number' && id > 0);
+  }
+
   async findArtist(name: string): Promise<{ artist: DeezerArtist; matchedName: string } | null> {
     const direct = pickDeezerArtist(name, await this.searchArtists(name));
     if (direct) return { artist: direct, matchedName: name };
