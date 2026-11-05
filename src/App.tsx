@@ -20,42 +20,49 @@ import ShareTargetListener from './features/socialImport/ShareTargetListener';
 import Welcome from './pages/Welcome';
 import Events from './pages/Events';
 
-const Feed = React.lazy(() => import('./pages/Feed'));
-const MerchOrder = React.lazy(() => import('./pages/MerchOrder'));
-const MerchOrders = React.lazy(() => import('./pages/MerchOrders'));
-const MerchManage = React.lazy(() => import('./pages/MerchManage'));
-const Profile = React.lazy(() => import('./pages/Profile'));
-const Discover = React.lazy(() => import('./pages/Discover'));
-const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
-const ProfileDetail = React.lazy(() => import('./pages/ProfileDetail'));
-const ArtistProfile = React.lazy(() => import('./pages/ArtistProfile'));
-const PostDetail = React.lazy(() => import('./pages/PostDetail'));
-const VenueDetail = React.lazy(() => import('./pages/VenueDetail'));
-const Admin = React.lazy(() => import('./pages/Admin'));
-const CreateEventPage = React.lazy(() => import('./pages/CreateEvent'));
-const EventDetail = React.lazy(() => import('./pages/EventDetail'));
-const Map = React.lazy(() => import('./pages/Map'));
-const Upload = React.lazy(() => import('./pages/Upload'));
-const SuggestedUpload = React.lazy(() => import('./pages/SuggestedUpload'));
-const Import = React.lazy(() => import('./pages/Import'));
-const Wrapped = React.lazy(() => import('./pages/Wrapped'));
-const GestionEstadisticas = React.lazy(() => import('./pages/GestionEstadisticas'));
-const LicenciaMomentos = React.lazy(() => import('./pages/LicenciaMomentos'));
-const ClaimProfile = React.lazy(() => import('./pages/ClaimProfile'));
-const Management = React.lazy(() => import('./pages/Management'));
-const FestivalDetail = React.lazy(() => import('./pages/FestivalDetail'));
-const FestivalTimetable = React.lazy(() => import('./pages/FestivalTimetable'));
-const EventQr = React.lazy(() => import('./pages/EventQr'));
-const AgendaSetup = React.lazy(() => import('./pages/AgendaSetup'));
+// Screens load as separate chunks. The ones reachable from the tabs are
+// fetched in the background once the first screen is up, so moving between
+// screens never waits on a chunk (and never shows a loader for one).
+const preloaders: Array<() => Promise<unknown>> = [];
+const lazyPage = <T extends React.ComponentType<any>>(load: () => Promise<{ default: T }>, preload = true) => {
+  if (preload) preloaders.push(load);
+  return React.lazy(load);
+};
+
+const preloadPages = () => {
+  for (const load of preloaders) void load().catch(() => undefined);
+};
+
+const Feed = lazyPage(() => import('./pages/Feed'));
+const MerchOrder = lazyPage(() => import('./pages/MerchOrder'), false);
+const MerchOrders = lazyPage(() => import('./pages/MerchOrders'), false);
+const MerchManage = lazyPage(() => import('./pages/MerchManage'), false);
+const Profile = lazyPage(() => import('./pages/Profile'));
+const Discover = lazyPage(() => import('./pages/Discover'));
+const ResetPassword = lazyPage(() => import('./pages/ResetPassword'), false);
+const ProfileDetail = lazyPage(() => import('./pages/ProfileDetail'));
+const ArtistProfile = lazyPage(() => import('./pages/ArtistProfile'));
+const PostDetail = lazyPage(() => import('./pages/PostDetail'));
+const VenueDetail = lazyPage(() => import('./pages/VenueDetail'));
+const Admin = lazyPage(() => import('./pages/Admin'), false);
+const CreateEventPage = lazyPage(() => import('./pages/CreateEvent'), false);
+const EventDetail = lazyPage(() => import('./pages/EventDetail'));
+const Map = lazyPage(() => import('./pages/Map'));
+const Upload = lazyPage(() => import('./pages/Upload'));
+const SuggestedUpload = lazyPage(() => import('./pages/SuggestedUpload'));
+const Import = lazyPage(() => import('./pages/Import'));
+const Wrapped = lazyPage(() => import('./pages/Wrapped'), false);
+const GestionEstadisticas = lazyPage(() => import('./pages/GestionEstadisticas'), false);
+const LicenciaMomentos = lazyPage(() => import('./pages/LicenciaMomentos'), false);
+const ClaimProfile = lazyPage(() => import('./pages/ClaimProfile'), false);
+const Management = lazyPage(() => import('./pages/Management'), false);
+const FestivalDetail = lazyPage(() => import('./pages/FestivalDetail'));
+const FestivalTimetable = lazyPage(() => import('./pages/FestivalTimetable'), false);
+const EventQr = lazyPage(() => import('./pages/EventQr'), false);
+const AgendaSetup = lazyPage(() => import('./pages/AgendaSetup'));
 
 const deferredPage = (page: React.ReactNode) => (
-  <React.Suspense
-    fallback={(
-      <div className="flex h-full min-h-48 items-center justify-center bg-app-bg text-white">
-        <Spinner />
-      </div>
-    )}
-  >
+  <React.Suspense fallback={<div className="h-full min-h-48 bg-app-bg" />}>
     {page}
   </React.Suspense>
 );
@@ -166,6 +173,12 @@ const AppRoutes = () => {
       : '/tabs/profile';
   const isArtistWorkspace = activeWorkspace?.type === 'artist';
   const mainTabHref = '/tabs/events';
+
+  useEffect(() => {
+    // After the first screen has painted, so it does not compete with it.
+    const timer = window.setTimeout(preloadPages, 1500);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   return (
     <>

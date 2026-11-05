@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import type { EventListItem } from '../features/events/types';
 import { mapArtist, mapEvent, mapVenue } from './canonicalMappers';
+import { eventCacheKey, writeCache } from './pageCache';
 
 const EVENT_CARD_SELECT = `
   *,
@@ -53,7 +54,11 @@ export const fetchEventCards = async (options: {
 
   const { data, error } = await query.order('starts_at', { ascending: true });
   if (error) throw error;
-  return (data || []).map(mapEventCard);
+  const cards = (data || []).map(mapEventCard);
+  // Any listed concert opens instantly: the card holds everything its detail
+  // screen needs first.
+  for (const card of cards) writeCache(eventCacheKey(card.id), card);
+  return cards;
 };
 
 export const fetchEventCardById = async (eventId: string) => {

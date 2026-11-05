@@ -65,6 +65,25 @@ export const Spinner: React.FC<SpinnerProps> = ({ className, label = 'Cargando',
   />
 );
 
+/** Shape of a detail screen (hero, title, a few rows) while its data arrives, instead of a spinner. */
+export const DetailSkeleton: React.FC = () => (
+  <div className="animate-pulse motion-reduce:animate-none" role="status" aria-label="Cargando">
+    <div className="h-[340px] w-full bg-white/[0.06]" />
+    <div className="flex flex-col gap-3 p-4">
+      <div className="h-3 w-32 rounded-full bg-white/[0.08]" />
+      <div className="h-9 w-3/4 rounded-lg bg-white/[0.08]" />
+      <div className="mt-3 flex gap-3">
+        <div className="h-11 w-28 rounded-full bg-white/[0.08]" />
+        <div className="h-11 w-11 rounded-full bg-white/[0.06]" />
+        <div className="h-11 w-11 rounded-full bg-white/[0.06]" />
+      </div>
+      {[0, 1, 2].map(row => (
+        <div key={row} className="mt-2 h-[76px] rounded-2xl bg-white/[0.05]" />
+      ))}
+    </div>
+  </div>
+);
+
 type ModalProps = {
   isOpen: boolean;
   onDidDismiss: () => void;

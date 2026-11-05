@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Spinner } from '../components/ui/AppPrimitives';
+import { DetailSkeleton, Spinner } from '../components/ui/AppPrimitives';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { PostWithSetlist } from '../lib/types';
@@ -12,12 +12,20 @@ import ConcertRow from '../components/ui/ConcertRow';
 import MomentGrid from '../components/ui/MomentGrid';
 import { fetchEventCards } from '../data/eventQueries';
 import { fetchPostCards } from '../data/postQueries';
+import { artistCacheKey, readCache, writeCache } from '../data/pageCache';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import DetailHeader from '../components/ui/DetailHeader';
 import ClaimProfileLink from '../components/pro/ClaimProfileLink';
 
 type ArtistTab = 'shows' | 'moments' | 'about';
+
+type ArtistSnapshot = {
+  artist: ArtistProfileArtist;
+  upcoming: ArtistProfileEvent[];
+  past: ArtistProfileEvent[];
+  moments: PostWithSetlist[];
+};
 
 type ArtistProfileProps = {
   artistId?: string;
@@ -32,24 +40,31 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
   const { canFollow, isFollowing, isToggling, toggleFollowSubject } = useFollowedSubjects();
   const contentRef = useRef<HTMLElement | null>(null);
 
-  const [artist, setArtist] = useState<ArtistProfileArtist | null>(null);
-  const [upcomingShows, setUpcomingShows] = useState<ArtistProfileEvent[]>([]);
-  const [pastShows, setPastShows] = useState<ArtistProfileEvent[]>([]);
-  const [moments, setMoments] = useState<PostWithSetlist[]>([]);
-  const [loading, setLoading] = useState(true);
+  const initial = readCache<ArtistSnapshot>(artistCacheKey(id || ''));
+  const [artist, setArtist] = useState<ArtistProfileArtist | null>(initial?.artist ?? null);
+  const [upcomingShows, setUpcomingShows] = useState<ArtistProfileEvent[]>(initial?.upcoming ?? []);
+  const [pastShows, setPastShows] = useState<ArtistProfileEvent[]>(initial?.past ?? []);
+  const [moments, setMoments] = useState<PostWithSetlist[]>(initial?.moments ?? []);
+  const [loading, setLoading] = useState(!initial);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<ArtistTab>('shows');
 
   useEffect(() => {
     const loadArtist = async () => {
-      setLoading(true);
+      // Seen before in this session: paint it now, refresh behind.
+      const cached = readCache<ArtistSnapshot>(artistCacheKey(id || ''));
+      setArtist(cached?.artist ?? null);
+      setUpcomingShows(cached?.upcoming ?? []);
+      setPastShows(cached?.past ?? []);
+      setMoments(cached?.moments ?? []);
+      setLoading(!cached);
       setError('');
       try {
-        const { data: artistRow, error: artistError } = await supabase
-          .from('v_subject_artists')
-          .select('*')
-          .eq('artist_id', id)
-          .maybeSingle();
+        // The profile and its concert list do not depend on each other.
+        const [{ data: artistRow, error: artistError }, { data: artistEvents }] = await Promise.all([
+          supabase.from('v_subject_artists').select('*').eq('artist_id', id).maybeSingle(),
+          supabase.from('event_artists').select('event_id').eq('artist_id', id),
+        ]);
 
         if (artistError || !artistRow) {
           throw artistError || new Error('Artist not found');
@@ -70,39 +85,34 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
           subject_id: artistRow.subject_id,
         };
 
-        const { data: artistEvents } = await supabase
-          .from('event_artists')
-          .select('event_id')
-          .eq('artist_id', normalizedArtist.id);
-
         const eventIds = (artistEvents || []).map(row => row.event_id).filter(Boolean);
 
-        let eventRows: ArtistProfileEvent[] = [];
-        if (eventIds.length > 0) {
-          eventRows = (await fetchEventCards({ eventIds })) as ArtistProfileEvent[];
-        }
+        // Concerts and moments only need the event ids.
+        const [eventRows, allMoments] = await Promise.all([
+          eventIds.length > 0 ? (fetchEventCards({ eventIds }) as Promise<ArtistProfileEvent[]>) : Promise.resolve([]),
+          eventIds.length > 0
+            ? fetchPostCards({ eventIds }).then(rows => rows.slice(0, 24) as PostWithSetlist[])
+            : Promise.resolve([] as PostWithSetlist[]),
+        ]);
 
         const now = new Date();
         const upcoming = eventRows.filter(event => new Date(event.starts_at) >= now);
-        const past = eventRows.filter(event => new Date(event.starts_at) < now);
+        const past = eventRows.filter(event => new Date(event.starts_at) < now).reverse();
 
         setArtist(normalizedArtist);
         setUpcomingShows(upcoming);
-        setPastShows(past.reverse());
-
-        if (eventIds.length > 0) {
-          const allMoments = (await fetchPostCards({ eventIds })).slice(0, 24) as PostWithSetlist[];
-          setMoments(allMoments);
-        } else {
-          setMoments([]);
-        }
+        setPastShows(past);
+        setMoments(allMoments);
+        writeCache<ArtistSnapshot>(artistCacheKey(id || ''), { artist: normalizedArtist, upcoming, past, moments: allMoments });
       } catch (err) {
         console.error('Failed to load artist profile', err);
-        setError('Artista no encontrado.');
-        setArtist(null);
-        setUpcomingShows([]);
-        setPastShows([]);
-        setMoments([]);
+        if (!cached) {
+          setError('Artista no encontrado.');
+          setArtist(null);
+          setUpcomingShows([]);
+          setPastShows([]);
+          setMoments([]);
+        }
       } finally {
         setLoading(false);
       }
@@ -290,11 +300,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
   return (
     <AppShell headerProps={null} contentRef={contentRef} contentWrapperClassName={false}>
       <DetailHeader title={artist?.name || 'Artista'} scrollRef={contentRef} fallbackHref="/tabs/discover" />
-      {loading && (
-        <div className="flex items-center justify-center py-12">
-          <Spinner />
-        </div>
-      )}
+      {loading && <DetailSkeleton />}
 
       {!loading && error && <div className="p-4"><p className="text-sm text-rose-400">{error}</p></div>}
 

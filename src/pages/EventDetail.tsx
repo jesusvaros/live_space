@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Spinner } from '../components/ui/AppPrimitives';
+import { DetailSkeleton } from '../components/ui/AppPrimitives';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Event, PostWithSetlist, Profile, VenuePlace, EventSetlistEntry, Artist } from '../lib/types';
@@ -14,6 +14,7 @@ import DetailHeader from '../components/ui/DetailHeader';
 import Avatar from '../components/ui/Avatar';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
 import { fetchEventCardById } from '../data/eventQueries';
+import { eventCacheKey, readCache } from '../data/pageCache';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
 import SetlistAttribution from '../components/event/SetlistAttribution';
 import { enableMomentNudges } from '../features/moments/momentNudge';
@@ -67,9 +68,9 @@ const EventDetail: React.FC = () => {
   const id = useRouteEntityId() || '';
   const { user } = useAuth();
   const { isFollowing } = useFollowedSubjects();
-  const [event, setEvent] = useState<EventDetailData | null>(null);
+  const [event, setEvent] = useState<EventDetailData | null>(() => readCache<EventDetailData>(eventCacheKey(id)) ?? null);
   const [festival, setFestival] = useState<{ id: string; name: string } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !readCache(eventCacheKey(id)));
   const [error, setError] = useState('');
   const [buckets, setBuckets] = useState<TimelineBucket[]>([]);
   const [bucketsLoading, setBucketsLoading] = useState(false);
@@ -98,7 +99,11 @@ const EventDetail: React.FC = () => {
   };
 
   const loadEvent = async () => {
-    setLoading(true);
+    // A concert listed on the previous screen paints at once; the fetch below
+    // only refreshes it.
+    const cached = readCache<EventDetailData>(eventCacheKey(id));
+    setEvent(cached ?? null);
+    setLoading(!cached);
     setError('');
 
     try {
@@ -111,6 +116,7 @@ const EventDetail: React.FC = () => {
       }
 
       setEvent(data as EventDetailData);
+      setLoading(false);
 
       const [setlistData, momentsData] = await Promise.all([
         eventService.getEventSetlist(id),
@@ -124,8 +130,11 @@ const EventDetail: React.FC = () => {
       setSetlist(setlistData);
       setSongMoments(((momentsData.data || []) as unknown) as SongMoment[]);
     } catch (err) {
-      setError('No se ha podido cargar este evento. Revisa tu conexión.');
-      setEvent(null);
+      // Offline with a cached copy: keep showing it.
+      if (!cached) {
+        setError('No se ha podido cargar este evento. Revisa tu conexión.');
+        setEvent(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -614,11 +623,7 @@ const EventDetail: React.FC = () => {
 
   return (
     <AppShell headerProps={null} contentRef={contentRef} contentWrapperClassName={false} contentClassName="event-detail-content">
-      {loading && (
-        <div className="flex items-center justify-center py-12">
-          <Spinner />
-        </div>
-      )}
+      {loading && <DetailSkeleton />}
 
       {!loading && error && <div className="p-4"><p className="text-sm text-rose-400">{error}</p></div>}
 
