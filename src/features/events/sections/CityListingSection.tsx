@@ -38,6 +38,8 @@ type CityListingSectionProps = {
   events: EventListItem[];
   city: string;
   onCityChange: (city: string) => void;
+  /** Follow the device's position instead of a picked city. */
+  onUseLocation?: () => void;
   loading: boolean;
   error?: string | null;
 };
@@ -56,7 +58,7 @@ const timeLabel = (iso: string) =>
   new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
 
 // The city's listings, day by day for the next week, then what comes after.
-const CityListingSection: React.FC<CityListingSectionProps> = ({ events, city, onCityChange, loading, error }) => {
+const CityListingSection: React.FC<CityListingSectionProps> = ({ events, city, onCityChange, onUseLocation, loading, error }) => {
   const navigate = useNavigate();
 
   const days = useMemo(() => {
@@ -218,6 +220,24 @@ const CityListingSection: React.FC<CityListingSectionProps> = ({ events, city, o
           <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20" aria-hidden />
           <h3 className="px-1 pb-2 font-display text-lg font-bold text-app-ink">Ciudad</h3>
           <ul className="max-h-[60dvh] overflow-y-auto">
+            {onUseLocation ? (
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUseLocation();
+                    setPickerOpen(false);
+                  }}
+                  className="flex min-h-12 w-full items-center gap-2 rounded-xl px-3 text-left text-[15px] font-semibold text-app-accent"
+                >
+                  <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                    <path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" />
+                    <circle cx="12" cy="9.5" r="2.5" />
+                  </svg>
+                  Usar mi ubicación
+                </button>
+              </li>
+            ) : null}
             {cities.map(option => {
               const active = option.name.toLowerCase() === city.toLowerCase();
               return (
