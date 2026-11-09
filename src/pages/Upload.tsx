@@ -18,6 +18,10 @@ import { getEventCoverImage, getPrimaryArtistName } from '../features/events/uti
 import { parseScannedUploadValue } from '../lib/uploadQr';
 import { eventManagementService } from '../services/eventManagement.service';
 import { canGoBack } from '../app/useGoBack';
+import AuthPanel from '../auth/AuthPanel';
+import { clearReturnTo, rememberReturnTo } from '../auth/returnTo';
+import { savePendingSelection, takePendingSelection } from '../media/pendingSelection';
+import { markOnboardingSeen } from '../app/onboarding';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 // Detected only if the media was captured within this distance of the concert.
@@ -71,6 +75,85 @@ const detectEvent = (items: MomentItem[], events: EventListItem[]) => {
   return best?.event ?? null;
 };
 
+const QrWelcome: React.FC<{
+  event: EventListItem | null;
+  error: string;
+  onPick: () => void;
+  onChooseOther: () => void;
+  onClose: () => void;
+}> = ({ event, error, onPick, onChooseOther, onClose }) => {
+  const cover = event ? getEventCoverImage(event) : null;
+  const venue = event?.venue_place;
+  return (
+    <div className="relative flex min-h-full flex-col bg-app-bg">
+      <div className="relative h-[46dvh] min-h-[280px] w-full overflow-hidden">
+        {event ? (
+          cover ? (
+            <img src={cover} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <GeneratedPoster title={getPrimaryArtistName(event)} variant="hero" />
+          )
+        ) : (
+          <div className="h-full w-full bg-app-surface" />
+        )}
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(13,14,18,0.2)_0%,rgba(13,14,18,0.55)_55%,#0d0e12_100%)]" aria-hidden />
+        <button
+          type="button"
+          aria-label="Cerrar"
+          onClick={onClose}
+          className="absolute left-3 top-[calc(10px+env(safe-area-inset-top,0px))] flex h-11 w-11 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur"
+        >
+          <CloseIcon />
+        </button>
+      </div>
+
+      <div className="-mt-24 relative flex flex-1 flex-col gap-5 px-5 pb-[calc(28px+env(safe-area-inset-bottom,0px))]">
+        <div>
+          <p className="m-0 font-mono text-xs font-semibold uppercase tracking-wide text-app-accent">Enhorabuena, estás aquí</p>
+          {event ? (
+            <>
+              <h1 className="m-0 mt-2 font-display text-[40px] font-bold uppercase leading-[0.95] tracking-tight text-app-ink">
+                {getPrimaryArtistName(event)}
+              </h1>
+              <p className="m-0 mt-2 text-base font-semibold text-app-ink">
+                {[venue?.name, venue?.city].filter(Boolean).join(' · ')}
+              </p>
+              <p className="m-0 mt-0.5 text-sm text-[#c9c5bd]">{eventWhen(event.starts_at)}</p>
+            </>
+          ) : error ? null : (
+            <p className="mt-3 flex items-center gap-2 text-sm text-white/70">
+              <Spinner className="h-4 w-4" /> Buscando el concierto…
+            </p>
+          )}
+        </div>
+
+        {error ? <p role="alert" className="m-0 text-sm text-rose-400">{error}</p> : null}
+
+        <div className="mt-auto flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={onPick}
+            className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-app-accent text-lg font-bold text-[#14151a]"
+          >
+            <IconPlus size={22} />
+            Sube tus fotos y vídeos
+          </button>
+          <p className="m-0 text-center text-[13px] text-white/55">
+            Cada uno irá a su canción. Sin registrarte para empezar.
+          </p>
+          <button
+            type="button"
+            onClick={onChooseOther}
+            className="min-h-11 text-sm font-semibold text-white/70"
+          >
+            {event ? '¿No es este concierto?' : 'Elegir el concierto a mano'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Upload: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -78,6 +161,9 @@ const Upload: React.FC = () => {
   const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
   // A concert QR carries ?qr=<upload token> (resolved below) instead of the id.
   const presetToken = params.get('qr');
+  // Scanned at the venue: welcome them to the concert and go straight to the
+  // picker. The account is only asked for when they press «Publicar».
+  const fromQr = Boolean(presetToken);
   const [tokenEventId, setTokenEventId] = useState<string | null>(null);
   const presetEventId = params.get('event') || tokenEventId;
   const presetSong = Number(params.get('song')) || null;
@@ -97,6 +183,8 @@ const Upload: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [error, setError] = useState('');
+  const [authOpen, setAuthOpen] = useState(false);
+  const [publishAfterAuth, setPublishAfterAuth] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const itemsRef = useRef<MomentItem[]>([]);
 
@@ -105,6 +193,36 @@ const Upload: React.FC = () => {
   }, [items]);
 
   useEffect(() => () => itemsRef.current.forEach(item => URL.revokeObjectURL(item.previewUrl)), []);
+
+  // Someone who opens the app through a QR has already found out what it is for.
+  useEffect(() => {
+    if (fromQr) markOnboardingSeen();
+  }, [fromQr]);
+
+  // Back from Google/Apple on the web: the page reloaded, so put back what
+  // they had picked and finish the publish they had asked for.
+  useEffect(() => {
+    let cancelled = false;
+    takePendingSelection()
+      .then(async pending => {
+        if (cancelled || !pending) return;
+        const built = await buildMomentItems(pending.files);
+        if (cancelled) return;
+        setItems(built.sort((left, right) => (left.captureAt?.getTime() ?? 0) - (right.captureAt?.getTime() ?? 0)));
+        if (pending.eventId && !presetEventId) {
+          const found = await fetchEventCardById(pending.eventId).catch(() => null);
+          if (!cancelled && found) {
+            setEvent(found);
+            setChoice('chosen');
+          }
+        }
+        if (!cancelled) setPublishAfterAuth(true);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!presetToken) return;
@@ -246,7 +364,17 @@ const Upload: React.FC = () => {
   };
 
   const publish = async () => {
-    if (!user || !event || items.length === 0) return;
+    if (!event || items.length === 0) return;
+    if (!user) {
+      // Nothing reaches the database without an account. Ask for one here,
+      // keep the selection on screen and carry on once they are in. The
+      // return path brings an email-confirmation or Google/Apple deep link
+      // back to this same screen.
+      rememberReturnTo(`${location.pathname}${location.search}`);
+      setPublishAfterAuth(true);
+      setAuthOpen(true);
+      return;
+    }
     setError('');
     setUploading(true);
     setProgress({ current: 0, total: items.length });
@@ -263,6 +391,7 @@ const Upload: React.FC = () => {
       })));
       itemsRef.current.forEach(item => URL.revokeObjectURL(item.previewUrl));
       setItems([]);
+      clearReturnTo();
       navigate(`/event/${event.id}`, { replace: true });
     } catch (err: any) {
       setError(err?.message || 'No se pudo subir. Inténtalo de nuevo.');
@@ -270,6 +399,15 @@ const Upload: React.FC = () => {
       setUploading(false);
     }
   };
+
+  // Signed in from the sheet (email here, Google/Apple or an email link from
+  // outside): publish what was waiting.
+  useEffect(() => {
+    if (!user || !publishAfterAuth || !event || items.length === 0 || uploading) return;
+    setPublishAfterAuth(false);
+    setAuthOpen(false);
+    void publish();
+  }, [user, publishAfterAuth, event, items.length]);
 
   const close = () => {
     if (canGoBack()) navigate(-1);
@@ -289,9 +427,19 @@ const Upload: React.FC = () => {
 
   const cover = event ? getEventCoverImage(event) : null;
   const pickingSongFor = items.find(item => item.id === songPickerFor) || null;
+  const showQrWelcome = fromQr && items.length === 0;
 
   return (
     <AppShell headerProps={null} contentWrapperClassName={false}>
+      {showQrWelcome ? (
+        <QrWelcome
+          event={event}
+          error={error}
+          onPick={() => fileInputRef.current?.click()}
+          onChooseOther={() => setPickerOpen(true)}
+          onClose={close}
+        />
+      ) : (
       <div className="flex min-h-full flex-col pb-[calc(240px+env(safe-area-inset-bottom,0px))]">
         <header className="flex items-center gap-2 px-3 pt-[calc(10px+env(safe-area-inset-top,0px))]">
           <button
@@ -463,7 +611,9 @@ const Upload: React.FC = () => {
 
         {error ? <p className="mx-4 mt-3 text-sm text-rose-400">{error}</p> : null}
       </div>
+      )}
 
+      {showQrWelcome ? null : (
       <div className="fixed inset-x-0 bottom-0 z-[1300] border-t border-app-line bg-app-bg/95 px-4 pb-[calc(10px+env(safe-area-inset-bottom,0px))] pt-2.5 backdrop-blur-xl">
         <ReuseConsentCheckbox className="mb-2" />
         <button
@@ -484,6 +634,7 @@ const Upload: React.FC = () => {
           )}
         </button>
       </div>
+      )}
 
       <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple onChange={handleFiles} className="hidden" />
 
@@ -559,6 +710,36 @@ const Upload: React.FC = () => {
               );
             })}
           </ul>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={authOpen}
+        onDidDismiss={() => {
+          setAuthOpen(false);
+          setPublishAfterAuth(false);
+        }}
+        initialBreakpoint={0.95}
+        title="Crea tu cuenta para publicar"
+      >
+        <div className="max-h-[90dvh] overflow-y-auto px-5 pb-[calc(24px+env(safe-area-inset-bottom,0px))] pt-3">
+          <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/20" aria-hidden />
+          <h3 className="m-0 font-display text-2xl font-bold text-app-ink">Último paso</h3>
+          <p className="m-0 mt-1.5 text-sm text-[#c9c5bd]">
+            Crea tu cuenta y {items.length === 1 ? 'tu momento se publica' : `tus ${items.length} momentos se publican`} con tu nombre.
+            No pierdes nada de lo que has elegido.
+          </p>
+          <div className="mt-5">
+            <AuthPanel
+              defaultMode="signup"
+              minimal
+              confirmationNotice="Te hemos enviado un email. Pulsa el enlace en este móvil y publicamos solos lo que has elegido. Si lo abres en otro dispositivo, vuelve aquí y pulsa «Entrar»."
+              providerReturnPath={`${location.pathname}${location.search}`}
+              beforeProviderRedirect={() =>
+                savePendingSelection({ eventId: event?.id ?? null, files: items.map(item => item.file) })
+              }
+            />
+          </div>
         </div>
       </Modal>
 

@@ -1,4 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
+import { App as CapacitorApp } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import {
   BrowserRouter,
   Navigate,
@@ -6,6 +8,7 @@ import {
   Route,
   Routes,
   useLocation,
+  useNavigate,
 } from 'react-router-dom';
 import BottomNav, { isDetailRoute } from './components/BottomNav';
 import { Spinner } from './components/ui/AppPrimitives';
@@ -13,6 +16,7 @@ import { useAuth } from './contexts/AuthContext';
 import { useWorkspace } from './contexts/WorkspaceContext';
 import AppBackHandler from './app/AppBackHandler';
 import AuthDeepLinks from './app/AuthDeepLinks';
+import { hasSeenOnboarding } from './app/onboarding';
 import { clearReturnTo, readReturnTo, rememberReturnTo } from './auth/returnTo';
 import MomentNudges from './features/moments/MomentNudges';
 import ConcertAlertsListener from './features/alerts/ConcertAlertsListener';
@@ -49,6 +53,7 @@ const CreateEventPage = lazyPage(() => import('./pages/CreateEvent'), false);
 const EventDetail = lazyPage(() => import('./pages/EventDetail'));
 const Map = lazyPage(() => import('./pages/Map'));
 const Upload = lazyPage(() => import('./pages/Upload'));
+const Onboarding = lazyPage(() => import('./pages/Onboarding'));
 const SuggestedUpload = lazyPage(() => import('./pages/SuggestedUpload'));
 const Import = lazyPage(() => import('./pages/Import'));
 const Wrapped = lazyPage(() => import('./pages/Wrapped'), false);
@@ -102,6 +107,34 @@ const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return <Navigate to="/welcome" replace />;
   }
   return <>{children}</>;
+};
+
+// First open without an account goes to the onboarding, once. Not when the
+// app was opened by a link (a concert QR, a shared concert): that person
+// came for something specific.
+const FirstRunGate = () => {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  const checked = useRef(false);
+  useEffect(() => {
+    if (checked.current || loading) return;
+    checked.current = true;
+    if (user || hasSeenOnboarding()) return;
+    const onHome = () => ['/', '/tabs/events'].includes(window.location.pathname);
+    const go = () => {
+      if (onHome()) navigate('/bienvenida', { replace: true });
+    };
+    if (!Capacitor.isNativePlatform()) {
+      go();
+      return;
+    }
+    CapacitorApp.getLaunchUrl()
+      .then(launch => {
+        if (!launch?.url) go();
+      })
+      .catch(go);
+  }, [loading, user, navigate]);
+  return null;
 };
 
 const WelcomeRoute = () => {
@@ -184,12 +217,14 @@ const AppRoutes = () => {
     <>
       <AppBackHandler mainTabPath={mainTabHref} />
       <AuthDeepLinks />
+      <FirstRunGate />
       <MomentNudges />
       <ConcertAlertsListener />
       <ShareTargetListener />
       <React.Suspense fallback={<div className="h-dvh bg-app-bg" />}>
         <Routes>
           <Route path="/welcome" element={<WelcomeRoute />} />
+          <Route path="/bienvenida" element={deferredPage(<Onboarding />)} />
           <Route path="/event/:id" element={deferredPage(<EventDetail />)} />
           <Route path="/concierto/:slug" element={deferredPage(<EventDetail />)} />
           <Route path="/profile/:id" element={<ProfileDetail />} />
@@ -209,7 +244,7 @@ const AppRoutes = () => {
           <Route path="/gestion/estadisticas" element={<RequireAuth>{deferredPage(<GestionEstadisticas />)}</RequireAuth>} />
           <Route path="/legal/licencia-momentos" element={deferredPage(<LicenciaMomentos />)} />
           <Route path="/create-event" element={<RequireAuth><CreateEventRedirect /></RequireAuth>} />
-          <Route path="/upload" element={<RequireAuth><UploadRedirect /></RequireAuth>} />
+          <Route path="/upload" element={<UploadRedirect />} />
           {/* Morning-after nudge: clips found in the gallery, ready to publish */}
           <Route path="/subir/sugerido" element={<RequireAuth>{deferredPage(<SuggestedUpload />)}</RequireAuth>} />
           <Route path="/reclamar/:type/:id" element={<RequireAuth>{deferredPage(<ClaimProfile />)}</RequireAuth>} />
@@ -232,7 +267,7 @@ const AppRoutes = () => {
             <Route path="feed" element={<Feed />} />
             <Route path="mySpace" element={<Feed />} />
             <Route path="create-event" element={<RequireAuth>{deferredPage(<CreateEventPage />)}</RequireAuth>} />
-            <Route path="upload" element={<RequireAuth>{deferredPage(<Upload />)}</RequireAuth>} />
+            <Route path="upload" element={deferredPage(<Upload />)} />
             <Route path="map" element={deferredPage(<Map />)} />
             <Route path="discover" element={<Discover />} />
             <Route path="events" element={<Events />} />
