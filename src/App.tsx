@@ -51,7 +51,8 @@ const VenueDetail = lazyPage(() => import('./pages/VenueDetail'));
 const Admin = lazyPage(() => import('./pages/Admin'), false);
 const CreateEventPage = lazyPage(() => import('./pages/CreateEvent'), false);
 const EventDetail = lazyPage(() => import('./pages/EventDetail'));
-const Map = lazyPage(() => import('./pages/Map'));
+// Not preloaded: MapLibre (~300 kB gzip plus its worker) only loads on the Map tab.
+const Map = lazyPage(() => import('./pages/Map'), false);
 const Upload = lazyPage(() => import('./pages/Upload'));
 const Onboarding = lazyPage(() => import('./pages/Onboarding'));
 const SuggestedUpload = lazyPage(() => import('./pages/SuggestedUpload'));

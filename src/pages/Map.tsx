@@ -1,11 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CircleMarker, MapContainer, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { AttributionControl, LngLatBounds, Map as MapLibreMap, Marker, setWorkerUrl } from 'maplibre-gl';
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { useLocation } from 'react-router-dom';
 import { Page } from '../components/ui/AppPrimitives';
-import MapLibreLayer from '../components/MapLibreLayer';
-import MapResizeObserver from '../components/MapResizeObserver';
 import MapMarkers from '../components/map/MapMarkers';
 import MapFilterBar from '../components/map/MapFilterBar';
 import MapFilterModal from '../components/map/MapFilterModal';
@@ -16,28 +14,46 @@ import { persistStoredLocation, type StoredLocation } from '../shared/hooks/useS
 import { IconLocate } from '../components/icons';
 import { fetchMapEvents, type MapEvent } from '../data/eventQueries';
 
+// The bundled worker is emitted as its own asset: MapLibre's default lookup is
+// relative to its own module URL, which neither Vite chunks nor capacitor:// keep.
+setWorkerUrl(maplibreWorkerUrl);
+
+// OpenFreeMap: free vector tiles, no API key. "dark" is near-black with muted
+// labels, so the orange pins carry the colour.
+const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/dark';
+
 // Puerta del Sol: the pilot's agenda is Madrid and Barcelona.
+// MapLibre zooms are one level below Leaflet's for the same scale (512px tiles).
 const defaultCenter: [number, number] = [40.4168, -3.7038];
-const defaultZoom = 13;
-const nearbyZoom = 14;
-// v2: earlier builds saved a Seville default view that hid the pilot's concerts.
-const mapViewKey = 'live_space.map.view.v2';
+const defaultZoom = 12;
+const nearbyZoom = 13;
+const fitMaxZoom = 14;
+// v3: MapLibre zoom levels. v2 (Leaflet) views are migrated one level down;
+// v1 builds saved a Seville default view that hid the pilot's concerts.
+const mapViewKey = 'live_space.map.view.v3';
+const leafletMapViewKey = 'live_space.map.view.v2';
 const EMPTY_EVENTS: MapEvent[] = [];
 
-// `.map-dark` (index.css) darkens the OSM tiles only, so pins keep the accent colour.
+// Credits sit bottom-left above the floating tab bar (the locate button is on the right).
 const darkAttribution =
-  '[&_.leaflet-control-attribution]:!bg-black/50 [&_.leaflet-control-attribution]:!text-[10px] [&_.leaflet-control-attribution]:!text-white/55 [&_.leaflet-control-attribution_a]:!text-white/70';
+  '[&_.maplibregl-ctrl-bottom-left]:!bottom-[calc(88px+env(safe-area-inset-bottom,0px))] [&_.maplibregl-ctrl-attrib]:!bg-black/50 [&_.maplibregl-ctrl-attrib]:!text-[10px] [&_.maplibregl-ctrl-attrib]:!text-white/55 [&_.maplibregl-ctrl-attrib_a]:!text-white/70';
+
+const parseView = (raw: string | null, zoomOffset: number) => {
+  if (!raw) return null;
+  const parsed = JSON.parse(raw) as { center?: [number, number]; zoom?: number };
+  if (!parsed?.center || typeof parsed.zoom !== 'number') return null;
+  const [lat, lng] = parsed.center;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { center: parsed.center, zoom: Math.max(0, parsed.zoom + zoomOffset) };
+};
 
 const readStoredView = () => {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = window.localStorage.getItem(mapViewKey);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as { center?: [number, number]; zoom?: number };
-    if (!parsed?.center || typeof parsed.zoom !== 'number') return null;
-    const [lat, lng] = parsed.center;
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-    return { center: parsed.center, zoom: parsed.zoom };
+    return (
+      parseView(window.localStorage.getItem(mapViewKey), 0) ??
+      parseView(window.localStorage.getItem(leafletMapViewKey), -1)
+    );
   } catch {
     return null;
   }
@@ -51,25 +67,22 @@ const persistView = (center: [number, number], zoom: number) => {
   }
 };
 
-type MapLocationState = { artistFilter?: MapArtistFilter };
-
-/** Persists the view and closes the sheet when the bare map is tapped. */
-const MapEventsBridge: React.FC<{ onMapClick: () => void }> = ({ onMapClick }) => {
-  const map = useMapEvents({
-    click: onMapClick,
-    moveend: () => {
-      const center = map.getCenter();
-      persistView([center.lat, center.lng], map.getZoom());
-    },
-  });
-  return null;
+const createMeElement = () => {
+  const dot = document.createElement('div');
+  dot.style.cssText =
+    'width:16px;height:16px;border-radius:9999px;background:#3b82f6;border:3px solid #fff;box-sizing:border-box;pointer-events:none;';
+  return dot;
 };
+
+type MapLocationState = { artistFilter?: MapArtistFilter };
 
 const Map: React.FC = () => {
   const location = useLocation();
-  // Leaflet owns the view after mount; React only seeds it once.
+  // MapLibre owns the view after mount; React only seeds it once.
   const [initialView] = useState(() => readStoredView());
-  const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [mapInstance, setMapInstance] = useState<MapLibreMap | null>(null);
+  const [mapFailed, setMapFailed] = useState(false);
   const [activeVenueId, setActiveVenueId] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const appliedArtistFilter = useRef<string | null>(null);
@@ -100,9 +113,62 @@ const Map: React.FC = () => {
     addArtist(artistFilter);
   }, [location.state, addArtist]);
 
+  const closeSheet = useCallback(() => setActiveVenueId(null), []);
+
   useEffect(() => {
-    mapInstance?.attributionControl?.setPrefix(false);
-  }, [mapInstance]);
+    const container = containerRef.current;
+    if (!container) return undefined;
+    const [lat, lng] = initialView?.center ?? defaultCenter;
+    let map: MapLibreMap;
+    try {
+      map = new MapLibreMap({
+        container,
+        style: MAP_STYLE_URL,
+        center: [lng, lat],
+        zoom: initialView?.zoom ?? defaultZoom,
+        attributionControl: false,
+        // A flat street map: no rotation or tilt gestures.
+        dragRotate: false,
+        pitchWithRotate: false,
+        touchPitch: false,
+      });
+    } catch {
+      // No WebGL (old WebView, disabled GPU): keep the page usable without the map.
+      setMapFailed(true);
+      return undefined;
+    }
+    map.addControl(new AttributionControl({ compact: false }), 'bottom-left');
+    map.touchZoomRotate.disableRotation();
+    map.keyboard.disableRotation();
+    // Tile or glyph hiccups are retried by MapLibre; keep them out of the console.
+    map.on('error', () => undefined);
+    map.on('moveend', () => {
+      const center = map.getCenter();
+      persistView([center.lat, center.lng], map.getZoom());
+    });
+    // Tapping the bare map closes the sheet; taps on pins select instead.
+    map.on('click', event => {
+      const target = event.originalEvent.target;
+      if (target instanceof Element && target.closest('.venue-pin')) return;
+      closeSheet();
+    });
+    setMapInstance(map);
+    return () => {
+      setMapInstance(null);
+      map.remove();
+    };
+  }, [initialView, closeSheet]);
+
+  // The visitor's position as a blue dot.
+  useEffect(() => {
+    if (!mapInstance || !me) return undefined;
+    const marker = new Marker({ element: createMeElement(), anchor: 'center' })
+      .setLngLat([me.lng, me.lat])
+      .addTo(mapInstance);
+    return () => {
+      marker.remove();
+    };
+  }, [mapInstance, me]);
 
   const centreOnMe = useCallback(
     (quiet: boolean) => {
@@ -117,7 +183,7 @@ const Map: React.FC = () => {
           const next = { lat: position.coords.latitude, lng: position.coords.longitude };
           setMe(next);
           persistStoredLocation(next);
-          mapInstance.setView([next.lat, next.lng], Math.max(mapInstance.getZoom(), nearbyZoom));
+          mapInstance.easeTo({ center: [next.lng, next.lat], zoom: Math.max(mapInstance.getZoom(), nearbyZoom) });
           setLocating(false);
         },
         () => {
@@ -142,8 +208,9 @@ const Map: React.FC = () => {
   useEffect(() => {
     if (!mapInstance || fitKey === lastFitKey.current || venueGroups.length === 0) return;
     lastFitKey.current = fitKey;
-    const bounds = L.latLngBounds(venueGroups.map(group => [group.latitude, group.longitude] as [number, number]));
-    mapInstance.fitBounds(bounds, { padding: [56, 56], maxZoom: 15 });
+    const bounds = new LngLatBounds();
+    venueGroups.forEach(group => bounds.extend([group.longitude, group.latitude]));
+    mapInstance.fitBounds(bounds, { padding: 56, maxZoom: fitMaxZoom });
   }, [mapInstance, fitKey, venueGroups]);
 
   const activeGroup = useMemo(
@@ -154,37 +221,32 @@ const Map: React.FC = () => {
   // Keep the selected pin visible above the sheet.
   useEffect(() => {
     if (!mapInstance || !activeGroup) return;
-    const size = mapInstance.getSize();
-    const point = mapInstance.latLngToContainerPoint([activeGroup.latitude, activeGroup.longitude]);
-    mapInstance.panBy([point.x - size.x / 2, point.y - size.y * 0.24], { animate: true });
+    const container = mapInstance.getContainer();
+    const point = mapInstance.project([activeGroup.longitude, activeGroup.latitude]);
+    mapInstance.panBy([point.x - container.clientWidth / 2, point.y - container.clientHeight * 0.24]);
   }, [mapInstance, activeGroup?.id]);
 
   const handleSelectVenue = useCallback((venueId: string) => setActiveVenueId(venueId), []);
-  const closeSheet = useCallback(() => setActiveVenueId(null), []);
 
   return (
     <Page className="bg-app-bg">
       <div className="relative min-h-0 flex-1 overflow-hidden">
-        <MapContainer
-          center={initialView?.center ?? defaultCenter}
-          zoom={initialView?.zoom ?? defaultZoom}
-          className={`map-dark h-full w-full ${darkAttribution}`}
-          zoomControl={false}
-          ref={setMapInstance}
-        >
-          <MapLibreLayer />
-          <MapResizeObserver />
-          <MapEventsBridge onMapClick={closeSheet} />
-          <MapMarkers groups={venueGroups} activeVenueId={activeVenueId} onSelectVenue={handleSelectVenue} />
-          {me ? (
-            <CircleMarker
-              center={[me.lat, me.lng]}
-              radius={8}
-              interactive={false}
-              pathOptions={{ color: '#ffffff', weight: 3, fillColor: '#3b82f6', fillOpacity: 1 }}
-            />
-          ) : null}
-        </MapContainer>
+        <div
+          ref={containerRef}
+          data-testid="venue-map"
+          className={`h-full w-full bg-[#0c0c0c] ${darkAttribution}`}
+        />
+        <MapMarkers
+          map={mapInstance}
+          groups={venueGroups}
+          activeVenueId={activeVenueId}
+          onSelectVenue={handleSelectVenue}
+        />
+        {mapFailed ? (
+          <p className="absolute inset-x-6 top-1/2 z-[1] -translate-y-1/2 text-center text-sm text-app-ink/70">
+            No se ha podido cargar el mapa en este dispositivo.
+          </p>
+        ) : null}
 
         <div className="pointer-events-none absolute inset-x-0 top-0 z-[1000] pt-[calc(12px+env(safe-area-inset-top,0px))] [&>*]:pointer-events-auto">
           <MapFilterBar
