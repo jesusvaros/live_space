@@ -17,12 +17,13 @@ const isNative = () => Capacitor.isNativePlatform();
 export const authRedirectUrl = (webPath: string) =>
   isNative() ? AUTH_CALLBACK_URL : `${window.location.origin}${webPath}`;
 
-export const signInWithProvider = async (provider: OAuthProvider) => {
+export const signInWithProvider = async (provider: OAuthProvider, webReturnPath = '/welcome') => {
   if (!isNative()) {
-    // Dev in the browser: supabase-js picks the tokens up from the URL.
+    // Web: a full page redirect; supabase-js picks the tokens up from the URL.
+    const path = webReturnPath.startsWith('/') && !webReturnPath.startsWith('//') ? webReturnPath : '/welcome';
     return supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${window.location.origin}/welcome` },
+      options: { redirectTo: `${window.location.origin}${path}` },
     });
   }
   const { data, error } = await supabase.auth.signInWithOAuth({
