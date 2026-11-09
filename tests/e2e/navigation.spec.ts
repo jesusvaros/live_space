@@ -78,6 +78,7 @@ test('loads the anonymous map without runtime errors', async ({ page }) => {
 
   await page.goto('/tabs/map');
 
-  await expect(page.locator('.leaflet-container')).toBeVisible();
+  await expect(page.locator('.maplibregl-map')).toBeVisible();
+  await expect(page.locator('canvas.maplibregl-canvas')).toBeVisible();
   expect(pageErrors).toEqual([]);
 });
