@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Avatar from '../components/ui/Avatar';
 import { Content, Modal, Spinner } from '../components/ui/AppPrimitives';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -15,7 +15,7 @@ import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { useFollowedEntities } from '../hooks/useFollowedEntities';
 import { IconLogout } from '../components/icons';
 import { useAppResume } from '../shared/hooks/useAppResume';
-import { fetchQuery } from '../lib/queryClient';
+import { fetchQuery, getQuerySnapshot, serializeQueryKey } from '../lib/queryClient';
 import { fetchEventCards } from '../data/eventQueries';
 import { fetchPostCards } from '../data/postQueries';
 import ConcertHistorySection from '../features/agenda/ConcertHistorySection';
@@ -35,7 +35,9 @@ const Profile: React.FC = () => {
     setActiveWorkspace: setActiveEntity,
   } = useWorkspace();
 
-  const [isManagementMode, setIsManagementMode] = useState(false);
+  // Derived, not state: as state it started false and flipped a moment later,
+  // which threw away the first load and fetched everything twice.
+  const isManagementMode = Boolean(activeEntity);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -119,10 +121,6 @@ const Profile: React.FC = () => {
         : 'Editar perfil';
 
   useEffect(() => {
-    setIsManagementMode(Boolean(activeEntity));
-  }, [activeEntity]);
-
-  useEffect(() => {
     if (!activeEntity) return;
     if (location.pathname.startsWith('/tabs/profile')) return;
     // Route to entity-specific profile pages when acting as an entity
@@ -143,25 +141,39 @@ const Profile: React.FC = () => {
     ? (activeEntity.type === 'user' ? activeEntity.profile : null)
     : profile;
 
+  type ProfileData = {
+    posts: PostWithSetlist[];
+    liked: Event[];
+    attended: Event[];
+    artistEvents: Event[];
+    venueEvents: Event[];
+  };
+
+  const applyProfileData = (data: ProfileData) => {
+    setPosts(data.posts);
+    setLikedEvents(data.liked);
+    setAttendedEvents([...data.attended, ...data.artistEvents]);
+    setArtistEvents(data.artistEvents);
+    setVenueEvents(data.venueEvents);
+  };
+
   const loadProfileData = async (isManualRefresh = false) => {
     if (!user?.id) return;
     const loadContext = `${user.id}-${isManagementMode}-${activeEntity?.subject_id || 'none'}-${profile?.role || 'user'}`;
 
-    setLoading(true);
+    // What we already have shows at once; the spinner is only for a first visit.
+    const cachedData = getQuerySnapshot<ProfileData>(serializeQueryKey(['profile:data', loadContext])).data;
+    if (cachedData) applyProfileData(cachedData);
+    else setLoading(true);
     setError('');
 
     try {
-      const data = await fetchQuery<{
-        posts: PostWithSetlist[];
-        liked: Event[];
-        attended: Event[];
-        artistEvents: Event[];
-        venueEvents: Event[];
-      }>(
+      const data = await fetchQuery<ProfileData>(
         ['profile:data', loadContext],
         async () => {
           const [personalPosts, likedRes, attendedRes] = await Promise.all([
-            isManagementMode ? Promise.resolve([]) : fetchPostCards({ authorId: user.id }),
+            // Only the 12 the grid shows.
+            isManagementMode ? Promise.resolve([]) : fetchPostCards({ authorId: user.id, from: 0, to: 11 }),
             supabase.from('event_saves').select('event_id').eq('profile_id', user.id),
             supabase.from('event_attendance').select('event_id,status').eq('profile_id', user.id),
           ]);
@@ -198,39 +210,37 @@ const Profile: React.FC = () => {
           const [liked, attended, entityPosts] = await Promise.all([
             fetchEventCards({ eventIds: likedIds }),
             fetchEventCards({ eventIds: attendedIds }),
-            isManagementMode ? fetchPostCards({ eventIds: entityEventIds }) : Promise.resolve([]),
+            isManagementMode ? fetchPostCards({ eventIds: entityEventIds, from: 0, to: 11 }) : Promise.resolve([]),
           ]);
           const posts = (isManagementMode ? entityPosts : personalPosts).slice(0, 12) as PostWithSetlist[];
 
           return { posts, liked, attended, artistEvents, venueEvents };
         },
         {
-          ttlMs: 10_000,
+          ttlMs: 60_000,
           force: isManualRefresh,
         }
       );
 
-      setPosts(data.posts);
-      setLikedEvents(data.liked);
-      setAttendedEvents([...data.attended, ...data.artistEvents]);
-      setArtistEvents(data.artistEvents);
-      setVenueEvents(data.venueEvents);
+      applyProfileData(data);
     } catch (err) {
-      setError('No se ha podido cargar tu perfil. Revisa tu conexión.');
-      setPosts([]);
-      setLikedEvents([]);
-      setAttendedEvents([]);
-      setArtistEvents([]);
-      setVenueEvents([]);
+      // Keep what was on screen if a background refresh fails.
+      if (!cachedData) {
+        setError('No se ha podido cargar tu perfil. Revisa tu conexión.');
+        applyProfileData({ posts: [], liked: [], attended: [], artistEvents: [], venueEvents: [] });
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // Opening the tab uses the cache (a minute); coming back to the app refreshes.
+  const lastResumeTick = useRef(resumeTick);
   useEffect(() => {
-    if (user?.id) {
-      void loadProfileData(true);
-    }
+    if (!user?.id) return;
+    const resumed = lastResumeTick.current !== resumeTick;
+    lastResumeTick.current = resumeTick;
+    void loadProfileData(resumed);
   }, [activeEntity?.subject_id, isManagementMode, profile?.role, resumeTick, user?.id]);
 
   useEffect(() => {
