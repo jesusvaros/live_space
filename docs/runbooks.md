@@ -204,6 +204,39 @@ Alta, una sola vez (son secretos: lo hace una persona):
 5. Probar en el emulador o el móvil: entrar con cada proveedor, cerrar sesión,
    confirmar un alta por email y cambiar una contraseña desde el enlace.
 
+### Login nativo en la app (hoja del sistema, sin navegador)
+
+En Android/iOS, «Continuar con Google» abre la hoja de cuentas del sistema y
+«Continuar con Apple» (solo iOS) la hoja de Apple, con
+`@capgo/capacitor-social-login` (`src/auth/nativeSocialLogin.ts`). El ID token
+se pasa a Supabase con `signInWithIdToken`; el proveedor recibe SHA-256 del
+nonce y Supabase el original. Si falta la configuración o la hoja falla (salvo
+que el usuario cancele), se usa el flujo de navegador de arriba. Apple en
+Android siempre va por navegador.
+
+Además de los pasos anteriores:
+
+1. Google Cloud, mismo proyecto que el cliente web:
+   - Cliente OAuth **Android**: paquete `com.livespace.app` y SHA-1. Uno por
+     cada certificado que firme builds: debug (`keytool -list -v -keystore
+     ~/.android/debug.keystore -alias androiddebugkey -storepass android`),
+     release y el de Play Console → Integridad de la app → «Certificado de la
+     clave de firma de apps».
+   - Cliente OAuth **iOS**: bundle `com.livespace.app`.
+2. Supabase → Providers → Google → **Authorized Client IDs**: añadir los IDs de
+   los clientes Android e iOS, junto al web.
+3. Entorno de build de la app (`.env`): `VITE_GOOGLE_WEB_CLIENT_ID` (el cliente
+   web, no el Android) y `VITE_GOOGLE_IOS_CLIENT_ID`.
+4. iOS, `Info.plist` → `CFBundleURLTypes`: añadir como esquema el «iOS URL
+   scheme» del cliente iOS (`com.googleusercontent.apps.<…>`). Sin él, la hoja
+   de Google falla en iOS y se usa el navegador.
+5. Apple en iOS usa el entitlement `App/App.entitlements` y el bundle
+   `com.livespace.app`, que debe estar en Supabase → Apple → Client IDs. No
+   necesita el secreto de 6 meses (ese es solo para el flujo web).
+6. `npm run build && npx cap sync` y probar en un móvil real con cuenta de
+   Google. Si falla en Android, `adb logcat | grep GoogleProvider` muestra el
+   paquete y el SHA-1 que Google está comprobando.
+
 ## Fuente de scraping rota
 
 1. Suspender autopublicación de la fuente, no las demás.

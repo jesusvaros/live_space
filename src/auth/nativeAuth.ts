@@ -1,6 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { supabase } from '../lib/supabase';
+import { canSignInNatively, signInNatively } from './nativeSocialLogin';
 
 // Auth redirects for the Android/iOS app. Supabase sends the user back to
 // this custom scheme after Google/Apple sign-in, email confirmation or a
@@ -25,6 +26,13 @@ export const signInWithProvider = async (provider: OAuthProvider, webReturnPath 
       provider,
       options: { redirectTo: `${window.location.origin}${path}` },
     });
+  }
+  // App: the system account sheet when it is set up for this provider; the
+  // browser tab below stays as plan B if it is not, or if it breaks.
+  if (canSignInNatively(provider)) {
+    const native = await signInNatively(provider);
+    if (native.kind !== 'failed') return { data: null, error: null };
+    console.warn(`[auth] Native ${provider} sign-in failed, using the browser`, native.error);
   }
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
