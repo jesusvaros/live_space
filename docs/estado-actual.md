@@ -58,6 +58,15 @@ Fecha de la última actualización: **26 de octubre de 2026**.
   revisión de artista/título y uno se rechazó. El alta queda auditada mediante el
   comando `scrape:approve-probed`; el sondeo semanal nunca activa una fuente que
   no haya sido revisada.
+- El 9 de noviembre de 2026 la cola de fuentes descubiertas fuera de Madrid y
+  Barcelona estaba prácticamente vacía (solo Sala R.E.M., Flamenco La Alborea y
+  el dominio secuestrado de Wah Wah). Se añadieron ocho salas de la escena local
+  de siete ciudades nuevas, todas inactivas y pendientes de revisión: Kafe
+  Antzokia (Bilbao), Dabadaba (San Sebastián), Rock & Blues Café (Zaragoza),
+  Sala Planta Baja y Taberna J&J (Granada), Garaje Beat Club (Murcia), Escenario
+  Santander y Supersonic (Vigo). La sonda en seco devolvió 374 conciertos
+  futuros entre todas. La lista de ciudades del scraper ya las incluye; no se
+  capturan hasta activar cada fuente.
 
 ## Deuda heredada
 

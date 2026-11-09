@@ -4,7 +4,18 @@ export type SeedSource = {
   source_type: SourceType;
   name: string;
   base_url: string;
-  city: 'Madrid' | 'Barcelona' | 'Sevilla' | 'Valencia';
+  city:
+    | 'Madrid'
+    | 'Barcelona'
+    | 'Sevilla'
+    | 'Valencia'
+    | 'Bilbao'
+    | 'Granada'
+    | 'Murcia'
+    | 'San Sebastián'
+    | 'Santander'
+    | 'Vigo'
+    | 'Zaragoza';
   parser_key: ParserKey;
   metadata: ScrapeSourceMetadata;
   is_active: boolean;
@@ -291,5 +302,46 @@ export const seedSources: SeedSource[] = [
     ready: true,
     reviewedAt: LOCAL_SCENE_REVIEW,
     structuredDataVerified: true,
+  }),
+  // Local scene outside the four pilot cities (agent, 2026-11-09): own
+  // agenda on the venue's site, robots.txt allows it and a live dry run
+  // returned upcoming concerts. They enter inactive and pending review:
+  // activation is a separate, reviewed step (see docs/scraping.md).
+  // Supersonic and Taberna J&J reuse The Events Calendar API. Left out: Es
+  // Gremi and Sala Zentral (robots.txt blocks AI crawlers, and they are
+  // mostly club nights), Sala El Tren (boxing, parties and techno), Café
+  // Latino (agenda behind a private API), Sala Edén and Lata de Zinc (no
+  // current agenda), Mardi Gras and Garufa (domains parked or for sale).
+  source('Kafe Antzokia', 'https://www.kafeantzokia.eus/agenda/', 'Bilbao', 'https://www.kafeantzokia.eus/', {
+    parserKey: 'ics-feed',
+    structuredDataVerified: true,
+    categoryAllowlist: ['Kontzertuak'],
+  }),
+  source('Dabadaba', 'https://dabadabass.com/es/event?type=6', 'San Sebastián', 'https://dabadabass.com/', {
+    parserKey: 'dabadaba-agenda',
+    structuredDataVerified: true,
+  }),
+  source('Rock & Blues Café', 'https://www.rockandbluescafe.com/conciertos/', 'Zaragoza', 'https://www.rockandbluescafe.com/', {
+    parserKey: 'rock-blues-agenda',
+    structuredDataVerified: true,
+  }),
+  source('Sala Planta Baja', 'https://plantabaja.club/conciertos/', 'Granada', 'https://plantabaja.club/', {
+    parserKey: 'planta-baja-agenda',
+    structuredDataVerified: true,
+  }),
+  source('Taberna J&J', 'https://tabernajj.es/', 'Granada', 'https://tabernajj.es/', {
+    parserKey: 'tribe-events-api',
+    structuredDataVerified: true,
+  }),
+  source('Garaje Beat Club', 'https://www.garajebeatclub.es/conciertos-live', 'Murcia', 'https://www.garajebeatclub.es/', {
+    parserKey: 'garaje-beat-agenda',
+  }),
+  source('Escenario Santander', 'https://escenariosantander.com/agenda/', 'Santander', 'https://escenariosantander.com/', {
+    parserKey: 'escenario-santander-agenda',
+  }),
+  source('Supersonic Vigo', 'https://supersonicvigo.es/', 'Vigo', 'https://supersonicvigo.es/', {
+    parserKey: 'tribe-events-api',
+    structuredDataVerified: true,
+    categoryAllowlist: ['Conciertos'],
   }),
 ];

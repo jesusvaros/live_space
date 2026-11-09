@@ -41,7 +41,13 @@ export type ParserKey =
   | 'libertad8-agenda'
   | 'moby-dick-agenda'
   | 'tribe-events-lineup'
-  | 'cafe-central-agenda';
+  | 'cafe-central-agenda'
+  | 'ics-feed'
+  | 'rock-blues-agenda'
+  | 'planta-baja-agenda'
+  | 'garaje-beat-agenda'
+  | 'dabadaba-agenda'
+  | 'escenario-santander-agenda';
 
 export type RawScrapedEvent = {
   sourceUrl: string;
@@ -71,6 +77,7 @@ export type ScrapeSourceMetadata = {
   citySelector?: string;
   nextButtonSelector?: string;
   officialWebsite?: string;
+  icsUrl?: string;
   termsReviewStatus?: 'pending' | 'approved' | 'rejected';
   fixtureVerified?: boolean;
   autoProbe?: {
