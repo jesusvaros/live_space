@@ -67,6 +67,15 @@
 				<string>com.livespace.app</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.livespace.app.google</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<!-- iOS URL scheme of the Google OAuth iOS client (native Google sign-in). -->
+				<string>com.googleusercontent.apps.582798253454-bn86590lj6p6lpgddftoilks1p7v96ci</string>
+			</array>
+		</dict>
 	</array>
 </dict>
 </plist>

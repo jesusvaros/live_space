@@ -206,6 +206,12 @@ Alta, una sola vez (son secretos: lo hace una persona):
 
 ### Login nativo en la app (hoja del sistema, sin navegador)
 
+Estado (9-11-2026): proyecto de Google Cloud `live-space-514219` con pantalla de
+consentimiento (externa, en prueba) y tres clientes OAuth: «Live Space Supabase»
+(web), «Live Space Android debug» (SHA-1 de depuración) e «Live Space iOS». Sus
+IDs están en `.env` local y el esquema de iOS en `Info.plist`. Falta el cliente
+Android con la SHA-1 de Play App Signing al subir la app a Google Play.
+
 En Android/iOS, «Continuar con Google» abre la hoja de cuentas del sistema y
 «Continuar con Apple» (solo iOS) la hoja de Apple, con
 `@capgo/capacitor-social-login` (kit compartido `@jesusvaros/app-kit`, https://github.com/jesusvaros/app-kit, usado en `src/auth/nativeAuth.ts`). El ID token
