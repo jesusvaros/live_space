@@ -38,6 +38,7 @@
     "setlists:fallback": "npm run scrape:build && node dist-scraper/scripts/fillSetlists.js",
     "artists:cleanup": "npm run scrape:build && node dist-scraper/scripts/cleanupArtistNames.js",
     "venues:discover": "npm run scrape:build && node dist-scraper/scripts/discoverVenues.js",
+    "venues:geocode": "npm run scrape:build && node dist-scraper/scripts/geocodeVenues.js",
     "venues:curate": "npm run scrape:build && node dist-scraper/scripts/curateVenues.js"
   },
   "dependencies": {
