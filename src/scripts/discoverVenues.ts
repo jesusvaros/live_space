@@ -54,29 +54,50 @@ const resolveBoundingBox = async (scope: string): Promise<BoundingBox> => {
   return [Number(box[0]), Number(box[2]), Number(box[1]), Number(box[3])];
 };
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Overpass queries ask for up to 60 s of server time; the client must wait longer
+// than that or every slow-but-healthy answer is thrown away.
+const OVERPASS_CLIENT_TIMEOUT_MS = 75_000;
+// The public Overpass mirrors return 502/504 in bursts. Go round all of them a
+// few times, backing off between rounds, before giving up on a city.
+const OVERPASS_ROUND_BACKOFF_MS = [0, 20_000, 60_000];
+const PAUSE_BETWEEN_SCOPES_MS = 5_000;
+const COOLDOWN_BEFORE_RETRY_MS = 90_000;
+
 const fetchCandidates = async (scope: string): Promise<VenueCandidate[]> => {
   const boundingBox = await resolveBoundingBox(scope);
+  const query = buildOverpassQuery(scope, boundingBox);
   let lastError: unknown;
-  for (const endpoint of endpoints) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 25_000);
-    try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
-          'user-agent': 'LiveSpaceVenueDiscovery/0.1 (catalogue maintenance)',
-        },
-        body: new URLSearchParams({ data: buildOverpassQuery(scope, boundingBox) }),
-        signal: controller.signal,
-      });
-      if (!response.ok) throw new Error(`${endpoint} returned HTTP ${response.status}`);
-      const payload = (await response.json()) as { elements?: OsmElement[] };
-      return parseOsmCandidates(scope, payload.elements || []);
-    } catch (error) {
-      lastError = error;
-    } finally {
-      clearTimeout(timeout);
+  for (const [round, backoff] of OVERPASS_ROUND_BACKOFF_MS.entries()) {
+    if (backoff) await sleep(backoff);
+    for (const endpoint of endpoints) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), OVERPASS_CLIENT_TIMEOUT_MS);
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
+            'user-agent': 'LiveSpaceVenueDiscovery/0.1 (catalogue maintenance)',
+          },
+          body: new URLSearchParams({ data: query }),
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error(`${endpoint} returned HTTP ${response.status}`);
+        const payload = (await response.json()) as { elements?: OsmElement[] };
+        return parseOsmCandidates(scope, payload.elements || []);
+      } catch (error) {
+        lastError = error;
+        logger.warn('Overpass request failed', {
+          scope,
+          endpoint,
+          round: round + 1,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
     }
   }
   throw lastError || new Error('No Overpass endpoint is configured');
@@ -314,18 +335,38 @@ const discoverScope = async (scope: string) => {
 };
 
 const run = async () => {
-  let errorCount = 0;
-  for (const scope of scopes) {
+  const failed: string[] = [];
+  for (const [index, scope] of scopes.entries()) {
+    if (index) await sleep(PAUSE_BETWEEN_SCOPES_MS);
     try {
       await discoverScope(scope);
     } catch (error) {
-      errorCount += 1;
+      failed.push(scope);
       logger.error('Venue discovery scope failed', error, { scope });
     }
   }
+
+  // Mirror outages are usually short: give the failed cities one more go.
+  const stillFailed: string[] = [];
+  if (failed.length) {
+    logger.info('Retrying failed venue discovery scopes', { scopes: failed });
+    await sleep(COOLDOWN_BEFORE_RETRY_MS);
+    for (const scope of failed) {
+      try {
+        await discoverScope(scope);
+      } catch (error) {
+        stillFailed.push(scope);
+        logger.error('Venue discovery scope failed on retry', error, { scope });
+      }
+      await sleep(PAUSE_BETWEEN_SCOPES_MS);
+    }
+  }
+
+  const errorCount = stillFailed.length;
   logger.info('Venue discovery batch completed', {
     scopeCount: scopes.length,
     errorCount,
+    failedScopes: stillFailed,
     maxFailureRate,
   });
   if (isDiscoveryBatchFailure(errorCount, scopes.length, maxFailureRate)) {

@@ -11,9 +11,12 @@ permissions:
 jobs:
   discover:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 75
     strategy:
       fail-fast: false
+      # The public Overpass mirrors rate-limit by IP and buckle under bursts:
+      # never hit them with more than two shards at once.
+      max-parallel: 2
       matrix:
         include:
           - shard: central
