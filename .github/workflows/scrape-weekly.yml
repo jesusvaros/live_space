@@ -88,6 +88,15 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SETLISTFM_API_KEY: ${{ secrets.SETLISTFM_API_KEY }}
 
+      # Coordinates for new venues without them, so they show on the map.
+      - name: Geocode venues without coordinates
+        if: always()
+        continue-on-error: true
+        run: npm run venues:geocode -- --apply
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
       - name: Resolve obsolete watcher alerts
         if: always()
         run: npm run scrape:maintenance
