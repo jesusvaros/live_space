@@ -208,7 +208,7 @@ Alta, una sola vez (son secretos: lo hace una persona):
 
 En Android/iOS, «Continuar con Google» abre la hoja de cuentas del sistema y
 «Continuar con Apple» (solo iOS) la hoja de Apple, con
-`@capgo/capacitor-social-login` (`src/auth/nativeSocialLogin.ts`). El ID token
+`@capgo/capacitor-social-login` (kit compartido `@jesusvaros/app-kit`, https://github.com/jesusvaros/app-kit, usado en `src/auth/nativeAuth.ts`). El ID token
 se pasa a Supabase con `signInWithIdToken`; el proveedor recibe SHA-256 del
 nonce y Supabase el original. Si falta la configuración o la hoja falla (salvo
 que el usuario cancele), se usa el flujo de navegador de arriba. Apple en
