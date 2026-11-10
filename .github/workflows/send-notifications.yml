@@ -1,0 +1,66 @@
+name: Send push notifications
+
+# Scheduled push notices (docs/notificaciones.md). Every hour, so each
+# person's local window and quiet hours (in their device timezone) get a
+# chance; notifications_sent makes repeated runs harmless.
+#
+# Manual run: dry run by default. To test on one account, set `profile` to the
+# profile uuid and `dry_run` to false.
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Solo mostrar lo que se enviaría (no envía nada)"
+        type: boolean
+        default: true
+      only:
+        description: "Solo un tipo de aviso"
+        type: choice
+        default: "all"
+        options:
+          - all
+          - concert_day
+          - upload_reminder
+          - merch_pickup
+          - followed_new_concert
+      profile:
+        description: "Solo este perfil (uuid), p. ej. tu cuenta para probar"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: send-notifications
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Send notifications
+        run: |
+          args=()
+          # The hourly cron always sends; a manual run sends only with dry_run off.
+          if [ "$EVENT_NAME" = "schedule" ] || [ "$DRY_RUN" = "false" ]; then args+=(--apply); fi
+          if [ -n "$ONLY" ] && [ "$ONLY" != "all" ]; then args+=("--only=$ONLY"); fi
+          if [ -n "$PROFILE" ]; then args+=("--profile=$PROFILE"); fi
+          npm run notifications:send -- "${args[@]}"
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          ONLY: ${{ inputs.only }}
+          PROFILE: ${{ inputs.profile }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}

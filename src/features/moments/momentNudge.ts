@@ -2,6 +2,7 @@ import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { canReadGallery, checkGalleryPermission, findMedia } from '../../media/native/gallery';
 import { isNotificationTypeOn } from '../../shared/notifications/prefs';
+import { isServerPushActive } from '../../shared/notifications/serverPush';
 import { offerNotifications } from '../notifications/offer';
 import { eventWindow, matchMoments } from './matchMoments';
 import { fetchUserMomentEvents, type MomentEvent } from './momentsData';
@@ -142,9 +143,10 @@ const runSync = async (userId: string, now: Date) => {
   if (display !== 'granted') return;
 
   const nowMs = now.getTime();
-  // Switched off in Ajustes → Notificaciones: no events, so every pending
-  // nudge is cancelled below.
-  const events = isNotificationTypeOn('upload_reminder')
+  // Switched off in Ajustes → Notificaciones, or the server sends it as push
+  // to this device (serverPush.ts): no events, so every pending nudge is
+  // cancelled below.
+  const events = isNotificationTypeOn('upload_reminder') && !isServerPushActive()
     ? await fetchUserMomentEvents(userId, {
         from: new Date(nowMs - LOOKBACK_MS),
         to: new Date(nowMs + LOOKAHEAD_MS),

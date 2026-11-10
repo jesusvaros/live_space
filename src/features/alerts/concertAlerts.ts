@@ -2,14 +2,17 @@ import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { supabase } from '../../lib/supabase';
 import { isNotificationTypeOn } from '../../shared/notifications/prefs';
+import { isServerPushActive } from '../../shared/notifications/serverPush';
 import { offerNotifications } from '../notifications/offer';
 
 // "Nuevo concierto de X": when a followed artist, venue or festival gets a
 // concert announced (scraped or added by hand), the follower hears about it.
 //
-// There is no push server yet, so the check runs on the device on every app
-// open and resume: concerts created since the last check are announced with
-// a local notification. The first check only records the starting point, so
+// On devices without a saved push token (iOS, the web, a failed registration)
+// the check runs on the device on every app open and resume: concerts created
+// since the last check are announced with a local notification. With a saved
+// token the hourly server sender announces them as push instead
+// (serverPush.ts). The first check only records the starting point, so
 // following someone never floods the phone with their existing listings.
 
 const ALERT_KIND = 'concert-alert';
@@ -150,8 +153,9 @@ const runSync = async (followerSubjectId: string) => {
   const since = new Date(Date.parse(state.since) - OVERLAP_MS).toISOString();
   const notified = new Set(state.notified || []);
   // Switched off in Ajustes → Notificaciones: move the starting point on
-  // without announcing, so switching back on does not flood the phone.
-  const fresh = isNotificationTypeOn('followed_new_concert')
+  // without announcing, so switching back on does not flood the phone. Same
+  // when the server sends these as push to this device (serverPush.ts).
+  const fresh = isNotificationTypeOn('followed_new_concert') && !isServerPushActive()
     ? (await fetchNewFollowedConcerts(followerSubjectId, since)).filter(concert => !notified.has(concert.id))
     : [];
 
