@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Modal, useToast } from '../../components/ui/AppPrimitives';
 import { IconTrash } from '../../components/icons';
 import { useAuth } from '../../contexts/AuthContext';
+import { leaveProtectedPageTo } from '../../auth/returnTo';
 import { LEGAL_CONTACT_EMAIL } from '../legal/config';
 import { DELETE_CONFIRMATION_WORD, deleteMyAccount, isDeleteConfirmed } from './deleteAccount';
 
@@ -49,6 +50,7 @@ const DeleteAccountSection: React.FC = () => {
     // Leave Ajustes first (it requires an account, and would send the
     // signed-out person to /welcome), then drop the session on this device.
     setOpen(false);
+    leaveProtectedPageTo('/tabs/events');
     navigate('/tabs/events', { replace: true });
     presentToast({ message: 'Tu cuenta se ha eliminado.', duration: 3500 });
     await signOut().catch(() => undefined);

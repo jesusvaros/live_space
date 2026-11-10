@@ -9,7 +9,7 @@ import type { Page, Route } from '@playwright/test';
 export const ME = '00000000-0000-4000-8000-00000000000a';
 export const OTHER = '00000000-0000-4000-8000-00000000000b';
 
-const supabaseUrl = (() => {
+export const supabaseUrl = (() => {
   if (process.env.VITE_SUPABASE_URL) return process.env.VITE_SUPABASE_URL;
   try {
     return /^VITE_SUPABASE_URL=(.+)$/m.exec(readFileSync('.env', 'utf8'))?.[1]?.trim() ?? '';

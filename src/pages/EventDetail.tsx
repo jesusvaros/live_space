@@ -26,6 +26,7 @@ import AttendanceSuggestion from '../features/events/AttendanceSuggestion';
 import ConcertPlayer, { type SeekRequest } from '../features/moments/ConcertPlayer';
 import { useConcertMoments, useConcertTimeline } from '../features/moments/useConcertTimeline';
 import type { Clip, TimelineMoment } from '../features/moments/concertTimeline';
+import { useFirstContent } from '../lib/perfTiming';
 
 type EventDetailData = Event & {
   organizer?: Profile | null;
@@ -83,6 +84,9 @@ const EventDetail: React.FC = () => {
   const [engagementError, setEngagementError] = useState('');
   const contentRef = useRef<HTMLElement | null>(null);
   const { moments, loading: momentsLoading, error: momentsError } = useConcertMoments(id);
+  useFirstContent('concert', Boolean(event));
+  const currentIdRef = useRef(id);
+  currentIdRef.current = id;
 
   const scrollToTop = () => {
     document.querySelector<HTMLElement>('.event-detail-content')?.scrollTo({ top: 0, behavior: 'auto' });
@@ -96,8 +100,15 @@ const EventDetail: React.FC = () => {
     setLoading(!cached);
     setError('');
 
-    // The setlist only needs the id: ask for it alongside the concert.
-    const setlistRequest = eventService.getEventSetlist(id).catch(() => [] as EventSetlistEntry[]);
+    // The setlist only needs the id: asked for alongside the concert and
+    // shown when it arrives, whichever answers first.
+    const requestedId = id;
+    eventService
+      .getEventSetlist(id)
+      .then(entries => {
+        if (currentIdRef.current === requestedId) setSetlist(entries);
+      })
+      .catch(() => undefined);
     try {
       const data = await fetchEventCardById(id);
 
@@ -109,8 +120,6 @@ const EventDetail: React.FC = () => {
 
       setEvent(data as EventDetailData);
       setLoading(false);
-
-      setSetlist(await setlistRequest);
     } catch (err) {
       // Offline with a cached copy: keep showing it.
       if (!cached) {

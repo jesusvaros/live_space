@@ -1,9 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { cached, clearCached } from '../../../lib/requestCache';
 import { useAuth } from '../../../contexts/AuthContext';
 import { EventListItem } from '../types';
 import { fetchEventCards } from '../../../data/eventQueries';
+import { PERSIST_MAX_AGE, readPersisted, writePersisted } from '../../../lib/persistentCache';
+
+// The hero last shown to this account, kept across restarts (a few hours):
+// Inicio opens on it instead of a pulsing box while it is worked out again.
+const HERO_KEY = 'inicio:hero';
+
+const readSavedHero = (userId: string | null) =>
+  userId ? readPersisted<UserConcertHeroState>(HERO_KEY, { userId, maxAgeMs: PERSIST_MAX_AGE.hero })?.value ?? null : null;
 
 export type UserConcertHeroState =
   | { kind: 'loading' }
@@ -96,11 +104,8 @@ export const useUserConcertHero = (options: { now?: Date } = {}) => {
   const { user } = useAuth();
   const userId = user?.id || null;
   const nowMs = options.now ? options.now.getTime() : null;
-  const [dismissedMap, setDismissedMap] = useState<Record<string, number>>({});
-
-  useEffect(() => {
-    setDismissedMap(readDismissed());
-  }, []);
+  // Read at once (not in an effect) so the hero is not worked out twice.
+  const [dismissedMap, setDismissedMap] = useState<Record<string, number>>(readDismissed);
 
   const dismissPendingMoments = (eventId: string) => {
     const next = { ...dismissedMap, [eventId]: Date.now() };
@@ -108,21 +113,33 @@ export const useUserConcertHero = (options: { now?: Date } = {}) => {
     writeDismissed(next);
   };
 
-  const [hero, setHero] = useState<UserConcertHeroState>({ kind: 'loading' });
+  const [hero, setHeroState] = useState<UserConcertHeroState>(() => readSavedHero(userId) ?? { kind: 'loading' });
+  // Whose hero is on screen: another account's never stays while loading.
+  const heroUserRef = useRef<string | null>(hero.kind === 'loading' ? null : userId);
   const [nextUpcoming, setNextUpcoming] = useState<EventListItem | null>(null);
 
   useEffect(() => {
     if (!userId) {
-      setHero({ kind: 'cold_start' });
+      heroUserRef.current = null;
+      setHeroState({ kind: 'cold_start' });
       setNextUpcoming(null);
       return;
     }
 
     let cancelled = false;
+    const setHero = (next: UserConcertHeroState) => {
+      heroUserRef.current = userId;
+      setHeroState(next);
+      writePersisted(HERO_KEY, next, { userId });
+    };
 
     const run = async () => {
-      setHero({ kind: 'loading' });
-      setNextUpcoming(null);
+      if (heroUserRef.current !== userId) {
+        const saved = readSavedHero(userId);
+        heroUserRef.current = saved ? userId : null;
+        setHeroState(saved ?? { kind: 'loading' });
+        setNextUpcoming(null);
+      }
       try {
         const now = new Date(nowMs ?? Date.now());
         const attendance = await fetchAttendanceRows(userId);
@@ -197,7 +214,8 @@ export const useUserConcertHero = (options: { now?: Date } = {}) => {
         setHero({ kind: 'cold_start' });
       } catch {
         if (cancelled) return;
-        setHero({ kind: 'cold_start' });
+        // Offline: keep the saved hero if there is one.
+        if (heroUserRef.current !== userId) setHeroState({ kind: 'cold_start' });
         setNextUpcoming(null);
       }
     };

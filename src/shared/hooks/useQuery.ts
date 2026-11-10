@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FetchQueryOptions,
   QueryKey,
+  QueryPersistOptions,
   QuerySnapshot,
   fetchQuery,
   getQuerySnapshot,
@@ -27,19 +28,25 @@ export const useQuery = <T>(
   const resumeTick = useAppResume();
   const hasHandledFirstResumeTick = useRef(false);
   const queryFnRef = useRef(queryFn);
+  // Callers pass a fresh object each render: compare by value.
+  const persistJson = options?.persist ? JSON.stringify(options.persist) : '';
+  const persist = useMemo<QueryPersistOptions | undefined>(
+    () => (persistJson ? (JSON.parse(persistJson) as QueryPersistOptions) : undefined),
+    [persistJson]
+  );
 
   useEffect(() => {
     queryFnRef.current = queryFn;
   }, [queryFn]);
 
-  const [snapshot, setSnapshot] = useState<QuerySnapshot<T>>(() => getQuerySnapshot<T>(serializedKey));
+  const [snapshot, setSnapshot] = useState<QuerySnapshot<T>>(() => getQuerySnapshot<T>(serializedKey, persist));
 
   useEffect(() => {
-    setSnapshot(getQuerySnapshot<T>(serializedKey));
+    setSnapshot(getQuerySnapshot<T>(serializedKey, persist));
     return subscribeQuery(serializedKey, () => {
       setSnapshot(getQuerySnapshot<T>(serializedKey));
     });
-  }, [serializedKey]);
+  }, [persist, serializedKey]);
 
   const run = useCallback(
     async (force = false) =>
@@ -48,8 +55,9 @@ export const useQuery = <T>(
         inFlightTtlMs: options?.inFlightTtlMs,
         timeoutMs: options?.timeoutMs,
         force,
+        persist,
       }),
-    [options?.inFlightTtlMs, options?.timeoutMs, options?.ttlMs, serializedKey]
+    [options?.inFlightTtlMs, options?.timeoutMs, options?.ttlMs, persist, serializedKey]
   );
 
   useEffect(() => {
@@ -82,6 +90,7 @@ export const useQuery = <T>(
     loading,
     error,
     status: snapshot.status,
+    fromCache: snapshot.fromCache,
     refetch: () => run(true),
   };
 };

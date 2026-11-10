@@ -2,6 +2,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { invalidateQueries } from '../../lib/queryClient';
+import { forgetViewerSnapshots } from '../../data/pageCache';
 
 // The signed-in person's blocks (user_blocks: blocker_id = me). RLS
 // (blocks_own_all) lets each person read, add and remove only their own rows.
@@ -46,7 +47,10 @@ export const useBlockedUserIds = (): ReadonlySet<string> => {
 
 // Every screen refetches after a change: the server filter is the one that
 // counts, the local set only hides what is already on screen.
-const afterChange = () => invalidateQueries();
+const afterChange = () => {
+  invalidateQueries();
+  forgetViewerSnapshots();
+};
 
 export const blockUser = async (blockerId: string, blockedId: string) => {
   if (blockerId === blockedId) throw new Error('No puedes bloquearte a ti.');

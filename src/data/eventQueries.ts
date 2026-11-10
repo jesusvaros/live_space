@@ -143,7 +143,8 @@ export const fetchEventCards = async (options: EventCardQuery): Promise<EventLis
   const cards = rows.map(mapEventCard);
   // Any listed concert opens instantly: the card holds everything its detail
   // screen needs first.
-  for (const card of cards) writeCache(eventCacheKey(card.id), card);
+  // In memory only: the lists themselves are what the persistent cache keeps.
+  for (const card of cards) writeCache(eventCacheKey(card.id), card, { persist: false });
   return cards;
 };
 
@@ -217,7 +218,10 @@ export const fetchEventMomentStats = async (eventIds: string[]): Promise<Map<str
 
 export const fetchEventCardById = async (eventId: string) => {
   const rows = await fetchEventCards({ eventId });
-  return rows[0] ?? null;
+  const card = rows[0] ?? null;
+  // An opened concert is kept across restarts: it opens at once next time.
+  if (card) writeCache(eventCacheKey(card.id), card);
+  return card;
 };
 
 // The upload screen's concert picker: what a row shows (artist, venue, date),

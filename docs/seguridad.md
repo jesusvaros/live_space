@@ -52,7 +52,11 @@ app escribe directamente en la tabla (`src/features/blocks/`).
 - **Filtro en cliente (solo lo ya cargado):** `withoutBlocked` quita al momento lo
   que la pantalla tenía en memoria: `useConcertMoments` (línea de tiempo), `Feed`
   (Momentos) y `PostDetail`/`ProfileDetail` (aviso «Has bloqueado a…»). Tras
-  bloquear o desbloquear se invalidan todas las consultas en caché.
+  bloquear o desbloquear se invalidan todas las consultas en caché y se borran
+  las instantáneas guardadas de artistas, salas y conciertos pasados.
+- **Caché en el dispositivo:** lo que es de una cuenta se guarda en IndexedDB con
+  su id y se borra al cerrar sesión y al eliminar la cuenta; las listas con
+  momentos de otros se guardan por espectador (ver `arquitectura.md`).
 - No hay comentarios en la app. Los recuentos agregados (visualizaciones, me
   gusta, cubos de la línea de tiempo) no se filtran.
 - UI: «Bloquear a @usuario» en la hoja de opciones del momento (junto a

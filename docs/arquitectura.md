@@ -77,6 +77,32 @@ las tablas subyacentes siguen aplicándose al visitante.
 su evento. Feed, detalle, perfiles y galerías comparten `postQueries`; las pantallas
 ya no reconstruyen relaciones distintas ni dependen de nombres de claves foráneas.
 
+### Caché en el dispositivo
+
+Cada pantalla pinta primero lo que mostró la última vez y lo refresca detrás
+(stale-while-revalidate), también tras cerrar la app:
+
+- `src/lib/queryClient.ts` + `useQuery`: caché en memoria con deduplicación de
+  peticiones en vuelo y `force`. Con la opción `persist` (edad máxima, `userId`
+  si es de una persona, `key` estable si la clave cambia cada día) el resultado
+  se guarda en IndexedDB (`src/lib/persistentCache.ts`, base `live-space-cache`).
+- `src/data/pageCache.ts`: instantáneas de concierto, artista, sala y
+  «Conciertos pasados» (7 días). Las de artista, sala y pasados llevan momentos
+  de otras personas, que dependen de quién mira (bloqueos): se guardan por
+  espectador y se borran al bloquear o desbloquear.
+- Arranque (`src/main.tsx`, `src/app/bootCache.ts`): antes del primer render se
+  carga IndexedDB y el chunk de la pantalla de entrada, con un máximo de 120 ms;
+  si tarda más, la app pinta sin ellos y los datos llegan al cargarse.
+- Límite de 5 MB con expulsión LRU; versión de esquema `CACHE_VERSION` (subirla
+  al cambiar la forma de algo guardado); lo que no se puede leer se descarta.
+- Lo de cada cuenta (perfil, seguidos, «Voy», historial, hero, Perfil) va con su
+  id y se borra al cerrar sesión y al eliminar la cuenta.
+- Con la primera pantalla ya pintada, en reposo, se precargan los datos de las
+  otras pestañas (`src/app/prefetchTabs.ts`), salvo sin red o con ahorro de datos.
+- Medir: `localStorage['live_space.perf'] = '1'` (siempre en desarrollo) registra
+  el tiempo hasta el primer contenido por pantalla; `tests/e2e/perf-warm.spec.ts`
+  compara primera apertura y recarga.
+
 El dominio depende de `MediaProvider`, no de la API concreta. La política inicial
 admite vídeo de hasta 45 s/75 MB con variante pública 720p, imágenes de hasta
 10 MB/2048 px y diez vídeos por usuario al mes. El borrado físico ocurre siete
