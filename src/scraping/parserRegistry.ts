@@ -38,6 +38,12 @@ import { libertad8AgendaParser } from './parsers/libertad8AgendaParser.js';
 import { mobyDickAgendaParser } from './parsers/mobyDickAgendaParser.js';
 import { tribeEventsLineupParser } from './parsers/tribeEventsLineupParser.js';
 import { cafeCentralAgendaParser } from './parsers/cafeCentralAgendaParser.js';
+import { icsFeedParser } from './parsers/icsFeedParser.js';
+import { rockBluesAgendaParser } from './parsers/rockBluesAgendaParser.js';
+import { plantaBajaAgendaParser } from './parsers/plantaBajaAgendaParser.js';
+import { garajeBeatAgendaParser } from './parsers/garajeBeatAgendaParser.js';
+import { dabadabaAgendaParser } from './parsers/dabadabaAgendaParser.js';
+import { escenarioSantanderAgendaParser } from './parsers/escenarioSantanderAgendaParser.js';
 
 const parserRegistry: Record<ParserKey, VenueParser> = {
   'apolo-agenda': apoloAgendaParser,
@@ -79,6 +85,12 @@ const parserRegistry: Record<ParserKey, VenueParser> = {
   'moby-dick-agenda': mobyDickAgendaParser,
   'tribe-events-lineup': tribeEventsLineupParser,
   'cafe-central-agenda': cafeCentralAgendaParser,
+  'ics-feed': icsFeedParser,
+  'rock-blues-agenda': rockBluesAgendaParser,
+  'planta-baja-agenda': plantaBajaAgendaParser,
+  'garaje-beat-agenda': garajeBeatAgendaParser,
+  'dabadaba-agenda': dabadabaAgendaParser,
+  'escenario-santander-agenda': escenarioSantanderAgendaParser,
 };
 
 export const getParser = (key: ParserKey): VenueParser => {

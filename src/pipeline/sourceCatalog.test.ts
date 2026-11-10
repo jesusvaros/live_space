@@ -3,10 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { seedSources } from './sourceCatalog.js';
 
 describe('pilot source catalog', () => {
-  it('contains 45 unique official venue sources for the pilot cities', () => {
-    expect(seedSources).toHaveLength(45);
-    expect(new Set(seedSources.map((source) => source.base_url)).size).toBe(45);
-    expect(new Set(seedSources.map((source) => source.city))).toEqual(new Set(['Madrid', 'Barcelona', 'Sevilla', 'Valencia']));
+  it('contains 53 unique official venue sources', () => {
+    expect(seedSources).toHaveLength(53);
+    expect(new Set(seedSources.map((source) => source.base_url)).size).toBe(53);
+    expect(new Set(seedSources.map((source) => source.city))).toEqual(new Set([
+      'Madrid', 'Barcelona', 'Sevilla', 'Valencia',
+      'Bilbao', 'Granada', 'Murcia', 'San Sebastián', 'Santander', 'Vigo', 'Zaragoza',
+    ]));
     expect(seedSources.every((source) => source.source_type === 'venue')).toBe(true);
   });
 
@@ -60,5 +63,11 @@ describe('pilot source catalog', () => {
     const pending = seedSources.filter((source) => !source.is_active);
     expect(pending.every((source) => source.terms_reviewed_at === null)).toBe(true);
     expect(pending.every((source) => source.metadata.fixtureVerified === false)).toBe(true);
+  });
+
+  it('keeps every source outside the four pilot cities pending review', () => {
+    const elsewhere = seedSources.filter((source) => !['Madrid', 'Barcelona', 'Sevilla', 'Valencia'].includes(source.city));
+    expect(elsewhere).toHaveLength(8);
+    expect(elsewhere.every((source) => !source.is_active && source.metadata.termsReviewStatus === 'pending')).toBe(true);
   });
 });

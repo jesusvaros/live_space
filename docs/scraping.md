@@ -102,6 +102,35 @@ porque programa sobre todo teatro y danza en una URL que cambia cada temporada.
 Sala X, La2, Obbio, Naima, La Caja Negra y Bestiario no tienen agenda en web
 propia.
 
+El 9 de noviembre de 2026 se preparó la escena local de siete ciudades más.
+Todas las fuentes entran con `is_active = false` y `termsReviewStatus =
+pending`. Tienen agenda en su web, su `robots.txt` lo permite y la sonda en
+seco (`PROBE_SOURCE_NAMES=… npm run scrape:probe`) devolvió conciertos futuros:
+
+| Ciudad | Sala | Parser | Conciertos futuros en la sonda |
+| --- | --- | --- | --- |
+| Bilbao | Kafe Antzokia | `ics-feed` (feed `/events.ics` de Events Manager, categoría `Kontzertuak`) | 80 |
+| San Sebastián | Dabadaba | `dabadaba-agenda` (eventos de Odoo filtrados a «Concierto», hora en UTC) | 77 |
+| Zaragoza | Rock & Blues Café | `rock-blues-agenda` (JSON `rbEventsData`; el año sale de la URL) | 71 |
+| Santander | Escenario Santander | `escenario-santander-agenda` (tarjetas bajo una cabecera de mes con año) | 50 |
+| Murcia | Garaje Beat Club | `garaje-beat-agenda` (tabla editada a mano; descarta las sesiones de club de las 01:00) | 43 |
+| Granada | Sala Planta Baja | `planta-baja-agenda` (productos WooCommerce de «Conciertos»; hora en la ficha) | 37 |
+| Granada | Taberna J&J | `tribe-events-api` | 12 |
+| Vigo | Supersonic | `tribe-events-api` (categoría `Conciertos`) | 4 |
+
+`ics-feed` es genérico: lee cualquier feed iCalendar (`metadata.icsUrl`, por
+defecto `/events.ics`) con su `TZID`, su `UID` estable y sus categorías, y
+descarta las noches anuladas o aplazadas (también en euskera: «atzeratua»,
+«bertan behera»). Se descartaron Es Gremi (Palma) y Sala Zentral (Pamplona),
+porque su `robots.txt` bloquea los rastreadores de IA y programan sobre todo
+sesiones de club; Sala El Tren (Granada), que mezcla boxeo, fiestas y techno;
+Café Latino (Ourense), con la agenda tras una API privada; Sala Edén (Huesca) y
+Lata de Zinc (Oviedo), sin agenda actual; Mardi Gras y Garufa (A Coruña), con
+el dominio aparcado o en venta, y Jimmy Jazz (Vitoria) y Vitruvia (Vigo), cuya
+lista no publica la fecha del concierto con año. Sala R.E.M. (Murcia) ya está en
+la cola como `ready_for_review` con `linked-event-cards`, pero el pie de su web
+tiene enlaces de casinos inyectados.
+
 Estado remoto del 26 de octubre de 2026: 292 conciertos publicados, 133 futuros,
 34 salas publicadas y 276 artistas publicados. La captura de verificación leyó
 493 entradas de 13 fuentes y terminó con cero errores. Los 13 watchers quedaron
