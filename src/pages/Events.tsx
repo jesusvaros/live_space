@@ -22,11 +22,10 @@ import { HomeCustomizer, HomeSectionKey, useHomeLayout } from '../features/event
 import ForYouSection from '../features/events/sections/ForYouSection';
 import { clearCity, isSetupDone, nearestCity as nearestOf, persistCity, readStoredCity, readTastes, sameCity } from '../features/agenda/agendaPrefs';
 import { useConcertHistory } from '../features/agenda/useConcertHistory';
+import { inicioWindow } from '../features/events/inicioWindow';
+import { useFirstContent } from '../lib/perfTiming';
 
 const NEARBY_RADIUS_KM = 50;
-// Tonight's concert stays listed for a few hours after doors, even after
-// midnight; nothing on Inicio looks further back.
-const EVENTS_LOOKBACK_MS = 4 * 60 * 60 * 1000;
 // How far a city's venues can sit from its representative point.
 const CITY_SPREAD_KM = 30;
 const DEFAULT_CITY = 'Madrid';
@@ -51,31 +50,7 @@ const Events: React.FC = () => {
     persistCity(next);
   };
 
-  const startOfToday = useMemo(() => {
-    const date = new Date();
-    date.setHours(0, 0, 0, 0);
-    return date;
-  }, []);
-
-  const endOfNearbyWindow = useMemo(() => {
-    const date = new Date(startOfToday);
-    date.setDate(date.getDate() + 14);
-    date.setHours(23, 59, 59, 999);
-    return date;
-  }, [startOfToday]);
-
-  const endOfEventsWindow = useMemo(() => {
-    const date = new Date(startOfToday);
-    date.setDate(date.getDate() + 30);
-    date.setHours(23, 59, 59, 999);
-    return date;
-  }, [startOfToday]);
-
-  const startIso = useMemo(
-    () => new Date(startOfToday.getTime() - EVENTS_LOOKBACK_MS).toISOString(),
-    [startOfToday]
-  );
-  const endIso = useMemo(() => endOfEventsWindow.toISOString(), [endOfEventsWindow]);
+  const [{ startOfToday, endOfNearbyWindow, startIso, endIso }] = useState(() => inicioWindow());
 
   const { location, requestLocation } = useLastKnownLocation();
 
@@ -135,6 +110,7 @@ const Events: React.FC = () => {
   const listEnabled = citiesReady || Boolean(pickedCity) || !location;
   const { events, loading: listLoading, error: loadError } = useEventsList({ startIso, endIso, city, enabled: listEnabled });
   const loading = listLoading || !listEnabled;
+  useFirstContent('inicio', events.length > 0);
 
   // "Cerca de ti" reaches 50 km: the city's listings cover it unless another
   // city with concerts is that close.

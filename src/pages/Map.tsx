@@ -8,15 +8,14 @@ import MapMarkers from '../components/map/MapMarkers';
 import MapFilterBar from '../components/map/MapFilterBar';
 import MapFilterModal from '../components/map/MapFilterModal';
 import MapSelectionSheet from '../components/map/MapSelectionSheet';
-import { getWhenRange, useMapFilters, type MapArtistFilter } from '../hooks/useMapFilters';
+import { getWhenRange, mapEventsQuery, useMapFilters, type MapArtistFilter, type MapScope } from '../hooks/useMapFilters';
 import { withoutHiddenOnMap } from '../features/hiddenMap/hiddenMap';
 import { useHiddenOnMap } from '../features/hiddenMap/useHiddenOnMap';
 import { useQuery } from '../shared/hooks/useQuery';
 import { persistStoredLocation, type StoredLocation } from '../shared/hooks/useStoredLocation';
 import { IconLocate } from '../components/icons';
-import { fetchMapEvents, type MapEvent } from '../data/eventQueries';
-
-type MapScope = 'next30' | 'upcoming' | 'all';
+import type { MapEvent } from '../data/eventQueries';
+import { useFirstContent } from '../lib/perfTiming';
 
 // The bundled worker is emitted as its own asset: MapLibre's default lookup is
 // relative to its own module URL, which neither Vite chunks nor capacitor:// keep.
@@ -98,18 +97,15 @@ const Map: React.FC = () => {
   // inside the next 30 days, so only that window is fetched by default; the
   // whole agenda (and the past, if asked) only when the visitor picks it.
   const [scope, setScope] = useState<MapScope>('next30');
-  const eventsQuery = useQuery<MapEvent[]>(
-    ['map:events', scope],
-    () =>
-      fetchMapEvents({
-        includePast: scope === 'all',
-        endIso: scope === 'next30' ? getWhenRange('next30')?.[1].toISOString() : undefined,
-      }),
-    { ttlMs: 60_000, initialData: EMPTY_EVENTS }
-  );
+  const eventsQueryDef = useMemo(() => mapEventsQuery(scope), [scope]);
+  const eventsQuery = useQuery<MapEvent[]>(eventsQueryDef.key, eventsQueryDef.fn, {
+    ...eventsQueryDef.options,
+    initialData: EMPTY_EVENTS,
+  });
   // Artists and venues hidden from the map (their page → «Más opciones»).
   const { sets: hiddenOnMap } = useHiddenOnMap();
   const allEvents = eventsQuery.data ?? EMPTY_EVENTS;
+  useFirstContent('map', allEvents.length > 0, eventsQuery.fromCache);
   const events = useMemo(() => withoutHiddenOnMap(allEvents, hiddenOnMap), [allEvents, hiddenOnMap]);
 
   const filters = useMapFilters(events);

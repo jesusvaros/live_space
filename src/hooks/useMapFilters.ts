@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import type { MapEvent } from '../data/eventQueries';
+import { fetchMapEvents, type MapEvent } from '../data/eventQueries';
+import { PERSIST_MAX_AGE } from '../lib/persistentCache';
 
 export type MapWhen = 'all' | 'today' | 'tomorrow' | 'weekend' | 'week' | 'next30' | 'day';
 
@@ -56,6 +57,26 @@ const addDays = (date: Date, days: number) => {
 };
 
 /** [start, end] in local time for a date chip, or null for "any date". */
+export type MapScope = 'next30' | 'upcoming' | 'all';
+
+/**
+ * What the map downloads for a scope, shared with the tab prefetch. The
+ * default window (next 30 days) is kept across restarts: the pins are there
+ * when the tab opens. The wider scopes are rare and large: memory only.
+ */
+export const mapEventsQuery = (scope: MapScope) => ({
+  key: ['map:events', scope] as const,
+  fn: () =>
+    fetchMapEvents({
+      includePast: scope === 'all',
+      endIso: scope === 'next30' ? getWhenRange('next30')?.[1].toISOString() : undefined,
+    }),
+  options: {
+    ttlMs: 60_000,
+    persist: scope === 'next30' ? { maxAgeMs: PERSIST_MAX_AGE.publicList } : undefined,
+  },
+});
+
 export const getWhenRange = (when: MapWhen, now = new Date(), day: string | null = null): [Date, Date] | null => {
   const today = startOfDay(now);
   if (when === 'today') return [today, endOfDay(today)];

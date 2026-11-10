@@ -17,59 +17,72 @@ import { useWorkspace } from './contexts/WorkspaceContext';
 import AppBackHandler from './app/AppBackHandler';
 import AuthDeepLinks from './app/AuthDeepLinks';
 import { hasSeenOnboarding } from './app/onboarding';
-import { clearReturnTo, readReturnTo, rememberReturnTo } from './auth/returnTo';
+import { clearReturnTo, readReturnTo, rememberReturnTo, readLeavingTo } from './auth/returnTo';
 import MomentNudges from './features/moments/MomentNudges';
 import ConcertAlertsListener from './features/alerts/ConcertAlertsListener';
 import ShareTargetListener from './features/socialImport/ShareTargetListener';
 import Welcome from './pages/Welcome';
 import Events from './pages/Events';
+import { lazyPage, registerRoutePreload } from './app/lazyPage';
 
-// Screens load as separate chunks. The ones reachable from the tabs are
-// fetched in the background once the first screen is up, so moving between
-// screens never waits on a chunk (and never shows a loader for one).
+// Screens load as separate chunks (app/lazyPage). The ones reachable from
+// the tabs are fetched in the background once the first screen is up, so
+// moving between screens never waits on a chunk (and never shows a loader for
+// one); the one the app opens on loads before the first render (main.tsx).
 const preloaders: Array<() => Promise<unknown>> = [];
-const lazyPage = <T extends React.ComponentType<any>>(load: () => Promise<{ default: T }>, preload = true) => {
-  if (preload) preloaders.push(load);
-  return React.lazy(load);
+const page = <T extends React.ComponentType<any>>(load: () => Promise<{ default: T }>, preload = true) => {
+  const lazy = lazyPage(load);
+  if (preload) preloaders.push(lazy.preload);
+  return lazy;
 };
 
 const preloadPages = () => {
   for (const load of preloaders) void load().catch(() => undefined);
 };
 
-const Feed = lazyPage(() => import('./pages/Feed'));
+const Feed = page(() => import('./pages/Feed'));
 // Dev-only playground for the concert player (mock moments); not in builds.
-const TimelinePlayground = import.meta.env.DEV ? lazyPage(() => import('./pages/dev/TimelinePlayground'), false) : null;
-const MerchPlayground = import.meta.env.DEV ? lazyPage(() => import('./pages/dev/MerchPlayground'), false) : null;
-const MerchOrder = lazyPage(() => import('./pages/MerchOrder'), false);
-const MerchOrders = lazyPage(() => import('./pages/MerchOrders'), false);
-const MerchManage = lazyPage(() => import('./pages/MerchManage'), false);
-const Profile = lazyPage(() => import('./pages/Profile'));
-const Discover = lazyPage(() => import('./pages/Discover'));
-const ResetPassword = lazyPage(() => import('./pages/ResetPassword'), false);
-const ProfileDetail = lazyPage(() => import('./pages/ProfileDetail'));
-const ArtistProfile = lazyPage(() => import('./pages/ArtistProfile'));
-const PostDetail = lazyPage(() => import('./pages/PostDetail'));
-const VenueDetail = lazyPage(() => import('./pages/VenueDetail'));
-const Admin = lazyPage(() => import('./pages/Admin'), false);
-const CreateEventPage = lazyPage(() => import('./pages/CreateEvent'), false);
-const EventDetail = lazyPage(() => import('./pages/EventDetail'));
+const TimelinePlayground = import.meta.env.DEV ? page(() => import('./pages/dev/TimelinePlayground'), false) : null;
+const MerchPlayground = import.meta.env.DEV ? page(() => import('./pages/dev/MerchPlayground'), false) : null;
+const MerchOrder = page(() => import('./pages/MerchOrder'), false);
+const MerchOrders = page(() => import('./pages/MerchOrders'), false);
+const MerchManage = page(() => import('./pages/MerchManage'), false);
+const Profile = page(() => import('./pages/Profile'));
+const Discover = page(() => import('./pages/Discover'));
+const ResetPassword = page(() => import('./pages/ResetPassword'), false);
+const ProfileDetail = page(() => import('./pages/ProfileDetail'));
+const ArtistProfile = page(() => import('./pages/ArtistProfile'));
+const PostDetail = page(() => import('./pages/PostDetail'));
+const VenueDetail = page(() => import('./pages/VenueDetail'));
+const Admin = page(() => import('./pages/Admin'), false);
+const CreateEventPage = page(() => import('./pages/CreateEvent'), false);
+const EventDetail = page(() => import('./pages/EventDetail'));
 // Not preloaded: MapLibre (~300 kB gzip plus its worker) only loads on the Map tab.
-const Map = lazyPage(() => import('./pages/Map'), false);
-const Upload = lazyPage(() => import('./pages/Upload'));
-const Onboarding = lazyPage(() => import('./pages/Onboarding'));
-const SuggestedUpload = lazyPage(() => import('./pages/SuggestedUpload'));
-const Import = lazyPage(() => import('./pages/Import'));
-const Wrapped = lazyPage(() => import('./pages/Wrapped'), false);
-const GestionEstadisticas = lazyPage(() => import('./pages/GestionEstadisticas'), false);
-const LegalPage = lazyPage(() => import('./pages/LegalPage'), false);
-const SettingsScreen = lazyPage(() => import('./features/settings/SettingsScreen'));
-const ClaimProfile = lazyPage(() => import('./pages/ClaimProfile'), false);
-const Management = lazyPage(() => import('./pages/Management'), false);
-const FestivalDetail = lazyPage(() => import('./pages/FestivalDetail'));
-const FestivalTimetable = lazyPage(() => import('./pages/FestivalTimetable'), false);
-const EventQr = lazyPage(() => import('./pages/EventQr'), false);
-const AgendaSetup = lazyPage(() => import('./pages/AgendaSetup'));
+const Map = page(() => import('./pages/Map'), false);
+const Upload = page(() => import('./pages/Upload'));
+const Onboarding = page(() => import('./pages/Onboarding'));
+const SuggestedUpload = page(() => import('./pages/SuggestedUpload'));
+const Import = page(() => import('./pages/Import'));
+const Wrapped = page(() => import('./pages/Wrapped'), false);
+const GestionEstadisticas = page(() => import('./pages/GestionEstadisticas'), false);
+const LegalPage = page(() => import('./pages/LegalPage'), false);
+const SettingsScreen = page(() => import('./features/settings/SettingsScreen'));
+const ClaimProfile = page(() => import('./pages/ClaimProfile'), false);
+const Management = page(() => import('./pages/Management'), false);
+const FestivalDetail = page(() => import('./pages/FestivalDetail'));
+const FestivalTimetable = page(() => import('./pages/FestivalTimetable'), false);
+const EventQr = page(() => import('./pages/EventQr'), false);
+const AgendaSetup = page(() => import('./pages/AgendaSetup'));
+
+// The screen the app opens on, by path: its chunk loads with the cache.
+registerRoutePreload(/^\/(event\/|concierto\/)/, EventDetail);
+registerRoutePreload(/^\/(tabs\/venue\/|sala\/)/, VenueDetail);
+registerRoutePreload(/^\/(tabs\/artist\/|artista\/)/, ArtistProfile);
+registerRoutePreload(/^\/tabs\/map/, Map);
+registerRoutePreload(/^\/tabs\/profile/, Profile);
+registerRoutePreload(/^\/tabs\/discover/, Discover);
+registerRoutePreload(/^\/tabs\/(feed|mySpace)/, Feed);
+registerRoutePreload(/^\/tabs\/festival\//, FestivalDetail);
 
 const deferredPage = (page: React.ReactNode) => (
   <React.Suspense fallback={<div className="h-full min-h-48 bg-app-bg" />}>
@@ -107,6 +120,8 @@ const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     );
   }
   if (!user) {
+    const leavingTo = readLeavingTo();
+    if (leavingTo) return <Navigate to={leavingTo} replace />;
     // Back here after signing in (e.g. a concert QR scanned without an account).
     rememberReturnTo(`${location.pathname}${location.search}`);
     return <Navigate to="/welcome" replace />;
@@ -212,11 +227,32 @@ const AppRoutes = () => {
       : '/tabs/profile';
   const isArtistWorkspace = activeWorkspace?.type === 'artist';
   const mainTabHref = '/tabs/events';
+  const { pathname } = useLocation();
+  const { profile } = useAuth();
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
+  const profileCityRef = useRef(profile?.primary_city ?? null);
+  profileCityRef.current = profile?.primary_city ?? null;
 
   useEffect(() => {
-    // After the first screen has painted, so it does not compete with it.
-    const timer = window.setTimeout(preloadPages, 1500);
-    return () => window.clearTimeout(timer);
+    // After the first screen has painted, so it does not compete with it:
+    // the other screens' code, then (when idle) the other tabs' data.
+    let cancelled = false;
+    let cancelIdle: (() => void) | undefined;
+    const timer = window.setTimeout(() => {
+      preloadPages();
+      void import('./app/prefetchTabs').then(({ prefetchTabs, whenIdle }) => {
+        if (cancelled) return;
+        cancelIdle = whenIdle(() => {
+          void prefetchTabs({ pathname: pathnameRef.current, profileCity: profileCityRef.current });
+        });
+      });
+    }, 1500);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      cancelIdle?.();
+    };
   }, []);
 
   return (

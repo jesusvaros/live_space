@@ -12,7 +12,8 @@ import ConcertRow from '../components/ui/ConcertRow';
 import MomentGrid from '../components/ui/MomentGrid';
 import { fetchEventCards, fetchPastEventCards } from '../data/eventQueries';
 import { fetchPostCards } from '../data/postQueries';
-import { artistCacheKey, readCache, writeCache } from '../data/pageCache';
+import { artistCacheKey, eventCacheKey, primeCache, readCache, writeCache } from '../data/pageCache';
+import { useFirstContent } from '../lib/perfTiming';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import DetailHeader from '../components/ui/DetailHeader';
@@ -57,12 +58,15 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
   const [moments, setMoments] = useState<PostWithSetlist[]>(initial?.moments ?? []);
   const [loading, setLoading] = useState(!initial);
   const [error, setError] = useState('');
+  useFirstContent('artist', Boolean(artist));
   const [activeTab, setActiveTab] = useState<ArtistTab>('shows');
 
   useEffect(() => {
     const loadArtist = async () => {
       // Seen before in this session: paint it now, refresh behind.
       const cached = readCache<ArtistSnapshot>(artistCacheKey(id || ''));
+      // Its concerts open at once too (cards restored from a previous session).
+      if (cached) primeCache(cached.upcoming as EventListItem[], eventCacheKey);
       setArtist(cached?.artist ?? null);
       setUpcomingShows(cached?.upcoming ?? []);
       setPastCount(cached?.pastCount ?? 0);
@@ -114,15 +118,22 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
           return Boolean(event?.starts_at) && new Date(event.starts_at) < new Date(today);
         }).length;
 
-        // Moments only need the event ids.
-        const allMoments = eventIds.length > 0
-          ? await fetchPostCards({ eventIds }).then(rows => rows.slice(0, 24) as PostWithSetlist[])
-          : [];
-
+        // The profile and its concerts show now; the moments (they need the
+        // event ids) follow.
         const upcoming = upcomingRows;
         setArtist(normalizedArtist);
         setUpcomingShows(upcoming);
         setPastCount(past);
+        setLoading(false);
+
+        const allMoments = eventIds.length > 0
+          ? await fetchPostCards({ eventIds })
+              .then(rows => rows.slice(0, 24) as PostWithSetlist[])
+              .catch(momentsError => {
+                console.warn('Failed to load artist moments', momentsError);
+                return cached?.moments ?? [];
+              })
+          : [];
         setMoments(allMoments);
         writeCache<ArtistSnapshot>(artistCacheKey(id || ''), { artist: normalizedArtist, upcoming, pastCount: past, moments: allMoments });
       } catch (err) {

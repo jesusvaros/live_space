@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { cached } from '../lib/requestCache';
+import { useAuth } from '../contexts/AuthContext';
+import { PERSIST_MAX_AGE, readPersisted, writePersisted } from '../lib/persistentCache';
 
 export type FollowedEntity = {
   subjectId: string;
@@ -13,9 +15,23 @@ export type FollowedEntity = {
 
 const EMPTY: FollowedEntity[] = [];
 
+// Saved per account with the ids they were read for.
+const ENTITIES_KEY = 'follows:entities';
+type SavedEntities = { ids: string; entities: FollowedEntity[] };
+
+const idsKey = (followedSubjectIds: Set<string>) => Array.from(followedSubjectIds).sort().join(',');
+
+const readSavedEntities = (userId: string | null, ids: string) => {
+  if (!userId || !ids) return EMPTY;
+  const saved = readPersisted<SavedEntities>(ENTITIES_KEY, { userId, maxAgeMs: PERSIST_MAX_AGE.user })?.value;
+  return saved && saved.ids === ids ? saved.entities : EMPTY;
+};
+
 // Artists, venues and festivals behind the followed subject ids, with name and picture.
 export const useFollowedEntities = (followedSubjectIds: Set<string>) => {
-  const [entities, setEntities] = useState<FollowedEntity[]>(EMPTY);
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+  const [entities, setEntities] = useState<FollowedEntity[]>(() => readSavedEntities(userId, idsKey(followedSubjectIds)));
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -24,6 +40,8 @@ export const useFollowedEntities = (followedSubjectIds: Set<string>) => {
       setEntities(EMPTY);
       return;
     }
+    const saved = readSavedEntities(userId, ids.join(','));
+    if (saved.length) setEntities(current => (current === saved || current.length ? current : saved));
     let cancelled = false;
     setLoading(true);
     cached(
@@ -69,10 +87,13 @@ export const useFollowedEntities = (followedSubjectIds: Set<string>) => {
       { ttlMs: 30_000 },
     )
       .then(list => {
-        if (!cancelled) setEntities(list);
+        if (cancelled) return;
+        if (userId) writePersisted<SavedEntities>(ENTITIES_KEY, { ids: ids.join(','), entities: list }, { userId });
+        setEntities(list);
       })
       .catch(() => {
-        if (!cancelled) setEntities(EMPTY);
+        // Offline: keep what is on screen (the saved copy, if any).
+        if (!cancelled && !saved.length) setEntities(EMPTY);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -80,7 +101,7 @@ export const useFollowedEntities = (followedSubjectIds: Set<string>) => {
     return () => {
       cancelled = true;
     };
-  }, [followedSubjectIds]);
+  }, [followedSubjectIds, userId]);
 
   return { entities, loading };
 };

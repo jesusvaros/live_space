@@ -1,26 +1,25 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import GeneratedPoster from '../../../components/ui/GeneratedPoster';
 import { Festival, festivalDateRange, festivalService } from '../../../services/festival.service';
+import { useQuery } from '../../../shared/hooks/useQuery';
+import { PERSIST_MAX_AGE } from '../../../lib/persistentCache';
+
+const EMPTY: Festival[] = [];
+const FESTIVALS_KEY = ['home:festivals'] as const;
 
 // Upcoming festivals in every city: poster, dates and place. Hidden while
 // there are none.
 const FestivalsSection: React.FC = () => {
   const navigate = useNavigate();
-  const [festivals, setFestivals] = useState<Festival[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    festivalService
-      .listUpcoming()
-      .then(list => {
-        if (!cancelled) setFestivals(list);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Saved across restarts: the row is there on the first paint instead of
+  // pushing the listings down when it arrives.
+  const { data } = useQuery<Festival[]>(FESTIVALS_KEY, () => festivalService.listUpcoming(), {
+    ttlMs: 5 * 60_000,
+    initialData: EMPTY,
+    persist: { maxAgeMs: PERSIST_MAX_AGE.publicList },
+  });
+  const festivals = data || EMPTY;
 
   if (festivals.length === 0) return null;
 

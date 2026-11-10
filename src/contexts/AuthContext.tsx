@@ -6,6 +6,37 @@ import { Profile, AuthState } from '../lib/types';
 import { cached, setCached } from '../lib/requestCache';
 import { useAuthStore, useWorkspaceStore } from '../store/appStore';
 import { mapProfile } from '../data/canonicalMappers';
+import { readStoredSessionUser } from '../app/bootCache';
+import { clearUserPersisted, readPersisted, setPersistViewer, writePersisted } from '../lib/persistentCache';
+
+// The signed-in person's profile is kept across restarts (per user), so the
+// app opens straight into their account instead of waiting for two requests.
+const PROFILE_CACHE_KEY = 'auth:profile';
+const PROFILE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+const readCachedProfile = (userId: string) =>
+  readPersisted<Profile>(PROFILE_CACHE_KEY, { userId, maxAgeMs: PROFILE_MAX_AGE_MS })?.value ?? null;
+
+const saveProfile = (userId: string, profile: Profile | null) => {
+  if (profile) writePersisted(PROFILE_CACHE_KEY, profile, { userId });
+};
+
+// Signed out (or the session is gone): nothing of theirs stays on the device.
+const forgetSignedInData = () => {
+  setPersistViewer(null);
+  void clearUserPersisted();
+};
+
+// A stored session plus its saved profile: render signed in right away;
+// supabase-js confirms the session (or signs out) a moment later.
+const initialAuthState = (): { state: AuthState; userId: string | null } => {
+  const storedUser = typeof window === 'undefined' ? null : readStoredSessionUser();
+  const profile = storedUser ? readCachedProfile(storedUser.id) : null;
+  if (storedUser && profile) {
+    return { state: { user: storedUser, profile, loading: false }, userId: storedUser.id };
+  }
+  return { state: { user: null, profile: null, loading: true }, userId: null };
+};
 
 interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
@@ -38,47 +69,70 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { setUserId } = useAuthStore();
   const { resetWorkspace } = useWorkspaceStore();
-  const [authState, setAuthState] = useState<AuthState>({
-    user: null,
-    profile: null,
-    loading: true,
-  });
-  
-  const profileUserIdRef = useRef<string | null>(null);
+  const [initial] = useState(initialAuthState);
+  const [authState, setAuthState] = useState<AuthState>(initial.state);
+
+  // Whose profile is on screen (possibly the saved copy).
+  const profileUserIdRef = useRef<string | null>(initial.userId);
   const loadingProfileRef = useRef<string | null>(null);
 
     const loadProfile = async (userId: string, userRecord: User, mounted: boolean) => {
       if (!mounted) return;
-      
-      // Skip if already loaded OR currently loading for this user
-      if (profileUserIdRef.current === userId && authState.profile && !authState.loading) return;
+
       if (loadingProfileRef.current === userId) return;
-      
+
+      // Their profile is already on screen (the saved copy, or a token
+      // refresh): refresh it behind instead of going back to a spinner.
+      const background = profileUserIdRef.current === userId;
       loadingProfileRef.current = userId;
       setUserId(userId);
-      setAuthState(prev => ({ ...prev, user: userRecord, loading: true }));
+      setPersistViewer(userId);
+      setAuthState(prev => (background ? { ...prev, user: userRecord } : { ...prev, user: userRecord, loading: true }));
+
+      // The subject only needs the user id: look it up alongside the
+      // profile. Creating it (first sign-in) waits for the profile row.
+      let markProfileReady: () => void = () => undefined;
+      const profileReady = new Promise<void>(resolve => {
+        markProfileReady = resolve;
+      });
+      const subjectKey = `subject:user:${userId}`;
+      const subjectRequest = cached(subjectKey, async () => {
+        const { data, error } = await supabase
+          .from('subjects')
+          .select('id')
+          .eq('type', 'user')
+          .eq('profile_id', userId)
+          .maybeSingle();
+        if (error) throw error;
+        if (data?.id) return data.id as string;
+
+        await profileReady;
+        const { data: createdId, error: createError } = await supabase
+          .rpc('get_or_create_user_subject', { p_profile_id: userId });
+        if (createError) throw createError;
+        return createdId as unknown as string;
+      }, { ttlMs: 24 * 60 * 60 * 1000 });
+      subjectRequest.catch(() => undefined);
 
       try {
         // Load the profile row directly and keep subjects aligned
         const profileKey = `profiles:${userId}`;
-        const profileRow = await cached(
-          profileKey,
-          async () => {
-            const { data, error } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', userId)
-              .maybeSingle();
-            if (error) throw error;
-            return data as any;
-          },
-          { ttlMs: 30_000 }
-        );
+        const ensureProfileRow = async () => {
+          const profileRow = await cached(
+            profileKey,
+            async () => {
+              const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', userId)
+                .maybeSingle();
+              if (error) throw error;
+              return data as any;
+            },
+            { ttlMs: 30_000 }
+          );
+          if (profileRow || !mounted || loadingProfileRef.current !== userId) return profileRow;
 
-        if (!mounted || loadingProfileRef.current !== userId) return;
-
-        let finalProfileData = profileRow;
-        if (!finalProfileData) {
           const metadata = userRecord.user_metadata ?? {};
           const { data: createdProfile, error: creationError } = await supabase
             .from('profiles')
@@ -92,30 +146,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .single();
 
           if (creationError) throw creationError;
-          finalProfileData = createdProfile;
           setCached(profileKey, createdProfile, { ttlMs: 30_000 });
-        }
+          return createdProfile as any;
+        };
 
-        const subjectKey = `subject:user:${userId}`;
-        const subjectId = await cached(subjectKey, async () => {
-          const { data, error } = await supabase
-            .from('subjects')
-            .select('id')
-            .eq('type', 'user')
-            .eq('profile_id', userId)
-            .maybeSingle();
-          if (error) throw error;
-          if (data?.id) return data.id as string;
+        const finalProfileData = await ensureProfileRow().finally(markProfileReady);
+        if (!mounted || loadingProfileRef.current !== userId) return;
 
-          const { data: createdId, error: createError } = await supabase
-            .rpc('get_or_create_user_subject', { p_profile_id: userId });
-          if (createError) throw createError;
-          return createdId as unknown as string;
-        }, { ttlMs: 24 * 60 * 60 * 1000 });
+        const subjectId = await subjectRequest;
 
         if (!mounted || loadingProfileRef.current !== userId) return;
 
         const finalProfile = finalProfileData ? mapProfile(finalProfileData, subjectId) : null;
+        saveProfile(userId, finalProfile ?? null);
 
         profileUserIdRef.current = userId;
         setAuthState({
@@ -139,12 +182,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const initAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
         if (mounted) {
           if (session?.user) {
             await loadProfile(session.user.id, session.user, mounted);
+          } else if (sessionError && profileUserIdRef.current) {
+            // The token could not be refreshed (offline): keep the saved
+            // account on screen. supabase-js keeps the session and retries;
+            // a real sign-out arrives as SIGNED_OUT.
           } else {
+            profileUserIdRef.current = null;
+            forgetSignedInData();
             setUserId(null);
             resetWorkspace();
             setAuthState({
@@ -165,6 +214,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               }
             } else if (event === 'SIGNED_OUT') {
               profileUserIdRef.current = null;
+              forgetSignedInData();
               setUserId(null);
               resetWorkspace();
               setAuthState({
@@ -238,8 +288,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       primaryCity?: string;
     }
   ) => {
-    const { error } = await supabase.auth.signUp({ 
-      email, 
+    const { error } = await supabase.auth.signUp({
+      email,
       password,
       options: {
         emailRedirectTo: authRedirectUrl('/welcome'),
@@ -273,6 +323,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } finally {
       profileUserIdRef.current = null;
+      forgetSignedInData();
       setUserId(null);
       resetWorkspace();
       setAuthState({
@@ -309,10 +360,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .single();
 
     if (!error && data) {
-      setAuthState(prev => ({
-        ...prev,
-        profile: mapProfile(data, authState.profile?.subject_id),
-      }));
+      const next = mapProfile(data, authState.profile?.subject_id);
+      saveProfile(authState.user.id, next);
+      setAuthState(prev => ({ ...prev, profile: next }));
     }
 
     return { error: error as AuthError | null };
@@ -327,10 +377,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .single();
 
     if (profile) {
-      setAuthState(prev => ({
-        ...prev,
-        profile: mapProfile(profile, authState.profile?.subject_id),
-      }));
+      const next = mapProfile(profile, authState.profile?.subject_id);
+      saveProfile(authState.user.id, next);
+      setAuthState(prev => ({ ...prev, profile: next }));
     }
   };
 

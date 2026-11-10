@@ -14,7 +14,7 @@ import { IconCheckCircle, IconMap } from '../components/icons';
 import { VenueFeedbackSummary } from '../features/community';
 import { mapVenue } from '../data/canonicalMappers';
 import { fetchEventCards, fetchPastEventCards } from '../data/eventQueries';
-import { readCache, venueCacheKey, writeCache } from '../data/pageCache';
+import { eventCacheKey, primeCache, readCache, venueCacheKey, writeCache } from '../data/pageCache';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
 import DetailHeader from '../components/ui/DetailHeader';
 import MapVisibilityMenu from '../features/hiddenMap/MapVisibilityMenu';
@@ -23,6 +23,7 @@ import PhotoCredit from '../components/ui/PhotoCredit';
 import ClaimProfileLink from '../components/pro/ClaimProfileLink';
 import { enableConcertAlerts } from '../features/alerts/concertAlerts';
 import PastConcertsSection from '../features/events/PastConcertsSection';
+import { useFirstContent } from '../lib/perfTiming';
 
 const VENUE_TYPE_LABELS: Record<string, string> = {
   music_venue: 'Sala de conciertos',
@@ -78,104 +79,143 @@ const VenueDetail: React.FC = () => {
   const eventsEndRef = useRef<HTMLSpanElement | null>(null);
   const [moments, setMoments] = useState<PostWithSetlist[]>(initial?.moments ?? []);
   const [loading, setLoading] = useState(!initial);
+  const [eventsLoading, setEventsLoading] = useState(!initial);
+  const [momentsLoading, setMomentsLoading] = useState(!initial);
+  useFirstContent('venue', Boolean(venue));
   const [error, setError] = useState('');
   
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [followersCount, setFollowersCount] = useState(initial?.followersCount ?? 0);
 
+  // The venue, its agenda and its moments only need the venue id: each part
+  // shows as soon as it arrives (the agenda and the moments have their own
+  // placeholders) instead of all waiting for the slowest.
   useEffect(() => {
-    const loadVenue = async () => {
-      // Seen before in this session: paint it now, refresh behind.
-      const cached = readCache<VenueSnapshot>(venueCacheKey(id || ''));
-      setVenue(cached?.venue ?? null);
-      setEvents(cached?.events ?? []);
-      setHasMoreEvents(cached?.hasMoreEvents ?? false);
-      setMoments(cached?.moments ?? []);
-      setFollowersCount(cached?.followersCount ?? 0);
-      setLoading(!cached);
-      setError('');
-      try {
-        // The venue, its listings and its moments only need the venue id.
-        const [venueResult, eventsResult, momentsResult] = await Promise.allSettled([
-          supabase.from('v_subject_venues').select('*').eq('venue_place_id', id).single(),
-          fetchEventCards({ venueId: id, startIso: startOfTodayIso(), limit: EVENTS_PAGE }),
-          // Everything recorded here, past concerts included.
-          supabase
-            .from('v_post_cards')
-            .select('*')
-            .eq('events->venue_place->>id', id)
-            .order('created_at', { ascending: false })
-            .limit(16),
-        ]);
+    let stale = false;
+    // Seen before (this session or a previous one): paint it now, refresh behind.
+    const cached = readCache<VenueSnapshot>(venueCacheKey(id || ''));
+    // Its concerts open at once too (cards restored from a previous session).
+    if (cached) primeCache(cached.events as EventListItem[], eventCacheKey);
+    setVenue(cached?.venue ?? null);
+    setEvents(cached?.events ?? []);
+    setHasMoreEvents(cached?.hasMoreEvents ?? false);
+    setMoments(cached?.moments ?? []);
+    setFollowersCount(cached?.followersCount ?? 0);
+    setLoading(!cached);
+    setEventsLoading(!cached);
+    setMomentsLoading(!cached);
+    setError('');
 
-        if (venueResult.status === 'rejected' || venueResult.value.error || !venueResult.value.data) {
-          throw venueResult.status === 'rejected' ? venueResult.reason : venueResult.value.error;
-        }
+    const snapshot: VenueSnapshot | null = cached ? { ...cached } : null;
+    let mappedVenue: VenuePlace | null = cached?.venue ?? null;
+    let eventsData = cached?.events ?? null;
+    let moreEvents = cached?.hasMoreEvents ?? false;
+    let momentsData = cached?.moments ?? null;
 
-        const mappedVenue = mapVenue(venueResult.value.data);
-        const venueSubjectId = mappedVenue.subject_id ?? null;
-
-        const eventsData =
-          eventsResult.status === 'fulfilled' ? (eventsResult.value as VenueEvent[]) : [];
-        if (eventsResult.status === 'rejected') {
-          console.warn('Failed to load venue events', eventsResult.reason);
-        }
-
-        let momentsData: PostWithSetlist[] = [];
-        if (momentsResult.status === 'fulfilled' && !momentsResult.value.error) {
-          momentsData = (momentsResult.value.data || []) as unknown as PostWithSetlist[];
-        } else {
-          console.warn('Failed to load venue moments', momentsResult.status === 'rejected' ? momentsResult.reason : momentsResult.value.error);
-        }
-
-        setVenue(mappedVenue);
-        const moreEvents = eventsData.length === EVENTS_PAGE;
+    const eventsRequest = fetchEventCards({ venueId: id, startIso: startOfTodayIso(), limit: EVENTS_PAGE })
+      .then(rows => {
+        eventsData = rows as VenueEvent[];
+        moreEvents = rows.length === EVENTS_PAGE;
+        if (stale) return;
         setEvents(eventsData);
         setHasMoreEvents(moreEvents);
-        setMoments(momentsData);
+      })
+      .catch(eventsError => {
+        // Offline with a saved agenda: keep it.
+        console.warn('Failed to load venue events', eventsError);
+      })
+      .finally(() => {
+        if (!stale) setEventsLoading(false);
+      });
+
+    // Everything recorded here, past concerts included.
+    const momentsRequest = Promise.resolve(
+      supabase
+        .from('v_post_cards')
+        .select('*')
+        .eq('events->venue_place->>id', id)
+        .order('created_at', { ascending: false })
+        .limit(16),
+    )
+      .then(({ data, error: momentsError }) => {
+        if (momentsError) throw momentsError;
+        momentsData = (data || []) as unknown as PostWithSetlist[];
+        if (!stale) setMoments(momentsData);
+      })
+      .catch(momentsError => {
+        console.warn('Failed to load venue moments', momentsError);
+      })
+      .finally(() => {
+        if (!stale) setMomentsLoading(false);
+      });
+
+    const venueRequest = Promise.resolve(
+      supabase.from('v_subject_venues').select('*').eq('venue_place_id', id).single(),
+    )
+      .then(({ data, error: venueError }) => {
+        if (venueError || !data) throw venueError || new Error('Venue not found');
+        mappedVenue = mapVenue(data);
+        if (stale) return;
+        setVenue(mappedVenue);
         setLoading(false);
-
-        let count = 0;
-        try {
-          const [followers, following] = venueSubjectId
-            ? await Promise.all([
-                socialService.getFollowersCount(venueSubjectId),
-                user && currentUserProfile?.subject_id
-                  ? socialService.isFollowing(currentUserProfile.subject_id, venueSubjectId)
-                  : Promise.resolve(false),
-              ])
-            : [0, false];
-          count = followers;
-          setFollowersCount(followers);
-          setIsFollowing(following);
-        } catch (socialError) {
-          console.warn('Failed to load venue social data', socialError);
-          setFollowersCount(0);
-          setIsFollowing(false);
-        }
-
-        writeCache<VenueSnapshot>(venueCacheKey(id || ''), {
-          venue: mappedVenue,
-          events: eventsData,
-          hasMoreEvents: moreEvents,
-          moments: momentsData,
-          followersCount: count,
-        });
-      } catch (err) {
+      })
+      .catch(() => {
+        if (stale) return;
         if (!cached) {
           setError('Sala no encontrada.');
           setVenue(null);
           setEvents([]);
           setMoments([]);
         }
-      } finally {
         setLoading(false);
-      }
-    };
+      });
 
-    loadVenue();
-  }, [id, user, currentUserProfile?.subject_id]);
+    // Saved once every part has answered, with whatever arrived.
+    void Promise.all([venueRequest, eventsRequest, momentsRequest]).then(() => {
+      if (!mappedVenue) return;
+      writeCache<VenueSnapshot>(venueCacheKey(id || ''), {
+        venue: mappedVenue,
+        events: eventsData ?? [],
+        hasMoreEvents: moreEvents,
+        moments: momentsData ?? [],
+        followersCount: readCache<VenueSnapshot>(venueCacheKey(id || ''))?.followersCount ?? snapshot?.followersCount ?? 0,
+      });
+    });
+
+    return () => {
+      stale = true;
+    };
+  }, [id]);
+
+  // Followers and «Siguiendo» need the venue's subject and the session; they
+  // load on their own so signing in does not reload the whole page.
+  const venueSubjectId = venue?.subject_id ?? null;
+  const viewerSubjectId = user ? currentUserProfile?.subject_id ?? null : null;
+  useEffect(() => {
+    if (!venueSubjectId) return undefined;
+    let stale = false;
+    Promise.all([
+      socialService.getFollowersCount(venueSubjectId),
+      viewerSubjectId ? socialService.isFollowing(viewerSubjectId, venueSubjectId) : Promise.resolve(false),
+    ])
+      .then(([followers, following]) => {
+        if (stale) return;
+        setFollowersCount(followers);
+        setIsFollowing(following);
+        const saved = readCache<VenueSnapshot>(venueCacheKey(id || ''));
+        if (saved && saved.followersCount !== followers) {
+          writeCache<VenueSnapshot>(venueCacheKey(id || ''), { ...saved, followersCount: followers });
+        }
+      })
+      .catch(socialError => {
+        console.warn('Failed to load venue social data', socialError);
+        if (!stale) setIsFollowing(false);
+      });
+    return () => {
+      stale = true;
+    };
+  }, [id, venueSubjectId, viewerSubjectId]);
 
   // The next page of the agenda once the end of the row comes into view.
   // One page at a time; a page that lands after leaving this venue is dropped.
@@ -346,7 +386,13 @@ const VenueDetail: React.FC = () => {
 
           <section className="px-4 pt-5">
             <h2 className="mb-2.5 font-display text-xl font-bold text-app-ink">Próximos conciertos</h2>
-            {events.length === 0 ? (
+            {events.length === 0 && eventsLoading ? (
+              <div className="-mr-4 flex gap-3 overflow-hidden pr-4" aria-hidden>
+                {[0, 1, 2].map(index => (
+                  <span key={index} className="h-[175px] w-[140px] shrink-0 animate-pulse rounded-xl bg-app-surface" />
+                ))}
+              </div>
+            ) : events.length === 0 ? (
               <p className="text-sm text-white/55">No hay conciertos anunciados ahora mismo.</p>
             ) : (
               <div ref={eventsScrollerRef} className="-mr-4 flex gap-3 overflow-x-auto pr-4">
@@ -381,13 +427,19 @@ const VenueDetail: React.FC = () => {
             fetchPage={fetchPastPage}
             titleOf={getPrimaryArtistName}
             subtitleOf={event => (getPrimaryArtistName(event) !== event.name ? event.name : null)}
-            hideWhenEmpty={events.length === 0}
+            hideWhenEmpty={events.length === 0 && !eventsLoading}
             className="px-4 pt-5"
           />
 
           <section className="px-4 pt-5">
             <h2 className="mb-2.5 font-display text-xl font-bold text-app-ink">Grabado aquí</h2>
-            {moments.length === 0 ? (
+            {moments.length === 0 && momentsLoading ? (
+              <div className="grid grid-cols-3 gap-1" aria-hidden>
+                {[0, 1, 2].map(index => (
+                  <span key={index} className="aspect-square animate-pulse rounded-lg bg-app-surface" />
+                ))}
+              </div>
+            ) : moments.length === 0 ? (
               <p className="text-sm text-white/55">Nadie ha subido nada desde aquí todavía. Graba en tu próximo concierto.</p>
             ) : (
               <MomentGrid moments={moments} />

@@ -17,13 +17,34 @@ import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { useFollowedEntities } from '../hooks/useFollowedEntities';
 import { IconSettings } from '../components/icons';
 import { useAppResume } from '../shared/hooks/useAppResume';
-import { fetchQuery, getQuerySnapshot, serializeQueryKey } from '../lib/queryClient';
+import { fetchQuery, getQuerySnapshot, serializeQueryKey, type QueryPersistOptions } from '../lib/queryClient';
+import { PERSIST_MAX_AGE } from '../lib/persistentCache';
+import { useFirstContent } from '../lib/perfTiming';
 import { fetchEventCards } from '../data/eventQueries';
 import { fetchPostCards } from '../data/postQueries';
 import ConcertHistorySection from '../features/agenda/ConcertHistorySection';
 
 // How far back a managed artist's or venue's concert list goes.
 const MANAGED_HISTORY_DAYS = 180;
+
+type ProfileConcerts = {
+  liked: Event[];
+  attended: Event[];
+  artistEvents: Event[];
+  venueEvents: Event[];
+};
+
+// One set of lists per account and acting entity, kept across restarts under
+// that account only.
+const profileQueryKeys = (userId: string, isManagementMode: boolean, entitySubjectId?: string | null, role?: string | null) => {
+  const loadContext = `${userId}-${isManagementMode}-${entitySubjectId || 'none'}-${role || 'user'}`;
+  const persist: QueryPersistOptions = { maxAgeMs: PERSIST_MAX_AGE.user, userId };
+  return {
+    posts: ['profile:data', 'posts', loadContext] as const,
+    concerts: ['profile:data', 'concerts', loadContext] as const,
+    persist,
+  };
+};
 
 const Profile: React.FC = () => {
   const { user, profile } = useAuth();
@@ -41,17 +62,35 @@ const Profile: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [posts, setPosts] = useState<PostWithSetlist[]>([]);
-  const [likedEvents, setLikedEvents] = useState<Event[]>([]);
-  const [attendedEvents, setAttendedEvents] = useState<Event[]>([]);
-  const [artistEvents, setArtistEvents] = useState<Event[]>([]);
-  const [venueEvents, setVenueEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
+  // What was saved last time (this session or a previous one) paints on the
+  // first render; the requests below refresh it.
+  const [initialData] = useState(() => {
+    if (!user?.id) return { posts: undefined, concerts: undefined };
+    const keys = profileQueryKeys(user.id, isManagementMode, activeEntity?.subject_id, profile?.role);
+    return {
+      posts: getQuerySnapshot<PostWithSetlist[]>(serializeQueryKey(keys.posts), keys.persist).data,
+      concerts: getQuerySnapshot<ProfileConcerts>(serializeQueryKey(keys.concerts), keys.persist).data,
+    };
+  });
+  const [posts, setPosts] = useState<PostWithSetlist[]>(initialData.posts ?? []);
+  const [likedEvents, setLikedEvents] = useState<Event[]>(initialData.concerts?.liked ?? []);
+  const [attendedEvents, setAttendedEvents] = useState<Event[]>(
+    initialData.concerts ? [...initialData.concerts.attended, ...initialData.concerts.artistEvents] : [],
+  );
+  const [artistEvents, setArtistEvents] = useState<Event[]>(initialData.concerts?.artistEvents ?? []);
+  const [venueEvents, setVenueEvents] = useState<Event[]>(initialData.concerts?.venueEvents ?? []);
+  // The moments grid and the concerts load separately: each tab shows as soon
+  // as its own data is there.
+  const [postsLoading, setPostsLoading] = useState(!initialData.posts);
+  const [concertsLoading, setConcertsLoading] = useState(!initialData.concerts);
+
   const [error, setError] = useState('');
   const [selectedTab, setSelectedTab] = useState<'moments' | 'concerts' | 'following'>(
     (location.state as { profileTab?: string } | null)?.profileTab === 'following' ? 'following' : 'moments'
   );
   const resumeTick = useAppResume();
+  const loading = selectedTab === 'moments' ? postsLoading : selectedTab === 'concerts' ? concertsLoading : false;
+  useFirstContent('profile', !postsLoading);
 
   useEffect(() => {
     if (!activeEntity) return;
@@ -70,16 +109,7 @@ const Profile: React.FC = () => {
     }
   }, [activeEntity, location.pathname, navigate]);
 
-  type ProfileData = {
-    posts: PostWithSetlist[];
-    liked: Event[];
-    attended: Event[];
-    artistEvents: Event[];
-    venueEvents: Event[];
-  };
-
-  const applyProfileData = (data: ProfileData) => {
-    setPosts(data.posts);
+  const applyConcerts = (data: ProfileConcerts) => {
     setLikedEvents(data.liked);
     setAttendedEvents([...data.attended, ...data.artistEvents]);
     setArtistEvents(data.artistEvents);
@@ -88,93 +118,102 @@ const Profile: React.FC = () => {
 
   const loadProfileData = async (isManualRefresh = false) => {
     if (!user?.id) return;
-    const loadContext = `${user.id}-${isManagementMode}-${activeEntity?.subject_id || 'none'}-${profile?.role || 'user'}`;
+    const userId = user.id;
+    const { posts: postsKey, concerts: concertsKey, persist } = profileQueryKeys(
+      userId,
+      isManagementMode,
+      activeEntity?.subject_id,
+      profile?.role,
+    );
 
     // What we already have shows at once; the spinner is only for a first visit.
-    const cachedData = getQuerySnapshot<ProfileData>(serializeQueryKey(['profile:data', loadContext])).data;
-    if (cachedData) applyProfileData(cachedData);
-    else setLoading(true);
+    const cachedPosts = getQuerySnapshot<PostWithSetlist[]>(serializeQueryKey(postsKey), persist).data;
+    const cachedConcerts = getQuerySnapshot<ProfileConcerts>(serializeQueryKey(concertsKey), persist).data;
+    if (cachedPosts) setPosts(cachedPosts);
+    setPostsLoading(!cachedPosts);
+    if (cachedConcerts) applyConcerts(cachedConcerts);
+    setConcertsLoading(!cachedConcerts);
     setError('');
 
-    try {
-      const data = await fetchQuery<ProfileData>(
-        ['profile:data', loadContext],
-        async () => {
-          const [personalPosts, likedRes, attendedRes] = await Promise.all([
-            // Only the 12 the grid shows.
-            isManagementMode ? Promise.resolve([]) : fetchPostCards({ authorId: user.id, from: 0, to: 11 }),
-            supabase.from('event_saves').select('event_id').eq('profile_id', user.id),
-            supabase.from('event_attendance').select('event_id,status').eq('profile_id', user.id),
-          ]);
+    const activeRole = isManagementMode && activeEntity ? activeEntity.type : profile?.role;
+    const artistEntityId = activeRole === 'artist' && isManagementMode && activeEntity ? activeEntity.artist?.id ?? null : null;
+    const venuePlaceId = activeRole === 'venue' && isManagementMode && activeEntity ? activeEntity.venue?.id ?? null : null;
+    // A managed artist's or venue's concerts: what is coming up and the
+    // last months, not their whole history. Their moments come from
+    // every concert, past ones included.
+    const historyStartIso = new Date(Date.now() - MANAGED_HISTORY_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
-          const likedIds = (likedRes.data || []).map(row => row.event_id).filter(Boolean);
-          const attendedIds = (attendedRes.data || []).map(row => row.event_id).filter(Boolean);
+    // The managed artist's concert ids feed both its moments and its list.
+    const artistEventRows = artistEntityId
+      ? Promise.resolve(
+          supabase.from('event_artists').select('event_id,events!inner(starts_at)').eq('artist_id', artistEntityId),
+        ).then(({ data, error: artistEventError }) => {
+          if (artistEventError) throw artistEventError;
+          return (data || []) as unknown as { event_id: string; events: { starts_at: string } | null }[];
+        })
+      : Promise.resolve([] as { event_id: string; events: { starts_at: string } | null }[]);
+    artistEventRows.catch(() => undefined);
 
-          let artistEvents: Event[] = [];
-          let venueEvents: Event[] = [];
-
-          // A managed artist's or venue's concerts: what is coming up and the
-          // last months, not their whole history. Their moments come from
-          // every concert, past ones included.
-          const historyStartIso = new Date(Date.now() - MANAGED_HISTORY_DAYS * 24 * 60 * 60 * 1000).toISOString();
-          let entityPostsRequest: Promise<unknown[]> = Promise.resolve([]);
-          // Sent alongside the concerts; a failure surfaces in the Promise.all below.
-          const startPosts = (request: Promise<unknown[]>) => {
-            request.catch(() => undefined);
-            entityPostsRequest = request;
-          };
-
-          const activeRole = isManagementMode && activeEntity ? activeEntity.type : profile?.role;
-          if (activeRole === 'artist') {
-            const artistEntityId = isManagementMode && activeEntity ? activeEntity.artist?.id : null;
-            if (artistEntityId) {
-              const { data: artistEventData, error: artistEventError } = await supabase
-                .from('event_artists')
-                .select('event_id,events!inner(starts_at)')
-                .eq('artist_id', artistEntityId);
-              if (artistEventError) throw artistEventError;
-              const rows = (artistEventData || []) as unknown as { event_id: string; events: { starts_at: string } | null }[];
-              const allIds = rows.map(row => row.event_id);
-              const recentIds = rows
-                .filter(row => Date.parse(row.events?.starts_at ?? '') >= Date.parse(historyStartIso))
-                .map(row => row.event_id);
-              startPosts(fetchPostCards({ eventIds: allIds, from: 0, to: 11 }));
-              artistEvents = await fetchEventCards({ eventIds: recentIds, startIso: historyStartIso });
-            }
-          }
-
-          if (activeRole === 'venue') {
-            const venuePlaceId = isManagementMode && activeEntity ? activeEntity.venue?.id : null;
-            if (venuePlaceId) {
-              startPosts(fetchPostCards({ venueId: venuePlaceId, from: 0, to: 11 }));
-              venueEvents = await fetchEventCards({ venueId: venuePlaceId, startIso: historyStartIso });
-            }
-          }
-
-          const [liked, attended, entityPosts] = await Promise.all([
-            fetchEventCards({ eventIds: likedIds }),
-            fetchEventCards({ eventIds: attendedIds }),
-            isManagementMode ? entityPostsRequest : Promise.resolve([]),
-          ]);
-          const posts = (isManagementMode ? entityPosts : personalPosts).slice(0, 12) as PostWithSetlist[];
-
-          return { posts, liked, attended, artistEvents, venueEvents };
-        },
-        {
-          ttlMs: 60_000,
-          force: isManualRefresh,
+    const postsRequest = fetchQuery<PostWithSetlist[]>(
+      postsKey,
+      async () => {
+        // Only the 12 the grid shows.
+        if (!isManagementMode) return (await fetchPostCards({ authorId: userId, from: 0, to: 11 })) as PostWithSetlist[];
+        if (artistEntityId) {
+          const allIds = (await artistEventRows).map(row => row.event_id);
+          return (await fetchPostCards({ eventIds: allIds, from: 0, to: 11 })).slice(0, 12) as PostWithSetlist[];
         }
-      );
+        if (venuePlaceId) return (await fetchPostCards({ venueId: venuePlaceId, from: 0, to: 11 })).slice(0, 12) as PostWithSetlist[];
+        return [];
+      },
+      { ttlMs: 60_000, force: isManualRefresh, persist },
+    )
+      .then(data => {
+        setPosts(data);
+        return true;
+      })
+      .catch(() => false)
+      .finally(() => setPostsLoading(false));
 
-      applyProfileData(data);
-    } catch (err) {
-      // Keep what was on screen if a background refresh fails.
-      if (!cachedData) {
-        setError('No se ha podido cargar tu perfil. Revisa tu conexión.');
-        applyProfileData({ posts: [], liked: [], attended: [], artistEvents: [], venueEvents: [] });
-      }
-    } finally {
-      setLoading(false);
+    const concertsRequest = fetchQuery<ProfileConcerts>(
+      concertsKey,
+      async () => {
+        const [likedRes, attendedRes, artistEvents, venueEvents] = await Promise.all([
+          supabase.from('event_saves').select('event_id').eq('profile_id', userId),
+          supabase.from('event_attendance').select('event_id,status').eq('profile_id', userId),
+          artistEntityId
+            ? artistEventRows.then(rows =>
+                fetchEventCards({
+                  eventIds: rows
+                    .filter(row => Date.parse(row.events?.starts_at ?? '') >= Date.parse(historyStartIso))
+                    .map(row => row.event_id),
+                  startIso: historyStartIso,
+                }),
+              )
+            : Promise.resolve([] as Event[]),
+          venuePlaceId ? fetchEventCards({ venueId: venuePlaceId, startIso: historyStartIso }) : Promise.resolve([] as Event[]),
+        ]);
+        const likedIds = (likedRes.data || []).map(row => row.event_id).filter(Boolean);
+        const attendedIds = (attendedRes.data || []).map(row => row.event_id).filter(Boolean);
+        const [liked, attended] = await Promise.all([
+          fetchEventCards({ eventIds: likedIds }),
+          fetchEventCards({ eventIds: attendedIds }),
+        ]);
+        return { liked, attended, artistEvents, venueEvents };
+      },
+      { ttlMs: 60_000, force: isManualRefresh, persist },
+    )
+      .then(data => {
+        applyConcerts(data);
+        return true;
+      })
+      .catch(() => false)
+      .finally(() => setConcertsLoading(false));
+
+    const [postsOk, concertsOk] = await Promise.all([postsRequest, concertsRequest]);
+    // Keep what was on screen if a background refresh fails.
+    if ((!postsOk && !cachedPosts) || (!concertsOk && !cachedConcerts)) {
+      setError('No se ha podido cargar tu perfil. Revisa tu conexión.');
     }
   };
 

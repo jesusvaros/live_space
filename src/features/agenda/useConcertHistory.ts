@@ -1,6 +1,7 @@
 import { supabase } from '../../lib/supabase';
 import { fetchEventCards } from '../../data/eventQueries';
 import { useQuery } from '../../shared/hooks/useQuery';
+import { PERSIST_MAX_AGE } from '../../lib/persistentCache';
 
 export type HistoryEntry = {
   kind: 'artist' | 'venue';
@@ -80,7 +81,12 @@ export const useConcertHistory = (userId: string | null) => {
         artists: Array.from(artists.values()).sort(byCount),
       };
     },
-    { enabled: Boolean(userId), ttlMs: 60_000, initialData: EMPTY },
+    {
+      enabled: Boolean(userId),
+      ttlMs: 60_000,
+      initialData: EMPTY,
+      persist: { maxAgeMs: PERSIST_MAX_AGE.user, userId, key: 'agenda:history' },
+    },
   );
 
   return { history: data || EMPTY, loading };

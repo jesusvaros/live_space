@@ -6,6 +6,7 @@ import { useQuery } from '../../../shared/hooks/useQuery';
 import EventPosterTile from '../components/EventPosterTile';
 import { getEventCoverImage } from '../utils';
 import { EventListItem } from '../types';
+import { PERSIST_MAX_AGE } from '../../../lib/persistentCache';
 
 type GoingSectionProps = { userId: string | null };
 
@@ -35,10 +36,22 @@ const GoingSection: React.FC<GoingSectionProps> = ({ userId }) => {
       const events = await fetchEventCards({ eventIds: ids, startIso: fromIso });
       return events.map(event => ({ event, going: goingIds.has(event.id) }));
     },
-    { enabled: Boolean(userId), ttlMs: 10_000, initialData: EMPTY },
+    {
+      enabled: Boolean(userId),
+      ttlMs: 10_000,
+      initialData: EMPTY,
+      persist: { maxAgeMs: PERSIST_MAX_AGE.user, userId, key: 'inicio:going' },
+    },
   );
 
-  const plans = data || EMPTY;
+  // A saved copy from yesterday may hold a concert that is over.
+  const plans = useMemo(() => {
+    const list = data || EMPTY;
+    const from = Date.parse(fromIso);
+    return list.some(plan => Date.parse(plan.event.starts_at) < from)
+      ? list.filter(plan => Date.parse(plan.event.starts_at) >= from)
+      : list;
+  }, [data, fromIso]);
   if (!userId || plans.length === 0) return null;
 
   return (

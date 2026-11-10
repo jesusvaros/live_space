@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import { clearUserPersisted } from '../../lib/persistentCache';
 
 // Account deletion: one call to delete_my_account() (migration
 // 20261110040100), which deletes everything tied to the caller and queues
@@ -23,6 +24,11 @@ export const deleteMyAccount = async (): Promise<DeleteAccountResult> => {
   if (error) return { ok: false, reason: isMissingFunction(error) ? 'unavailable' : 'failed' };
   const result = data as { deleted?: boolean; reason?: string } | null;
   // A second tap after the first one went through: already deleted.
-  if (result?.deleted || result?.reason === 'already_deleted') return { ok: true };
+  if (result?.deleted || result?.reason === 'already_deleted') {
+    // Nothing of the deleted account stays in the saved screens (sign-out
+    // clears them too; this does not wait for it).
+    await clearUserPersisted().catch(() => undefined);
+    return { ok: true };
+  }
   return { ok: false, reason: 'failed' };
 };

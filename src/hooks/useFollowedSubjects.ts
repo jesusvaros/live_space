@@ -4,16 +4,34 @@ import { socialService } from '../services/social.service';
 import { useAuth } from '../contexts/AuthContext';
 import { cached, setCached } from '../lib/requestCache';
 import { enableConcertAlerts } from '../features/alerts/concertAlerts';
+import { PERSIST_MAX_AGE, readPersisted, writePersisted } from '../lib/persistentCache';
+
+// Who someone follows is kept across restarts under their account: «Lo que
+// sigues» and the follow buttons are right on the first paint.
+const FOLLOWS_KEY = 'follows';
+
+const readSavedFollows = (userId: string | null) =>
+  new Set(userId ? readPersisted<string[]>(FOLLOWS_KEY, { userId, maxAgeMs: PERSIST_MAX_AGE.user })?.value ?? [] : []);
+
+const saveFollows = (userId: string | null, ids: Iterable<string>) => {
+  if (userId) writePersisted(FOLLOWS_KEY, Array.from(ids), { userId });
+};
 
 export const useFollowedSubjects = () => {
   const { user, profile } = useAuth();
   const followerSubjectId = profile?.subject_id || null;
+  const userId = user?.id ?? null;
 
-  const [followedSubjectIds, setFollowedSubjectIds] = useState<Set<string>>(new Set());
+  const [followedSubjectIds, setFollowedSubjectIds] = useState<Set<string>>(() => readSavedFollows(userId));
   const [loading, setLoading] = useState(false);
   const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
 
   const canFollow = Boolean(user && followerSubjectId);
+
+  // Signed out: nothing of the previous account stays.
+  useEffect(() => {
+    if (!userId) setFollowedSubjectIds(previous => (previous.size ? new Set() : previous));
+  }, [userId]);
 
   useEffect(() => {
     if (!followerSubjectId) return;
@@ -33,11 +51,14 @@ export const useFollowedSubjects = () => {
     )
       .then(targetIds => {
         if (cancelled) return;
-        setFollowedSubjectIds(new Set(targetIds));
+        saveFollows(userId, targetIds);
+        setFollowedSubjectIds(previous =>
+          previous.size === targetIds.length && targetIds.every(id => previous.has(id)) ? previous : new Set(targetIds),
+        );
       })
       .catch(() => {
+        // Offline: keep the saved list rather than emptying it.
         if (cancelled) return;
-        setFollowedSubjectIds(new Set());
       })
       .finally(() => {
         if (cancelled) return;
@@ -46,7 +67,7 @@ export const useFollowedSubjects = () => {
     return () => {
       cancelled = true;
     };
-  }, [followerSubjectId]);
+  }, [followerSubjectId, userId]);
 
   const isFollowing = useCallback(
     (subjectId: string) => followedSubjectIds.has(subjectId),
@@ -79,6 +100,7 @@ export const useFollowedSubjects = () => {
         }
 
         setCached(`follows:${followerSubjectId}`, Array.from(next), { ttlMs: 10_000 });
+        saveFollows(userId, next);
         return { ok: true as const };
       } catch (err) {
         // revert
@@ -96,7 +118,7 @@ export const useFollowedSubjects = () => {
         });
       }
     },
-    [followerSubjectId, followedSubjectIds, user]
+    [followerSubjectId, followedSubjectIds, user, userId]
   );
 
   // Follows several subjects at once (e.g. the artists of a Spotify Wrapped).
@@ -111,6 +133,7 @@ export const useFollowedSubjects = () => {
         const next = new Set([...followedSubjectIds, ...targets]);
         setFollowedSubjectIds(next);
         setCached(`follows:${followerSubjectId}`, Array.from(next), { ttlMs: 10_000 });
+        saveFollows(userId, next);
         void enableConcertAlerts();
         return { ok: true as const };
       } catch {
@@ -123,7 +146,7 @@ export const useFollowedSubjects = () => {
         });
       }
     },
-    [followerSubjectId, followedSubjectIds, user]
+    [followerSubjectId, followedSubjectIds, user, userId]
   );
 
   return useMemo(
