@@ -11,7 +11,8 @@ import { IconChevronDown, IconPlus, IconQrCode } from '../components/icons';
 import { fetchEventCardById, fetchUploadCandidates } from '../data/eventQueries';
 import { eventService } from '../services/event.service';
 import { enqueueMomentUploads } from '../media';
-import { distanceToConcert, songAtTime } from '../lib/songAssignment';
+import { songAtTime } from '../lib/songAssignment';
+import { detectConcert, hasReliableTime, type DetectionReason } from '../lib/concertDetection';
 import { EventListItem } from '../features/events/types';
 import { ReuseConsentCheckbox } from '../features/community';
 import { getEventCoverImage, getPrimaryArtistName } from '../features/events/utils';
@@ -23,10 +24,9 @@ import { clearReturnTo, rememberReturnTo } from '../auth/returnTo';
 import { savePendingSelection, takePendingSelection } from '../media/pendingSelection';
 import { markOnboardingSeen } from '../app/onboarding';
 import { readStoredCity, sameCity } from '../features/agenda/agendaPrefs';
+import AttendanceSuggestion from '../features/events/AttendanceSuggestion';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-// Detected only if the media was captured within this distance of the concert.
-const DETECT_TOLERANCE_MS = 3 * 60 * 60 * 1000;
 
 type EventChoice = 'detected' | 'chosen';
 
@@ -58,32 +58,34 @@ const CloseIcon = () => (
 const inCity = (event: EventListItem, city: string | null) =>
   Boolean(city && sameCity((event.city || event.venue_place?.city || '').trim(), city));
 
-// The concert whose time best fits the media's capture times, in any city.
-// The time decides; between concerts that fit as well, the user's city wins.
-const detectEvent = (items: MomentItem[], events: EventListItem[], city: string | null) => {
-  const times = items.map(item => item.captureAt).filter((date): date is Date => Boolean(date));
-  if (times.length === 0) return null;
-  let best: { event: EventListItem; hits: number; local: boolean; distance: number } | null = null;
-  for (const event of events) {
-    let hits = 0;
-    let distance = 0;
-    for (const time of times) {
-      const away = distanceToConcert(time, event.starts_at, event.ends_at);
-      if (away === 0) hits += 1;
-      distance += away;
-    }
-    if (hits === 0 && distance / times.length > DETECT_TOLERANCE_MS) continue;
-    const local = inCity(event, city);
-    if (
-      !best
-      || hits > best.hits
-      || (hits === best.hits && hits > 0 && local && !best.local)
-      || (hits === best.hits && (hits === 0 || local === best.local) && distance < best.distance)
-    ) {
-      best = { event, hits, local, distance };
-    }
-  }
-  return best?.event ?? null;
+const venueOf = (event: EventListItem) => {
+  const lat = event.venue_place?.latitude ?? event.latitude;
+  const lng = event.venue_place?.longitude ?? event.longitude;
+  return typeof lat === 'number' && typeof lng === 'number' ? { lat, lng } : null;
+};
+
+// The concert that fits the media's capture times and, when the files carry
+// it, where they were taken (lib/concertDetection.ts). The locations are only
+// compared in memory here; they are never uploaded or stored.
+const detectEvent = (items: MomentItem[], events: EventListItem[], city: string | null) =>
+  detectConcert(
+    items,
+    events.map(event => ({
+      event,
+      startsAt: event.starts_at,
+      endsAt: event.ends_at,
+      venue: venueOf(event),
+      local: inCity(event, city),
+    })),
+  );
+
+const mediaNoun = (items: MomentItem[]) => (items.some(item => item.mediaType === 'video') ? 'vídeos' : 'fotos');
+
+const detectedLabel = (reason: DetectionReason | null, items: MomentItem[]) => {
+  const noun = mediaNoun(items);
+  if (reason === 'time-place') return `Detectado por la hora y el lugar de tus ${noun}`;
+  if (reason === 'place') return `Detectado por el lugar de tus ${noun} · ¿es este?`;
+  return `Detectado por la hora de tus ${noun}`;
 };
 
 const QrWelcome: React.FC<{
@@ -183,6 +185,10 @@ const Upload: React.FC = () => {
 
   const [event, setEvent] = useState<EventListItem | null>(null);
   const [choice, setChoice] = useState<EventChoice>('chosen');
+  const [detectedBy, setDetectedBy] = useState<DetectionReason | null>(null);
+  // Signed in when the concert was recognised: «¿Marcamos que fuiste?» is
+  // offered here. Otherwise it is offered on the concert page after publishing.
+  const [detectedSignedIn, setDetectedSignedIn] = useState(false);
   const [setlist, setSetlist] = useState<EventSetlistEntry[]>([]);
   const [items, setItems] = useState<MomentItem[]>([]);
   const [durations, setDurations] = useState<Record<string, number>>({});
@@ -226,7 +232,9 @@ const Upload: React.FC = () => {
           const found = await fetchEventCardById(pending.eventId).catch(() => null);
           if (!cancelled && found) {
             setEvent(found);
-            setChoice('chosen');
+            setChoice(pending.detectedBy ? 'detected' : 'chosen');
+            setDetectedBy(pending.detectedBy ?? null);
+            setDetectedSignedIn(false);
           }
         }
         if (!cancelled) setPublishAfterAuth(true);
@@ -291,12 +299,14 @@ const Upload: React.FC = () => {
   }, [event?.id]);
 
   // Concerts to choose from, every city: around the capture times, or the
-  // last two weeks. Slim rows: just what the picker and detection need.
+  // last two weeks. Slim rows: just what the picker and detection need. With
+  // only file dates, a day either side (detection by place allows ±1 day).
   const loadCandidates = async (forItems: MomentItem[]) => {
     const times = forItems.map(item => item.captureAt?.getTime()).filter((time): time is number => Boolean(time));
     const now = Date.now();
+    const after = hasReliableTime(forItems) ? DAY_MS / 2 : DAY_MS;
     const from = times.length ? Math.min(...times) - DAY_MS : now - 14 * DAY_MS;
-    const to = times.length ? Math.max(...times) + DAY_MS / 2 : now + DAY_MS;
+    const to = times.length ? Math.max(...times) + after : now + DAY_MS;
     const list = await fetchUploadCandidates({ startIso: new Date(from).toISOString(), endIso: new Date(to).toISOString() });
     setCandidates(list);
     return list;
@@ -332,9 +342,11 @@ const Upload: React.FC = () => {
       const list = await loadCandidates(next);
       const found = detectEvent(next, list, userCity);
       if (found) {
-        setEvent(found);
+        setEvent(found.event);
         setChoice('detected');
-        completeEvent(found);
+        setDetectedBy(found.reason);
+        setDetectedSignedIn(Boolean(user));
+        completeEvent(found.event);
       }
     } catch {
       // The user can still pick the concert by hand.
@@ -366,6 +378,7 @@ const Upload: React.FC = () => {
   const selectEvent = (selected: EventListItem, complete = false) => {
     setEvent(selected);
     setChoice('chosen');
+    setDetectedBy(null);
     setSongOverrides({});
     setPickerOpen(false);
     if (complete) completeEvent(selected);
@@ -418,7 +431,10 @@ const Upload: React.FC = () => {
       itemsRef.current.forEach(item => URL.revokeObjectURL(item.previewUrl));
       setItems([]);
       clearReturnTo();
-      navigate(`/event/${event.id}`, { replace: true });
+      // Recognised from the media but they could not be asked here (they
+      // signed in to publish): the concert page offers «¿Marcamos que fuiste?».
+      const suggestAttendance = choice === 'detected' && !detectedSignedIn;
+      navigate(`/event/${event.id}`, { replace: true, state: suggestAttendance ? { suggestAttendance: true } : undefined });
     } catch (err: any) {
       setError(err?.message || 'No se pudo subir. Inténtalo de nuevo.');
     } finally {
@@ -501,9 +517,7 @@ const Upload: React.FC = () => {
             ) : event ? (
               <>
                 <p className={`font-mono text-[11px] font-semibold uppercase ${choice === 'detected' ? 'text-[#25d47b]' : 'text-app-accent'}`}>
-                  {choice === 'detected'
-                    ? `Detectado por la hora de tus ${items.some(item => item.mediaType === 'video') ? 'vídeos' : 'fotos'}`
-                    : 'Concierto'}
+                  {choice === 'detected' ? detectedLabel(detectedBy, items) : 'Concierto'}
                 </p>
                 <p className="mt-0.5 truncate font-display text-base font-bold text-app-ink">{eventTitle(event)}</p>
                 <p className="mt-0.5 text-[13px] text-[#c9c5bd]">{eventWhen(event.starts_at)}</p>
@@ -512,7 +526,7 @@ const Upload: React.FC = () => {
               <>
                 <p className="font-mono text-[11px] font-semibold uppercase text-white/50">Concierto</p>
                 <p className="mt-0.5 text-sm text-[#c9c5bd]">
-                  {items.length ? 'No lo hemos reconocido por la hora. Elígelo.' : 'Lo detectamos por la hora de tus vídeos.'}
+                  {items.length ? 'No lo hemos reconocido. Elígelo.' : 'Lo detectamos por la hora y el lugar de tus vídeos.'}
                 </p>
               </>
             )}
@@ -525,6 +539,16 @@ const Upload: React.FC = () => {
             {event ? 'Cambiar' : 'Elegir'}
           </button>
         </section>
+
+        {event && choice === 'detected' && detectedSignedIn && !detecting ? (
+          <AttendanceSuggestion
+            key={event.id}
+            eventId={event.id}
+            startsAt={event.starts_at}
+            endsAt={event.ends_at}
+            className="mx-4 mt-2.5"
+          />
+        ) : null}
 
         {items.length === 0 ? (
           <div className="flex flex-col gap-3 px-4 pt-5">
@@ -766,7 +790,11 @@ const Upload: React.FC = () => {
               confirmationNotice="Te hemos enviado un email. Pulsa el enlace en este móvil y publicamos solos lo que has elegido. Si lo abres en otro dispositivo, vuelve aquí y pulsa «Entrar»."
               providerReturnPath={`${location.pathname}${location.search}`}
               beforeProviderRedirect={() =>
-                savePendingSelection({ eventId: event?.id ?? null, files: items.map(item => item.file) })
+                savePendingSelection({
+                  eventId: event?.id ?? null,
+                  files: items.map(item => item.file),
+                  detectedBy: choice === 'detected' ? detectedBy : null,
+                })
               }
             />
           </div>

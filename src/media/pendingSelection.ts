@@ -7,6 +7,8 @@
  * One record, thrown away after 30 minutes or once read.
  */
 
+import type { DetectionReason } from '../lib/concertDetection';
+
 const DB_NAME = 'live-space-pending-selection';
 const STORE = 'selection';
 const KEY = 'current';
@@ -15,6 +17,8 @@ const TTL_MS = 30 * 60 * 1000;
 export type PendingSelection = {
   eventId: string | null;
   files: File[];
+  /** The concert was recognised from the media (how), not picked by hand. */
+  detectedBy?: DetectionReason | null;
 };
 
 type StoredSelection = PendingSelection & { id: string; at: number };
@@ -65,5 +69,5 @@ export const takePendingSelection = async (): Promise<PendingSelection | null> =
   if (!record) return null;
   await run('readwrite', (store) => store.delete(KEY));
   if (Date.now() - record.at > TTL_MS || !record.files?.length) return null;
-  return { eventId: record.eventId, files: record.files };
+  return { eventId: record.eventId, files: record.files, detectedBy: record.detectedBy ?? null };
 };

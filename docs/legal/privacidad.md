@@ -39,6 +39,7 @@ El responsable del tratamiento es **{{TITULAR}}**. Para cualquier cosa sobre tus
 - Solo si la permites, y solo para centrar el mapa y enseñarte conciertos y artistas cerca.
 - La posición se guarda en tu móvil. Para buscar resultados cercanos enviamos a nuestro servidor una zona aproximada (o tu posición, en Explorar) que se usa para esa consulta y no se guarda en ninguna tabla.
 - Para encontrar los vídeos de un concierto en tu galería, la app mira en el móvil la hora y el lugar de tus fotos y vídeos. Eso no sale del móvil hasta que eliges qué subir.
+- Al subir momentos, para saber de qué concierto son, la app lee en el móvil la hora y, si el archivo la lleva, la ubicación con la que se grabaron las fotos y vídeos que eliges, y la compara con la de las salas. Esa ubicación solo sirve para elegir el concierto: la app no la envía a nuestro servidor, no la guarda en ninguna tabla ni en el móvil, no la apunta en registros ni la manda a nadie, y la olvida al salir de la pantalla de subida. Lo único que se guarda es el concierto en el que publicas. (Las fotos, eso sí, se suben tal cual: mira «Lo que subes».)
 - Puedes retirar el permiso cuando quieras en los ajustes del sistema.
 
 ### Notificaciones
