@@ -288,11 +288,7 @@ export const fetchUpcomingCities = async (startIso: string, endIso: string): Pro
 const httpsOnly = (url: string | null | undefined) => (url && url.startsWith('https://') ? url : null);
 
 const MAP_EVENT_SELECT = `
-<<<<<<< HEAD
-  id,name,starts_at,city,venue_place_id,poster_thumb_url,poster_url,
-=======
-  id,name,starts_at,city,venue_place_id,image_url,
->>>>>>> origin/main
+  id,name,starts_at,city,venue_place_id,image_url,poster_thumb_url,poster_url,
   event_artists (
     billing_order,is_headliner,
     artist:artists!event_artists_artist_id_fkey (id,name)
@@ -341,14 +337,16 @@ export const mapMapEvent = (
     name: String(row.name ?? ''),
     starts_at: String(row.starts_at ?? ''),
     city: String(row.city ?? ''),
-<<<<<<< HEAD
-    cover_image_url: latestImageUrl(row.media_assets),
-    cover_sources: uniqueImageUrls([latestImageUrl(row.media_assets), row.poster_thumb_url, row.poster_url]),
-=======
-    // Fan photos first, then the venue's poster (the map only showed fan
-    // photos, which almost no concert has yet).
+    // Fan photos first, then the venue's poster: our R2 copies (small, then
+    // card size) and, until it is mirrored, the original if it is https.
     cover_image_url: latestImageUrl(row.media_assets) ?? httpsOnly(row.image_url),
->>>>>>> origin/main
+    // The heavy original only while there is no R2 copy yet.
+    cover_sources: uniqueImageUrls([
+      latestImageUrl(row.media_assets),
+      row.poster_thumb_url,
+      row.poster_url,
+      row.poster_thumb_url || row.poster_url ? null : httpsOnly(row.image_url),
+    ]),
     venue,
     artist: primary
       ? { id: String(primary.id), name: String(primary.name ?? ''), avatar_url: artistImages.get(String(primary.id)) ?? null }

@@ -98,4 +98,11 @@ describe('event card mappers', () => {
     const mapEvent = mapMapEvent(row, new Map(), new Map());
     expect(mapEvent.cover_sources).toEqual([poster.thumb, poster.card]);
   });
+
+  it('uses the https original on the map only until the poster is mirrored', () => {
+    const notMirrored = { ...row, poster_thumb_url: null, poster_url: null, image_url: 'https://sala.test/cartel.jpg' };
+    expect(mapMapEvent(notMirrored, new Map(), new Map()).cover_sources).toEqual(['https://sala.test/cartel.jpg']);
+    const insecure = { ...notMirrored, image_url: 'http://sala.test/cartel.jpg' };
+    expect(mapMapEvent(insecure, new Map(), new Map()).cover_sources).toEqual([]);
+  });
 });
