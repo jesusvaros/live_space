@@ -38,7 +38,8 @@ const fetchArtistsByIds = async (artistIds: string[]) => {
     async () => {
       const { data, error } = await supabase
         .from('v_subject_artists')
-        .select('artist_id,subject_id,name,avatar_url,city,genres')
+        // What the grid shows: a portrait, a name and the follow button.
+        .select('artist_id,subject_id,name,avatar_url')
         .in('artist_id', uniqueSorted);
       if (error) throw error;
       return data || [];
@@ -67,18 +68,28 @@ type AgendaRow = {
   }> | null;
 };
 
+// PostgREST caps a response at 1000 rows; the agenda is read in pages.
+const MAX_ROWS = 1000;
+
 const fetchAgenda = (startIso: string, endIso: string) =>
   cached(
     `discover:agenda:${startIso}:${endIso}`,
     async () => {
-      const { data, error } = await supabase
-        .from('events')
-        .select(AGENDA_SELECT)
-        .eq('status', 'published')
-        .gte('starts_at', startIso)
-        .lte('starts_at', endIso);
-      if (error) throw error;
-      return (data || []) as unknown as AgendaRow[];
+      const rows: AgendaRow[] = [];
+      for (let from = 0; ; from += MAX_ROWS) {
+        const { data, error } = await supabase
+          .from('events')
+          .select(AGENDA_SELECT)
+          .eq('status', 'published')
+          .gte('starts_at', startIso)
+          .lte('starts_at', endIso)
+          .order('id', { ascending: true })
+          .range(from, from + MAX_ROWS - 1);
+        if (error) throw error;
+        rows.push(...((data || []) as unknown as AgendaRow[]));
+        if (!data || data.length < MAX_ROWS) break;
+      }
+      return rows;
     },
     { ttlMs: 60_000 }
   );
@@ -130,6 +141,51 @@ const collectArtists = (
   return [...stats.values()];
 };
 
+// Set once get_discover_artist_stats is known to be missing, so the fallback
+// does not pay a failed round trip every time.
+let statsRpcMissing = false;
+
+// The same counts, made by the database: a few KB instead of the agenda.
+// Null when the function is not deployed yet.
+const fetchArtistStats = async (
+  startIso: string,
+  endIso: string,
+  endOfWeek: Date,
+  location: { lat: number; lng: number } | null | undefined
+): Promise<ArtistStats[] | null> => {
+  if (statsRpcMissing) return null;
+  const rows = await cached(
+    `discover:artist_stats:${startIso}:${endIso}:${location ? `${location.lat.toFixed(4)},${location.lng.toFixed(4)}` : '-'}`,
+    async () => {
+      const { data, error } = await supabase.rpc('get_discover_artist_stats', {
+        p_from: startIso,
+        p_to: endIso,
+        p_week_end: endOfWeek.toISOString(),
+        p_lat: location?.lat ?? null,
+        p_lng: location?.lng ?? null,
+        p_radius_km: NEARBY_RADIUS_KM,
+      });
+      if (error) return null;
+      return (data || []) as any[];
+    },
+    { ttlMs: 60_000 }
+  );
+  if (!rows) {
+    statsRpcMissing = true;
+    return null;
+  }
+  return rows
+    .filter(row => row?.id && !looksLikeEventName(String(row.name ?? '')))
+    .map(row => ({
+      id: String(row.id),
+      concerts: Number(row.total ?? 0),
+      weekConcerts: Number(row.week ?? 0),
+      nearConcerts: Number(row.near ?? 0),
+      hasPhoto: Boolean(row.photo),
+      styles: new Set<string>((row.styles || []).filter(Boolean)),
+    }));
+};
+
 // A face sells a grid of portraits: artists with a photo go first.
 const rank = (list: ArtistStats[], weight: (stats: ArtistStats) => number) =>
   list
@@ -140,8 +196,11 @@ export const getSuggestedArtists = async (options?: {
   location?: { lat: number; lng: number } | null;
 }): Promise<SuggestedArtists> => {
   const { startOfToday, endOfWindow, endOfWeek } = dateWindow();
-  const events = await fetchAgenda(startOfToday.toISOString(), endOfWindow.toISOString());
-  const artists = collectArtists(events, endOfWeek, options?.location);
+  const startIso = startOfToday.toISOString();
+  const endIso = endOfWindow.toISOString();
+  const artists =
+    (await fetchArtistStats(startIso, endIso, endOfWeek, options?.location))
+    ?? collectArtists(await fetchAgenda(startIso, endIso), endOfWeek, options?.location);
 
   const near = options?.location ? rank(artists, stats => stats.nearConcerts).slice(0, SECTION_LIMIT) : [];
   const nearIds = new Set(near.map(stats => stats.id));

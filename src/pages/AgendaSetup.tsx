@@ -9,16 +9,12 @@ import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { supabase } from '../lib/supabase';
 import { useLastKnownLocation } from '../shared/hooks/useLastKnownLocation';
 import { useQuery } from '../shared/hooks/useQuery';
-import { useEventsList } from '../features/events/hooks/useEventsList';
-import { deriveCities } from '../features/events/sections/CityListingSection';
+import { useUpcomingCities } from '../features/events/hooks/useEventsList';
 import { formatDistance } from '../features/events/utils';
+import { fetchAgendaGenres, fetchAgendaSuggestionIds, type AgendaGenre } from '../data/agendaQueries';
 import {
-  deriveGenres,
-  eventCity,
-  eventGenres,
-  genreKey,
   markSetupDone,
-  nearestEventCity,
+  nearestCity,
   persistCity,
   persistTastes,
   readStoredCity,
@@ -69,9 +65,10 @@ const AgendaSetup: React.FC = () => {
   const returnTo = (routeLocation.state as { returnTo?: string } | null)?.returnTo || '/tabs/events';
   const { user, profile, updateProfile } = useAuth();
 
+  // Only the list of cities and a few counts: the concerts themselves are
+  // never downloaded here.
   const range = useMemo(() => listingsRange(), []);
-  const { events, loading: eventsLoading, error: eventsError } = useEventsList(range);
-  const cities = useMemo(() => deriveCities(events), [events]);
+  const { cities, ready: citiesReady, failed: citiesFailed } = useUpcomingCities(range);
   const findCity = (name?: string | null) =>
     name ? cities.find(option => sameCity(option.name, name))?.name ?? null : null;
 
@@ -92,18 +89,24 @@ const AgendaSetup: React.FC = () => {
   const [nearest, setNearest] = useState<{ city: string; distanceKm: number } | null>(null);
   const awaitingLocation = useRef(false);
   useEffect(() => {
-    if (!awaitingLocation.current || locating || !location || events.length === 0) return;
+    if (!awaitingLocation.current || locating || !location || cities.length === 0) return;
     awaitingLocation.current = false;
-    const found = nearestEventCity(events, location);
+    const found = nearestCity(cities, location);
     setNearest(found);
     if (found) setCity(findCity(found.city) || found.city);
-  }, [events, location, locating]);
+  }, [cities, location, locating]);
   const locate = () => {
     awaitingLocation.current = true;
     requestLocation();
   };
 
-  const genres = useMemo(() => deriveGenres(events, city).slice(0, MAX_GENRES), [city, events]);
+  const cityKey = city ? city.toLocaleLowerCase('es') : '';
+  const { data: genreData, loading: genresLoading } = useQuery<AgendaGenre[]>(
+    ['agenda:genres', range.startIso, range.endIso, cityKey],
+    () => fetchAgendaGenres(range, city, MAX_GENRES),
+    { enabled: step >= 2, ttlMs: 5 * 60_000 },
+  );
+  const genres = genreData || [];
   const toggleTaste = (key: string) =>
     setTastes(current => (current.includes(key) ? current.filter(item => item !== key) : [...current, key]));
 
@@ -113,33 +116,13 @@ const AgendaSetup: React.FC = () => {
   const { data: suggestions, loading: suggestionsLoading } = useQuery<Suggestion[]>(
     ['agenda:suggestions', city ?? '', [...tastes].sort().join(',')],
     async () => {
-      const inCity = events.filter(event => city && sameCity(eventCity(event), city));
-      const tasteKeys = new Set(tastes);
-      const artistScores = new Map<string, { score: number; concerts: number; genres: string[] }>();
-      const venueCounts = new Map<string, number>();
-      for (const event of inCity) {
-        const matches = eventGenres(event).filter(genre => tasteKeys.has(genreKey(genre))).length;
-        for (const entry of event.event_artists || []) {
-          const artist = entry.artist;
-          if (!artist?.id) continue;
-          const current = artistScores.get(artist.id) || { score: 0, concerts: 0, genres: artist.genres || [] };
-          current.concerts += 1;
-          current.score += 1 + (matches > 0 ? 5 : 0);
-          artistScores.set(artist.id, current);
-        }
-        if (event.venue_place?.id) venueCounts.set(event.venue_place.id, (venueCounts.get(event.venue_place.id) || 0) + 1);
-      }
-      const artistIds = Array.from(artistScores.entries())
-        .sort((left, right) => right[1].score - left[1].score)
-        .slice(0, MAX_ARTISTS)
-        .map(([id]) => id);
-      const venueIds = Array.from(venueCounts.entries())
-        .sort((left, right) => right[1] - left[1])
-        .slice(0, MAX_VENUES)
-        .map(([id]) => id);
+      const picks = await fetchAgendaSuggestionIds(range, city!, tastes, { artists: MAX_ARTISTS, venues: MAX_VENUES });
+      const artistIds = picks.artists.map(pick => pick.id);
+      const venueIds = picks.venues.map(pick => pick.id);
+      const concertsOf = new Map([...picks.artists, ...picks.venues].map(pick => [pick.id, pick.concerts]));
       const [artists, venues] = await Promise.all([
         artistIds.length
-          ? supabase.from('v_subject_artists').select('subject_id,artist_id,name,avatar_url').in('artist_id', artistIds)
+          ? supabase.from('v_subject_artists').select('subject_id,artist_id,name,avatar_url,genres').in('artist_id', artistIds)
           : Promise.resolve({ data: [], error: null }),
         venueIds.length
           ? supabase.from('v_subject_venues').select('subject_id,id,name,photos,cover_image_url').in('id', venueIds)
@@ -152,15 +135,16 @@ const AgendaSetup: React.FC = () => {
       return [
         ...artistIds.flatMap(id => {
           const row = artistRows.get(id);
-          const stats = artistScores.get(id);
-          if (!row?.subject_id || !stats) return [];
+          if (!row?.subject_id) return [];
           return [{
             kind: 'artist' as const,
             id,
             subjectId: String(row.subject_id),
             name: String(row.name ?? ''),
             imageUrl: row.avatar_url ?? null,
-            detail: [concertsLabel(stats.concerts), stats.genres.slice(0, 2).join(', ')].filter(Boolean).join(' · '),
+            detail: [concertsLabel(concertsOf.get(id) || 0), ((row.genres as string[] | null) || []).slice(0, 2).join(', ')]
+              .filter(Boolean)
+              .join(' · '),
           }];
         }),
         ...venueIds.flatMap(id => {
@@ -172,12 +156,12 @@ const AgendaSetup: React.FC = () => {
             subjectId: String(row.subject_id),
             name: String(row.name ?? ''),
             imageUrl: row.cover_image_url ?? (row.photos || [])[0] ?? null,
-            detail: `${concertsLabel(venueCounts.get(id) || 0)} este mes`,
+            detail: `${concertsLabel(concertsOf.get(id) || 0)} este mes`,
           }];
         }),
       ];
     },
-    { enabled: step === 3 && Boolean(city) && events.length > 0, ttlMs: 60_000 },
+    { enabled: step === 3 && Boolean(city), ttlMs: 60_000 },
   );
 
   const saveCity = async () => {
@@ -214,7 +198,7 @@ const AgendaSetup: React.FC = () => {
 
   const renderCityStep = () => (
     <div className="flex flex-col gap-4">
-      <Button variant="secondary" size="lg" block onClick={locate} disabled={locating || eventsLoading} icon={<IconLocate size={18} />}>
+      <Button variant="secondary" size="lg" block onClick={locate} disabled={locating || !citiesReady} icon={<IconLocate size={18} />}>
         {locating ? 'Buscando…' : 'Usar mi ubicación'}
       </Button>
       {nearest ? (
@@ -227,10 +211,10 @@ const AgendaSetup: React.FC = () => {
       ) : null}
 
       <h2 className="pt-1 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-white/50">O elígela</h2>
-      {eventsLoading && cities.length === 0 ? (
+      {!citiesReady ? (
         <div className="flex justify-center py-8"><Spinner /></div>
-      ) : eventsError ? (
-        <p className="text-sm text-rose-300">{eventsError}</p>
+      ) : citiesFailed ? (
+        <p className="text-sm text-rose-300">No se pudieron cargar los eventos. Revisa tu conexión.</p>
       ) : (
         <ul className="flex flex-col gap-1.5">
           {cities.map(option => {
@@ -257,7 +241,9 @@ const AgendaSetup: React.FC = () => {
   );
 
   const renderTastesStep = () =>
-    genres.length === 0 ? (
+    genresLoading && genres.length === 0 ? (
+      <div className="flex justify-center py-8"><Spinner /></div>
+    ) : genres.length === 0 ? (
       <p className="rounded-2xl border border-dashed border-app-line p-5 text-sm text-white/70">
         Aún no tenemos géneros para {city || 'tu ciudad'}. Puedes seguir y volver a esto desde tu perfil.
       </p>
