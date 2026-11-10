@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { MapEvent } from '../data/eventQueries';
 
-export type MapWhen = 'all' | 'today' | 'weekend' | 'next30';
+export type MapWhen = 'all' | 'today' | 'tomorrow' | 'weekend' | 'week' | 'next30' | 'day';
 
 // Busy venues list a year ahead; a month keeps pin counts meaningful.
 const DEFAULT_WHEN: MapWhen = 'next30';
@@ -18,10 +18,23 @@ export type MapVenueGroup = {
   events: MapEvent[];
 };
 
-export const MAP_WHEN_LABELS: Record<Exclude<MapWhen, 'all'>, string> = {
+// In the order the chips show. 'day' (a date picked in the calendar) has its
+// own chip with the chosen date as label.
+export const MAP_WHEN_LABELS: Record<Exclude<MapWhen, 'all' | 'day'>, string> = {
   today: 'Hoy',
+  tomorrow: 'Mañana',
   weekend: 'Este finde',
+  week: 'Esta semana',
   next30: 'Próximos 30 días',
+};
+
+/** yyyy-mm-dd in local time (what <input type="date"> uses). */
+export const toDateInputValue = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+const fromDateInputValue = (value: string) => {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, (month ?? 1) - 1, day ?? 1);
 };
 
 const startOfDay = (date: Date) => {
@@ -43,9 +56,20 @@ const addDays = (date: Date, days: number) => {
 };
 
 /** [start, end] in local time for a date chip, or null for "any date". */
-export const getWhenRange = (when: MapWhen, now = new Date()): [Date, Date] | null => {
+export const getWhenRange = (when: MapWhen, now = new Date(), day: string | null = null): [Date, Date] | null => {
   const today = startOfDay(now);
   if (when === 'today') return [today, endOfDay(today)];
+  if (when === 'tomorrow') return [addDays(today, 1), endOfDay(addDays(today, 1))];
+  if (when === 'week') {
+    // From today to Sunday.
+    const daysToSunday = (7 - today.getDay()) % 7;
+    return [today, endOfDay(addDays(today, daysToSunday))];
+  }
+  if (when === 'day') {
+    if (!day) return null;
+    const picked = fromDateInputValue(day);
+    return [startOfDay(picked), endOfDay(picked)];
+  }
   if (when === 'next30') return [today, endOfDay(addDays(today, 30))];
   if (when === 'weekend') {
     // Friday to Sunday of this week; on the weekend itself, from today.
@@ -66,6 +90,12 @@ export const useMapFilters = (events: MapEvent[]) => {
   const [city, setCity] = useState<string | null>(null);
   const [artists, setArtists] = useState<MapArtistFilter[]>([]);
   const [includePast, setIncludePast] = useState(false);
+  const [day, setDayState] = useState<string | null>(null);
+  const setDay = (value: string | null) => {
+    setDayState(value);
+    setWhen(value ? 'day' : DEFAULT_WHEN);
+  };
+  const whenRange = useMemo(() => getWhenRange(when, new Date(), day), [when, day]);
 
   const cities = useMemo(() => {
     const counts = new Map<string, number>();
@@ -78,7 +108,7 @@ export const useMapFilters = (events: MapEvent[]) => {
 
   const filteredEvents = useMemo(() => {
     const query = normalize(search.trim());
-    const range = getWhenRange(when);
+    const range = whenRange;
     const artistIds = new Set(artists.map(artist => artist.id));
 
     return events.filter(event => {
@@ -97,7 +127,7 @@ export const useMapFilters = (events: MapEvent[]) => {
       }
       return true;
     });
-  }, [events, search, when, city, artists]);
+  }, [events, search, whenRange, city, artists]);
 
   const venueGroups = useMemo(() => {
     const groups = new Map<string, MapVenueGroup>();
@@ -130,6 +160,7 @@ export const useMapFilters = (events: MapEvent[]) => {
 
   const clearFilters = () => {
     setWhen(DEFAULT_WHEN);
+    setDayState(null);
     setCity(null);
     setArtists([]);
     setIncludePast(false);
@@ -140,6 +171,9 @@ export const useMapFilters = (events: MapEvent[]) => {
     setSearch,
     when,
     setWhen,
+    day,
+    setDay,
+    whenRange,
     city,
     setCity,
     cities,

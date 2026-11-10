@@ -86,7 +86,7 @@ const MapFilterModal: React.FC<MapFilterModalProps> = ({
 
   const whenOptions: { value: MapWhen; label: string }[] = [
     { value: 'all', label: 'Cualquier fecha' },
-    ...(Object.keys(MAP_WHEN_LABELS) as Exclude<MapWhen, 'all'>[]).map(value => ({
+    ...(Object.keys(MAP_WHEN_LABELS) as Exclude<MapWhen, 'all' | 'day'>[]).map(value => ({
       value,
       label: MAP_WHEN_LABELS[value],
     })),

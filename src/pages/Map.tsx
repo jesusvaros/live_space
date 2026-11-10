@@ -108,11 +108,16 @@ const Map: React.FC = () => {
   const events = eventsQuery.data ?? EMPTY_EVENTS;
 
   const filters = useMapFilters(events);
-  const { venueGroups, filteredEvents, artists, city, addArtist, includePast, when } = filters;
+  const { venueGroups, filteredEvents, artists, city, addArtist, includePast, when, whenRange } = filters;
 
+  // Only the next 30 days are downloaded unless the chosen dates go further
+  // (a day picked in the calendar) or the visitor asks for any date.
   useEffect(() => {
-    setScope(when !== 'all' ? 'next30' : includePast ? 'all' : 'upcoming');
-  }, [includePast, when]);
+    const next30End = getWhenRange('next30')?.[1];
+    if (when === 'all') setScope(includePast ? 'all' : 'upcoming');
+    else if (whenRange && next30End && whenRange[1] > next30End) setScope('upcoming');
+    else setScope('next30');
+  }, [includePast, when, whenRange]);
 
   // Arriving from an artist page: filter the map to that artist.
   useEffect(() => {
@@ -259,6 +264,10 @@ const Map: React.FC = () => {
 
         <div className="pointer-events-none absolute inset-x-0 top-0 z-[1000] pt-[calc(12px+env(safe-area-inset-top,0px))] [&>*]:pointer-events-auto">
           <MapFilterBar
+            when={filters.when}
+            onWhenChange={filters.setWhen}
+            day={filters.day}
+            onDayChange={filters.setDay}
             search={filters.search}
             onSearchChange={filters.setSearch}
             artists={artists}
