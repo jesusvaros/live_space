@@ -10,6 +10,8 @@ import AppShell from '../components/AppShell';
 import ConcertRow from '../components/ui/ConcertRow';
 import MomentGrid from '../components/ui/MomentGrid';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
+import CoverImage from '../components/ui/CoverImage';
+import { eventCoverSources } from '../lib/eventCover';
 import { NAV_CLEARANCE } from '../components/BottomNav';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { useFollowedEntities } from '../hooks/useFollowedEntities';
@@ -620,11 +622,11 @@ const Profile: React.FC = () => {
             className="mx-4 mt-[18px] flex items-center gap-3 rounded-[18px] border border-app-line bg-app-surface p-3.5 text-left"
           >
             <span className="relative h-[68px] w-[54px] shrink-0 overflow-hidden rounded-[10px]">
-              {nextConcert.cover_image_url ? (
-                <img src={nextConcert.cover_image_url} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <GeneratedPoster title={nextConcert.name} variant="thumb" />
-              )}
+              <CoverImage
+                sources={eventCoverSources(nextConcert, 'thumb')}
+                className="h-full w-full object-cover"
+                fallback={<GeneratedPoster title={nextConcert.name} variant="thumb" />}
+              />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block font-mono text-[11px] font-semibold uppercase text-app-accent">

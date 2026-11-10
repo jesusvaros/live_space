@@ -169,6 +169,72 @@ apenas consumen créditos. Supabase: 2–3 invocaciones de función por vídeo.
   real a R2 con credenciales.
 - Subir el límite de 10 vídeos/mes cuando R2 esté activo (hoy es el mismo).
 
+## Portadas de concierto en R2
+
+`events.image_url` guarda la URL del cartel tal como la publica la fuente (unas
+60 webs distintas). Pedirla desde la app fallaba a menudo: carteles de 0,5–12 MB,
+URLs firmadas que caducan, `http://` bloqueado como contenido mixto en la
+WebView, 404 y hosts que cortan a clientes que no son navegador. Por eso el
+scraper copia cada cartel a R2 y la app pide esa copia.
+
+**Ingesta** (`npm run posters:mirror`, paso diario de `scrape-weekly.yml` tras
+«Enrich images»; `src/scripts/mirrorPosters.ts`, `src/pipeline/posterMirror.ts`,
+`posterRender.ts`, `r2Storage.ts`):
+
+- Conciertos publicados desde ayer en adelante con `image_url`. Cada URL distinta
+  se descarga una vez aunque la compartan varias fechas: User-Agent de navegador,
+  `Referer` del propio sitio, redirecciones, 20 s de timeout, máximo 25 MB; `http://`
+  vale en servidor. Nunca direcciones locales o privadas.
+- Se valida decodificando con `sharp` (el `Content-Type` no manda: hay CDNs que
+  sirven `application/octet-stream`), mínimo 64 px de lado.
+- Dos WebP: `thumb` ~320 px de ancho (máx. 480 de alto) con objetivo ≤ 25 KB para
+  listas y mapa, y `card` ~800 px (máx. 1200 de alto) con objetivo ≤ 90 KB para
+  fichas y la página del concierto. Sin ampliar nunca; baja la calidad (76 → 46)
+  y, si aún no cabe, el tamaño (×0,8, ×0,64).
+- Claves deterministas por URL de origen: `posters/v1/<32 hex del sha256 de la
+  URL>/w320.webp` y `…/w800.webp`, con `Cache-Control: public, max-age=31536000,
+  immutable`. `v1` permite regenerar todo con otros parámetros sin pisar lo
+  cacheado.
+- `poster_mirrors` (solo `service_role`) guarda una fila por URL: `ok` con las dos
+  URLs y los bytes, o `failed` con `attempts` y `last_error`. Una URL `ok` no se
+  vuelve a descargar nunca; una fallida se reintenta a los 1, 2, 4 y 8 días y se
+  abandona tras 5 intentos (para reintentarla: borrar su fila). Un fallo de R2 no
+  cuenta como intento.
+- `events.poster_thumb_url` / `events.poster_url` no se escriben a mano: un
+  trigger los deriva de `poster_mirrors` para el `image_url` actual. Si cambia
+  `image_url` (la sala cambia el cartel o alguien lo edita en el panel), la copia
+  vieja deja de mostrarse al instante y la nueva URL se descarga en la siguiente
+  pasada; si esa URL ya estaba copiada para otra fecha, se reutiliza en el acto.
+- **Tope de R2 compartido.** Antes de subir, el worker suma lo mismo que
+  `media-r2-sign` (reservas de vídeo completadas y en curso) más
+  `r2_poster_stored_bytes()` y no pasa de `R2_MAX_STORED_BYTES` (9 GB por
+  defecto); al llegar, se para. `media-r2-sign` también suma los carteles (hay
+  que redesplegarla para que lo haga). Medido en producción (10/11/2026): 1.275
+  URLs, 1.215 copiadas, 76 MB en total (~63 KB por cartel, las dos versiones),
+  frente a 580 MB de originales. Mediana: 15 KB la miniatura, 44 KB la grande.
+  Las copias de URLs que ya no usa ningún concierto no se borran (se siguen
+  contando).
+
+Opciones: sin flags es un ensayo que solo lista qué descargaría y de qué hosts;
+`--out <carpeta>` descarga y escribe las versiones en local sin tocar base de
+datos ni R2; `--apply` sube y registra. `--limit` (URLs por pasada, 300; el
+workflow usa 600), `--concurrency` (3), `--delay-ms` (300), `--days-back` (1). Con
+`--apply` y sin los secretos `R2_*` avisa y termina sin error.
+
+**Secretos del workflow** (repositorio → Settings → Secrets, a poner por el
+humano; los mismos valores que las Edge Functions): `R2_ACCOUNT_ID`,
+`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_BASE_URL` y,
+si aplica, `R2_JURISDICTION` y `R2_MAX_STORED_BYTES`. Si el dominio público
+tiene reglas de caché, añadir `/posters/*` como `/v/*`.
+
+**App** (`src/lib/eventCover.ts`, `src/components/ui/CoverImage.tsx`): listas y
+mapa piden miniatura → grande → original; la ficha pide grande → original →
+miniatura; si hay foto del público va delante, y al final la foto del cabeza de
+cartel y el cartel generado (`GeneratedPoster`). Cada `<img>` de portada lleva
+`loading="lazy"` (salvo el héroe), `decoding="async"` y salta a la siguiente URL
+en `onError`. Nunca se pide una URL `http://`. El mapa no usa el original (pesa
+demasiado para cientos de chinchetas).
+
 ## Catálogo
 
 Las imágenes de artista/sala deben guardar URL original, autor, licencia,

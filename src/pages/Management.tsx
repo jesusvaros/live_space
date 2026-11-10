@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import Avatar from '../components/ui/Avatar';
 import Button from '../components/ui/Button';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
+import CoverImage from '../components/ui/CoverImage';
 import { Spinner } from '../components/ui/AppPrimitives';
 import { IconChevronLeft } from '../components/icons';
 import EventEditForm from '../components/pro/EventEditForm';
@@ -273,11 +274,11 @@ const Management: React.FC = () => {
                   }}
                 >
                   <div className="relative h-[60px] w-12 shrink-0 overflow-hidden rounded-lg">
-                    {event.image_url ? (
-                      <img src={event.image_url} alt="" className="h-full w-full object-cover" loading="lazy" />
-                    ) : (
-                      <GeneratedPoster title={event.name} variant="thumb" />
-                    )}
+                    <CoverImage
+                      sources={[event.poster_thumb_url, event.image_url]}
+                      className="h-full w-full object-cover"
+                      fallback={<GeneratedPoster title={event.name} variant="thumb" />}
+                    />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-mono text-[11px] font-semibold text-app-accent">{formatEventDate(event.starts_at)}</p>

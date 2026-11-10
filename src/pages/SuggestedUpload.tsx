@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Modal, Spinner, useToast } from '../components/ui/AppPrimitives';
 import Button from '../components/ui/Button';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
+import CoverImage from '../components/ui/CoverImage';
 import { IconChevronDown } from '../components/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { ReuseConsentCheckbox } from '../features/community';
@@ -212,11 +213,11 @@ const SuggestedUpload: React.FC = () => {
       <main className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-6">
         {event && (
           <section className="mx-4 mt-3 flex items-center gap-3 rounded-2xl border border-app-line bg-app-surface p-3">
-            {event.imageUrl ? (
-              <img src={event.imageUrl} alt="" className="h-[60px] w-12 shrink-0 rounded-lg object-cover" />
-            ) : (
-              <GeneratedPoster title={event.artistName || event.name} variant="thumb" className="h-[60px] w-12 shrink-0 rounded-lg" />
-            )}
+            <CoverImage
+              sources={[event.posterThumbUrl, event.imageUrl]}
+              className="h-[60px] w-12 shrink-0 rounded-lg object-cover"
+              fallback={<GeneratedPoster title={event.artistName || event.name} variant="thumb" className="h-[60px] w-12 shrink-0 rounded-lg" />}
+            />
             <div className="min-w-0 flex-1">
               {phase.kind === 'ready' && suggestions.length > 0 && (
                 <p className="font-mono text-[11px] font-semibold uppercase text-[#25d47b]">

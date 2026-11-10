@@ -17,6 +17,7 @@ export type ConcertCandidate = {
   share_tag: string | null;
   city: string | null;
   image_url: string | null;
+  poster_thumb_url: string | null;
   venue_name: string | null;
   artists: string[];
 };
@@ -33,7 +34,7 @@ export type ConcertResolution = {
 const MATCH_WINDOW_MS = 36 * 3600 * 1000;
 
 const SELECT_WITH_TAG = `
-  id,name,starts_at,ends_at,timezone,share_tag,city,image_url,
+  id,name,starts_at,ends_at,timezone,share_tag,city,image_url,poster_thumb_url,
   venue_place:venue_places!events_venue_place_id_fkey (name),
   event_artists ( artist:artists!event_artists_artist_id_fkey (name) )
 `;
@@ -53,6 +54,7 @@ const toCandidate = (row: any): ConcertCandidate => ({
   share_tag: row.share_tag ?? null,
   city: row.city ?? null,
   image_url: row.image_url ?? null,
+  poster_thumb_url: row.poster_thumb_url ?? null,
   venue_name: row.venue_place?.name ?? null,
   artists: (row.event_artists ?? [])
     .map((entry: any) => entry?.artist?.name)

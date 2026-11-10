@@ -15,6 +15,8 @@ const PLACEHOLDER = `data:image/svg+xml;utf8,${encodeURIComponent(
 const handleError = (event: Event) => {
   const target = event.target;
   if (!(target instanceof HTMLImageElement)) return;
+  // <CoverImage> walks its own chain (thumbnail, card, original, generated).
+  if (target.hasAttribute('data-own-fallback')) return;
   // The placeholder itself failing must not loop.
   if (target.src === PLACEHOLDER) return;
   target.removeAttribute('srcset');

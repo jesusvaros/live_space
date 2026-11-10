@@ -107,7 +107,8 @@ export const resolveVideoProvider = async (service: SupabaseClient): Promise<"cl
 // default leaves 1 GB of margin for concurrent uploads; R2_MAX_STORED_BYTES
 // overrides it. Counted from the reservations, not from R2 itself: every
 // completed upload (completion checks the exact size) plus the ones still in
-// flight. Completed objects are never assumed deleted, so this over-counts.
+// flight, plus the posters the scraper mirrors (poster_mirrors.bytes).
+// Completed objects are never assumed deleted, so this over-counts.
 const DEFAULT_MAX_STORED_BYTES = 9_000_000_000;
 const PAGE_SIZE = 1000;
 
@@ -133,6 +134,15 @@ export const r2ReservedBytes = async (service: SupabaseClient, now = new Date())
     const rows = (data ?? []) as Array<{ expected_bytes: number | null }>;
     for (const row of rows) total += Number(row.expected_bytes ?? 0);
     if (rows.length < PAGE_SIZE) break;
+  }
+  // Concert posters mirrored by the scraper live in the same bucket.
+  const { data: posterBytes, error: posterError } = await service.rpc("r2_poster_stored_bytes");
+  if (posterError) {
+    // Only while the migration is not applied yet; any other error stops uploads.
+    if (posterError.code !== "PGRST202") throw posterError;
+    console.warn("r2_poster_stored_bytes() missing; posters not counted toward the R2 cap");
+  } else {
+    total += Number(posterBytes ?? 0);
   }
   return total;
 };

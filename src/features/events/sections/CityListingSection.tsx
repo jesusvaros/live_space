@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EventListItem } from '../types';
-import { getEventCoverImage, getPrimaryArtistName } from '../utils';
+import { getEventCoverImage, getEventCoverSources, getPrimaryArtistName } from '../utils';
+import CoverImage from '../../../components/ui/CoverImage';
 import GeneratedPoster from '../../../components/ui/GeneratedPoster';
 import { Modal } from '../../../components/ui/AppPrimitives';
 import EventPosterTile from '../components/EventPosterTile';
@@ -160,7 +161,6 @@ const CityListingSection: React.FC<CityListingSectionProps> = ({ events, cities,
       ) : (
         <ul className="space-y-2">
           {selectedEvents.map(event => {
-            const cover = getEventCoverImage(event);
             const artist = getPrimaryArtistName(event);
             const venue = event.venue_place?.name || event.address || city;
             const subtitle = event.name && !event.name.toLowerCase().includes(artist.toLowerCase())
@@ -174,11 +174,11 @@ const CityListingSection: React.FC<CityListingSectionProps> = ({ events, cities,
                   className="flex w-full items-center gap-3 rounded-2xl border border-app-line bg-app-surface p-2 text-left transition hover:border-white/25"
                 >
                   <div className="relative h-[72px] w-[58px] shrink-0 overflow-hidden rounded-[10px]">
-                    {cover ? (
-                      <img src={cover} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
-                    ) : (
-                      <GeneratedPoster title={artist} variant="thumb" />
-                    )}
+                    <CoverImage
+                      sources={getEventCoverSources(event)}
+                      className="absolute inset-0 h-full w-full object-cover"
+                      fallback={<GeneratedPoster title={artist} variant="thumb" />}
+                    />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-mono text-[11px] font-semibold text-app-accent">{timeLabel(event.starts_at)}</p>

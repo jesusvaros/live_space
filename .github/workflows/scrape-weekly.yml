@@ -57,6 +57,26 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
+      # Posters of upcoming concerts copied to R2 as two small WebP files
+      # (events.poster_thumb_url / poster_url). Only new or changed image URLs
+      # are downloaded; failures are retried on later runs (up to 5 times).
+      # Respects the shared R2 storage cap. Logs a warning and does nothing
+      # while the R2_* secrets are not set in this repository.
+      - name: Mirror event posters to R2
+        if: always()
+        continue-on-error: true
+        run: npm run posters:mirror -- --apply --limit 600
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
+          R2_JURISDICTION: ${{ secrets.R2_JURISDICTION }}
+          R2_MAX_STORED_BYTES: ${{ secrets.R2_MAX_STORED_BYTES }}
+
       # Artist links (Spotify, Instagram, YouTube…) from MusicBrainz. Only
       # fills empty links; ~1 request per second.
       - name: Enrich artist links

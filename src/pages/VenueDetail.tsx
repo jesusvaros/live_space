@@ -7,7 +7,8 @@ import { socialService } from '../services/social.service';
 import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
 import { EventListItem } from '../features/events/types';
-import { getEventCoverImage, getPrimaryArtistName } from '../features/events/utils';
+import { getEventCoverSources, getPrimaryArtistName } from '../features/events/utils';
+import CoverImage from '../components/ui/CoverImage';
 import MomentGrid from '../components/ui/MomentGrid';
 import { IconCheckCircle, IconMap } from '../components/icons';
 import { VenueFeedbackSummary } from '../features/community';
@@ -334,7 +335,6 @@ const VenueDetail: React.FC = () => {
               <div ref={eventsScrollerRef} className="-mr-4 flex gap-3 overflow-x-auto pr-4">
                 {events.map(event => {
                   const artist = getPrimaryArtistName(event as EventListItem);
-                  const cover = getEventCoverImage(event as EventListItem);
                   return (
                     <button
                       key={event.id}
@@ -343,11 +343,11 @@ const VenueDetail: React.FC = () => {
                       className="w-[140px] shrink-0 text-left text-app-ink"
                     >
                       <span className="relative block h-[175px] w-[140px] overflow-hidden rounded-xl bg-app-surface">
-                        {cover ? (
-                          <img src={cover} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
-                        ) : (
-                          <GeneratedPoster title={artist} />
-                        )}
+                        <CoverImage
+                          sources={getEventCoverSources(event as EventListItem)}
+                          className="absolute inset-0 h-full w-full object-cover"
+                          fallback={<GeneratedPoster title={artist} />}
+                        />
                       </span>
                       <span className="mt-1.5 block font-mono text-[11px] font-semibold text-app-accent">{posterDate(event.starts_at)}</span>
                       <span className="block truncate font-display text-[15px] font-bold">{artist}</span>

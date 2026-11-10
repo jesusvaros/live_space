@@ -11,6 +11,8 @@ import { IconBookmark, IconBookmarkFilled, IconFlag, IconPlus, IconShare } from 
 import DetailHeader from '../components/ui/DetailHeader';
 import Avatar from '../components/ui/Avatar';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
+import CoverImage from '../components/ui/CoverImage';
+import { eventCoverSources } from '../lib/eventCover';
 import { fetchEventCardById } from '../data/eventQueries';
 import { eventCacheKey, readCache } from '../data/pageCache';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
@@ -383,11 +385,12 @@ const EventDetail: React.FC = () => {
                 />
               ) : (
                 <section className="relative flex h-[340px] flex-col justify-end overflow-hidden bg-black px-4 pb-5">
-                  {event.cover_image_url ? (
-                    <img src={event.cover_image_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-60" />
-                  ) : (
-                    <GeneratedPoster title={heroTitle} variant="hero" />
-                  )}
+                  <CoverImage
+                    sources={eventCoverSources(event, 'card')}
+                    eager
+                    className="absolute inset-0 h-full w-full object-cover opacity-60"
+                    fallback={<GeneratedPoster title={heroTitle} variant="hero" />}
+                  />
                   <div className="absolute inset-0 bg-[linear-gradient(to_top,#0d0e12_8%,rgba(13,14,18,0.2)_60%,rgba(13,14,18,0.6))]" />
                   <div className="relative">
                     <p className="font-poster text-[40px] leading-[0.9] text-app-ink">{heroTitle}</p>
@@ -546,11 +549,12 @@ const EventDetail: React.FC = () => {
           ) : (
             <div className="pb-[calc(96px+env(safe-area-inset-bottom,0px))]">
               <section className="relative h-[380px] overflow-hidden">
-                {event.cover_image_url ? (
-                  <img src={event.cover_image_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
-                ) : (
-                  <GeneratedPoster title={heroTitle} variant="hero" />
-                )}
+                <CoverImage
+                  sources={eventCoverSources(event, 'card')}
+                  eager
+                  className="absolute inset-0 h-full w-full object-cover"
+                  fallback={<GeneratedPoster title={heroTitle} variant="hero" />}
+                />
                 <div className="absolute inset-0 bg-[linear-gradient(to_top,#0d0e12_4%,rgba(13,14,18,0.3)_55%,rgba(13,14,18,0.55))]" />
                 <div className="absolute inset-x-4 bottom-1.5">
                   {eventStart ? (
