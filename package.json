@@ -14,6 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "perf:routes": "playwright test tests/e2e/perf-routes.spec.ts --project=mobile-chromium",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "db:start": "supabase start",

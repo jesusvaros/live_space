@@ -57,12 +57,19 @@ export const useQuery = <T>(
     void run();
   }, [enabled, run]);
 
+  // Only a real resume forces a refetch. A new key also gives a new `run`,
+  // and that must not count as a resume: the effect above already loads it,
+  // and forcing here sent the same request twice.
+  const lastResumeTick = useRef(resumeTick);
   useEffect(() => {
     if (!enabled || !refetchOnResume) return;
     if (!hasHandledFirstResumeTick.current) {
       hasHandledFirstResumeTick.current = true;
+      lastResumeTick.current = resumeTick;
       return;
     }
+    if (lastResumeTick.current === resumeTick) return;
+    lastResumeTick.current = resumeTick;
     void run(true);
   }, [enabled, refetchOnResume, resumeTick, run]);
 

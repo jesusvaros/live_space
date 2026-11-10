@@ -34,8 +34,13 @@ const ChevronDown = () => (
   </svg>
 );
 
+export type CityOption = { name: string; count: number };
+
 type CityListingSectionProps = {
+  /** The listings; only the chosen city's are shown. */
   events: EventListItem[];
+  /** Cities to pick from, with their number of concerts. */
+  cities: CityOption[];
   city: string;
   onCityChange: (city: string) => void;
   /** Follow the device's position instead of a picked city. */
@@ -58,7 +63,7 @@ const timeLabel = (iso: string) =>
   new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
 
 // The city's listings, day by day for the next week, then what comes after.
-const CityListingSection: React.FC<CityListingSectionProps> = ({ events, city, onCityChange, onUseLocation, loading, error }) => {
+const CityListingSection: React.FC<CityListingSectionProps> = ({ events, cities, city, onCityChange, onUseLocation, loading, error }) => {
   const navigate = useNavigate();
 
   const days = useMemo(() => {
@@ -97,7 +102,6 @@ const CityListingSection: React.FC<CityListingSectionProps> = ({ events, city, o
   const firstDayWithEvents = days.findIndex(day => (byDay.get(dayKey(day)) || []).length > 0);
   const [selected, setSelected] = useState(0);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const cities = useMemo(() => deriveCities(events), [events]);
   useEffect(() => {
     setSelected(firstDayWithEvents >= 0 ? firstDayWithEvents : 0);
   }, [city, firstDayWithEvents]);

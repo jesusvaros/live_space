@@ -73,6 +73,20 @@ export const nearestEventCity = (events: EventListItem[], location: { lat: numbe
   return best;
 };
 
+// The closest of the cities with concerts, by their representative point.
+export const nearestCity = (
+  cities: { name: string; latitude: number | null; longitude: number | null }[],
+  location: { lat: number; lng: number },
+) => {
+  let best: { city: string; distanceKm: number } | null = null;
+  for (const option of cities) {
+    if (option.latitude === null || option.longitude === null) continue;
+    const distanceKm = calculateDistanceKm(location.lat, location.lng, option.latitude, option.longitude);
+    if (!best || distanceKm < best.distanceKm) best = { city: option.name, distanceKm };
+  }
+  return best;
+};
+
 export const eventGenres = (event: EventListItem) =>
   (event.event_artists || []).flatMap(entry => entry.artist?.genres || []).filter(Boolean);
 

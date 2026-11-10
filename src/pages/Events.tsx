@@ -8,21 +8,27 @@ import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { useFollowedEntities } from '../hooks/useFollowedEntities';
 import { calculateDistanceKm, getEventCoverImage, toNumber } from '../features/events/utils';
 import { NearbyEventListItem } from '../features/events/types';
-import CityListingSection, { deriveCities } from '../features/events/sections/CityListingSection';
+import CityListingSection from '../features/events/sections/CityListingSection';
 import FollowingSection from '../features/events/sections/FollowingSection';
 import FestivalsSection from '../features/events/sections/FestivalsSection';
 import { useAuth } from '../contexts/AuthContext';
-import { useEventsList } from '../features/events/hooks/useEventsList';
+import { useEventsList, useUpcomingCities } from '../features/events/hooks/useEventsList';
+import { useFollowedEvents } from '../features/events/hooks/useFollowedEvents';
+import { useNearbyEvents } from '../features/events/hooks/useNearbyEvents';
 import { useUserConcertHero } from '../features/events/hooks/useUserConcertHero';
 import TimelineHeroSection from '../features/events/sections/TimelineHeroSection';
 import GoingSection from '../features/events/sections/GoingSection';
 import { HomeCustomizer, HomeSectionKey, useHomeLayout } from '../features/events/homeLayout';
 import ForYouSection from '../features/events/sections/ForYouSection';
-import { clearCity, isSetupDone, nearestEventCity, persistCity, readStoredCity, readTastes } from '../features/agenda/agendaPrefs';
+import { clearCity, isSetupDone, nearestCity as nearestOf, persistCity, readStoredCity, readTastes, sameCity } from '../features/agenda/agendaPrefs';
 import { useConcertHistory } from '../features/agenda/useConcertHistory';
 
 const NEARBY_RADIUS_KM = 50;
-const EVENTS_LOOKBACK_DAYS = 4;
+// Tonight's concert stays listed for a few hours after doors, even after
+// midnight; nothing on Inicio looks further back.
+const EVENTS_LOOKBACK_MS = 4 * 60 * 60 * 1000;
+// How far a city's venues can sit from its representative point.
+const CITY_SPREAD_KM = 30;
 const DEFAULT_CITY = 'Madrid';
 // Accounts this young get the agenda setup once, wherever they signed up.
 const NEW_ACCOUNT_MS = 3 * 24 * 60 * 60 * 1000;
@@ -66,7 +72,7 @@ const Events: React.FC = () => {
   }, [startOfToday]);
 
   const startIso = useMemo(
-    () => new Date(startOfToday.getTime() - 1000 * 60 * 60 * 24 * EVENTS_LOOKBACK_DAYS).toISOString(),
+    () => new Date(startOfToday.getTime() - EVENTS_LOOKBACK_MS).toISOString(),
     [startOfToday]
   );
   const endIso = useMemo(() => endOfEventsWindow.toISOString(), [endOfEventsWindow]);
@@ -97,17 +103,18 @@ const Events: React.FC = () => {
     };
   }, [pickedCity, requestLocation]);
 
-  const { events, loading, error: loadError } = useEventsList({ startIso, endIso });
-  const { hero, dismissPendingMoments } = useUserConcertHero({ events });
+  // The city picker and "where am I" only need the list of cities; the
+  // listings below are downloaded for the chosen city alone.
+  const { cities, ready: citiesReady } = useUpcomingCities({ startIso, endIso });
+  const { hero, dismissPendingMoments } = useUserConcertHero();
 
-  // The city of the closest concert, when it is within reach.
+  // The city of the closest concerts, when it is within reach.
   const nearestCity = useMemo(() => {
-    const best = location ? nearestEventCity(events, location) : null;
-    return best && best.distanceKm <= NEARBY_RADIUS_KM ? best.city : null;
-  }, [events, location]);
+    const best = location ? nearestOf(cities, location) : null;
+    return best && best.distanceKm <= NEARBY_RADIUS_KM + CITY_SPREAD_KM ? best.city : null;
+  }, [cities, location]);
 
   // Picked city, else where the visitor is, else the profile's city, else Madrid.
-  const cities = useMemo(() => deriveCities(events), [events]);
   const city = useMemo(() => {
     const find = (name?: string | null) =>
       name ? cities.find(option => option.name.toLowerCase() === name.toLowerCase())?.name : undefined;
@@ -118,14 +125,40 @@ const Events: React.FC = () => {
       find(DEFAULT_CITY) ||
       cities[0]?.name ||
       pickedCity ||
+      profile?.primary_city ||
       DEFAULT_CITY
     );
   }, [cities, nearestCity, pickedCity, profile?.primary_city]);
 
+  // A picked city is known before the cities arrive; a position needs them
+  // to tell which city it is in, so wait rather than load the wrong one.
+  const listEnabled = citiesReady || Boolean(pickedCity) || !location;
+  const { events, loading: listLoading, error: loadError } = useEventsList({ startIso, endIso, city, enabled: listEnabled });
+  const loading = listLoading || !listEnabled;
+
+  // "Cerca de ti" reaches 50 km: the city's listings cover it unless another
+  // city with concerts is that close.
+  const nearbyNeedsOtherCities = useMemo(() => {
+    if (!location) return false;
+    return cities.some(
+      option =>
+        !sameCity(option.name, city) &&
+        option.latitude !== null &&
+        option.longitude !== null &&
+        calculateDistanceKm(location.lat, location.lng, option.latitude, option.longitude) <= NEARBY_RADIUS_KM + CITY_SPREAD_KM,
+    );
+  }, [cities, city, location]);
+  const nearbyEvents = useNearbyEvents({
+    location: nearbyNeedsOtherCities ? location : null,
+    radiusKm: NEARBY_RADIUS_KM,
+    startIso: startOfToday.toISOString(),
+    endIso: endOfNearbyWindow.toISOString(),
+  });
+
   const nearbyUpcoming = useMemo(() => {
     if (!location) return [] as NearbyEventListItem[];
     const items: NearbyEventListItem[] = [];
-    for (const event of events) {
+    for (const event of nearbyNeedsOtherCities ? nearbyEvents : events) {
       const startsAt = new Date(event.starts_at);
       if (startsAt < startOfToday || startsAt > endOfNearbyWindow) continue;
 
@@ -139,7 +172,7 @@ const Events: React.FC = () => {
     }
     items.sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime() || a.distanceKm - b.distanceKm);
     return items;
-  }, [endOfNearbyWindow, events, location, startOfToday]);
+  }, [endOfNearbyWindow, events, location, nearbyEvents, nearbyNeedsOtherCities, startOfToday]);
 
   // Hero photos: nearby first, then anything upcoming that has a cover.
   const featured = useMemo(() => {
@@ -161,6 +194,8 @@ const Events: React.FC = () => {
   const { followedSubjectIds } = useFollowedSubjects();
   const { entities: followedEntities } = useFollowedEntities(followedSubjectIds);
   const { history } = useConcertHistory(user?.id ?? null);
+  // Followed artists and venues play in any city, not just the listings'.
+  const followedEvents = useFollowedEvents(followedEntities, { startIso, endIso });
   const tastes = useMemo(() => readTastes(), []);
 
   const sections: Record<HomeSectionKey, React.ReactNode> = {
@@ -175,12 +210,13 @@ const Events: React.FC = () => {
         signedIn={Boolean(user)}
       />
     ),
-    following: <FollowingSection events={events} entities={followedEntities} signedIn={Boolean(user)} />,
+    following: <FollowingSection events={followedEvents} entities={followedEntities} signedIn={Boolean(user)} />,
     festivals: <FestivalsSection />,
     listings: (
       <div className="px-4 pt-[22px]">
         <CityListingSection
           events={events}
+          cities={cities}
           city={city}
           onCityChange={pickCity}
           onUseLocation={followMyLocation}

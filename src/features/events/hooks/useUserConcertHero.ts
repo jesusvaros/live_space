@@ -3,7 +3,7 @@ import { supabase } from '../../../lib/supabase';
 import { cached, clearCached } from '../../../lib/requestCache';
 import { useAuth } from '../../../contexts/AuthContext';
 import { EventListItem } from '../types';
-import { fetchEventCardById } from '../../../data/eventQueries';
+import { fetchEventCards } from '../../../data/eventQueries';
 
 export type UserConcertHeroState =
   | { kind: 'loading' }
@@ -85,17 +85,14 @@ const fetchAttendanceRows = async (userId: string) => {
   );
 };
 
-const fetchEventById = async (eventId: string) => {
-  return cached(
-    `event:detail:${eventId}`,
-    async () => {
-      return fetchEventCardById(eventId);
-    },
-    { ttlMs: 60_000 }
-  );
+// The concerts behind the attendance rows, in one request instead of one per
+// row.
+const fetchEventsByIds = async (eventIds: string[]) => {
+  const ids = [...new Set(eventIds)].sort();
+  return cached(`events:by_ids:${ids.join(',')}`, () => fetchEventCards({ eventIds: ids }), { ttlMs: 60_000 });
 };
 
-export const useUserConcertHero = (options: { events: EventListItem[]; now?: Date }) => {
+export const useUserConcertHero = (options: { now?: Date } = {}) => {
   const { user } = useAuth();
   const userId = user?.id || null;
   const nowMs = options.now ? options.now.getTime() : null;
@@ -132,22 +129,17 @@ export const useUserConcertHero = (options: { events: EventListItem[]; now?: Dat
         if (cancelled) return;
 
         const byId = new Map<string, EventListItem>();
-        for (const event of options.events) byId.set(event.id, event);
+        for (const event of await fetchEventsByIds(attendance.map(row => row.event_id))) byId.set(event.id, event);
+        if (cancelled) return;
 
-        const ensureEvent = async (eventId: string) => {
-          const existing = byId.get(eventId);
-          if (existing) return existing;
-          const fetched = await fetchEventById(eventId);
-          if (fetched) byId.set(eventId, fetched);
-          return fetched;
-        };
+        const ensureEvent = (eventId: string) => byId.get(eventId) ?? null;
 
         // Find most recent attended event ended in last 72h, with no moments and not dismissed.
         const attendedRows = attendance.filter(row => row.status === 'attended');
         const attendedCandidates: { event: EventListItem; hoursSinceEnd: number }[] = [];
 
         for (const row of attendedRows) {
-          const ev = await ensureEvent(row.event_id);
+          const ev = ensureEvent(row.event_id);
           if (!ev) continue;
           const end = getEventEnd(ev);
           const hoursSinceEnd = (now.getTime() - end.getTime()) / (1000 * 60 * 60);
@@ -161,7 +153,7 @@ export const useUserConcertHero = (options: { events: EventListItem[]; now?: Dat
           const goingRows = attendance.filter(row => row.status === 'going');
           const upcomingCandidates: EventListItem[] = [];
           for (const row of goingRows) {
-            const ev = await ensureEvent(row.event_id);
+            const ev = ensureEvent(row.event_id);
             if (!ev) continue;
             const start = new Date(ev.starts_at);
             if (start.getTime() < now.getTime()) continue;
@@ -214,7 +206,7 @@ export const useUserConcertHero = (options: { events: EventListItem[]; now?: Dat
     return () => {
       cancelled = true;
     };
-  }, [dismissedMap, nowMs, options.events, userId]);
+  }, [dismissedMap, nowMs, userId]);
 
   const refreshMomentsForEvent = (eventId: string) => {
     if (!userId) return;

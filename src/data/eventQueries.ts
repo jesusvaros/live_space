@@ -3,18 +3,40 @@ import type { EventListItem } from '../features/events/types';
 import { mapArtist, mapEvent, mapVenue } from './canonicalMappers';
 import { eventCacheKey, writeCache } from './pageCache';
 
+// Only the columns the card mappers keep (mapEvent / mapVenue / mapArtist):
+// the detail screen paints from the cached card, so it opens instantly from
+// any list. `*` here used to ship every scraper column of every concert.
 const EVENT_CARD_SELECT = `
-  *,
-  venue_place:venue_places!events_venue_place_id_fkey (
-    id,name,city,address,capacity,venue_type,latitude,longitude,website_url,created_by,created_at,updated_at
-  ),
+  id,venue_place_id,name,description,starts_at,ends_at,city,address,latitude,longitude,genres,
+  is_free,price_tiers,ticket_url,source_url,status,created_by,created_at,updated_at,image_url,
+  share_tag,festival_id,room,
+  venue_place:venue_places!events_venue_place_id_fkey (id,name,city,address,latitude,longitude),
   event_artists (
-    artist:artists!event_artists_artist_id_fkey (*)
+    artist:artists!event_artists_artist_id_fkey (id,name,genres,image_url)
   ),
   media_assets!media_assets_event_id_fkey (
     kind,status,secure_url,thumbnail_url,created_at
   )
 `;
+
+// The same, keeping only concerts whose venue matches the venue filters.
+const EVENT_CARD_SELECT_BY_VENUE = EVENT_CARD_SELECT.replace(
+  'venue_places!events_venue_place_id_fkey',
+  'venue_places!events_venue_place_id_fkey!inner',
+);
+
+// PostgREST caps a response at 1000 rows; longer lists are read in pages.
+const MAX_ROWS = 1000;
+
+const escapeLike = (value: string) => value.replace(/[\\%_]/g, match => `\\${match}`);
+
+const inList = (ids: string[]) => `(${ids.map(id => `"${id}"`).join(',')})`;
+
+const toCoordinate = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
 
 export const mapEventCard = (row: any): EventListItem => {
   const publishedImages = (row.media_assets || [])
@@ -33,28 +55,75 @@ export const mapEventCard = (row: any): EventListItem => {
   };
 };
 
-export const fetchEventCards = async (options: {
+export type EventCardQuery = {
   startIso?: string;
   endIso?: string;
   eventId?: string;
   eventIds?: string[];
   venueId?: string;
   festivalId?: string;
-}) => {
-  let query = supabase.from('events').select(EVENT_CARD_SELECT).eq('status', 'published');
-  if (options.startIso) query = query.gte('starts_at', options.startIso);
-  if (options.endIso) query = query.lte('starts_at', options.endIso);
-  if (options.eventId) query = query.eq('id', options.eventId);
-  if (options.eventIds) {
-    if (options.eventIds.length === 0) return [];
-    query = query.in('id', options.eventIds);
-  }
-  if (options.venueId) query = query.eq('venue_place_id', options.venueId);
-  if (options.festivalId) query = query.eq('festival_id', options.festivalId);
+  /** Only this city's concerts (the event's city, any case). */
+  city?: string;
+  /** Only concerts whose venue lies inside this box. */
+  bounds?: { minLat: number; maxLat: number; minLng: number; maxLng: number };
+  /** Any of these: what followed artists, venues and festivals have on. */
+  anyOf?: { eventIds?: string[]; venueIds?: string[]; festivalIds?: string[] };
+  /** One page: rows [offset, offset + limit). Without it every row is read. */
+  offset?: number;
+  limit?: number;
+};
 
-  const { data, error } = await query.order('starts_at', { ascending: true });
-  if (error) throw error;
-  const cards = (data || []).map(mapEventCard);
+export const fetchEventCards = async (options: EventCardQuery): Promise<EventListItem[]> => {
+  if (options.eventIds && options.eventIds.length === 0) return [];
+  const anyOfClauses = options.anyOf
+    ? [
+        options.anyOf.eventIds?.length ? `id.in.${inList(options.anyOf.eventIds)}` : null,
+        options.anyOf.venueIds?.length ? `venue_place_id.in.${inList(options.anyOf.venueIds)}` : null,
+        options.anyOf.festivalIds?.length ? `festival_id.in.${inList(options.anyOf.festivalIds)}` : null,
+      ].filter((clause): clause is string => Boolean(clause))
+    : null;
+  if (anyOfClauses && anyOfClauses.length === 0) return [];
+
+  const build = () => {
+    let query = supabase
+      .from('events')
+      .select(options.bounds ? EVENT_CARD_SELECT_BY_VENUE : EVENT_CARD_SELECT)
+      .eq('status', 'published');
+    if (options.startIso) query = query.gte('starts_at', options.startIso);
+    if (options.endIso) query = query.lte('starts_at', options.endIso);
+    if (options.eventId) query = query.eq('id', options.eventId);
+    if (options.eventIds) query = query.in('id', options.eventIds);
+    if (options.venueId) query = query.eq('venue_place_id', options.venueId);
+    if (options.festivalId) query = query.eq('festival_id', options.festivalId);
+    if (options.city) query = query.ilike('city', escapeLike(options.city.trim()));
+    if (options.bounds) {
+      query = query
+        .gte('venue_place.latitude', options.bounds.minLat)
+        .lte('venue_place.latitude', options.bounds.maxLat)
+        .gte('venue_place.longitude', options.bounds.minLng)
+        .lte('venue_place.longitude', options.bounds.maxLng);
+    }
+    if (anyOfClauses) query = query.or(anyOfClauses.join(','));
+    // id breaks ties so pages never overlap or skip a concert.
+    return query.order('starts_at', { ascending: true }).order('id', { ascending: true });
+  };
+
+  const rows: any[] = [];
+  if (options.limit !== undefined) {
+    const from = options.offset ?? 0;
+    const { data, error } = await build().range(from, from + options.limit - 1);
+    if (error) throw error;
+    rows.push(...(data || []));
+  } else {
+    for (let from = 0; ; from += MAX_ROWS) {
+      const { data, error } = await build().range(from, from + MAX_ROWS - 1);
+      if (error) throw error;
+      rows.push(...(data || []));
+      if (!data || data.length < MAX_ROWS) break;
+    }
+  }
+
+  const cards = rows.map(mapEventCard);
   // Any listed concert opens instantly: the card holds everything its detail
   // screen needs first.
   for (const card of cards) writeCache(eventCacheKey(card.id), card);
@@ -66,17 +135,114 @@ export const fetchEventCardById = async (eventId: string) => {
   return rows[0] ?? null;
 };
 
-// The map only needs enough to place one pin per venue and list its concerts;
-// the full card select is several times heavier.
+/** Concerts of followed artists, venues and festivals in the window, any city. */
+export const fetchFollowedEventCards = async (options: {
+  artistIds: string[];
+  venueIds: string[];
+  festivalIds: string[];
+  startIso: string;
+  endIso: string;
+}) => {
+  const { artistIds, venueIds, festivalIds, startIso, endIso } = options;
+  if (artistIds.length === 0 && venueIds.length === 0 && festivalIds.length === 0) return [];
+  let artistEventIds: string[] = [];
+  if (artistIds.length > 0) {
+    // Which concerts in the window list a followed artist: ids only.
+    const { data, error } = await supabase
+      .from('event_artists')
+      .select('event_id,events!inner(starts_at,status)')
+      .in('artist_id', artistIds)
+      .eq('events.status', 'published')
+      .gte('events.starts_at', startIso)
+      .lte('events.starts_at', endIso);
+    if (error) throw error;
+    artistEventIds = [...new Set((data || []).map((row: any) => String(row.event_id)))];
+  }
+  return fetchEventCards({ startIso, endIso, anyOf: { eventIds: artistEventIds, venueIds, festivalIds } });
+};
+
+export type UpcomingCity = { name: string; count: number; latitude: number | null; longitude: number | null };
+
+// Set once the RPC is known to be missing, so the fallback does not pay a
+// failed round trip every time.
+let citiesRpcMissing = false;
+
+const sortCities = (cities: UpcomingCity[]) =>
+  cities.sort((left, right) => right.count - left.count || left.name.localeCompare(right.name, 'es'));
+
+const fetchUpcomingCitiesFallback = async (startIso: string, endIso: string) => {
+  const counts = new Map<string, { name: string; count: number; latSum: number; lngSum: number; geo: number }>();
+  for (let from = 0; ; from += MAX_ROWS) {
+    const { data, error } = await supabase
+      .from('events')
+      .select('city,venue_place:venue_places!events_venue_place_id_fkey(city,latitude,longitude)')
+      .eq('status', 'published')
+      .gte('starts_at', startIso)
+      .lte('starts_at', endIso)
+      .order('id', { ascending: true })
+      .range(from, from + MAX_ROWS - 1);
+    if (error) throw error;
+    for (const row of (data || []) as any[]) {
+      const venue = Array.isArray(row.venue_place) ? row.venue_place[0] : row.venue_place;
+      const name = String(row.city || venue?.city || '').trim();
+      if (!name) continue;
+      const key = name.toLocaleLowerCase('es');
+      const current = counts.get(key) || { name, count: 0, latSum: 0, lngSum: 0, geo: 0 };
+      current.count += 1;
+      const lat = toCoordinate(venue?.latitude);
+      const lng = toCoordinate(venue?.longitude);
+      if (lat !== null && lng !== null) {
+        current.latSum += lat;
+        current.lngSum += lng;
+        current.geo += 1;
+      }
+      counts.set(key, current);
+    }
+    if (!data || data.length < MAX_ROWS) break;
+  }
+  return sortCities(
+    [...counts.values()].map(city => ({
+      name: city.name,
+      count: city.count,
+      latitude: city.geo ? city.latSum / city.geo : null,
+      longitude: city.geo ? city.lngSum / city.geo : null,
+    })),
+  );
+};
+
+/**
+ * Cities with published concerts in the window, busiest first, each with a
+ * representative point (the average of its venues). One small RPC; until that
+ * function is deployed, a slim select aggregated here.
+ */
+export const fetchUpcomingCities = async (startIso: string, endIso: string): Promise<UpcomingCity[]> => {
+  if (!citiesRpcMissing) {
+    const { data, error } = await supabase.rpc('get_upcoming_cities', { p_from: startIso, p_to: endIso });
+    if (!error) {
+      return sortCities(
+        ((data || []) as any[])
+          .map(row => ({
+            name: String(row.city ?? '').trim(),
+            count: Number(row.event_count ?? 0),
+            latitude: toCoordinate(row.latitude),
+            longitude: toCoordinate(row.longitude),
+          }))
+          .filter(city => city.name),
+      );
+    }
+    citiesRpcMissing = true;
+  }
+  return fetchUpcomingCitiesFallback(startIso, endIso);
+};
+
+// The map only needs enough to place one pin per venue and list its concerts.
+// Venues and artist photos are read once on their own instead of being
+// repeated inside every concert.
 const MAP_EVENT_SELECT = `
-  id,name,starts_at,city,
-  venue_place:venue_places!events_venue_place_id_fkey (id,name,latitude,longitude),
+  id,name,starts_at,city,venue_place_id,
   event_artists (
     billing_order,is_headliner,
-    artist:artists!event_artists_artist_id_fkey (
-      id,name,
-      subjects ( media_assets ( kind,status,secure_url,thumbnail_url,created_at ) )
-    )
+    artist:artists!event_artists_artist_id_fkey (id,name)
   ),
   media_assets!media_assets_event_id_fkey (kind,status,secure_url,thumbnail_url,created_at)
 `;
@@ -93,6 +259,8 @@ export type MapEvent = {
   artist_names: string[];
 };
 
+type MapVenue = { id: string; name: string; latitude: number; longitude: number };
+
 const latestImageUrl = (assets: any[] | null | undefined): string | null => {
   const image = (assets || [])
     .filter((asset: any) => asset?.kind === 'image' && asset?.status === 'published')
@@ -100,26 +268,18 @@ const latestImageUrl = (assets: any[] | null | undefined): string | null => {
   return image?.thumbnail_url ?? image?.secure_url ?? null;
 };
 
-const toCoordinate = (value: unknown): number | null => {
-  if (value === null || value === undefined || value === '') return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-};
-
-export const mapMapEvent = (row: any): MapEvent => {
+export const mapMapEvent = (
+  row: any,
+  venues: Map<string, MapVenue>,
+  artistImages: Map<string, string>,
+): MapEvent => {
   const lineup = [...(row.event_artists || [])]
     .filter((entry: any) => entry?.artist?.id)
     .sort((left: any, right: any) =>
       Number(Boolean(right.is_headliner)) - Number(Boolean(left.is_headliner))
       || Number(left.billing_order ?? 0) - Number(right.billing_order ?? 0));
   const primary = lineup[0]?.artist ?? null;
-  const subjects = primary?.subjects;
-  const primaryMedia = Array.isArray(subjects)
-    ? subjects.flatMap((subject: any) => subject?.media_assets || [])
-    : subjects?.media_assets;
-  const venue = row.venue_place;
-  const latitude = toCoordinate(venue?.latitude);
-  const longitude = toCoordinate(venue?.longitude);
+  const venue = row.venue_place_id ? venues.get(String(row.venue_place_id)) ?? null : null;
 
   return {
     id: String(row.id),
@@ -127,27 +287,85 @@ export const mapMapEvent = (row: any): MapEvent => {
     starts_at: String(row.starts_at ?? ''),
     city: String(row.city ?? ''),
     cover_image_url: latestImageUrl(row.media_assets),
-    venue:
-      venue?.id && latitude !== null && longitude !== null
-        ? { id: String(venue.id), name: String(venue.name ?? ''), latitude, longitude }
-        : null,
+    venue,
     artist: primary
-      ? { id: String(primary.id), name: String(primary.name ?? ''), avatar_url: latestImageUrl(primaryMedia) }
+      ? { id: String(primary.id), name: String(primary.name ?? ''), avatar_url: artistImages.get(String(primary.id)) ?? null }
       : null,
     artist_ids: lineup.map((entry: any) => String(entry.artist.id)),
     artist_names: lineup.map((entry: any) => String(entry.artist.name ?? '')),
   };
 };
 
-/** Published events for the map: from the start of today on, unless includePast. */
-export const fetchMapEvents = async (options: { includePast?: boolean } = {}) => {
-  let query = supabase.from('events').select(MAP_EVENT_SELECT).eq('status', 'published');
-  if (!options.includePast) {
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    query = query.gte('starts_at', startOfToday.toISOString());
+const fetchAllPages = async (page: (from: number, to: number) => PromiseLike<{ data: any[] | null; error: any }>) => {
+  const rows: any[] = [];
+  for (let from = 0; ; from += MAX_ROWS) {
+    const { data, error } = await page(from, from + MAX_ROWS - 1);
+    if (error) throw error;
+    rows.push(...(data || []));
+    if (!data || data.length < MAX_ROWS) break;
   }
-  const { data, error } = await query.order('starts_at', { ascending: true });
-  if (error) throw error;
-  return (data || []).map(mapMapEvent);
+  return rows;
+};
+
+const fetchMapVenues = async () => {
+  const rows = await fetchAllPages((from, to) =>
+    supabase
+      .from('venue_places')
+      .select('id,name,latitude,longitude')
+      .not('latitude', 'is', null)
+      .not('longitude', 'is', null)
+      .order('id', { ascending: true })
+      .range(from, to),
+  );
+  const venues = new Map<string, MapVenue>();
+  for (const row of rows) {
+    const latitude = toCoordinate(row.latitude);
+    const longitude = toCoordinate(row.longitude);
+    if (!row.id || latitude === null || longitude === null) continue;
+    venues.set(String(row.id), { id: String(row.id), name: String(row.name ?? ''), latitude, longitude });
+  }
+  return venues;
+};
+
+// Artists' own published photos (their profile's media), newest first: the
+// sheet's thumbnail when a concert has no fan photo yet.
+const fetchArtistImages = async () => {
+  const rows = await fetchAllPages((from, to) =>
+    supabase
+      .from('media_assets')
+      .select('secure_url,thumbnail_url,created_at,subject:subjects!inner(artist_id)')
+      .eq('kind', 'image')
+      .eq('status', 'published')
+      .not('subject.artist_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .range(from, to),
+  );
+  const images = new Map<string, string>();
+  for (const row of rows) {
+    const subject = Array.isArray(row.subject) ? row.subject[0] : row.subject;
+    const artistId = subject?.artist_id ? String(subject.artist_id) : null;
+    const url = row.thumbnail_url ?? row.secure_url ?? null;
+    if (artistId && url && !images.has(artistId)) images.set(artistId, url);
+  }
+  return images;
+};
+
+/**
+ * Published events for the map: from the start of today on (or every date
+ * with includePast), up to endIso when given.
+ */
+export const fetchMapEvents = async (options: { includePast?: boolean; endIso?: string } = {}) => {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const [rows, venues, artistImages] = await Promise.all([
+    fetchAllPages((from, to) => {
+      let query = supabase.from('events').select(MAP_EVENT_SELECT).eq('status', 'published');
+      if (!options.includePast) query = query.gte('starts_at', startOfToday.toISOString());
+      if (options.endIso) query = query.lte('starts_at', options.endIso);
+      return query.order('starts_at', { ascending: true }).order('id', { ascending: true }).range(from, to);
+    }),
+    fetchMapVenues(),
+    fetchArtistImages(),
+  ]);
+  return rows.map(row => mapMapEvent(row, venues, artistImages));
 };

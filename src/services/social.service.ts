@@ -48,6 +48,9 @@ export const socialService = {
   },
 
   async getFollowersCount(subjectId: string): Promise<number> {
+    // Not readable without a session (the request would only come back 401).
+    const { data: auth } = await supabase.auth.getSession();
+    if (!auth.session) return 0;
     const { count, error } = await supabase
       .from('follows')
       .select('*', { count: 'exact', head: true })
