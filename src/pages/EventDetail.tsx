@@ -1,13 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DetailSkeleton } from '../components/ui/AppPrimitives';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Event, PostWithSetlist, Profile, VenuePlace, EventSetlistEntry, Artist } from '../lib/types';
+import { Event, Profile, VenuePlace, EventSetlistEntry, Artist } from '../lib/types';
 import { eventService } from '../services/event.service';
 import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
-import TimelinePlayer, { MediaFilter } from '../components/event/TimelinePlayer';
-import { TimelineBucket } from '../components/event/TimelineScrubber';
 import ShareSheet from '../components/ShareSheet';
 import { IconBookmark, IconBookmarkFilled, IconFlag, IconPlus, IconShare } from '../components/icons';
 import DetailHeader from '../components/ui/DetailHeader';
@@ -22,6 +20,9 @@ import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { EventStatsCard, VenueFeedbackPrompt } from '../features/community';
 import { festivalService } from '../services/festival.service';
 import EventMerchSection from '../features/merch/EventMerchSection';
+import ConcertPlayer, { type SeekRequest } from '../features/moments/ConcertPlayer';
+import { useConcertMoments, useConcertTimeline } from '../features/moments/useConcertTimeline';
+import type { Clip, TimelineMoment } from '../features/moments/concertTimeline';
 
 type EventDetailData = Event & {
   organizer?: Profile | null;
@@ -29,14 +30,7 @@ type EventDetailData = Event & {
   event_artists?: { artist: Artist | null }[];
 };
 
-// Just enough of every moment of the concert to group them by song.
-type SongMoment = Pick<
-  PostWithSetlist,
-  'id' | 'song_id' | 'resolved_song_id' | 'media_type' | 'media_url' | 'thumbnail_url' | 'captured_at' | 'created_at'
->;
-
 const pad = (value: number) => value.toString().padStart(2, '0');
-const secondOf = (iso: string) => Math.floor(new Date(iso).getTime() / 1000);
 
 const sameDay = (left: Date, right: Date) => left.toDateString() === right.toDateString();
 
@@ -60,8 +54,8 @@ const kickerDate = (date: Date) => {
   return [dayWord(date), full, time].filter(Boolean).join(' · ').toUpperCase();
 };
 
-const thumbOf = (moment: SongMoment) =>
-  moment.thumbnail_url || (moment.media_type === 'image' ? moment.media_url : null);
+const thumbOf = (moment: TimelineMoment) =>
+  moment.thumbnailUrl || (moment.mediaType === 'image' ? moment.mediaUrl : null);
 
 const EventDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -72,27 +66,17 @@ const EventDetail: React.FC = () => {
   const [festival, setFestival] = useState<{ id: string; name: string } | null>(null);
   const [loading, setLoading] = useState(() => !readCache(eventCacheKey(id)));
   const [error, setError] = useState('');
-  const [buckets, setBuckets] = useState<TimelineBucket[]>([]);
-  const [bucketsLoading, setBucketsLoading] = useState(false);
-  const [bucketsError, setBucketsError] = useState('');
-  const [bucketMoments, setBucketMoments] = useState<PostWithSetlist[]>([]);
   const [setlist, setSetlist] = useState<EventSetlistEntry[]>([]);
-  const [songMoments, setSongMoments] = useState<SongMoment[]>([]);
-  const [bucketLoading, setBucketLoading] = useState(false);
-  const [selectedBucketIndex, setSelectedBucketIndex] = useState(0);
-  const [selectedMomentIndex, setSelectedMomentIndex] = useState(0);
-  const [pendingJump, setPendingJump] = useState<SongMoment | null>(null);
+  const [seekRequest, setSeekRequest] = useState<SeekRequest>(null);
+  const [playingSongId, setPlayingSongId] = useState<string | null>(null);
   const [showShare, setShowShare] = useState(false);
   const [followed, setFollowed] = useState(false);
-  const [mediaFilter, setMediaFilter] = useState<MediaFilter>('video');
-  const [mediaCounts, setMediaCounts] = useState({ all: 0, video: 0, image: 0 });
   const [followLoading, setFollowLoading] = useState(false);
   const [attendanceStatus, setAttendanceStatus] = useState<'going' | 'attended' | null>(null);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [engagementError, setEngagementError] = useState('');
   const contentRef = useRef<HTMLElement | null>(null);
-  const bucketCacheRef = useRef<Record<string, PostWithSetlist[]>>({});
-  const bucketLoadingRef = useRef<Record<string, boolean>>({});
+  const { moments, loading: momentsLoading, error: momentsError } = useConcertMoments(id);
 
   const scrollToTop = () => {
     document.querySelector<HTMLElement>('.event-detail-content')?.scrollTo({ top: 0, behavior: 'auto' });
@@ -118,17 +102,7 @@ const EventDetail: React.FC = () => {
       setEvent(data as EventDetailData);
       setLoading(false);
 
-      const [setlistData, momentsData] = await Promise.all([
-        eventService.getEventSetlist(id),
-        supabase
-          .from('v_event_posts_with_setlist')
-          .select('id,song_id,resolved_song_id,media_type,media_url,thumbnail_url,captured_at,created_at')
-          .eq('event_id', id)
-          .order('event_offset_ms', { ascending: true, nullsFirst: false })
-          .limit(400),
-      ]);
-      setSetlist(setlistData);
-      setSongMoments(((momentsData.data || []) as unknown) as SongMoment[]);
+      setSetlist(await eventService.getEventSetlist(id));
     } catch (err) {
       // Offline with a cached copy: keep showing it.
       if (!cached) {
@@ -138,164 +112,6 @@ const EventDetail: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const loadBuckets = async (filter: MediaFilter) => {
-    setBucketsLoading(true);
-    setBucketsError('');
-    bucketCacheRef.current = {};
-    bucketLoadingRef.current = {};
-    try {
-      let bucketDataResponse:
-        | { data: TimelineBucket[] | null; error: { message: string } | null }
-        | null = null;
-      if (filter === 'all') {
-        bucketDataResponse = await supabase.rpc('event_moment_buckets', { p_event_id: id });
-      } else {
-        const filteredResponse = await supabase.rpc('event_moment_buckets_filtered', {
-          p_event_id: id,
-          p_media_type: filter,
-        });
-        if (!filteredResponse.error) {
-          bucketDataResponse = filteredResponse;
-        } else {
-          bucketDataResponse = await supabase.rpc('event_moment_buckets', { p_event_id: id });
-        }
-      }
-
-      if (bucketDataResponse?.error) {
-        throw bucketDataResponse.error;
-      }
-
-      const bucketData = (bucketDataResponse?.data || []) as TimelineBucket[];
-      const lastIndex = bucketData.length > 0 ? bucketData.length - 1 : 0;
-      setBuckets(bucketData);
-      setSelectedBucketIndex(lastIndex);
-      setSelectedMomentIndex(0);
-    } catch (err: any) {
-      setBuckets([]);
-      setBucketsError(err?.message || 'No se ha podido cargar la línea de tiempo.');
-    } finally {
-      setBucketsLoading(false);
-    }
-  };
-
-  const loadCounts = async () => {
-    try {
-      const baseQuery = supabase
-        .from('media_assets')
-        .select('id', { count: 'exact', head: true })
-        .eq('event_id', id)
-        .eq('status', 'published')
-        .is('deleted_at', null);
-      const videoQuery = supabase
-        .from('media_assets')
-        .select('id', { count: 'exact', head: true })
-        .eq('event_id', id)
-        .eq('status', 'published')
-        .eq('kind', 'video')
-        .is('deleted_at', null);
-      const imageQuery = supabase
-        .from('media_assets')
-        .select('id', { count: 'exact', head: true })
-        .eq('event_id', id)
-        .eq('status', 'published')
-        .eq('kind', 'image')
-        .is('deleted_at', null);
-
-      const [{ count: allCount }, { count: videoCount }, { count: imageCount }] = await Promise.all([
-        baseQuery,
-        videoQuery,
-        imageQuery,
-      ]);
-
-      const nextCounts = {
-        all: allCount ?? 0,
-        video: videoCount ?? 0,
-        image: imageCount ?? 0,
-      };
-      setMediaCounts(nextCounts);
-
-      if (mediaFilter === 'video' && nextCounts.video === 0 && nextCounts.image > 0) {
-        setMediaFilter('image');
-      }
-      if (mediaFilter === 'image' && nextCounts.image === 0 && nextCounts.video > 0) {
-        setMediaFilter('video');
-      }
-      if (mediaFilter !== 'all' && nextCounts.video === 0 && nextCounts.image === 0) {
-        setMediaFilter('all');
-      }
-    } catch {
-      setMediaCounts({ all: 0, video: 0, image: 0 });
-    }
-  };
-
-  const loadBucket = async (bucketTime: string, setAsSelected: boolean, filter: MediaFilter) => {
-    if (!bucketTime) return;
-    const cacheKey = `${filter}:${bucketTime}`;
-    if (bucketCacheRef.current[cacheKey]) {
-      if (setAsSelected) {
-        setBucketMoments(bucketCacheRef.current[cacheKey]);
-        setSelectedMomentIndex(0);
-      }
-      return;
-    }
-
-    if (bucketLoadingRef.current[cacheKey]) return;
-    bucketLoadingRef.current[cacheKey] = true;
-    if (setAsSelected) {
-      setBucketLoading(true);
-    }
-
-    try {
-      const bucketStart = new Date(bucketTime);
-      const bucketEnd = new Date(bucketStart.getTime() + 1000);
-      const bucketStartIso = bucketStart.toISOString();
-      const bucketEndIso = bucketEnd.toISOString();
-
-      let query = supabase
-        .from('v_event_posts_with_setlist')
-        .select('*')
-        .eq('event_id', id)
-        .or(
-          `and(captured_at.gte.${bucketStartIso},captured_at.lt.${bucketEndIso}),and(captured_at.is.null,created_at.gte.${bucketStartIso},created_at.lt.${bucketEndIso})`
-        )
-        .order('event_offset_ms', { ascending: true, nullsFirst: false })
-        .order('captured_at', { ascending: true, nullsFirst: false })
-        .order('created_at', { ascending: true });
-
-      if (filter !== 'all') {
-        query = query.eq('media_type', filter);
-      }
-
-      const { data, error: bucketError } = await query;
-
-      if (bucketError) {
-        throw bucketError;
-      }
-
-      const moments = (data || []) as unknown as PostWithSetlist[];
-      bucketCacheRef.current[cacheKey] = moments;
-      if (setAsSelected) {
-        setBucketMoments(moments);
-        setSelectedMomentIndex(0);
-      }
-    } catch (err) {
-      if (setAsSelected) {
-        setBucketMoments([]);
-      }
-    } finally {
-      bucketLoadingRef.current[cacheKey] = false;
-      if (setAsSelected) {
-        setBucketLoading(false);
-      }
-    }
-  };
-
-  const prefetchBucket = (index: number, filter: MediaFilter) => {
-    if (index < 0 || index >= buckets.length) return;
-    const bucket = buckets[index];
-    loadBucket(bucket.bucket_time, false, filter);
   };
 
   // A festival set links back to its festival.
@@ -314,76 +130,11 @@ const EventDetail: React.FC = () => {
   }, [event?.id, event?.festival_id]);
 
   useEffect(() => {
-    bucketCacheRef.current = {};
-    bucketLoadingRef.current = {};
-    setBuckets([]);
-    setBucketMoments([]);
-    setSongMoments([]);
     setSetlist([]);
-    setSelectedBucketIndex(0);
-    setSelectedMomentIndex(0);
+    setSeekRequest(null);
     loadEvent();
-    loadCounts();
     window.setTimeout(scrollToTop, 0);
   }, [id]);
-
-  useEffect(() => {
-    loadBuckets(mediaFilter);
-  }, [id, mediaFilter]);
-
-  useEffect(() => {
-    if (selectedBucketIndex >= buckets.length && buckets.length > 0) {
-      setSelectedBucketIndex(0);
-    }
-  }, [buckets, selectedBucketIndex]);
-
-  const selectedBucket = buckets[selectedBucketIndex] ?? null;
-  const totalMoments = useMemo(() => {
-    const bucketTotal = buckets.reduce((sum, bucket) => sum + bucket.moment_count, 0);
-    if (mediaFilter === 'video') {
-      return mediaCounts.video || bucketTotal;
-    }
-    if (mediaFilter === 'image') {
-      return mediaCounts.image || bucketTotal;
-    }
-    return mediaCounts.all || bucketTotal;
-  }, [buckets, mediaCounts, mediaFilter]);
-
-  useEffect(() => {
-    if (!selectedBucket) {
-      setBucketMoments([]);
-      return;
-    }
-    loadBucket(selectedBucket.bucket_time, true, mediaFilter);
-    prefetchBucket(selectedBucketIndex - 1, mediaFilter);
-    prefetchBucket(selectedBucketIndex + 1, mediaFilter);
-  }, [selectedBucket?.bucket_time, mediaFilter]);
-
-  // Tapping a song's moments moves the player to that second of the timeline.
-  useEffect(() => {
-    if (!pendingJump || bucketsLoading) return;
-    const second = secondOf(pendingJump.captured_at || pendingJump.created_at);
-    const index = buckets.findIndex(bucket => secondOf(bucket.bucket_time) === second);
-    if (index < 0) {
-      setPendingJump(null);
-      return;
-    }
-    if (index !== selectedBucketIndex) setSelectedBucketIndex(index);
-  }, [buckets, bucketsLoading, pendingJump]);
-
-  useEffect(() => {
-    if (!pendingJump) return;
-    const index = bucketMoments.findIndex(moment => moment.id === pendingJump.id);
-    if (index < 0) return;
-    setSelectedMomentIndex(index);
-    setPendingJump(null);
-  }, [bucketMoments, pendingJump]);
-
-  const jumpTo = (moment: SongMoment) => {
-    if (mediaFilter !== 'all' && moment.media_type !== mediaFilter) setMediaFilter('all');
-    setPendingJump(moment);
-    contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-  };
 
   useEffect(() => {
     const loadEngagement = async () => {
@@ -449,16 +200,31 @@ const EventDetail: React.FC = () => {
   const eventStart = useMemo(() => (event ? new Date(event.starts_at) : null), [event]);
   const eventEnd = useMemo(() => (event?.ends_at ? new Date(event.ends_at) : null), [event]);
 
-  // Moments per setlist song, in the order they were recorded.
-  const momentsBySong = useMemo(() => {
-    const map = new Map<string, SongMoment[]>();
-    for (const moment of songMoments) {
-      const songId = moment.resolved_song_id || moment.song_id;
+  const { timeline, reportDuration } = useConcertTimeline({
+    moments,
+    setlist,
+    startsAt: event?.starts_at ?? null,
+    endsAt: event?.ends_at ?? null,
+    currentUserId: user?.id ?? null,
+  });
+
+  // Clips per setlist song, in concert order (tapping a song plays its first).
+  const clipsBySong = useMemo(() => {
+    const map = new Map<string, Clip[]>();
+    for (const clip of timeline?.clips || []) {
+      const songId = clip.moment.songId;
       if (!songId) continue;
-      map.set(songId, [...(map.get(songId) || []), moment]);
+      map.set(songId, [...(map.get(songId) || []), clip]);
     }
     return map;
-  }, [songMoments]);
+  }, [timeline]);
+
+  const playClip = (clip: Clip) => {
+    setSeekRequest({ clipId: clip.id, nonce: Date.now() });
+    contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const onActiveSongChange = useCallback((songId: string | null) => setPlayingSongId(songId), []);
 
   const openUpload = (songOrdinal?: number) => {
     if (!user) {
@@ -550,7 +316,7 @@ const EventDetail: React.FC = () => {
       : now.getTime() > eventStart.getTime() + 6 * 60 * 60 * 1000
     : false;
   // After the concert, with something to show: the song-by-song view.
-  const lived = hasStarted && (setlist.length > 0 || totalMoments > 0 || songMoments.length > 0);
+  const lived = hasStarted && (setlist.length > 0 || moments.length > 0);
   const attendanceTarget: 'going' | 'attended' = isPastEvent ? 'attended' : 'going';
   const attendanceActive = attendanceStatus === attendanceTarget;
 
@@ -570,17 +336,6 @@ const EventDetail: React.FC = () => {
     updateAttendance(attendanceTarget);
   };
 
-  const handleAdvanceToNext = () => {
-    if (bucketMoments.length > selectedMomentIndex + 1) {
-      setSelectedMomentIndex(prev => prev + 1);
-      return;
-    }
-    if (selectedBucketIndex + 1 < buckets.length) {
-      setSelectedBucketIndex(prev => prev + 1);
-      setSelectedMomentIndex(0);
-    }
-  };
-
   const venue = event?.venue_place || null;
   const shareButton = (
     <button
@@ -592,26 +347,6 @@ const EventDetail: React.FC = () => {
       <IconShare size={19} />
     </button>
   );
-
-  const selectedMoment = bucketMoments[selectedMomentIndex] ?? null;
-  const playingSongId = selectedMoment ? selectedMoment.resolved_song_id || selectedMoment.song_id : null;
-
-  const renderCaption = (moment: PostWithSetlist | null) => {
-    if (!moment) {
-      return <p className="font-poster text-[34px] leading-[0.95] text-app-ink">{heroTitle}</p>;
-    }
-    const songId = moment.resolved_song_id || moment.song_id;
-    const entry = songId ? setlist.find(item => item.song_id === songId) : null;
-    const title = moment.resolved_song_title || moment.song_title || entry?.song_title;
-    return (
-      <>
-        <p className="font-mono text-[12px] font-semibold text-app-accent">
-          {title ? `SUENA AHORA${entry ? ` · ${pad(entry.ordinal)}` : ''}` : 'MOMENTO DEL PÚBLICO'}
-        </p>
-        <p className="mt-0.5 font-poster text-[34px] leading-[0.95] text-app-ink line-clamp-2">{title || heroTitle}</p>
-      </>
-    );
-  };
 
   const stageChip = eventStart ? (
     <span className="block truncate rounded-full bg-black/55 px-2.5 py-1.5 font-mono text-[11px] font-semibold uppercase text-app-ink">
@@ -633,29 +368,76 @@ const EventDetail: React.FC = () => {
 
           {lived ? (
             <div className="pb-[calc(96px+env(safe-area-inset-bottom,0px))]">
-              <TimelinePlayer
-                buckets={buckets}
-                selectedBucketIndex={selectedBucketIndex}
-                selectedMomentIndex={selectedMomentIndex}
-                moments={bucketMoments}
-                loading={bucketLoading || (bucketsLoading && bucketMoments.length === 0)}
-                totalMoments={totalMoments}
-                eventStart={eventStart}
-                mediaFilter={mediaFilter}
-                onSelectBucket={index => {
-                  setSelectedBucketIndex(index);
-                  setSelectedMomentIndex(0);
-                }}
-                onSelectMoment={index => setSelectedMomentIndex(index)}
-                onAddMoments={() => openUpload()}
-                onFilterChange={setMediaFilter}
-                autoAdvance={mediaFilter === 'video'}
-                onRequestNext={handleAdvanceToNext}
-                renderCaption={renderCaption}
-                stageChip={stageChip}
-              />
+              {momentsLoading && !timeline?.clips.length ? (
+                <div className="relative h-[min(50svh,560px)] min-h-[340px] animate-pulse bg-app-surface motion-reduce:animate-none" aria-label="Cargando momentos" />
+              ) : timeline && timeline.clips.length > 0 ? (
+                <ConcertPlayer
+                  timeline={timeline}
+                  title={heroTitle}
+                  stageChip={stageChip}
+                  seekRequest={seekRequest}
+                  onActiveSongChange={onActiveSongChange}
+                  onDuration={reportDuration}
+                />
+              ) : (
+                <section className="relative flex h-[340px] flex-col justify-end overflow-hidden bg-black px-4 pb-5">
+                  {event.cover_image_url ? (
+                    <img src={event.cover_image_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-60" />
+                  ) : (
+                    <GeneratedPoster title={heroTitle} variant="hero" />
+                  )}
+                  <div className="absolute inset-0 bg-[linear-gradient(to_top,#0d0e12_8%,rgba(13,14,18,0.2)_60%,rgba(13,14,18,0.6))]" />
+                  <div className="relative">
+                    <p className="font-poster text-[40px] leading-[0.9] text-app-ink">{heroTitle}</p>
+                    <p className="mt-2 text-sm text-[#c9c5bd]">
+                      {timeline && timeline.unplaced.length > 0
+                        ? 'Los momentos de este concierto no tienen hora: están más abajo.'
+                        : 'Aún no hay momentos. Lo que subáis se monta aquí como un solo vídeo, canción a canción.'}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => openUpload()}
+                      className="mt-3 min-h-11 rounded-full bg-app-accent px-4 text-sm font-bold text-[#14151a]"
+                    >
+                      ¿La grabaste? Sube el primero
+                    </button>
+                  </div>
+                </section>
+              )}
 
-              {bucketsError && <p className="px-4 pt-2 text-sm text-rose-400">{bucketsError}</p>}
+              {momentsError && <p className="px-4 pt-2 text-sm text-rose-400">{momentsError}</p>}
+
+              {timeline && timeline.unplaced.length > 0 ? (
+                <div className="px-4 pt-5">
+                  <h2 className="font-display text-base font-bold text-app-ink">Sin hora exacta</h2>
+                  <p className="mt-0.5 text-[12px] text-white/50">
+                    No sabemos cuándo se grabaron, así que no están en la línea de tiempo.
+                  </p>
+                  <div className="-mx-4 mt-2.5 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+                    {timeline.unplaced.map(moment => {
+                      const thumb = thumbOf(moment);
+                      return (
+                        <button
+                          key={moment.id}
+                          type="button"
+                          onClick={() => navigate(`/post/${moment.id}`)}
+                          aria-label={`Ver momento de @${moment.userName || 'anónimo'}`}
+                          className="relative h-[92px] w-[64px] shrink-0 overflow-hidden rounded-xl border border-app-line bg-app-surface"
+                        >
+                          {thumb ? (
+                            <img src={thumb} alt="" loading="lazy" className="h-full w-full object-cover" />
+                          ) : (
+                            <GeneratedPoster title={heroTitle} variant="thumb" />
+                          )}
+                          <span className="absolute inset-x-1 bottom-1 truncate text-left text-[10px] font-semibold text-white drop-shadow">
+                            @{moment.userName || 'anónimo'}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
 
               <div className="px-4 pt-4 empty:hidden">
                 <VenueFeedbackPrompt eventId={event.id} />
@@ -663,19 +445,19 @@ const EventDetail: React.FC = () => {
 
               <div className="flex items-center justify-between px-4 pt-5">
                 <h2 className="font-display text-xl font-bold text-app-ink">El concierto, canción a canción</h2>
-                <button type="button" aria-label="Compartir" className="text-white/70" onClick={() => setShowShare(true)}>
+                <button type="button" aria-label="Compartir" className="flex h-11 w-11 items-center justify-center text-white/70" onClick={() => setShowShare(true)}>
                   <IconShare size={19} />
                 </button>
               </div>
 
               {setlist.length === 0 ? (
-                <p className="px-4 pt-2 text-sm text-white/60">
+                <p className="px-4 pt-1 text-sm text-white/60">
                   Aún no hay setlist: los momentos van por orden de hora.
                 </p>
               ) : (
                 <ol className="mt-2.5 flex flex-col gap-1 px-4">
                   {setlist.map((entry, index) => {
-                    const moments = entry.song_id ? momentsBySong.get(entry.song_id) || [] : [];
+                    const songClips = entry.song_id ? clipsBySong.get(entry.song_id) || [] : [];
                     const current = Boolean(entry.song_id && entry.song_id === playingSongId);
                     const last = index === setlist.length - 1;
                     return (
@@ -694,18 +476,18 @@ const EventDetail: React.FC = () => {
                         <span className={`min-w-0 flex-1 truncate text-[15px] ${current ? 'font-bold text-app-accent' : 'font-semibold text-app-ink'}`}>
                           {entry.song_title || 'Canción sin título'}
                         </span>
-                        {moments.length > 0 ? (
+                        {songClips.length > 0 ? (
                           <button
                             type="button"
-                            className="flex"
-                            aria-label={`Ver ${moments.length} momentos de ${entry.song_title || 'esta canción'}`}
-                            onClick={() => jumpTo(moments[0])}
+                            className="flex min-h-11 items-center"
+                            aria-label={`Ver ${songClips.length} momentos de ${entry.song_title || 'esta canción'}`}
+                            onClick={() => playClip(songClips[0])}
                           >
-                            {moments.slice(0, 3).map((moment, thumbIndex) => {
-                              const thumb = thumbOf(moment);
+                            {songClips.slice(0, 3).map((clip, thumbIndex) => {
+                              const thumb = thumbOf(clip.moment);
                               return (
                                 <span
-                                  key={moment.id}
+                                  key={clip.id}
                                   className={`relative h-11 w-[34px] overflow-hidden rounded-md border-2 bg-app-surface ${
                                     current && thumbIndex === 0 ? 'border-app-accent' : 'border-app-bg'
                                   } ${thumbIndex > 0 ? '-ml-2.5' : ''}`}
@@ -723,7 +505,7 @@ const EventDetail: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => openUpload(entry.ordinal)}
-                            className="min-h-9 shrink-0 rounded-full border border-dashed border-app-line px-3 text-xs font-semibold text-[#c9c5bd]"
+                            className="min-h-11 shrink-0 rounded-full border border-dashed border-app-line px-3 text-xs font-semibold text-[#c9c5bd]"
                           >
                             ¿La grabaste?
                           </button>
@@ -738,6 +520,19 @@ const EventDetail: React.FC = () => {
                   <SetlistAttribution url={setlist.find(entry => entry.source_url)?.source_url} />
                 </div>
               )}
+              <div className="px-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => navigate('/importar')}
+                  className="flex min-h-[52px] w-full items-center gap-3 rounded-2xl border border-app-line bg-app-surface px-3.5 text-left"
+                >
+                  <IconPlus size={18} className="shrink-0 text-app-accent" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[14px] font-semibold text-app-ink">¿Lo subiste a Instagram, TikTok o YouTube?</span>
+                    <span className="block text-[12px] text-white/50">Impórtalo y aparece en su sitio de la línea de tiempo</span>
+                  </span>
+                </button>
+              </div>
               {engagementError && <p className="px-4 pt-3 text-sm text-rose-400">{engagementError}</p>}
               <div className="px-4 pt-5 empty:hidden">
                 <EventMerchSection eventId={event.id} startsAt={event.starts_at} />
