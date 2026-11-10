@@ -305,41 +305,57 @@ export const seedSources: SeedSource[] = [
   }),
   // Local scene outside the four pilot cities (agent, 2026-11-09): own
   // agenda on the venue's site, robots.txt allows it and a live dry run
-  // returned upcoming concerts. They enter inactive and pending review:
-  // activation is a separate, reviewed step (see docs/scraping.md).
+  // returned upcoming concerts. Entered inactive; the owner approved all
+  // eight for daily scraping on 2026-11-10.
   // Supersonic and Taberna J&J reuse The Events Calendar API. Left out: Es
   // Gremi and Sala Zentral (robots.txt blocks AI crawlers, and they are
   // mostly club nights), Sala El Tren (boxing, parties and techno), Café
   // Latino (agenda behind a private API), Sala Edén and Lata de Zinc (no
   // current agenda), Mardi Gras and Garufa (domains parked or for sale).
   source('Kafe Antzokia', 'https://www.kafeantzokia.eus/agenda/', 'Bilbao', 'https://www.kafeantzokia.eus/', {
+    ready: true,
+    reviewedAt: '2026-11-10T00:00:00.000Z',
     parserKey: 'ics-feed',
     structuredDataVerified: true,
     categoryAllowlist: ['Kontzertuak'],
   }),
   source('Dabadaba', 'https://dabadabass.com/es/event?type=6', 'San Sebastián', 'https://dabadabass.com/', {
+    ready: true,
+    reviewedAt: '2026-11-10T00:00:00.000Z',
     parserKey: 'dabadaba-agenda',
     structuredDataVerified: true,
   }),
   source('Rock & Blues Café', 'https://www.rockandbluescafe.com/conciertos/', 'Zaragoza', 'https://www.rockandbluescafe.com/', {
+    ready: true,
+    reviewedAt: '2026-11-10T00:00:00.000Z',
     parserKey: 'rock-blues-agenda',
     structuredDataVerified: true,
   }),
   source('Sala Planta Baja', 'https://plantabaja.club/conciertos/', 'Granada', 'https://plantabaja.club/', {
+    ready: true,
+    reviewedAt: '2026-11-10T00:00:00.000Z',
     parserKey: 'planta-baja-agenda',
     structuredDataVerified: true,
   }),
   source('Taberna J&J', 'https://tabernajj.es/', 'Granada', 'https://tabernajj.es/', {
+    ready: true,
+    reviewedAt: '2026-11-10T00:00:00.000Z',
     parserKey: 'tribe-events-api',
     structuredDataVerified: true,
   }),
   source('Garaje Beat Club', 'https://www.garajebeatclub.es/conciertos-live', 'Murcia', 'https://www.garajebeatclub.es/', {
+    ready: true,
+    reviewedAt: '2026-11-10T00:00:00.000Z',
     parserKey: 'garaje-beat-agenda',
   }),
   source('Escenario Santander', 'https://escenariosantander.com/agenda/', 'Santander', 'https://escenariosantander.com/', {
+    ready: true,
+    reviewedAt: '2026-11-10T00:00:00.000Z',
     parserKey: 'escenario-santander-agenda',
   }),
   source('Supersonic Vigo', 'https://supersonicvigo.es/', 'Vigo', 'https://supersonicvigo.es/', {
+    ready: true,
+    reviewedAt: '2026-11-10T00:00:00.000Z',
     parserKey: 'tribe-events-api',
     structuredDataVerified: true,
     categoryAllowlist: ['Conciertos'],
