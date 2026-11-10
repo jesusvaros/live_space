@@ -1,8 +1,13 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { IconFilters } from '../icons';
-import type { MapArtistFilter } from '../../hooks/useMapFilters';
+import { MAP_WHEN_LABELS, toDateInputValue, type MapArtistFilter, type MapWhen } from '../../hooks/useMapFilters';
 
 type MapFilterBarProps = {
+  when: MapWhen;
+  onWhenChange: (when: MapWhen) => void;
+  /** yyyy-mm-dd picked in the calendar, when the "Fecha" chip is active. */
+  day: string | null;
+  onDayChange: (day: string | null) => void;
   search: string;
   onSearchChange: (value: string) => void;
   artists: MapArtistFilter[];
@@ -26,7 +31,75 @@ const SearchGlyph = () => (
   </svg>
 );
 
+const CalendarGlyph = () => (
+  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true">
+    <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />
+    <path d="M3.5 10h17M8 3v4M16 3v4" />
+  </svg>
+);
+
+const dayLabel = (day: string) =>
+  new Date(`${day}T12:00:00`)
+    .toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })
+    .replace(/\./g, '');
+
+// Date chips always in sight under the search: the quick ranges plus a
+// calendar for a specific day. The same choice shows in the filters sheet.
+const DateChips: React.FC<Pick<MapFilterBarProps, 'when' | 'onWhenChange' | 'day' | 'onDayChange'>> = ({
+  when,
+  onWhenChange,
+  day,
+  onDayChange,
+}) => {
+  const dateInput = useRef<HTMLInputElement | null>(null);
+  const openCalendar = () => {
+    const input = dateInput.current;
+    if (!input) return;
+    try {
+      input.showPicker();
+    } catch {
+      input.click();
+    }
+  };
+  return (
+    <div className="flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]" role="group" aria-label="Fechas">
+      {(Object.keys(MAP_WHEN_LABELS) as Exclude<MapWhen, 'all' | 'day'>[]).map(value => (
+        <button
+          key={value}
+          type="button"
+          aria-pressed={when === value}
+          onClick={() => onWhenChange(value)}
+          className={chipClass(when === value)}
+        >
+          {value === 'next30' ? '30 días' : MAP_WHEN_LABELS[value]}
+        </button>
+      ))}
+      <button type="button" aria-pressed={when === 'day'} onClick={openCalendar} className={chipClass(when === 'day')}>
+        <CalendarGlyph />
+        {when === 'day' && day ? dayLabel(day) : 'Fecha'}
+      </button>
+      <button type="button" aria-pressed={when === 'all'} onClick={() => onWhenChange('all')} className={chipClass(when === 'all')}>
+        Cualquier fecha
+      </button>
+      <input
+        ref={dateInput}
+        type="date"
+        aria-label="Elegir un día"
+        min={toDateInputValue(new Date())}
+        value={day ?? ''}
+        onChange={event => onDayChange(event.target.value || null)}
+        className="pointer-events-none absolute h-0 w-0 opacity-0"
+        tabIndex={-1}
+      />
+    </div>
+  );
+};
+
 const MapFilterBar: React.FC<MapFilterBarProps> = ({
+  when,
+  onWhenChange,
+  day,
+  onDayChange,
   search,
   onSearchChange,
   artists,
@@ -74,6 +147,8 @@ const MapFilterBar: React.FC<MapFilterBarProps> = ({
         ) : null}
       </button>
     </div>
+
+    <DateChips when={when} onWhenChange={onWhenChange} day={day} onDayChange={onDayChange} />
 
     {artists.length > 0 ? (
       <div className="flex gap-2 overflow-x-auto px-4 pb-1">
