@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import DetailHeader from '../components/ui/DetailHeader';
 import { Spinner } from '../components/ui/AppPrimitives';
-import { formatEuros, MERCH_STATUS_LABELS, MerchOrder, merchService } from '../services/merch.service';
+import { formatEuros, MerchOrder, merchService, orderStatusLabel } from '../services/merch.service';
 
 // Every merch order of the user, newest first: the ones to collect and the
 // souvenirs of past concerts.
@@ -48,8 +48,12 @@ const MerchOrders: React.FC = () => {
               </span>
               <span className="shrink-0 text-right">
                 <span className="block font-mono text-sm text-app-ink">{formatEuros(order.totalCents)}</span>
-                <span className={`block text-[11px] font-semibold ${order.status === 'paid' ? 'text-app-accent' : 'text-white/50'}`}>
-                  {MERCH_STATUS_LABELS[order.status]}
+                <span
+                  className={`block text-[11px] font-semibold ${
+                    order.status === 'paid' || order.status === 'reserved' ? 'text-app-accent' : 'text-white/50'
+                  }`}
+                >
+                  {orderStatusLabel(order)}
                 </span>
               </span>
             </button>

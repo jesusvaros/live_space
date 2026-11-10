@@ -310,6 +310,9 @@ const EventDetail: React.FC = () => {
     }
   };
 
+  // Merch is reserved by people going to the concert: «Voy» inline.
+  const markGoingForMerch = () => (attendanceStatus ? Promise.resolve(true) : updateAttendance('going'));
+
   // Public link only: the QR upload token must never travel in a shared URL.
   const shareUrl = event ? `${window.location.origin}/event/${event.id}` : '';
   const now = new Date();
@@ -540,7 +543,14 @@ const EventDetail: React.FC = () => {
               </div>
               {engagementError && <p className="px-4 pt-3 text-sm text-rose-400">{engagementError}</p>}
               <div className="px-4 pt-5 empty:hidden">
-                <EventMerchSection eventId={event.id} startsAt={event.starts_at} />
+                <EventMerchSection
+                  eventId={event.id}
+                  startsAt={event.starts_at}
+                  endsAt={event.ends_at}
+                  venueName={venue?.name ?? null}
+                  attending={attendanceStatus !== null}
+                  onAttend={markGoingForMerch}
+                />
               </div>
               <div className="px-4 pt-5 empty:hidden">
                 <EventStatsCard eventId={event.id} />
@@ -640,7 +650,14 @@ const EventDetail: React.FC = () => {
                   </p>
                 </div>
 
-                <EventMerchSection eventId={event.id} startsAt={event.starts_at} />
+                <EventMerchSection
+                  eventId={event.id}
+                  startsAt={event.starts_at}
+                  endsAt={event.ends_at}
+                  venueName={venue?.name ?? null}
+                  attending={attendanceStatus !== null}
+                  onAttend={markGoingForMerch}
+                />
 
                 <EventStatsCard eventId={event.id} />
 

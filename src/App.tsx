@@ -40,6 +40,7 @@ const preloadPages = () => {
 const Feed = lazyPage(() => import('./pages/Feed'));
 // Dev-only playground for the concert player (mock moments); not in builds.
 const TimelinePlayground = import.meta.env.DEV ? lazyPage(() => import('./pages/dev/TimelinePlayground'), false) : null;
+const MerchPlayground = import.meta.env.DEV ? lazyPage(() => import('./pages/dev/MerchPlayground'), false) : null;
 const MerchOrder = lazyPage(() => import('./pages/MerchOrder'), false);
 const MerchOrders = lazyPage(() => import('./pages/MerchOrders'), false);
 const MerchManage = lazyPage(() => import('./pages/MerchManage'), false);
@@ -263,6 +264,7 @@ const AppRoutes = () => {
           <Route path="/importar" element={deferredPage(<Import />)} />
           <Route path="/wrapped" element={deferredPage(<Wrapped />)} />
           {TimelinePlayground ? <Route path="/dev/linea-de-tiempo" element={deferredPage(<TimelinePlayground />)} /> : null}
+          {MerchPlayground ? <Route path="/dev/merch" element={deferredPage(<MerchPlayground />)} /> : null}
           <Route
             path="/tabs"
             element={(
