@@ -135,6 +135,46 @@ export const fetchEventCardById = async (eventId: string) => {
   return rows[0] ?? null;
 };
 
+// The upload screen's concert picker: what a row shows (artist, venue, date),
+// what detection by capture time needs (starts_at, ends_at) and the poster of
+// the chosen one (the scraped image or the newest fan photo, not all of them).
+const UPLOAD_CANDIDATE_SELECT = `
+  id,name,starts_at,ends_at,city,image_url,
+  venue_place:venue_places!events_venue_place_id_fkey (id,name,city),
+  event_artists (
+    artist:artists!event_artists_artist_id_fkey (id,name)
+  ),
+  media_assets!media_assets_event_id_fkey (kind,status,secure_url,thumbnail_url,created_at)
+`;
+
+/**
+ * Concerts in the window, every city, as slim cards. They are not written to
+ * the card cache (the concert page needs the full card): use
+ * fetchEventCardById for anything beyond the picker.
+ */
+export const fetchUploadCandidates = async (options: { startIso: string; endIso: string }): Promise<EventListItem[]> => {
+  const rows: any[] = [];
+  for (let from = 0; ; from += MAX_ROWS) {
+    const { data, error } = await supabase
+      .from('events')
+      .select(UPLOAD_CANDIDATE_SELECT)
+      .eq('status', 'published')
+      .gte('starts_at', options.startIso)
+      .lte('starts_at', options.endIso)
+      .eq('media_assets.kind', 'image')
+      .eq('media_assets.status', 'published')
+      .order('created_at', { referencedTable: 'media_assets', ascending: false })
+      .limit(1, { referencedTable: 'media_assets' })
+      .order('starts_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, from + MAX_ROWS - 1);
+    if (error) throw error;
+    rows.push(...(data || []));
+    if (!data || data.length < MAX_ROWS) break;
+  }
+  return rows.map(mapEventCard);
+};
+
 /** Concerts of followed artists, venues and festivals in the window, any city. */
 export const fetchFollowedEventCards = async (options: {
   artistIds: string[];

@@ -8,7 +8,7 @@ import { buildMomentItems, MomentItem } from '../lib/moments';
 import AppShell from '../components/AppShell';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
 import { IconChevronDown, IconPlus, IconQrCode } from '../components/icons';
-import { fetchEventCardById, fetchEventCards } from '../data/eventQueries';
+import { fetchEventCardById, fetchUploadCandidates } from '../data/eventQueries';
 import { eventService } from '../services/event.service';
 import { enqueueMomentUploads } from '../media';
 import { distanceToConcert, songAtTime } from '../lib/songAssignment';
@@ -22,6 +22,7 @@ import AuthPanel from '../auth/AuthPanel';
 import { clearReturnTo, rememberReturnTo } from '../auth/returnTo';
 import { savePendingSelection, takePendingSelection } from '../media/pendingSelection';
 import { markOnboardingSeen } from '../app/onboarding';
+import { readStoredCity, sameCity } from '../features/agenda/agendaPrefs';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 // Detected only if the media was captured within this distance of the concert.
@@ -54,11 +55,15 @@ const CloseIcon = () => (
   </svg>
 );
 
-// The concert whose time best fits the media's capture times.
-const detectEvent = (items: MomentItem[], events: EventListItem[]) => {
+const inCity = (event: EventListItem, city: string | null) =>
+  Boolean(city && sameCity((event.city || event.venue_place?.city || '').trim(), city));
+
+// The concert whose time best fits the media's capture times, in any city.
+// The time decides; between concerts that fit as well, the user's city wins.
+const detectEvent = (items: MomentItem[], events: EventListItem[], city: string | null) => {
   const times = items.map(item => item.captureAt).filter((date): date is Date => Boolean(date));
   if (times.length === 0) return null;
-  let best: { event: EventListItem; hits: number; distance: number } | null = null;
+  let best: { event: EventListItem; hits: number; local: boolean; distance: number } | null = null;
   for (const event of events) {
     let hits = 0;
     let distance = 0;
@@ -68,8 +73,14 @@ const detectEvent = (items: MomentItem[], events: EventListItem[]) => {
       distance += away;
     }
     if (hits === 0 && distance / times.length > DETECT_TOLERANCE_MS) continue;
-    if (!best || hits > best.hits || (hits === best.hits && distance < best.distance)) {
-      best = { event, hits, distance };
+    const local = inCity(event, city);
+    if (
+      !best
+      || hits > best.hits
+      || (hits === best.hits && hits > 0 && local && !best.local)
+      || (hits === best.hits && (hits === 0 || local === best.local) && distance < best.distance)
+    ) {
+      best = { event, hits, local, distance };
     }
   }
   return best?.event ?? null;
@@ -157,7 +168,9 @@ const QrWelcome: React.FC<{
 const Upload: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  // Where the user goes to concerts, when known: their concerts go first.
+  const userCity = readStoredCity() || profile?.primary_city || null;
   const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
   // A concert QR carries ?qr=<upload token> (resolved below) instead of the id.
   const presetToken = params.get('qr');
@@ -277,15 +290,26 @@ const Upload: React.FC = () => {
     };
   }, [event?.id]);
 
-  // Concerts to choose from: around the capture times, or the last two weeks.
+  // Concerts to choose from, every city: around the capture times, or the
+  // last two weeks. Slim rows: just what the picker and detection need.
   const loadCandidates = async (forItems: MomentItem[]) => {
     const times = forItems.map(item => item.captureAt?.getTime()).filter((time): time is number => Boolean(time));
     const now = Date.now();
     const from = times.length ? Math.min(...times) - DAY_MS : now - 14 * DAY_MS;
     const to = times.length ? Math.max(...times) + DAY_MS / 2 : now + DAY_MS;
-    const list = await fetchEventCards({ startIso: new Date(from).toISOString(), endIso: new Date(to).toISOString() });
+    const list = await fetchUploadCandidates({ startIso: new Date(from).toISOString(), endIso: new Date(to).toISOString() });
     setCandidates(list);
     return list;
+  };
+
+  // A picked or detected concert comes as a slim row; the full card fills in
+  // behind it (and opens the concert page instantly after publishing).
+  const completeEvent = (picked: EventListItem) => {
+    fetchEventCardById(picked.id)
+      .then(full => {
+        if (full) setEvent(current => (current?.id === full.id ? full : current));
+      })
+      .catch(() => undefined);
   };
 
   useEffect(() => {
@@ -306,10 +330,11 @@ const Upload: React.FC = () => {
     setDetecting(true);
     try {
       const list = await loadCandidates(next);
-      const found = detectEvent(next, list);
+      const found = detectEvent(next, list, userCity);
       if (found) {
         setEvent(found);
         setChoice('detected');
+        completeEvent(found);
       }
     } catch {
       // The user can still pick the concert by hand.
@@ -338,11 +363,12 @@ const Upload: React.FC = () => {
     return event ? songAtTime(setlist, item.captureAt, event.starts_at, event.ends_at) : null;
   };
 
-  const selectEvent = (selected: EventListItem) => {
+  const selectEvent = (selected: EventListItem, complete = false) => {
     setEvent(selected);
     setChoice('chosen');
     setSongOverrides({});
     setPickerOpen(false);
+    if (complete) completeEvent(selected);
   };
 
   const handleQrDetected = async (value: string) => {
@@ -416,14 +442,18 @@ const Upload: React.FC = () => {
 
   const filteredCandidates = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const sorted = [...candidates].sort((left, right) => right.starts_at.localeCompare(left.starts_at));
+    // Newest first, the user's city before the rest.
+    const sorted = [...candidates].sort(
+      (left, right) =>
+        Number(inCity(right, userCity)) - Number(inCity(left, userCity)) || right.starts_at.localeCompare(left.starts_at),
+    );
     if (!query) return sorted;
     return sorted.filter(candidate =>
       [candidate.name, getPrimaryArtistName(candidate), candidate.venue_place?.name, candidate.city]
         .filter(Boolean)
         .some(value => String(value).toLowerCase().includes(query)),
     );
-  }, [candidates, search]);
+  }, [candidates, search, userCity]);
 
   const cover = event ? getEventCoverImage(event) : null;
   const pickingSongFor = items.find(item => item.id === songPickerFor) || null;
@@ -668,7 +698,7 @@ const Upload: React.FC = () => {
                 <li key={candidate.id}>
                   <button
                     type="button"
-                    onClick={() => selectEvent(candidate)}
+                    onClick={() => selectEvent(candidate, true)}
                     className={`flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left ${
                       candidate.id === event?.id ? 'bg-white/[0.08]' : ''
                     }`}

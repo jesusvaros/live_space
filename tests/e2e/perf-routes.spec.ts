@@ -1,14 +1,32 @@
-import { test } from '@playwright/test';
+import { test, type Page } from '@playwright/test';
 import fs from 'node:fs';
 
 // Supabase traffic per screen (calls, KB, time until the network is quiet),
 // against the API in .env. Opt-in, never part of the normal e2e run:
 //   PERF_OUT=/tmp/perf.txt npm run perf:routes
 // The ids below are real concerts, artists and venues of the production data.
+// Screens behind a login (/empezar, the manager profiles) are not reachable
+// anonymously and are not measured here.
 
-const ROUTES = [
+// A 1x1 PNG. Its capture time is the file's date (now), so picking it makes
+// the upload screen look for a concert around now.
+const PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+  'base64',
+);
+
+// [name, path, what to do once it has loaded]
+type Route = [string, string, ((page: Page) => Promise<unknown>)?];
+
+const ROUTES: Route[] = [
   ['Inicio', '/tabs/events'],
-  ['Explorar', '/tabs/discover'],
+  ['Explorar (artistas)', '/tabs/discover'],
+  ['Subir: elegir concierto', '/tabs/upload', page => page.getByRole('button', { name: 'Elegir', exact: true }).click()],
+  [
+    'Subir: detectar por la foto',
+    '/tabs/upload',
+    page => page.locator('input[type=file]').setInputFiles({ name: 'foto.png', mimeType: 'image/png', buffer: PNG }),
+  ],
   ['Mapa', '/tabs/map'],
   ['Momentos', '/tabs/feed'],
   ['Concierto', '/event/0e733611-37cf-4ccb-b082-9bbcd8cf36a5'],
@@ -22,7 +40,7 @@ test('api calls per route', async ({ page }) => {
   test.setTimeout(240_000);
   await page.addInitScript(() => window.localStorage.setItem('live_space.onboarding_seen', '1'));
   const rows: string[] = [];
-  for (const [name, path] of ROUTES) {
+  for (const [name, path, action] of ROUTES) {
     const calls: { url: string; ms: number; bytes: number; status: number }[] = [];
     const started = new Map<string, number>();
     const onReq = (r: any) => started.set(r.url() + r.method(), Date.now());
@@ -39,6 +57,12 @@ test('api calls per route', async ({ page }) => {
     const t = Date.now();
     await page.goto(path);
     await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {});
+    if (action) {
+      await action(page);
+      // The action's requests start after a short debounce or file read.
+      await page.waitForTimeout(1_500);
+      await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {});
+    }
     const total = Date.now() - t;
     page.off('request', onReq);
     page.off('response', onRes);

@@ -8,7 +8,7 @@ const EMPTY_CITIES: UpcomingCity[] = [];
 
 /**
  * Concert cards in the window. With a city, only that city's (what Inicio
- * shows); without one, every city (the agenda setup ranks genres nationwide).
+ * shows); without one, every city.
  */
 export const useEventsList = (options: { startIso: string; endIso: string; city?: string | null; enabled?: boolean }) => {
   const cityKey = options.city ? options.city.trim().toLocaleLowerCase('es') : '';
@@ -41,5 +41,5 @@ export const useUpcomingCities = (options: { startIso: string; endIso: string })
   const { data, status } = useQuery<UpcomingCity[]>(queryKey, () => fetchUpcomingCities(options.startIso, options.endIso), {
     ttlMs: 5 * 60_000,
   });
-  return { cities: data || EMPTY_CITIES, ready: status === 'success' || status === 'error' };
+  return { cities: data || EMPTY_CITIES, ready: status === 'success' || status === 'error', failed: status === 'error' };
 };

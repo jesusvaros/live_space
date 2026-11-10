@@ -8,19 +8,6 @@ import EventPosterTile from '../components/EventPosterTile';
 
 const eventCity = (event: EventListItem) => (event.city || event.venue_place?.city || '').trim();
 
-// Cities come from the data: a new city shows up as soon as it has concerts.
-export const deriveCities = (events: EventListItem[]) => {
-  const counts = new Map<string, { name: string; count: number }>();
-  for (const event of events) {
-    const name = eventCity(event);
-    if (!name) continue;
-    const key = name.toLocaleLowerCase('es');
-    const current = counts.get(key);
-    counts.set(key, { name: current?.name || name, count: (current?.count || 0) + 1 });
-  }
-  return Array.from(counts.values()).sort((left, right) => right.count - left.count || left.name.localeCompare(right.name, 'es'));
-};
-
 const PinIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff5b2e" strokeWidth="2" aria-hidden="true">
     <path d="M12 21s-7-6.2-7-11.5a7 7 0 0114 0C19 14.8 12 21 12 21z" />
