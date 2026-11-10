@@ -34,7 +34,8 @@ const REASONS: Record<string, string> = {
   variant: "Uno de los productos ya no está disponible.",
   quantity: "Cantidad no válida.",
   lines: "Pedido no válido.",
-  too_many_pending: "Tienes pedidos sin pagar. Termínalos o espera 30 minutos.",
+  too_many_pending: "Tienes tres pedidos o reservas sin pagar. Termina o cancela alguno.",
+  not_attending: "Márcate «Voy» en el concierto para reservar su merch.",
 };
 
 Deno.serve(async (request) => {
