@@ -22,6 +22,9 @@ import { fetchEventCards } from '../data/eventQueries';
 import { fetchPostCards } from '../data/postQueries';
 import ConcertHistorySection from '../features/agenda/ConcertHistorySection';
 
+// How far back a managed artist's or venue's concert list goes.
+const MANAGED_HISTORY_DAYS = 180;
+
 const Profile: React.FC = () => {
   const { 
     user, 
@@ -186,33 +189,48 @@ const Profile: React.FC = () => {
           let artistEvents: Event[] = [];
           let venueEvents: Event[] = [];
 
+          // A managed artist's or venue's concerts: what is coming up and the
+          // last months, not their whole history. Their moments come from
+          // every concert, past ones included.
+          const historyStartIso = new Date(Date.now() - MANAGED_HISTORY_DAYS * 24 * 60 * 60 * 1000).toISOString();
+          let entityPostsRequest: Promise<unknown[]> = Promise.resolve([]);
+          // Sent alongside the concerts; a failure surfaces in the Promise.all below.
+          const startPosts = (request: Promise<unknown[]>) => {
+            request.catch(() => undefined);
+            entityPostsRequest = request;
+          };
+
           const activeRole = isManagementMode && activeEntity ? activeEntity.type : profile?.role;
           if (activeRole === 'artist') {
             const artistEntityId = isManagementMode && activeEntity ? activeEntity.artist?.id : null;
             if (artistEntityId) {
               const { data: artistEventData, error: artistEventError } = await supabase
                 .from('event_artists')
-                .select('event_id')
+                .select('event_id,events!inner(starts_at)')
                 .eq('artist_id', artistEntityId);
               if (artistEventError) throw artistEventError;
-              artistEvents = await fetchEventCards({
-                eventIds: (artistEventData || []).map(row => row.event_id),
-              });
+              const rows = (artistEventData || []) as unknown as { event_id: string; events: { starts_at: string } | null }[];
+              const allIds = rows.map(row => row.event_id);
+              const recentIds = rows
+                .filter(row => Date.parse(row.events?.starts_at ?? '') >= Date.parse(historyStartIso))
+                .map(row => row.event_id);
+              startPosts(fetchPostCards({ eventIds: allIds, from: 0, to: 11 }));
+              artistEvents = await fetchEventCards({ eventIds: recentIds, startIso: historyStartIso });
             }
           }
 
           if (activeRole === 'venue') {
             const venuePlaceId = isManagementMode && activeEntity ? activeEntity.venue?.id : null;
             if (venuePlaceId) {
-              venueEvents = await fetchEventCards({ venueId: venuePlaceId });
+              startPosts(fetchPostCards({ venueId: venuePlaceId, from: 0, to: 11 }));
+              venueEvents = await fetchEventCards({ venueId: venuePlaceId, startIso: historyStartIso });
             }
           }
 
-          const entityEventIds = [...artistEvents, ...venueEvents].map(event => event.id);
           const [liked, attended, entityPosts] = await Promise.all([
             fetchEventCards({ eventIds: likedIds }),
             fetchEventCards({ eventIds: attendedIds }),
-            isManagementMode ? fetchPostCards({ eventIds: entityEventIds, from: 0, to: 11 }) : Promise.resolve([]),
+            isManagementMode ? entityPostsRequest : Promise.resolve([]),
           ]);
           const posts = (isManagementMode ? entityPosts : personalPosts).slice(0, 12) as PostWithSetlist[];
 

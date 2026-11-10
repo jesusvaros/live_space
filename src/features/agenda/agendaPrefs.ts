@@ -1,5 +1,5 @@
 import { EventListItem } from '../events/types';
-import { calculateDistanceKm, toNumber } from '../events/utils';
+import { calculateDistanceKm } from '../events/utils';
 
 // Device-level preferences of the personal agenda. The home reads the city
 // key directly, so its name and plain-string format must not change.
@@ -59,20 +59,6 @@ export const eventCity = (event: EventListItem) => (event.city || event.venue_pl
 export const sameCity = (left: string, right: string) =>
   left.toLocaleLowerCase('es') === right.toLocaleLowerCase('es');
 
-// The city of the closest concert, however far it is.
-export const nearestEventCity = (events: EventListItem[], location: { lat: number; lng: number }) => {
-  let best: { city: string; distanceKm: number } | null = null;
-  for (const event of events) {
-    const name = eventCity(event);
-    const eventLat = toNumber(event.latitude ?? event.venue_place?.latitude ?? null);
-    const eventLng = toNumber(event.longitude ?? event.venue_place?.longitude ?? null);
-    if (!name || eventLat === null || eventLng === null) continue;
-    const distanceKm = calculateDistanceKm(location.lat, location.lng, eventLat, eventLng);
-    if (!best || distanceKm < best.distanceKm) best = { city: name, distanceKm };
-  }
-  return best;
-};
-
 // The closest of the cities with concerts, by their representative point.
 export const nearestCity = (
   cities: { name: string; latitude: number | null; longitude: number | null }[],
@@ -89,22 +75,3 @@ export const nearestCity = (
 
 export const eventGenres = (event: EventListItem) =>
   (event.event_artists || []).flatMap(entry => entry.artist?.genres || []).filter(Boolean);
-
-// Genres present in the listings, the given city's first, most common first.
-export const deriveGenres = (events: EventListItem[], city?: string | null) => {
-  const counts = new Map<string, { key: string; label: string; local: number; total: number }>();
-  for (const event of events) {
-    const local = city ? sameCity(eventCity(event), city) : false;
-    for (const genre of new Set(eventGenres(event).map(item => item.trim()))) {
-      const key = genreKey(genre);
-      if (!key) continue;
-      const current = counts.get(key) || { key, label: genre.charAt(0).toLocaleUpperCase('es') + genre.slice(1), local: 0, total: 0 };
-      current.total += 1;
-      if (local) current.local += 1;
-      counts.set(key, current);
-    }
-  }
-  return Array.from(counts.values()).sort(
-    (left, right) => right.local - left.local || right.total - left.total || left.label.localeCompare(right.label, 'es'),
-  );
-};

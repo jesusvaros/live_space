@@ -8,11 +8,14 @@ export const fetchPostCards = async (options: {
   authorId?: string;
   eventId?: string;
   eventIds?: string[];
+  /** Moments of any concert at this venue. */
+  venueId?: string;
 } = {}) => {
   let query = supabase.from('v_post_cards').select('*');
   if (options.postId) query = query.eq('id', options.postId);
   if (options.authorId) query = query.eq('user_id', options.authorId);
   if (options.eventId) query = query.eq('event_id', options.eventId);
+  if (options.venueId) query = query.eq('events->venue_place->>id', options.venueId);
   if (options.eventIds) {
     if (options.eventIds.length === 0) return [];
     query = query.in('event_id', options.eventIds);

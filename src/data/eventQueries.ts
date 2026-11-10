@@ -141,6 +141,46 @@ export const fetchEventCardById = async (eventId: string) => {
   return rows[0] ?? null;
 };
 
+// The upload screen's concert picker: what a row shows (artist, venue, date),
+// what detection by capture time needs (starts_at, ends_at) and the poster of
+// the chosen one (the scraped image or the newest fan photo, not all of them).
+const UPLOAD_CANDIDATE_SELECT = `
+  id,name,starts_at,ends_at,city,image_url,
+  venue_place:venue_places!events_venue_place_id_fkey (id,name,city),
+  event_artists (
+    artist:artists!event_artists_artist_id_fkey (id,name)
+  ),
+  media_assets!media_assets_event_id_fkey (kind,status,secure_url,thumbnail_url,created_at)
+`;
+
+/**
+ * Concerts in the window, every city, as slim cards. They are not written to
+ * the card cache (the concert page needs the full card): use
+ * fetchEventCardById for anything beyond the picker.
+ */
+export const fetchUploadCandidates = async (options: { startIso: string; endIso: string }): Promise<EventListItem[]> => {
+  const rows: any[] = [];
+  for (let from = 0; ; from += MAX_ROWS) {
+    const { data, error } = await supabase
+      .from('events')
+      .select(UPLOAD_CANDIDATE_SELECT)
+      .eq('status', 'published')
+      .gte('starts_at', options.startIso)
+      .lte('starts_at', options.endIso)
+      .eq('media_assets.kind', 'image')
+      .eq('media_assets.status', 'published')
+      .order('created_at', { referencedTable: 'media_assets', ascending: false })
+      .limit(1, { referencedTable: 'media_assets' })
+      .order('starts_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, from + MAX_ROWS - 1);
+    if (error) throw error;
+    rows.push(...(data || []));
+    if (!data || data.length < MAX_ROWS) break;
+  }
+  return rows.map(mapEventCard);
+};
+
 /** Concerts of followed artists, venues and festivals in the window, any city. */
 export const fetchFollowedEventCards = async (options: {
   artistIds: string[];
@@ -244,8 +284,15 @@ export const fetchUpcomingCities = async (startIso: string, endIso: string): Pro
 // The map only needs enough to place one pin per venue and list its concerts.
 // Venues and artist photos are read once on their own instead of being
 // repeated inside every concert.
+// The app runs on https: an http:// image is blocked as mixed content.
+const httpsOnly = (url: string | null | undefined) => (url && url.startsWith('https://') ? url : null);
+
 const MAP_EVENT_SELECT = `
+<<<<<<< HEAD
   id,name,starts_at,city,venue_place_id,poster_thumb_url,poster_url,
+=======
+  id,name,starts_at,city,venue_place_id,image_url,
+>>>>>>> origin/main
   event_artists (
     billing_order,is_headliner,
     artist:artists!event_artists_artist_id_fkey (id,name)
@@ -294,8 +341,14 @@ export const mapMapEvent = (
     name: String(row.name ?? ''),
     starts_at: String(row.starts_at ?? ''),
     city: String(row.city ?? ''),
+<<<<<<< HEAD
     cover_image_url: latestImageUrl(row.media_assets),
     cover_sources: uniqueImageUrls([latestImageUrl(row.media_assets), row.poster_thumb_url, row.poster_url]),
+=======
+    // Fan photos first, then the venue's poster (the map only showed fan
+    // photos, which almost no concert has yet).
+    cover_image_url: latestImageUrl(row.media_assets) ?? httpsOnly(row.image_url),
+>>>>>>> origin/main
     venue,
     artist: primary
       ? { id: String(primary.id), name: String(primary.name ?? ''), avatar_url: artistImages.get(String(primary.id)) ?? null }
