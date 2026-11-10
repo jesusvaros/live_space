@@ -1,0 +1,39 @@
+name: Mirror event posters
+
+# The daily scrape already mirrors new posters (up to 600 per run). This runs
+# the same step on its own, e.g. for the first backfill or after a failure.
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Máximo de URLs a copiar en esta pasada"
+        default: "2000"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Mirror event posters to R2
+        run: npm run posters:mirror -- --apply --limit "$LIMIT"
+        env:
+          LIMIT: ${{ inputs.limit }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
+          R2_JURISDICTION: ${{ secrets.R2_JURISDICTION }}
+          R2_MAX_STORED_BYTES: ${{ secrets.R2_MAX_STORED_BYTES }}
