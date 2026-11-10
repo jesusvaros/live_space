@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DetailSkeleton } from '../components/ui/AppPrimitives';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Event, Profile, VenuePlace, EventSetlistEntry, Artist } from '../lib/types';
 import { eventService } from '../services/event.service';
@@ -22,6 +22,7 @@ import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { EventStatsCard, VenueFeedbackPrompt } from '../features/community';
 import { festivalService } from '../services/festival.service';
 import EventMerchSection from '../features/merch/EventMerchSection';
+import AttendanceSuggestion from '../features/events/AttendanceSuggestion';
 import ConcertPlayer, { type SeekRequest } from '../features/moments/ConcertPlayer';
 import { useConcertMoments, useConcertTimeline } from '../features/moments/useConcertTimeline';
 import type { Clip, TimelineMoment } from '../features/moments/concertTimeline';
@@ -61,6 +62,9 @@ const thumbOf = (moment: TimelineMoment) =>
 
 const EventDetail: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  // Just published to a concert we recognised from their photos (Upload).
+  const suggestAttendance = Boolean((location.state as { suggestAttendance?: boolean } | null)?.suggestAttendance);
   const id = useRouteEntityId() || '';
   const { user } = useAuth();
   const { isFollowing } = useFollowedSubjects();
@@ -666,6 +670,19 @@ const EventDetail: React.FC = () => {
               </div>
             </div>
           )}
+
+          {suggestAttendance ? (
+            <AttendanceSuggestion
+              key={event.id}
+              eventId={event.id}
+              startsAt={event.starts_at}
+              endsAt={event.ends_at}
+              onMarked={status => setAttendanceStatus(status)}
+              // Asked once: going back to this page does not ask again.
+              onClose={() => navigate(`${location.pathname}${location.search}`, { replace: true, state: null })}
+              className="fixed inset-x-4 bottom-[calc(84px+env(safe-area-inset-bottom,0px))] z-[1301] shadow-xl"
+            />
+          ) : null}
 
           <div className="fixed inset-x-0 bottom-0 z-[1300] flex items-center gap-2 border-t border-app-line bg-app-bg/95 px-4 pb-[calc(10px+env(safe-area-inset-bottom,0px))] pt-2.5 backdrop-blur-xl">
             {isPastEvent || lived ? (
