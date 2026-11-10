@@ -265,6 +265,11 @@ nunca pisa una elegida a mano (`image_source = 'manual'`):
 - Salas: la imagen de compartir de su web oficial, descartando logos, PNG/SVG y
   enlaces de CDN de redes sociales, que caducan.
 
+Después, `npm run posters:mirror -- --apply` (paso diario, `continue-on-error`)
+copia a R2 los carteles nuevos o cambiados de los próximos conciertos en dos WebP
+pequeños; la app nunca pide el original si hay copia. Ver
+[Media → Portadas de concierto en R2](./media.md#portadas-de-concierto-en-r2).
+
 Por encima de todo eso, las vistas `v_subject_artists` y `v_subject_venues`
 ponen como portada la última foto del público con la reutilización permitida
 (`posts.allow_reuse`, autor con perfil público) y exponen el crédito en

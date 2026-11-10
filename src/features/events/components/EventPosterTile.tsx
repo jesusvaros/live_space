@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
 import { Artist, Event, Profile, VenuePlace } from '../../../lib/types';
 import GeneratedPoster from '../../../components/ui/GeneratedPoster';
+import CoverImage from '../../../components/ui/CoverImage';
+import { eventCoverSources } from '../../../lib/eventCover';
 
 type EventPosterTileArtist = Pick<Artist, 'id' | 'name' | 'avatar_url'>;
 
@@ -49,10 +51,9 @@ const EventPosterTile: React.FC<EventPosterTileProps> = ({
   kicker,
   badge,
 }) => {
-  const imageUrl =
-    event.cover_image_url ||
-    event.event_artists?.find(item => item.artist?.avatar_url)?.artist?.avatar_url ||
-    null;
+  const coverSources = eventCoverSources(event, 'thumb', [
+    event.event_artists?.find(item => item.artist?.avatar_url)?.artist?.avatar_url,
+  ]);
 
   const resolvedTitle = useMemo(() => {
     if (title) return title;
@@ -76,11 +77,11 @@ const EventPosterTile: React.FC<EventPosterTileProps> = ({
       onClick={() => onSelect(event)}
     >
       <div className="relative aspect-[4/5] overflow-hidden rounded-xl bg-app-surface">
-        {imageUrl ? (
-          <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
-        ) : (
-          <GeneratedPoster title={resolvedTitle} />
-        )}
+        <CoverImage
+          sources={coverSources}
+          className="absolute inset-0 h-full w-full object-cover"
+          fallback={<GeneratedPoster title={resolvedTitle} />}
+        />
         {badge && (
           <span className="absolute left-2 top-2 rounded-full bg-black/70 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-white">
             {badge}

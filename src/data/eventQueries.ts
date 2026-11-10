@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import type { EventListItem } from '../features/events/types';
 import { mapArtist, mapEvent, mapVenue } from './canonicalMappers';
+import { posterChain, posterSourcesFromRow, uniqueImageUrls } from '../lib/eventCover';
 import { eventCacheKey, writeCache } from './pageCache';
 
 // Only the columns the card mappers keep (mapEvent / mapVenue / mapArtist):
@@ -9,7 +10,7 @@ import { eventCacheKey, writeCache } from './pageCache';
 const EVENT_CARD_SELECT = `
   id,venue_place_id,name,description,starts_at,ends_at,city,address,latitude,longitude,genres,
   is_free,price_tiers,ticket_url,source_url,status,created_by,created_at,updated_at,image_url,
-  share_tag,festival_id,room,
+  poster_thumb_url,poster_url,share_tag,festival_id,room,
   venue_place:venue_places!events_venue_place_id_fkey (id,name,city,address,latitude,longitude),
   event_artists (
     artist:artists!event_artists_artist_id_fkey (id,name,genres,image_url)
@@ -42,12 +43,17 @@ export const mapEventCard = (row: any): EventListItem => {
   const publishedImages = (row.media_assets || [])
     .filter((asset: any) => asset.kind === 'image' && asset.status === 'published')
     .sort((left: any, right: any) => String(right.created_at).localeCompare(String(left.created_at)));
-  // Fan photos first; the scraped poster only fills the empty state.
+  // Fan photos first; the poster (our R2 copy, else the source's https URL)
+  // only fills the empty state. Lists ask for poster_sources.thumb instead.
+  const posterSources = posterSourcesFromRow(row);
   const coverImageUrl =
-    publishedImages[0]?.thumbnail_url ?? publishedImages[0]?.secure_url ?? row.image_url ?? null;
+    uniqueImageUrls([publishedImages[0]?.thumbnail_url, publishedImages[0]?.secure_url])[0]
+    ?? posterChain(posterSources, 'card')[0]
+    ?? null;
 
   return {
     ...mapEvent({ ...row, cover_image_url: coverImageUrl }),
+    poster_sources: posterSources,
     venue_place: row.venue_place ? mapVenue({ ...row.venue_place, photos: [] }) : null,
     event_artists: (row.event_artists || []).map((entry: any) => ({
       artist: entry.artist ? mapArtist({ ...entry.artist, avatar_url: entry.artist.image_url ?? null }) : null,
@@ -239,7 +245,7 @@ export const fetchUpcomingCities = async (startIso: string, endIso: string): Pro
 // Venues and artist photos are read once on their own instead of being
 // repeated inside every concert.
 const MAP_EVENT_SELECT = `
-  id,name,starts_at,city,venue_place_id,
+  id,name,starts_at,city,venue_place_id,poster_thumb_url,poster_url,
   event_artists (
     billing_order,is_headliner,
     artist:artists!event_artists_artist_id_fkey (id,name)
@@ -253,6 +259,8 @@ export type MapEvent = {
   starts_at: string;
   city: string;
   cover_image_url: string | null;
+  /** Fan photo, then the R2 poster thumbnail and card size (never the original). */
+  cover_sources: string[];
   venue: { id: string; name: string; latitude: number; longitude: number } | null;
   artist: { id: string; name: string; avatar_url: string | null } | null;
   artist_ids: string[];
@@ -287,6 +295,7 @@ export const mapMapEvent = (
     starts_at: String(row.starts_at ?? ''),
     city: String(row.city ?? ''),
     cover_image_url: latestImageUrl(row.media_assets),
+    cover_sources: uniqueImageUrls([latestImageUrl(row.media_assets), row.poster_thumb_url, row.poster_url]),
     venue,
     artist: primary
       ? { id: String(primary.id), name: String(primary.name ?? ''), avatar_url: artistImages.get(String(primary.id)) ?? null }

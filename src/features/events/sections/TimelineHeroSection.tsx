@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserConcertHeroState } from '../hooks/useUserConcertHero';
-import { getEventCoverImage, getPrimaryArtistName } from '../utils';
+import { getEventCoverSources, getPrimaryArtistName } from '../utils';
+import CoverImage from '../../../components/ui/CoverImage';
 import { EventListItem } from '../types';
 
 type TimelineHeroSectionProps = {
@@ -79,14 +80,17 @@ const TimelineHeroSection: React.FC<TimelineHeroSectionProps> = ({ state, featur
     return (
       <section className={shell}>
         {Array.from({ length: slides }, (_, index) => (
-          <img
+          <CoverImage
             key={index}
-            src={(featured[index] && getEventCoverImage(featured[index])) || FALLBACK_PHOTOS[index % FALLBACK_PHOTOS.length]}
-            alt=""
+            sources={[
+              ...(featured[index] ? getEventCoverSources(featured[index], 'card') : []),
+              FALLBACK_PHOTOS[index % FALLBACK_PHOTOS.length],
+            ]}
             className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 motion-reduce:transition-none ${
               index === slide % slides ? 'opacity-100' : 'opacity-0'
             }`}
-            loading={index === 0 ? 'eager' : 'lazy'}
+            eager={index === 0}
+            fallback={null}
           />
         ))}
         {shade}
@@ -106,14 +110,14 @@ const TimelineHeroSection: React.FC<TimelineHeroSectionProps> = ({ state, featur
     );
   }
 
-  const image = getEventCoverImage(state.event) || FALLBACK_PHOTOS[0];
+  const imageSources = [...getEventCoverSources(state.event, 'card'), FALLBACK_PHOTOS[0]];
   const artist = getPrimaryArtistName(state.event);
   const venue = getVenueName(state.event);
 
   if (state.kind === 'upcoming') {
     return (
       <section className={shell}>
-        <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <CoverImage sources={imageSources} eager className="absolute inset-0 h-full w-full object-cover" fallback={null} />
         {shade}
         <button type="button" className={`${body} text-left`} onClick={() => navigate(`/event/${state.event.id}`)}>
           <Chip>Vas · {dayLabel(state.event.starts_at)} · {venue}</Chip>
@@ -126,7 +130,7 @@ const TimelineHeroSection: React.FC<TimelineHeroSectionProps> = ({ state, featur
   // just_attended
   return (
     <section className={shell}>
-      <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      <CoverImage sources={imageSources} eager className="absolute inset-0 h-full w-full object-cover" fallback={null} />
       {shade}
       {onDismissPendingMoments ? (
         <button

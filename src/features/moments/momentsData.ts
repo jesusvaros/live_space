@@ -9,10 +9,12 @@ export type MomentEvent = MatchableEvent & {
   venueName: string | null;
   artistName: string | null;
   imageUrl: string | null;
+  /** R2 thumbnail of the poster once mirrored. */
+  posterThumbUrl: string | null;
 };
 
 const EVENT_SELECT = `
-  id,name,starts_at,ends_at,latitude,longitude,image_url,
+  id,name,starts_at,ends_at,latitude,longitude,image_url,poster_thumb_url,
   venue_place:venue_places!events_venue_place_id_fkey (name,latitude,longitude),
   event_artists (
     billing_order,is_headliner,
@@ -49,6 +51,7 @@ const mapEvent = (row: any, relation: UserEventRelation, setlist: MatchableSetli
   venueName: row.venue_place?.name ?? null,
   artistName: headlinerName(row.event_artists),
   imageUrl: row.image_url ?? null,
+  posterThumbUrl: row.poster_thumb_url ?? null,
   relation,
   setlist,
 });

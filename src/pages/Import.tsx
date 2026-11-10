@@ -5,6 +5,7 @@ import AppShell from '../components/AppShell';
 import { Spinner } from '../components/ui/AppPrimitives';
 import Button from '../components/ui/Button';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
+import CoverImage from '../components/ui/CoverImage';
 import { IconChevronLeft } from '../components/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { setlistService } from '../services/setlist.service';
@@ -47,11 +48,11 @@ const ConcertRow: React.FC<{
   const body = (
     <>
       <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-app-surface-strong">
-        {event.image_url ? (
-          <img src={event.image_url} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <GeneratedPoster title={event.artists[0] || event.name} variant="thumb" className="h-full w-full" />
-        )}
+        <CoverImage
+          sources={[event.poster_thumb_url, event.image_url]}
+          className="h-full w-full object-cover"
+          fallback={<GeneratedPoster title={event.artists[0] || event.name} variant="thumb" className="h-full w-full" />}
+        />
       </div>
       <div className="min-w-0 flex-1 text-left">
         <p className="truncate font-display text-[15px] font-bold text-white">{event.artists[0] || event.name}</p>

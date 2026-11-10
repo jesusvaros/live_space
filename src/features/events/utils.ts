@@ -1,4 +1,5 @@
 import { EventListItem } from './types';
+import { eventCoverSources, type CoverSize } from '../../lib/eventCover';
 
 export const toNumber = (value: number | string | null | undefined) => {
   if (value === null || value === undefined) return null;
@@ -41,7 +42,16 @@ export const getPrimaryArtistName = (event: EventListItem) => {
   return first || event.name;
 };
 
+const headlinerPhoto = (event: EventListItem) =>
+  (event.event_artists || []).find(entry => entry.artist?.avatar_url)?.artist?.avatar_url || null;
+
 export const getEventCoverImage = (event: EventListItem) =>
-  (event as any).cover_image_url ||
-  (event.event_artists || []).find(entry => entry.artist?.avatar_url)?.artist?.avatar_url ||
-  null;
+  (event as any).cover_image_url || headlinerPhoto(event) || null;
+
+/**
+ * Every URL a cover may try, best first: fan photo, R2 poster (thumbnail for
+ * lists, card size for big images), original poster, headliner photo. Pass it
+ * to <CoverImage>; the generated poster is its fallback.
+ */
+export const getEventCoverSources = (event: EventListItem, size: CoverSize = 'thumb') =>
+  eventCoverSources(event, size, [headlinerPhoto(event)]);

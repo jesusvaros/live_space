@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { MapVenueGroup } from '../../hooks/useMapFilters';
 import type { MapEvent } from '../../data/eventQueries';
 import GeneratedPoster from '../ui/GeneratedPoster';
+import CoverImage from '../ui/CoverImage';
 
 type MapSelectionSheetProps = {
   group: MapVenueGroup | null;
@@ -20,17 +21,17 @@ const formatDate = (iso: string) => {
   return `${clean(weekday.format(date))} ${clean(dayMonth.format(date))} · ${time.format(date)}`.toUpperCase();
 };
 
-const Poster: React.FC<{ event: MapEvent }> = ({ event }) => {
-  const image = event.cover_image_url ?? event.artist?.avatar_url ?? null;
-  if (image) {
-    return <img src={image} alt="" loading="lazy" className="h-[72px] w-14 shrink-0 rounded-lg object-cover" />;
-  }
-  return (
-    <span className="relative h-[72px] w-14 shrink-0 overflow-hidden rounded-lg">
-      <GeneratedPoster title={event.artist?.name || event.name} variant="thumb" />
-    </span>
-  );
-};
+const Poster: React.FC<{ event: MapEvent }> = ({ event }) => (
+  <CoverImage
+    sources={[...(event.cover_sources ?? [event.cover_image_url]), event.artist?.avatar_url]}
+    className="h-[72px] w-14 shrink-0 rounded-lg object-cover"
+    fallback={
+      <span className="relative h-[72px] w-14 shrink-0 overflow-hidden rounded-lg">
+        <GeneratedPoster title={event.artist?.name || event.name} variant="thumb" />
+      </span>
+    }
+  />
+);
 
 const MapSelectionSheet: React.FC<MapSelectionSheetProps> = ({ group, onClose }) => {
   const touchStartY = useRef<number | null>(null);

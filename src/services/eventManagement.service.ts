@@ -10,6 +10,8 @@ export type ManagedEvent = {
   ends_at: string | null;
   ticket_url: string | null;
   image_url: string | null;
+  /** R2 thumbnail of image_url once mirrored (read only). */
+  poster_thumb_url: string | null;
   image_source: string | null;
   status: string;
   city: string;
@@ -27,7 +29,7 @@ export type SetlistSong = {
 };
 
 const BASE_COLUMNS =
-  'id,name,starts_at,ends_at,ticket_url,image_url,image_source,status,city,venue_place_id,venue:venue_places(name),lineup:event_artists(artist_id,is_headliner,billing_order,artist:artists(id,name))';
+  'id,name,starts_at,ends_at,ticket_url,image_url,poster_thumb_url,image_source,status,city,venue_place_id,venue:venue_places(name),lineup:event_artists(artist_id,is_headliner,billing_order,artist:artists(id,name))';
 
 type EventRowWithJoins = Omit<ManagedEvent, 'venue_name' | 'headliner' | 'manager_locked_fields'> & {
   manager_locked_fields?: string[] | null;
@@ -46,6 +48,7 @@ const mapEvent = (row: EventRowWithJoins): ManagedEvent => {
     ends_at: row.ends_at,
     ticket_url: row.ticket_url,
     image_url: row.image_url ?? null,
+    poster_thumb_url: row.poster_thumb_url ?? null,
     image_source: row.image_source ?? null,
     status: row.status,
     city: row.city,

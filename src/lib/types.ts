@@ -1,4 +1,5 @@
 import { User } from '@supabase/supabase-js';
+import type { PosterSources } from './eventCover';
 
 export type ProfileRole = 'user' | 'artist' | 'venue' | 'label' | 'admin';
 export type MediaType = 'video' | 'image';
@@ -100,6 +101,9 @@ export interface Event {
   longitude: number | null;
   genres: string[];
   cover_image_url: string | null;
+  // Poster URLs (R2 thumbnail and card size, original https) for the fallback
+  // chain; see lib/eventCover.ts.
+  poster_sources?: PosterSources | null;
   is_free: boolean;
   price_tiers: PriceTier[];
   starts_at: string;

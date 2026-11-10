@@ -5,7 +5,8 @@ import { FollowedEntity } from '../../../hooks/useFollowedEntities';
 import { HistoryEntry } from '../../agenda/useConcertHistory';
 import { eventCity, eventGenres, genreKey, sameCity } from '../../agenda/agendaPrefs';
 import { EventListItem } from '../types';
-import { getEventCoverImage, getPrimaryArtistName } from '../utils';
+import { getEventCoverSources, getPrimaryArtistName } from '../utils';
+import CoverImage from '../../../components/ui/CoverImage';
 
 type ForYouSectionProps = {
   events: EventListItem[];
@@ -110,7 +111,6 @@ const ForYouSection: React.FC<ForYouSectionProps> = ({ events, city, entities, t
       ) : (
         <ul className="flex flex-col gap-2">
           {picks.map(({ event, reason, startsAt }) => {
-            const cover = getEventCoverImage(event);
             const artist = getPrimaryArtistName(event);
             return (
               <li key={event.id}>
@@ -120,11 +120,11 @@ const ForYouSection: React.FC<ForYouSectionProps> = ({ events, city, entities, t
                   className="flex w-full items-center gap-3 rounded-2xl border border-app-line bg-app-surface p-2 text-left"
                 >
                   <span className="relative h-[64px] w-[52px] shrink-0 overflow-hidden rounded-[10px]">
-                    {cover ? (
-                      <img src={cover} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
-                    ) : (
-                      <GeneratedPoster title={artist} variant="thumb" />
-                    )}
+                    <CoverImage
+                      sources={getEventCoverSources(event)}
+                      className="absolute inset-0 h-full w-full object-cover"
+                      fallback={<GeneratedPoster title={artist} variant="thumb" />}
+                    />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block font-mono text-[11px] font-semibold uppercase text-app-accent">{dateLabel(startsAt)}</span>
