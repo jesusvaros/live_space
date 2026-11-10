@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DetailSkeleton, Spinner } from '../components/ui/AppPrimitives';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -10,7 +10,7 @@ import ArtistHero from '../components/artist/ArtistHero';
 import AboutSection from '../components/artist/AboutSection';
 import ConcertRow from '../components/ui/ConcertRow';
 import MomentGrid from '../components/ui/MomentGrid';
-import { fetchEventCards } from '../data/eventQueries';
+import { fetchEventCards, fetchPastEventCards } from '../data/eventQueries';
 import { fetchPostCards } from '../data/postQueries';
 import { artistCacheKey, readCache, writeCache } from '../data/pageCache';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
@@ -18,14 +18,23 @@ import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import DetailHeader from '../components/ui/DetailHeader';
 import MapVisibilityMenu from '../features/hiddenMap/MapVisibilityMenu';
 import ClaimProfileLink from '../components/pro/ClaimProfileLink';
+import PastConcertsSection from '../features/events/PastConcertsSection';
+import type { EventListItem } from '../features/events/types';
 
 type ArtistTab = 'shows' | 'moments' | 'about';
 
 type ArtistSnapshot = {
   artist: ArtistProfileArtist;
   upcoming: ArtistProfileEvent[];
-  past: ArtistProfileEvent[];
+  /** How many concerts already happened; their cards load in «Conciertos pasados». */
+  pastCount: number;
   moments: PostWithSetlist[];
+};
+
+const startOfTodayIso = () => {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  return date.toISOString();
 };
 
 type ArtistProfileProps = {
@@ -44,7 +53,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
   const initial = readCache<ArtistSnapshot>(artistCacheKey(id || ''));
   const [artist, setArtist] = useState<ArtistProfileArtist | null>(initial?.artist ?? null);
   const [upcomingShows, setUpcomingShows] = useState<ArtistProfileEvent[]>(initial?.upcoming ?? []);
-  const [pastShows, setPastShows] = useState<ArtistProfileEvent[]>(initial?.past ?? []);
+  const [pastCount, setPastCount] = useState(initial?.pastCount ?? 0);
   const [moments, setMoments] = useState<PostWithSetlist[]>(initial?.moments ?? []);
   const [loading, setLoading] = useState(!initial);
   const [error, setError] = useState('');
@@ -56,15 +65,28 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
       const cached = readCache<ArtistSnapshot>(artistCacheKey(id || ''));
       setArtist(cached?.artist ?? null);
       setUpcomingShows(cached?.upcoming ?? []);
-      setPastShows(cached?.past ?? []);
+      setPastCount(cached?.pastCount ?? 0);
       setMoments(cached?.moments ?? []);
       setLoading(!cached);
       setError('');
       try {
-        // The profile and its concert list do not depend on each other.
-        const [{ data: artistRow, error: artistError }, { data: artistEvents }] = await Promise.all([
+        // The profile, its upcoming concerts and the ids and dates of all of
+        // them (for the moments and the count) do not depend on each other.
+        // Past concerts' cards wait for «Conciertos pasados» to scroll in.
+        const today = startOfTodayIso();
+        const [{ data: artistRow, error: artistError }, { data: artistEvents }, upcomingRows] = await Promise.all([
           supabase.from('v_subject_artists').select('*').eq('artist_id', id).maybeSingle(),
-          supabase.from('event_artists').select('event_id').eq('artist_id', id),
+          supabase
+            .from('event_artists')
+            .select('event_id,events!inner(starts_at)')
+            .eq('artist_id', id)
+            .eq('events.status', 'published'),
+          id
+            ? (fetchEventCards({ artistId: id, startIso: today }) as Promise<ArtistProfileEvent[]>).catch(error => {
+                console.warn('Failed to load upcoming concerts', error);
+                return [] as ArtistProfileEvent[];
+              })
+            : Promise.resolve([] as ArtistProfileEvent[]),
         ]);
 
         if (artistError || !artistRow) {
@@ -87,31 +109,29 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
         };
 
         const eventIds = (artistEvents || []).map(row => row.event_id).filter(Boolean);
+        const past = (artistEvents || []).filter((row: any) => {
+          const event = Array.isArray(row.events) ? row.events[0] : row.events;
+          return Boolean(event?.starts_at) && new Date(event.starts_at) < new Date(today);
+        }).length;
 
-        // Concerts and moments only need the event ids.
-        const [eventRows, allMoments] = await Promise.all([
-          eventIds.length > 0 ? (fetchEventCards({ eventIds }) as Promise<ArtistProfileEvent[]>) : Promise.resolve([]),
-          eventIds.length > 0
-            ? fetchPostCards({ eventIds }).then(rows => rows.slice(0, 24) as PostWithSetlist[])
-            : Promise.resolve([] as PostWithSetlist[]),
-        ]);
+        // Moments only need the event ids.
+        const allMoments = eventIds.length > 0
+          ? await fetchPostCards({ eventIds }).then(rows => rows.slice(0, 24) as PostWithSetlist[])
+          : [];
 
-        const now = new Date();
-        const upcoming = eventRows.filter(event => new Date(event.starts_at) >= now);
-        const past = eventRows.filter(event => new Date(event.starts_at) < now).reverse();
-
+        const upcoming = upcomingRows;
         setArtist(normalizedArtist);
         setUpcomingShows(upcoming);
-        setPastShows(past);
+        setPastCount(past);
         setMoments(allMoments);
-        writeCache<ArtistSnapshot>(artistCacheKey(id || ''), { artist: normalizedArtist, upcoming, past, moments: allMoments });
+        writeCache<ArtistSnapshot>(artistCacheKey(id || ''), { artist: normalizedArtist, upcoming, pastCount: past, moments: allMoments });
       } catch (err) {
         console.error('Failed to load artist profile', err);
         if (!cached) {
           setError('Artista no encontrado.');
           setArtist(null);
           setUpcomingShows([]);
-          setPastShows([]);
+          setPastCount(0);
           setMoments([]);
         }
       } finally {
@@ -146,7 +166,16 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
   }, [artist]);
 
   const limitedUpcoming = upcomingShows.slice(0, 5);
-  const limitedPast = pastShows.slice(0, 5);
+
+  // Past concerts, most recent first: read by PastConcertsSection only once it
+  // scrolls into view.
+  const fetchPastPage = useCallback(
+    (offset: number, limit: number) =>
+      !id
+        ? Promise.resolve([] as EventListItem[])
+        : fetchPastEventCards({ artistId: id, beforeIso: startOfTodayIso(), offset, limit }),
+    [id],
+  );
 
   const handleOpenMap = () => {
     if (!artist) return;
@@ -159,7 +188,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
     } });
   };
 
-  const playedCount = pastShows.length + upcomingShows.length;
+  const playedCount = pastCount + upcomingShows.length;
 
   const handleToggleFollow = async () => {
     if (!artist?.subject_id) return;
@@ -201,7 +230,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
           artist={artist}
           isManager={isManager}
           externalLinks={externalLinks}
-          pastCount={pastShows.length}
+          pastCount={pastCount}
           onShowConcerts={() => setActiveTab('shows')}
           onEditLinks={() => navigate('/ajustes/perfil')}
           onCreateShow={() => navigate('/create-event', { state: { from: `/tabs/artist/${id}` } })}
@@ -228,25 +257,20 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
           ))
         )}
 
+        <PastConcertsSection
+          ownerKey={`artist:${artist.id}`}
+          fetchPage={fetchPastPage}
+          titleOf={event => event.venue_place?.name || event.address || 'Sala'}
+          subtitleOf={event => event.venue_place?.city || event.city || null}
+          hideWhenEmpty={upcomingShows.length === 0}
+          className="pt-4"
+          headingClassName="font-display text-lg font-bold text-app-ink"
+        />
+
         {moments.length > 0 ? (
           <section className="pt-4">
             <h2 className="mb-2.5 font-display text-lg font-bold text-app-ink">Lo que grabó el público</h2>
             <MomentGrid moments={moments} limit={8} />
-          </section>
-        ) : null}
-
-        {limitedPast.length > 0 ? (
-          <section className="flex flex-col gap-2 pt-4">
-            <h2 className="font-display text-lg font-bold text-app-ink">Ya tocó</h2>
-            {limitedPast.map(event => (
-              <ConcertRow
-                key={event.id}
-                startsAt={event.starts_at}
-                title={event.venue_place?.name || event.address || 'Sala'}
-                subtitle={concertSubtitle(event)}
-                onSelect={() => navigate(`/event/${event.id}`)}
-              />
-            ))}
           </section>
         ) : null}
       </div>
