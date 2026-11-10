@@ -18,6 +18,7 @@
     "src/db/**/*.ts",
     "src/dedupe/**/*.ts",
     "src/normalize/**/*.ts",
+    "src/notifications/**/*.ts",
     "src/pipeline/**/*.ts",
     "src/scraping/**/*.ts",
     "src/scripts/**/*.ts",

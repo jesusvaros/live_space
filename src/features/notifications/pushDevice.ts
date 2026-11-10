@@ -2,6 +2,7 @@ import { App as CapacitorApp } from '@capacitor/app';
 import { deviceContext } from '@jesusvaros/app-kit/push/supabase';
 import { onBeforeSignOut } from '../../lib/signOutTasks';
 import { clearLocalPrefs } from '../../shared/notifications/prefs';
+import { setServerPushActive } from '../../shared/notifications/serverPush';
 import { push, pushTokens } from './pushClient';
 
 // This device's token in public.push_devices, for the signed-in person:
@@ -37,8 +38,13 @@ const saveToken = async (token: string) => {
       appVersion: await getAppVersion(),
       ...deviceContext(),
     });
-    if (userId === owner) savedKey = key;
+    if (userId === owner) {
+      savedKey = key;
+      // The server sender now owns the notices with a local twin.
+      setServerPushActive(true);
+    }
   } catch (error) {
+    setServerPushActive(false);
     console.warn('[push] could not save the device token', error);
   }
 };
@@ -72,6 +78,7 @@ const start = () => {
   onBeforeSignOut(async () => {
     const token = push.currentToken();
     savedKey = null;
+    setServerPushActive(false);
     if (token && userId) await pushTokens.removeDeviceToken(token);
   });
 };
