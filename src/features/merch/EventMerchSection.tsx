@@ -4,6 +4,7 @@ import AuthPanel from '../../auth/AuthPanel';
 import { Modal } from '../../components/ui/AppPrimitives';
 import { useAuth } from '../../contexts/AuthContext';
 import { EventMerchStand, merchService } from '../../services/merch.service';
+import { offerNotifications } from '../notifications/offer';
 import MerchStandView from './MerchStandView';
 import { Cart, cartLines, changeQuantity, reservationsClosed } from './merchRules';
 
@@ -68,6 +69,8 @@ const EventMerchSection: React.FC<EventMerchSectionProps> = ({ eventId, startsAt
     try {
       const input = { eventId, sellerSubjectId: stand.sellerSubjectId, lines };
       const orderId = stand.paymentMethod === 'at_stand' ? await merchService.reserve(input) : await merchService.checkout(input);
+      // «¿Te avisamos para recoger tu pedido?» (only if not decided yet).
+      void offerNotifications('merch');
       navigate(`/pedidos/${orderId}`);
     } catch (err: any) {
       setError({ stand: stand.sellerSubjectId, message: err?.message || 'No se ha podido reservar.' });

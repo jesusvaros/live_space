@@ -16,9 +16,10 @@ export const SettingsGroup: React.FC<{ children: React.ReactNode; label?: string
   </section>
 );
 
-const RowBody: React.FC<{ icon: React.ReactNode; title: string; value?: string | null; tone?: 'danger' }> = ({
+const RowBody: React.FC<{ icon: React.ReactNode; title: string; subtitle?: string; value?: string | null; tone?: 'danger' }> = ({
   icon,
   title,
+  subtitle,
   value,
   tone,
 }) => (
@@ -30,7 +31,10 @@ const RowBody: React.FC<{ icon: React.ReactNode; title: string; value?: string |
     >
       {icon}
     </span>
-    <span className={`min-w-0 flex-1 text-[16px] font-semibold ${tone === 'danger' ? 'text-rose-200' : 'text-app-ink'}`}>{title}</span>
+    <span className="min-w-0 flex-1">
+      <span className={`block text-[16px] font-semibold ${tone === 'danger' ? 'text-rose-200' : 'text-app-ink'}`}>{title}</span>
+      {subtitle ? <span className="block text-[13px] leading-snug text-white/50">{subtitle}</span> : null}
+    </span>
     {value ? <span className="max-w-[45%] truncate text-[15px] text-white/50">{value}</span> : null}
   </>
 );
@@ -50,14 +54,15 @@ export const SettingsRow: React.FC<{ to: string; icon: React.ReactNode; title: s
 );
 
 /** A row whose right side is a control (a switch, a button) instead of a chevron. */
-export const SettingsItem: React.FC<{ icon: React.ReactNode; title: string; children?: React.ReactNode; value?: string | null }> = ({
-  icon,
-  title,
-  children,
-  value,
-}) => (
+export const SettingsItem: React.FC<{
+  icon: React.ReactNode;
+  title: string;
+  subtitle?: string;
+  children?: React.ReactNode;
+  value?: string | null;
+}> = ({ icon, title, subtitle, children, value }) => (
   <li className="flex min-h-[54px] items-center gap-3 px-3.5 py-2">
-    <RowBody icon={icon} title={title} value={value} />
+    <RowBody icon={icon} title={title} subtitle={subtitle} value={value} />
     {children}
   </li>
 );
@@ -86,17 +91,23 @@ export const SettingsTopBar: React.FC<{ title: string; back: string }> = ({ titl
   );
 };
 
-export const Switch: React.FC<{ checked: boolean; onChange: (value: boolean) => void; label: string }> = ({ checked, onChange, label }) => (
+export const Switch: React.FC<{ checked: boolean; onChange: (value: boolean) => void; label: string; disabled?: boolean }> = ({
+  checked,
+  onChange,
+  label,
+  disabled,
+}) => (
   <button
     type="button"
     role="switch"
     aria-checked={checked}
     aria-label={label}
+    disabled={disabled}
     onClick={() => onChange(!checked)}
-    className={`relative h-[31px] w-[51px] shrink-0 rounded-full transition-colors ${checked ? 'bg-app-accent' : 'bg-white/20'}`}
+    className={`relative h-[31px] w-[51px] shrink-0 rounded-full transition-colors disabled:opacity-40 ${checked ? 'bg-app-accent' : 'bg-white/20'}`}
   >
     <span
-      className={`absolute top-[2px] h-[27px] w-[27px] rounded-full bg-white shadow transition-transform ${
+      className={`absolute left-0 top-[2px] h-[27px] w-[27px] rounded-full bg-white shadow transition-transform ${
         checked ? 'translate-x-[22px]' : 'translate-x-[2px]'
       }`}
     />

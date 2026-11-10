@@ -44,7 +44,12 @@ El responsable del tratamiento es **{{TITULAR}}**. Para cualquier cosa sobre tus
 
 ### Notificaciones
 
-La app solo usa notificaciones locales que programa el propio móvil (nuevos conciertos de lo que sigues y «¿Subes lo de anoche?»). No usamos notificaciones push ni guardamos ningún identificador de tu dispositivo para enviártelas.
+- **Solo si las permites.** Nunca te las pedimos al abrir la app: te preguntamos primero en la propia app (por ejemplo, al marcar «Voy» en un concierto, seguir a un artista o una sala, o reservar merch) y solo si dices que sí aparece el permiso del sistema.
+- **Avisos que programa el móvil:** nuevos conciertos de lo que sigues y «¿Subes lo de anoche?». Se preparan en el propio móvil.
+- **Notificaciones push:** para enviarte avisos (el día de un concierto al que vas, recoger tu merch, momentos nuevos de tus conciertos, conciertos nuevos de lo que sigues) guardamos el identificador de notificaciones de tu dispositivo (token), el sistema (Android o iOS), la versión de la app, el idioma y la zona horaria del móvil (para respetar tus horas de silencio). También guardamos qué avisos quieres recibir y un registro de los que te hemos enviado, para no repetirlos ni pasar del máximo diario.
+- Los avisos los entrega **Google** (Firebase Cloud Messaging) por encargo nuestro; en iPhone, cuando estén disponibles, **Apple** (Apple Push Notification service). Solo reciben el token y el texto del aviso.
+- **Cómo desactivarlas:** en Perfil → Ajustes → Notificaciones puedes apagarlas todas o por tipo y elegir tus horas de silencio; también puedes quitarle el permiso a Live Space en los ajustes del sistema. Al cerrar sesión borramos el token de ese dispositivo.
+- Si borras la cuenta, el token, tus preferencias y el registro de avisos se borran con ella.
 
 ### Lo que no hacemos
 
@@ -65,7 +70,7 @@ Usamos proveedores que tratan los datos por encargo nuestro y solo para esto:
 - **Supabase** (base de datos, cuentas y funciones del servidor), en la Unión Europea (París).
 - **Cloudflare** (R2): almacenamiento y entrega de los vídeos y de las portadas de conciertos.
 - **Cloudinary**: almacenamiento y entrega de las fotos y miniaturas.
-- **Google** y **Apple**: solo si entras con ellos.
+- **Google** y **Apple**: si entras con ellos y para entregar las notificaciones push (Firebase Cloud Messaging; Apple Push Notification service en iPhone).
 - **Stripe**: pagos del merch; recibe tu email y el pedido.
 - **GitHub**: guarda durante 14 días una copia de seguridad cifrada de la base de datos.
 - **OpenFreeMap**: sirve los mapas. Al ver el mapa, su servidor recibe tu dirección IP y la zona que miras.

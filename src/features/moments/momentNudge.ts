@@ -1,6 +1,8 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { canReadGallery, checkGalleryPermission, findMedia } from '../../media/native/gallery';
+import { isNotificationTypeOn } from '../../shared/notifications/prefs';
+import { offerNotifications } from '../notifications/offer';
 import { eventWindow, matchMoments } from './matchMoments';
 import { fetchUserMomentEvents, type MomentEvent } from './momentsData';
 
@@ -115,15 +117,9 @@ const countNotification = (event: MomentEvent, at: Date, videos: number, photos:
 // concert ("Voy" or Guardar). Never prompts on app open.
 export const enableMomentNudges = async (userId: string) => {
   if (!isNativeNotifications()) return;
-  try {
-    const { display } = await LocalNotifications.checkPermissions();
-    if (display === 'prompt' || display === 'prompt-with-rationale') {
-      await LocalNotifications.requestPermissions();
-    }
-  } catch {
-    return;
-  }
-  await syncMomentNudges(userId);
+  // Explainer first, system prompt only after «Sí, avísame»; schedules the
+  // nudges once the permission is there (src/features/notifications/offer.ts).
+  await offerNotifications('going', () => syncMomentNudges(userId));
 };
 
 let syncing: Promise<void> | null = null;
@@ -146,10 +142,14 @@ const runSync = async (userId: string, now: Date) => {
   if (display !== 'granted') return;
 
   const nowMs = now.getTime();
-  const events = await fetchUserMomentEvents(userId, {
-    from: new Date(nowMs - LOOKBACK_MS),
-    to: new Date(nowMs + LOOKAHEAD_MS),
-  });
+  // Switched off in Ajustes → Notificaciones: no events, so every pending
+  // nudge is cancelled below.
+  const events = isNotificationTypeOn('upload_reminder')
+    ? await fetchUserMomentEvents(userId, {
+        from: new Date(nowMs - LOOKBACK_MS),
+        to: new Date(nowMs + LOOKAHEAD_MS),
+      })
+    : [];
   const state = readState();
   const pending = (await LocalNotifications.getPending()).notifications
     .filter(notification => notification.extra?.kind === NUDGE_KIND);
