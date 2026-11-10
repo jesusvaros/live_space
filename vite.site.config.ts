@@ -20,6 +20,9 @@ export default defineConfig({
   plugins: [react(), serveSiteHtml()],
   envPrefix: ['VITE_', 'NEXT_PUBLIC_'],
   publicDir: 'site-public',
+  // Own pre-bundle cache: with the app dev server running at the same time
+  // (e2e), sharing node_modules/.vite makes each one invalidate the other.
+  cacheDir: 'node_modules/.vite-site',
   build: {
     outDir: 'dist-site',
     emptyOutDir: true,

@@ -17,6 +17,7 @@ import { fetchEventCards } from '../data/eventQueries';
 import { readCache, venueCacheKey, writeCache } from '../data/pageCache';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
 import DetailHeader from '../components/ui/DetailHeader';
+import MapVisibilityMenu from '../features/hiddenMap/MapVisibilityMenu';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
 import PhotoCredit from '../components/ui/PhotoCredit';
 import ClaimProfileLink from '../components/pro/ClaimProfileLink';
@@ -256,7 +257,12 @@ const VenueDetail: React.FC = () => {
 
   return (
     <AppShell headerProps={null} contentRef={contentRef}>
-      <DetailHeader title={venue?.name || 'Sala'} scrollRef={contentRef} fallbackHref="/tabs/discover" />
+      <DetailHeader
+        title={venue?.name || 'Sala'}
+        scrollRef={contentRef}
+        fallbackHref="/tabs/discover"
+        actions={venue ? <MapVisibilityMenu type="venue" id={venue.id} name={venue.name} imageUrl={venueCover} /> : null}
+      />
       {loading && <DetailSkeleton />}
 
       {!loading && error && <div className="p-4"><p className="text-sm text-rose-400">{error}</p></div>}

@@ -8,6 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 import { FESTIVALS, festivalPath } from '../landing/festivals.js';
 import { eventJsonLd, itemListJsonLd, placeJsonLd, type SeoArtist, type SeoEvent, type SeoVenue } from '../seo/jsonLd.js';
 import { PUBLIC_CITIES, publicPath } from '../seo/slug.js';
+import { fillLegalPlaceholders, legalBlocksToHtml, parseLegalMarkdown } from '../shared/legal/markdown.js';
 
 // Prerenders the public website into dist-site/ after `npm run site:build`.
 // The site has no app: concert, venue, artist and city pages are plain static
@@ -140,11 +141,35 @@ const staticShell = (title: string, description: string, head: string, inner: st
     </aside>
     <footer class="foot">
       <span>Live Space · los conciertos, contados por el público.</span>
-      <nav>${Object.entries(PUBLIC_CITIES).map(([slug, name]) => `<a href="/${slug}/conciertos/">Conciertos en ${name}</a>`).join('')}</nav>
+      <nav>${Object.entries(PUBLIC_CITIES).map(([slug, name]) => `<a href="/${slug}/conciertos/">Conciertos en ${name}</a>`).join('')}${LEGAL_PAGES.filter((legal) => legal.footer).map((legal) => `<a href="/${legal.slug}/">${legal.footer}</a>`).join('')}</nav>
     </footer>
   </body>
 </html>
 `;
+
+// Legal pages: SPA routes of the site bundle, prerendered with their text so
+// they read without JavaScript (Google Play links the deletion page).
+const LEGAL_PAGES = [
+  { slug: 'privacidad', footer: 'Privacidad', title: 'Política de privacidad', description: 'Qué datos usa Live Space, para qué, con quién los comparte y cómo ejercer tus derechos.' },
+  { slug: 'condiciones', footer: 'Condiciones', title: 'Condiciones de uso', description: 'Las condiciones para usar Live Space y publicar tus fotos y vídeos de conciertos.' },
+  { slug: 'borrar-cuenta', footer: 'Borrar cuenta', title: 'Borrar tu cuenta', description: 'Cómo borrar tu cuenta de Live Space desde la app o por email, qué se borra y qué se conserva.' },
+  { slug: 'licencia-momentos', footer: '', title: 'Licencia de los momentos', description: 'Qué permites al artista y a la sala cuando dejas marcada la reutilización de un momento.' },
+];
+
+const legalPage = (legal: (typeof LEGAL_PAGES)[number]): Page => {
+  const markdown = fillLegalPlaceholders(readFileSync(path.resolve('docs/legal', `${legal.slug}.md`), 'utf8'), {
+    contactEmail: process.env.VITE_CONTACT_EMAIL?.trim() || '',
+    owner: process.env.VITE_LEGAL_OWNER?.trim() || '',
+  });
+  return {
+    path: `/${legal.slug}/`,
+    kind: 'landing',
+    title: `${legal.title} · Live Space`,
+    description: legal.description,
+    body: `<main class="legal">${legalBlocksToHtml(parseLegalMarkdown(markdown))}</main>`,
+    jsonLd: [],
+  };
+};
 
 const renderPage = (page: Page) =>
   writePage(
@@ -388,6 +413,8 @@ const run = async () => {
       kind: 'landing',
     });
   }
+
+  for (const legal of LEGAL_PAGES) pages.push(legalPage(legal));
 
   for (const page of pages) renderPage(page);
 

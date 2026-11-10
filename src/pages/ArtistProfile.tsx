@@ -16,6 +16,7 @@ import { artistCacheKey, readCache, writeCache } from '../data/pageCache';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import DetailHeader from '../components/ui/DetailHeader';
+import MapVisibilityMenu from '../features/hiddenMap/MapVisibilityMenu';
 import ClaimProfileLink from '../components/pro/ClaimProfileLink';
 
 type ArtistTab = 'shows' | 'moments' | 'about';
@@ -202,7 +203,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
           externalLinks={externalLinks}
           pastCount={pastShows.length}
           onShowConcerts={() => setActiveTab('shows')}
-          onEditLinks={() => navigate('/tabs/profile?edit=artist')}
+          onEditLinks={() => navigate('/ajustes/perfil')}
           onCreateShow={() => navigate('/create-event', { state: { from: `/tabs/artist/${id}` } })}
           onOpenMap={handleOpenMap}
         />
@@ -299,7 +300,12 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
 
   return (
     <AppShell headerProps={null} contentRef={contentRef} contentWrapperClassName={false}>
-      <DetailHeader title={artist?.name || 'Artista'} scrollRef={contentRef} fallbackHref="/tabs/discover" />
+      <DetailHeader
+        title={artist?.name || 'Artista'}
+        scrollRef={contentRef}
+        fallbackHref="/tabs/discover"
+        actions={artist ? <MapVisibilityMenu type="artist" id={artist.id} name={artist.name} imageUrl={artist.avatar_url} /> : null}
+      />
       {loading && <DetailSkeleton />}
 
       {!loading && error && <div className="p-4"><p className="text-sm text-rose-400">{error}</p></div>}

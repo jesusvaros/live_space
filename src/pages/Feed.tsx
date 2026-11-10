@@ -8,6 +8,8 @@ import { supabase } from '../lib/supabase';
 import { fetchPostCards } from '../data/postQueries';
 import { ExternalMomentCard, isExternalPost } from '../features/socialImport';
 import { ReportMomentButton } from '../features/community';
+import { blockTargetLabel, withoutBlocked } from '../features/blocks/blocking';
+import { useBlockedUserIds } from '../features/blocks/useBlockedUsers';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { useFollowedEntities } from '../hooks/useFollowedEntities';
 import ShareSheet from '../components/ShareSheet';
@@ -135,7 +137,7 @@ const MomentSlide: React.FC<SlideProps> = ({ post, songNumber, group, liked, onL
         >
           <IconShare size={22} />
         </button>
-        {isExternalPost(post) ? null : <ReportMomentButton postId={post.id} authorId={post.user_id} variant="round" />}
+        {isExternalPost(post) ? null : <ReportMomentButton postId={post.id} authorId={post.user_id} authorLabel={blockTargetLabel(post.profiles)} variant="round" />}
       </div>
 
       <div className="absolute bottom-[calc(84px+env(safe-area-inset-bottom,0px))] left-4 right-[76px] flex flex-col gap-2">
@@ -180,7 +182,11 @@ const Feed: React.FC = () => {
   const resumeTick = useAppResume();
   const city = profile?.primary_city || 'Madrid';
   const [scope, setScope] = useState<FeedScope>('city');
-  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [loadedPosts, setPosts] = useState<FeedPost[]>([]);
+  // v_post_cards already leaves out people who block each other; this drops
+  // someone blocked from this screen without reloading it.
+  const blocked = useBlockedUserIds();
+  const posts = useMemo(() => withoutBlocked(loadedPosts, blocked, post => post.user_id), [loadedPosts, blocked]);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);

@@ -13,6 +13,12 @@ export const AGENDA_LINKS = [
   { href: '/madrid/conciertos/', label: 'Conciertos en Madrid' },
   { href: '/barcelona/conciertos/', label: 'Conciertos en Barcelona' },
 ];
+// Legal pages (SPA routes, also prerendered as static HTML).
+export const LEGAL_LINKS = [
+  { href: '/privacidad', label: 'Privacidad' },
+  { href: '/condiciones', label: 'Condiciones' },
+  { href: '/borrar-cuenta', label: 'Borrar cuenta' },
+];
 
 const env = (import.meta as any).env || {};
 // Without a contact address the venue/festival call to action shows no button.
@@ -275,7 +281,7 @@ export const LandingFooter: React.FC<{ lead?: string }> = ({ lead = 'Live Space 
     <div className="mx-auto flex max-w-[1280px] flex-wrap justify-between gap-4 px-5 py-8 text-[15px] text-[#a6a39c] md:px-8">
       <span>{lead}</span>
       <nav aria-label="Pie" className="flex flex-wrap gap-5">
-        {AGENDA_LINKS.map((link) => (
+        {[...AGENDA_LINKS, ...LEGAL_LINKS].map((link) => (
           <a key={link.href} href={link.href} className="text-[var(--ls-muted)]">{link.label}</a>
         ))}
       </nav>

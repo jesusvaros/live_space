@@ -7,6 +7,8 @@ import { IconHeart, IconShare } from '../components/icons';
 import { fetchPostCardById } from '../data/postQueries';
 import { ExternalMomentCard, isExternalPost } from '../features/socialImport';
 import { MomentReuseControls, ReportMomentButton } from '../features/community';
+import { blockTargetLabel } from '../features/blocks/blocking';
+import { useBlockedUserIds } from '../features/blocks/useBlockedUsers';
 
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -14,6 +16,9 @@ const PostDetail: React.FC = () => {
   const [post, setPost] = useState<PostWithRelations | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const blocked = useBlockedUserIds();
+  // Blocked from this page (or before): the moment stops showing.
+  const authorBlocked = Boolean(post?.user_id && blocked.has(post.user_id));
 
   type EventWithVenue = Event & { venue_place?: VenuePlace | null };
   const event = (post?.events as EventWithVenue | null | undefined) ?? null;
@@ -47,7 +52,13 @@ const PostDetail: React.FC = () => {
 
       {!loading && error && <div className="p-4"><p className="text-sm text-rose-400">{error}</p></div>}
 
-      {!loading && post && (
+      {!loading && post && authorBlocked && (
+        <div className="p-4">
+          <p className="text-sm text-white/70">Has bloqueado a quien subió este momento.</p>
+        </div>
+      )}
+
+      {!loading && post && !authorBlocked && (
         <>
           {isExternalPost(post) ? <ExternalMomentCard post={post} /> : (
           <div className="relative aspect-[4/5] w-full overflow-hidden bg-black">
@@ -97,7 +108,7 @@ const PostDetail: React.FC = () => {
             </div>
 
             <MomentReuseControls postId={post.id} />
-            {isExternalPost(post) ? null : <ReportMomentButton postId={post.id} authorId={post.user_id} />}
+            {isExternalPost(post) ? null : <ReportMomentButton postId={post.id} authorId={post.user_id} authorLabel={blockTargetLabel(post.profiles)} />}
             {event && (
               <button
                 type="button"

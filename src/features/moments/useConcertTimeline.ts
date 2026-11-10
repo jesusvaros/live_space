@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import type { EventSetlistEntry, PostWithSetlist } from '../../lib/types';
 import { isExternalPost } from '../socialImport';
+import { withoutBlocked } from '../blocks/blocking';
+import { useBlockedUserIds } from '../blocks/useBlockedUsers';
 import { buildConcertTimeline, type TimelineMoment } from './concertTimeline';
 
 // The concert's moments for the multi-track player: the published posts of
@@ -113,7 +115,11 @@ export const fetchConcertMoments = async (eventId: string): Promise<TimelineMome
 };
 
 export const useConcertMoments = (eventId: string) => {
-  const [moments, setMoments] = useState<TimelineMoment[]>([]);
+  const [loaded, setMoments] = useState<TimelineMoment[]>([]);
+  // The server already leaves out people who block each other (posts_read);
+  // this drops someone blocked while the concert is open.
+  const blocked = useBlockedUserIds();
+  const moments = useMemo(() => withoutBlocked(loaded, blocked, moment => moment.userId), [loaded, blocked]);
   const [loading, setLoading] = useState(Boolean(eventId));
   const [error, setError] = useState('');
 

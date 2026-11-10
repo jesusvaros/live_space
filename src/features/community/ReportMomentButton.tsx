@@ -3,6 +3,7 @@ import { Modal } from '../../components/ui/AppPrimitives';
 import { IconFlag } from '../../components/icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { reportPost } from '../socialImport/importPost';
+import BlockUserButton from '../blocks/BlockUserButton';
 
 // Saved as moderation_reports.reason. Three reports from different people
 // hide the moment until staff review it (hide_reported_post trigger).
@@ -16,12 +17,17 @@ const REASONS = [
 type ReportMomentButtonProps = {
   postId: string;
   authorId?: string | null;
+  // "@usuario" for «Bloquear a @usuario» in the same sheet.
+  authorLabel?: string;
   // 'round' sits in the full-screen viewer's action column; 'row' under a moment.
   variant?: 'round' | 'row';
 };
 
-/** "Reportar" on a moment. Renders nothing for its author or signed-out users. */
-const ReportMomentButton: React.FC<ReportMomentButtonProps> = ({ postId, authorId, variant = 'row' }) => {
+/**
+ * The moment's options: report it or block its author. Renders nothing for
+ * its author or signed-out users.
+ */
+const ReportMomentButton: React.FC<ReportMomentButtonProps> = ({ postId, authorId, authorLabel = 'esta persona', variant = 'row' }) => {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
@@ -42,7 +48,7 @@ const ReportMomentButton: React.FC<ReportMomentButtonProps> = ({ postId, authorI
   const trigger = variant === 'round' ? (
     <button
       type="button"
-      aria-label="Reportar"
+      aria-label="Reportar o bloquear"
       onClick={() => setOpen(true)}
       className="flex h-12 w-12 items-center justify-center rounded-full bg-black/40 text-app-ink"
     >
@@ -62,7 +68,7 @@ const ReportMomentButton: React.FC<ReportMomentButtonProps> = ({ postId, authorI
   return (
     <>
       {trigger}
-      <Modal isOpen={open} onDidDismiss={() => setOpen(false)} initialBreakpoint={0.5} title="Reportar momento">
+      <Modal isOpen={open} onDidDismiss={() => setOpen(false)} initialBreakpoint={0.5} title="Reportar o bloquear">
         <div className="flex flex-col gap-2 p-4 pb-[calc(16px+env(safe-area-inset-bottom,0px))]">
           {state === 'sent' ? (
             <>
@@ -93,6 +99,14 @@ const ReportMomentButton: React.FC<ReportMomentButtonProps> = ({ postId, authorI
               {state === 'error' ? <p className="m-0 text-sm text-rose-400">No se pudo enviar. Inténtalo de nuevo.</p> : null}
             </>
           )}
+          <div className="mt-2 border-t border-app-line pt-2">
+            <BlockUserButton
+              profileId={authorId}
+              label={authorLabel}
+              className="flex min-h-12 w-full items-center gap-2 rounded-2xl px-4 text-left text-sm font-semibold text-rose-200 disabled:opacity-50"
+              onBlocked={() => setOpen(false)}
+            />
+          </div>
         </div>
       </Modal>
     </>

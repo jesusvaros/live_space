@@ -23,6 +23,7 @@ configuración `vite.site.config.ts`) y sus imágenes en `site-public/`.
 | `/` | Landing (`src/landing/pages/Landing.tsx`). |
 | `/festival/<slug>/` | Landing de festival (`src/landing/pages/FestivalLanding.tsx`), prerenderizada. |
 | `/concierto/…`, `/sala/…`, `/artista/…`, `/{madrid,barcelona}/conciertos/…` | Fichas en HTML estático, sin JavaScript, con foto, datos, JSON-LD y el bloque «¿Vas a ir? Grábalo y súbelo» con el botón de descarga. Estilos en `site-public/landing/fichas.css`. |
+| `/privacidad/`, `/condiciones/`, `/borrar-cuenta/`, `/licencia-momentos/` | Textos legales de `docs/legal/*.md` (`src/landing/pages/LegalLanding.tsx`), prerenderizados con el texto en el HTML para leerse sin JavaScript. Enlazados en el pie de todas las páginas. `/borrar-cuenta/` es la página que pide Google Play para borrar la cuenta sin la app. |
 | Rutas antiguas de la app (`/tabs/*`, `/welcome`, `/upload`…) | 302 a `/`. Las URL con UUID de concierto, sala o artista van con 301 a su ficha. |
 | Cualquier otra | `404.html`. |
 
@@ -127,7 +128,8 @@ escrito del autor. Una foto nueva entra con su URL de origen y su licencia en
 
 | Variable | Uso |
 | --- | --- |
-| `VITE_CONTACT_EMAIL` | Dirección del botón «Pide tu QR» / «¿Organizas…?». Si está vacía, el botón no aparece. |
+| `VITE_CONTACT_EMAIL` | Dirección del botón «Pide tu QR» / «¿Organizas…?» y contacto de los textos legales (`{{EMAIL}}`). Si está vacía, el botón no aparece y los textos muestran «[EMAIL DE CONTACTO]». |
+| `VITE_LEGAL_OWNER` | Responsable del tratamiento en la política de privacidad y las condiciones (`{{TITULAR}}`). Vacía: «[TITULAR]». Ponerla también en el `.env` del build de la app. |
 | `VITE_ANDROID_URL`, `VITE_IOS_URL` | Enlaces de Google Play y App Store. Con alguno definido, la lista de espera se sustituye por los botones de tienda. |
 
 En el despliegue son variables del repo (`vars.*`) que lee `publish-web.yml`.
