@@ -64,6 +64,13 @@ export const createR2Uploader = (config: R2Config) => {
       const text = await response.text();
       if (!response.ok || text.includes('<Error>')) throw new Error(`R2 PUT failed with ${response.status}`);
     },
+    /** DELETE one object. A missing object (404) counts as deleted: S3 DELETE is idempotent. */
+    async remove(key: string) {
+      const response = await client.fetch(objectUrl(config, key), { method: 'DELETE' });
+      const text = await response.text();
+      if (response.status === 404) return;
+      if (!response.ok || text.includes('<Error>')) throw new Error(`R2 DELETE failed with ${response.status}`);
+    },
   };
 };
 

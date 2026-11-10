@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { canGoBack } from './useGoBack';
+import { settingsParentPath } from '../features/settings/settingsPaths';
 
 const OVERLAY_SELECTOR = '[data-app-overlay]';
 
@@ -10,7 +11,7 @@ type AppBackHandlerProps = {
   mainTabPath?: string;
 };
 
-// Android's back button/gesture: close the open sheet, then leave edit mode,
+// Android's back button/gesture: close the open sheet, then step out of Ajustes,
 // then go to the previous page in the real history. With nothing behind,
 // go home, and from home leave the app.
 const AppBackHandler: React.FC<AppBackHandlerProps> = ({ mainTabPath = '/tabs/events' }) => {
@@ -39,10 +40,10 @@ const AppBackHandler: React.FC<AppBackHandlerProps> = ({ mainTabPath = '/tabs/ev
       }
 
       const current = locationRef.current;
-      if (current.search.includes('edit=')) {
-        const params = new URLSearchParams(current.search);
-        params.delete('edit');
-        navigate({ pathname: current.pathname, search: params.toString(), hash: current.hash }, { replace: true });
+      // Ajustes: a section goes back to its list, the list to the profile.
+      const settingsParent = settingsParentPath(current.pathname);
+      if (settingsParent) {
+        navigate(settingsParent, { replace: true });
         return;
       }
 

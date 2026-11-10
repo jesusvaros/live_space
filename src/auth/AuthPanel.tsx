@@ -1,5 +1,7 @@
 import React, { useEffect, useId, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { Link } from 'react-router-dom';
+import { legalAppPath } from '../features/legal/paths';
 import { Spinner } from '../components/ui/AppPrimitives';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -313,6 +315,13 @@ const AuthPanel: React.FC<AuthPanelProps> = ({
           )
         ) : null}
       </form>
+
+      <p className="m-0 text-center text-xs leading-relaxed text-white/55">
+        Al continuar aceptas las{' '}
+        <Link to={legalAppPath('condiciones')} className="font-semibold text-white/80 underline underline-offset-2">Condiciones de uso</Link>
+        {' '}y la{' '}
+        <Link to={legalAppPath('privacidad')} className="font-semibold text-white/80 underline underline-offset-2">Política de privacidad</Link>.
+      </p>
     </div>
   );
 };

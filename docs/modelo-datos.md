@@ -19,6 +19,20 @@ raíz son históricos y no se aplican al piloto.
 | Subida por QR | `event_upload_tokens` (token privado del QR de cada concierto) |
 | Festivales | `festivals` (edición con fechas y recinto), `events.festival_id` y `events.room` (escenario) |
 | Alta de conciertos | `event_proposals` (concierto propuesto por un artista a una sala) |
+| Mapa | `hidden_map_subjects` (artistas y salas que cada persona ocultó de su mapa) |
+| Borrado de cuenta | `media_deletion_queue` (archivos de R2/Cloudinary por borrar; solo `service_role`) y `delete_my_account()` |
+
+## Ocultos del mapa
+
+Desde la página de un artista o una sala («Más opciones» → «Ocultar del mapa»).
+Solo afecta al mapa: la chincheta de una sala oculta desaparece y un concierto
+sale del mapa si su cabeza de cartel está oculto o lo están todos sus artistas
+(`src/features/hiddenMap/hiddenMap.ts`). Agenda y búsqueda no cambian. Con sesión
+se guarda en `hidden_map_subjects` (una fila por persona y `artist_id` o
+`venue_place_id`, RLS solo propias); sin sesión en `localStorage`
+(`live_space.hidden_map.v1`), que se copia a la cuenta al entrar. Se deshace en
+Ajustes → Privacidad → Ocultos del mapa. Mientras la migración
+`20261110050100` no esté aplicada, la app sigue con la lista local.
 
 `subjects` ofrece una identidad social uniforme para usuario, artista, sala y
 festival.

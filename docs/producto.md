@@ -17,6 +17,23 @@ la membresía activa.
 | Profesional | crear evento, administrar artista/sala | edición completa en móvil y escritorio |
 | Confianza | reportes, bloqueos y administración | cola, evidencia mínima, acciones auditadas |
 
+## Ajustes
+
+El engranaje de Perfil abre `/ajustes`: grupos de filas con icono, título, valor
+actual y flecha, y cada fila abre `/ajustes/<sección>` con su barra de volver
+(una sección desconocida vuelve a la lista; el botón atrás de Android va de la
+sección a la lista y de la lista al perfil). Código en `src/features/settings/`.
+
+| Grupo | Secciones |
+| --- | --- |
+| 1 | **Perfil** (nombre, usuario, ciudad, bio, enlaces y, en cuentas de sala, los datos de la sala); **Gestión** (actuar como tú o como un artista/sala que gestionas y panel de gestión; solo si gestionas alguno) |
+| 2 | **Privacidad**: reutilización por defecto de los momentos, Usuarios bloqueados, Ocultos del mapa y estado del permiso de ubicación |
+| 3 | **Cuenta**: email, método de acceso, cerrar sesión y Eliminar cuenta |
+| 4 | **Legal** (privacidad, condiciones, licencia, borrar cuenta: `/legal/<doc>`, en la app y sin sesión) y **Acerca de** (versión) |
+
+No hay sección de notificaciones: solo hay avisos locales que se activan al
+seguir o guardar y se gestionan en los ajustes del sistema.
+
 ## Paridad
 
 Android e iOS comparten todos los recorridos y usan cámara, galería, QR, push,

@@ -10,6 +10,9 @@ import EventPosterTile from '../features/events/components/EventPosterTile';
 import { mapProfile } from '../data/canonicalMappers';
 import { fetchEventCards } from '../data/eventQueries';
 import { fetchPostCards } from '../data/postQueries';
+import BlockUserButton from '../features/blocks/BlockUserButton';
+import { blockTargetLabel } from '../features/blocks/blocking';
+import { useBlockedUserIds } from '../features/blocks/useBlockedUsers';
 
 type ProfileEvent = Event & {
   organizer?: Profile | null;
@@ -32,6 +35,8 @@ const ProfileDetail: React.FC = () => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
+  const blocked = useBlockedUserIds();
+  const isBlocked = Boolean(profile && blocked.has(profile.id));
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -155,6 +160,11 @@ const ProfileDetail: React.FC = () => {
               </section>
 
               <div className="flex flex-col gap-8 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
+                {isBlocked ? (
+                  <p className="rounded-2xl border border-app-line bg-app-surface p-4 text-sm text-white/70">
+                    Has bloqueado a {blockTargetLabel(profile)}. No ves sus momentos y no ve los tuyos.
+                  </p>
+                ) : null}
                 {profile.bio && <p className="text-sm text-white/70">{profile.bio}</p>}
 
                 {externalLinks.length > 0 && (
@@ -237,7 +247,7 @@ const ProfileDetail: React.FC = () => {
                   )}
                 </section>
 
-                <section className="space-y-3">
+                {isBlocked ? null : <section className="space-y-3">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Momentos</p>
                     <p className="mt-1 text-sm text-white/55">Lo último subido en sus eventos.</p>
@@ -268,7 +278,9 @@ const ProfileDetail: React.FC = () => {
                       ))}
                     </div>
                   )}
-                </section>
+                </section>}
+
+                <BlockUserButton profileId={profile.id} label={blockTargetLabel(profile)} />
 
                 <button
                   type="button"

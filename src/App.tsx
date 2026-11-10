@@ -61,7 +61,8 @@ const SuggestedUpload = lazyPage(() => import('./pages/SuggestedUpload'));
 const Import = lazyPage(() => import('./pages/Import'));
 const Wrapped = lazyPage(() => import('./pages/Wrapped'), false);
 const GestionEstadisticas = lazyPage(() => import('./pages/GestionEstadisticas'), false);
-const LicenciaMomentos = lazyPage(() => import('./pages/LicenciaMomentos'), false);
+const LegalPage = lazyPage(() => import('./pages/LegalPage'), false);
+const SettingsScreen = lazyPage(() => import('./features/settings/SettingsScreen'));
 const ClaimProfile = lazyPage(() => import('./pages/ClaimProfile'), false);
 const Management = lazyPage(() => import('./pages/Management'), false);
 const FestivalDetail = lazyPage(() => import('./pages/FestivalDetail'));
@@ -158,7 +159,8 @@ const ProfileRoute: React.FC<{
   workspaceType?: string;
 }> = ({ activeArtistId, activeVenueId, workspaceType }) => {
   const location = useLocation();
-  if (new URLSearchParams(location.search).has('edit')) return <Profile />;
+  // Old «Editar perfil» links: the form now lives in Ajustes.
+  if (new URLSearchParams(location.search).has('edit')) return <Navigate to="/ajustes/perfil" replace />;
   if (workspaceType === 'artist' && activeArtistId) {
     return <Navigate to={`/tabs/artist/${activeArtistId}`} replace />;
   }
@@ -245,7 +247,10 @@ const AppRoutes = () => {
           <Route path="/pedidos" element={<RequireAuth>{deferredPage(<MerchOrders />)}</RequireAuth>} />
           <Route path="/pedidos/:id" element={<RequireAuth>{deferredPage(<MerchOrder />)}</RequireAuth>} />
           <Route path="/gestion/estadisticas" element={<RequireAuth>{deferredPage(<GestionEstadisticas />)}</RequireAuth>} />
-          <Route path="/legal/licencia-momentos" element={deferredPage(<LicenciaMomentos />)} />
+          {/* Privacy policy, terms, account deletion, moments licence: bundled, no account needed. */}
+          <Route path="/legal/:doc" element={deferredPage(<LegalPage />)} />
+          <Route path="/ajustes" element={<RequireAuth>{deferredPage(<SettingsScreen />)}</RequireAuth>} />
+          <Route path="/ajustes/:section" element={<RequireAuth>{deferredPage(<SettingsScreen />)}</RequireAuth>} />
           <Route path="/create-event" element={<RequireAuth><CreateEventRedirect /></RequireAuth>} />
           <Route path="/upload" element={<UploadRedirect />} />
           {/* Morning-after nudge: clips found in the gallery, ready to publish */}

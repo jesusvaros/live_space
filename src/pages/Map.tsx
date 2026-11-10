@@ -9,6 +9,8 @@ import MapFilterBar from '../components/map/MapFilterBar';
 import MapFilterModal from '../components/map/MapFilterModal';
 import MapSelectionSheet from '../components/map/MapSelectionSheet';
 import { getWhenRange, useMapFilters, type MapArtistFilter } from '../hooks/useMapFilters';
+import { withoutHiddenOnMap } from '../features/hiddenMap/hiddenMap';
+import { useHiddenOnMap } from '../features/hiddenMap/useHiddenOnMap';
 import { useQuery } from '../shared/hooks/useQuery';
 import { persistStoredLocation, type StoredLocation } from '../shared/hooks/useStoredLocation';
 import { IconLocate } from '../components/icons';
@@ -105,7 +107,10 @@ const Map: React.FC = () => {
       }),
     { ttlMs: 60_000, initialData: EMPTY_EVENTS }
   );
-  const events = eventsQuery.data ?? EMPTY_EVENTS;
+  // Artists and venues hidden from the map (their page → «Más opciones»).
+  const { sets: hiddenOnMap } = useHiddenOnMap();
+  const allEvents = eventsQuery.data ?? EMPTY_EVENTS;
+  const events = useMemo(() => withoutHiddenOnMap(allEvents, hiddenOnMap), [allEvents, hiddenOnMap]);
 
   const filters = useMapFilters(events);
   const { venueGroups, filteredEvents, artists, city, addArtist, includePast, when, whenRange } = filters;

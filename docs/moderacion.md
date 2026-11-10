@@ -9,6 +9,10 @@
 - cola de revisión y respuesta;
 - registro auditable de actor, motivo, alcance y momento.
 
+Hecho: aceptación de condiciones al publicar, reporte de momentos (se ocultan
+con tres reportes) y bloqueo entre usuarios (ver
+[Seguridad → Bloquear a otra persona](./seguridad.md#bloquear-a-otra-persona)).
+
 Los reportes no deciden automáticamente una sanción. Reglas deterministas sirven
 para priorizar duplicados, volumen, señales técnicas y riesgo; una persona revisa
 contexto y derechos. Moderadores de entidad no reciben privilegios globales.

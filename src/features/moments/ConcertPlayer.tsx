@@ -474,7 +474,12 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
           {/* Right column */}
           <div className="absolute bottom-3 right-2 flex flex-col items-center gap-2">
             {active && active.kind !== 'external' ? (
-              <ReportMomentButton postId={active.id} authorId={active.moment.userId} variant="round" />
+              <ReportMomentButton
+                postId={active.id}
+                authorId={active.moment.userId}
+                authorLabel={active.moment.userName ? `@${active.moment.userName}` : undefined}
+                variant="round"
+              />
             ) : null}
             {angleCount > 1 ? (
               <button

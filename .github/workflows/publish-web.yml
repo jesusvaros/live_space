@@ -30,6 +30,7 @@ jobs:
       VITE_MAP_STYLE_URL: https://tiles.openfreemap.org/styles/liberty
       PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://livespace.pages.dev' }}
       VITE_CONTACT_EMAIL: ${{ vars.VITE_CONTACT_EMAIL }}
+      VITE_LEGAL_OWNER: ${{ vars.VITE_LEGAL_OWNER }}
       VITE_ANDROID_URL: ${{ vars.VITE_ANDROID_URL }}
       VITE_IOS_URL: ${{ vars.VITE_IOS_URL }}
 

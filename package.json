@@ -35,6 +35,7 @@
     "scrape:maintenance": "npm run scrape:build && node dist-scraper/scripts/runScraperMaintenance.js",
     "enrich:images": "npm run scrape:build && node dist-scraper/scripts/enrichImages.js",
     "posters:mirror": "npm run scrape:build && node dist-scraper/scripts/mirrorPosters.js",
+    "media:drain-deletions": "npm run scrape:build && node dist-scraper/scripts/drainMediaDeletions.js",
     "enrich:links": "npm run scrape:build && node dist-scraper/scripts/enrichArtistLinks.js",
     "enrich:genres": "npm run scrape:build && node dist-scraper/scripts/enrichGenres.js",
     "setlists:fallback": "npm run scrape:build && node dist-scraper/scripts/fillSetlists.js",

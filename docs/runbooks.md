@@ -114,6 +114,22 @@ el dump cifrado y el manifiesto durante 14 días.
 Un backup no está validado hasta haber demostrado una restauración. Fallo de
 export, cifrado, subida o prueba genera alerta y no elimina la última copia buena.
 
+## Borrado de archivos de cuentas eliminadas
+
+`delete_my_account()` deja en `media_deletion_queue` la clave de cada foto y vídeo
+de la cuenta; el paso «Delete media of deleted accounts» de `scrape-weekly.yml`
+los borra cada día. R2 funciona con los secretos `R2_*` que ya tiene el
+repositorio. Para Cloudinary hay que añadir (humano) `CLOUDINARY_CLOUD_NAME`,
+`CLOUDINARY_API_KEY` y `CLOUDINARY_API_SECRET`; hasta entonces sus filas esperan.
+Ensayo: `npm run media:drain-deletions` (solo cuenta lo pendiente). Filas atascadas:
+`select provider, attempts, last_error from media_deletion_queue where deleted_at is null and attempts >= 8;`.
+Una petición de borrado por email (desde `/borrar-cuenta`) se atiende, tras
+comprobar que llega del email de la cuenta, ejecutando la función como esa
+persona en el SQL editor, en una transacción:
+`begin; select set_config('request.jwt.claims', json_build_object('sub', '<uuid>')::text, true); select public.delete_my_account(); commit;`.
+Borrar el usuario directamente en Authentication falla mientras tenga momentos
+(`media_assets` es `RESTRICT`) y no encola sus archivos.
+
 ## Keepalive de crons
 
 GitHub desactiva los workflows programados de un repositorio público tras 60 días
