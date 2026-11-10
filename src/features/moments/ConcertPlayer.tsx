@@ -9,10 +9,13 @@ import {
   resolvePlayhead,
   songSegmentAt,
   upcomingClip,
+  VIEW_AFTER_MS,
   type Clip,
   type ConcertTimeline,
+  type Hold,
   type ManualChoice,
 } from './concertTimeline';
+import { recordPostView } from './postViews';
 
 // The concert as one long video: a vertical player that follows concert time
 // from clip to clip, over the multi-track timeline (one row per person).
@@ -20,6 +23,10 @@ import {
 // Playback rules live in concertTimeline.ts; this component only drives the
 // clock. While a video plays, the video is the clock (buffering pauses the
 // concert); photos and imported clips advance it in real time.
+//
+// The clip on screen is held at least MIN_HOLD_MS before the default rule
+// cuts to a more popular angle (see pickClip). A clip that really played
+// VIEW_AFTER_MS counts one view (post_views).
 //
 // Never more than two <video> elements: the one on screen and the next one,
 // preloading.
@@ -37,6 +44,8 @@ type ConcertPlayerProps = {
   seekRequest?: SeekRequest;
   onActiveSongChange?: (songId: string | null) => void;
   onDuration?: (momentId: string, seconds: number) => void;
+  // A clip played VIEW_AFTER_MS (default: count it in post_views).
+  onView?: (momentId: string) => void;
 };
 
 const clock = (t: number, seconds = true) =>
@@ -72,7 +81,7 @@ const PlayPauseIcon: React.FC<{ playing: boolean; size?: number }> = ({ playing,
   </svg>
 );
 
-const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChip, seekRequest, onActiveSongChange, onDuration }) => {
+const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChip, seekRequest, onActiveSongChange, onDuration, onView = recordPostView }) => {
   const tracksRef = useRef<ConcertTracksHandle | null>(null);
   const videosRef = useRef(new Map<string, HTMLVideoElement>());
   const timelineRef = useRef(timeline);
@@ -85,6 +94,12 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
   const wasPlayingRef = useRef(false);
   const lastFrameRef = useRef<number | null>(null);
   const lastDisplayRef = useRef(0);
+  // Which clip is on screen and since when (concert time): no early cuts.
+  const holdRef = useRef<Hold>(null);
+  const onViewRef = useRef(onView);
+  onViewRef.current = onView;
+  // Real playback of the clip on screen, to count a view after 3 s.
+  const playedRef = useRef<{ clipId: string | null; ms: number; counted?: boolean }>({ clipId: null, ms: 0 });
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [manual, setManual] = useState<ManualChoice>(null);
@@ -100,7 +115,7 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
   const covering = useMemo(() => clipsAt(timeline, displayTime), [timeline, displayTime]);
   const coveringIds = useMemo(() => new Set(covering.map(clip => clip.id)), [covering]);
   const upcoming = useMemo(
-    () => upcomingClip(timeline, tRef.current, manual),
+    () => upcomingClip(timeline, tRef.current, manual, holdRef.current),
     // Recomputed when the angle changes, not every frame.
     [timeline, activeId, manual],
   );
@@ -143,6 +158,8 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
   const activate = useCallback((clip: Clip | null) => {
     if (activeRef.current?.id === clip?.id) return;
     activeRef.current = clip;
+    holdRef.current = clip ? { clipId: clip.id, since: tRef.current } : null;
+    playedRef.current = { clipId: clip?.id ?? null, ms: 0 };
     setActiveId(clip?.id ?? null);
     setBuffering(false);
     // The new <video> may still need to mount; the effect below syncs it then.
@@ -163,7 +180,7 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
     const tl = timelineRef.current;
     const keep = chosen && manualStillApplies(tl, t, chosen) ? chosen : null;
     if (keep !== manualRef.current) setManualChoice(keep);
-    const resolved = resolvePlayhead(tl, t, keep);
+    const resolved = resolvePlayhead(tl, t, keep, holdRef.current);
     if (resolved.ended && !resolved.clip) {
       tRef.current = Math.min(t, tl.end);
       setEnded(true);
@@ -187,6 +204,20 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
     if (activeRef.current && sameClip) activeRef.current = sameClip;
     else goTo(activeRef.current ? tRef.current : timeline.start);
   }, [timeline, goTo]);
+
+  // One view once a clip has really played VIEW_AFTER_MS (a photo: shown
+  // almost its whole 3 s). Imported clips play in their own app: not counted.
+  const countPlayback = useCallback((clip: Clip, deltaMs: number) => {
+    if (clip.kind === 'external' || deltaMs <= 0 || deltaMs > 1000) return;
+    const played = playedRef.current;
+    if (played.clipId !== clip.id) return;
+    played.ms += deltaMs;
+    const needed = Math.min(VIEW_AFTER_MS, clip.end - clip.start - 150);
+    if (played.ms >= needed && !played.counted) {
+      played.counted = true;
+      onViewRef.current(clip.id);
+    }
+  }, []);
 
   // The clock.
   useEffect(() => {
@@ -213,7 +244,8 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
         chosen = null;
         setManualChoice(null);
       }
-      const resolved = resolvePlayhead(tl, t, chosen);
+      const previous = tRef.current;
+      const resolved = resolvePlayhead(tl, t, chosen, holdRef.current);
       if (resolved.ended && !resolved.clip) {
         tRef.current = tl.end;
         playingRef.current = false;
@@ -223,12 +255,13 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
         return;
       }
       tRef.current = resolved.t;
+      if (clip && resolved.clip?.id === clip.id) countPlayback(clip, resolved.t - previous);
       if (resolved.clip?.id !== clip?.id) activate(resolved.clip);
       publishTime(resolved.t);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [activate, publishTime]);
+  }, [activate, countPlayback, publishTime]);
 
   // A newly mounted <video> for the clip on screen gets its time and plays.
   useEffect(() => {

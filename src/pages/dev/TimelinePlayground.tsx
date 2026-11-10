@@ -60,6 +60,7 @@ const m = (
     width: 720,
     height: 1280,
     likes: seq % 5,
+    views: (seq * 7) % 23,
     ...rest,
   };
 };
@@ -95,6 +96,7 @@ const TimelinePlayground: React.FC = () => {
       <ConcertPlayer
         timeline={timeline}
         title="Los Planetas"
+        onView={id => console.info('[dev] vista contada', id)}
         stageChip={
           <span className="block truncate rounded-full bg-black/55 px-2.5 py-1.5 font-mono text-[11px] font-semibold uppercase text-app-ink">
             Los Planetas · Sala Mock · Ayer

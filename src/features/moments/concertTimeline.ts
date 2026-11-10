@@ -25,7 +25,9 @@ export type TimelineMoment = {
   durationSec?: number | null;
   width?: number | null;
   height?: number | null;
-  // Popularity for overlaps: likes (post_likes) is the only signal stored today.
+  // Popularity for overlaps: views (post_views, counted after 3 s of play)
+  // first, then likes (post_likes). null/undefined when unknown.
+  views?: number | null;
   likes?: number;
   // The row it came from, for the player (imported clip card, reporting).
   post?: PostWithSetlist;
@@ -87,6 +89,13 @@ export const DEFAULT_VIDEO_SEC = 15;
 export const PHOTO_SEC = 3;
 /** An imported clip shows its card this long (it plays in its own app on tap). */
 export const EXTERNAL_SEC = 8;
+/**
+ * The default rule never cuts away from the clip on screen before it has
+ * played this long (unless it ends first): no flicker between angles.
+ */
+export const MIN_HOLD_MS = 8000;
+/** A clip counts as viewed after this much real playback. */
+export const VIEW_AFTER_MS = 3000;
 /** Typical song length, for estimated song boundaries. */
 export const ESTIMATED_SONG_MS = 4 * 60 * 1000;
 const DEFAULT_SHOW_MS = 2 * 60 * 60 * 1000;
@@ -380,29 +389,52 @@ export const clipsAt = (timeline: Pick<ConcertTimeline, 'clips'>, t: number) =>
   timeline.clips.filter(clip => clip.start <= t && t < clip.end);
 
 /**
- * Default angle among overlapping clips: most liked, then the one with more
- * left to play (fewer cuts), then the earliest upload, then id (stable).
+ * Default angle among overlapping clips: most viewed, then most liked, then
+ * the one with more left to play (fewer cuts), then the earliest upload, then
+ * id (stable). Without view counts (older backend) views are all 0 and likes
+ * decide.
  */
 export const rankClips = (clips: Clip[], t: number) =>
   [...clips].sort(
     (left, right) =>
-      (right.moment.likes ?? 0) - (left.moment.likes ?? 0)
+      (right.moment.views ?? 0) - (left.moment.views ?? 0)
+      || (right.moment.likes ?? 0) - (left.moment.likes ?? 0)
       || (right.end - t) - (left.end - t)
       || left.moment.createdAt.localeCompare(right.moment.createdAt)
       || left.id.localeCompare(right.id),
   );
 
 /**
+ * The clip on screen and since when (concert time). While it has played less
+ * than MIN_HOLD_MS, the default rule does not cut away from it to a more
+ * popular angle; it only leaves when it ends.
+ */
+export type Hold = { clipId: string; since: number } | null;
+
+export const holdApplies = (hold: Hold, clip: Clip | undefined, t: number) =>
+  Boolean(hold && clip && t - hold.since < MIN_HOLD_MS);
+
+/**
  * The clip on screen at `t`. A manual choice (the viewer tapped another
  * angle) wins while that clip still covers `t`; after that the default rule
- * resumes.
+ * resumes. The default rule never cuts away from the current clip (`hold`)
+ * before it has played MIN_HOLD_MS, unless it ends first.
  */
-export const pickClip = (timeline: Pick<ConcertTimeline, 'clips'>, t: number, manual: ManualChoice = null): Clip | null => {
+export const pickClip = (
+  timeline: Pick<ConcertTimeline, 'clips'>,
+  t: number,
+  manual: ManualChoice = null,
+  hold: Hold = null,
+): Clip | null => {
   const candidates = clipsAt(timeline, t);
   if (candidates.length === 0) return null;
   if (manual) {
     const chosen = candidates.find(clip => clip.id === manual.clipId);
     if (chosen) return chosen;
+  }
+  if (hold) {
+    const current = candidates.find(clip => clip.id === hold.clipId);
+    if (holdApplies(hold, current, t)) return current as Clip;
   }
   return rankClips(candidates, t)[0];
 };
@@ -428,8 +460,9 @@ export const resolvePlayhead = (
   timeline: Pick<ConcertTimeline, 'clips'>,
   t: number,
   manual: ManualChoice = null,
+  hold: Hold = null,
 ): { t: number; clip: Clip | null; ended: boolean } => {
-  const clip = pickClip(timeline, t, manual);
+  const clip = pickClip(timeline, t, manual, hold);
   if (clip) return { t, clip, ended: false };
   const next = nextClipStart(timeline, t);
   if (next === null) return { t, clip: null, ended: true };
@@ -438,23 +471,26 @@ export const resolvePlayhead = (
 
 /**
  * The next clip that will take the screen after `t` (to preload it): walks
- * the following clip boundaries until the pick changes — a cut to a more
- * liked angle, the end of the current clip, or the start after a gap.
+ * the following decision points (clip boundaries and the end of the minimum
+ * hold) until the pick changes — a cut to a more popular angle, the end of
+ * the current clip, or the start after a gap.
  */
 export const upcomingClip = (
   timeline: Pick<ConcertTimeline, 'clips'>,
   t: number,
   manual: ManualChoice = null,
+  hold: Hold = null,
 ): Clip | null => {
-  const current = pickClip(timeline, t, manual);
+  const current = pickClip(timeline, t, manual, hold);
   const boundaries = new Set<number>();
   for (const clip of timeline.clips) {
     if (clip.start > t) boundaries.add(clip.start);
     if (clip.end > t) boundaries.add(clip.end);
   }
+  if (hold && hold.since + MIN_HOLD_MS > t) boundaries.add(hold.since + MIN_HOLD_MS);
   for (const at of [...boundaries].sort((left, right) => left - right)) {
     const keep = manual && manualStillApplies(timeline, at, manual) ? manual : null;
-    const { clip } = resolvePlayhead(timeline, at, keep);
+    const { clip } = resolvePlayhead(timeline, at, keep, hold);
     if (!clip) return null;
     if (clip.id !== current?.id) return clip;
   }

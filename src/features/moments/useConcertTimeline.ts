@@ -6,8 +6,8 @@ import { buildConcertTimeline, type TimelineMoment } from './concertTimeline';
 
 // The concert's moments for the multi-track player: the published posts of
 // the event (v_event_posts_with_setlist) plus, per post, the media duration
-// and size (media_assets) and the like count (post_likes, the only
-// popularity signal stored today).
+// and size (media_assets), the like count (post_likes) and the view count
+// (post_views, through get_event_post_view_counts).
 
 const MOMENT_COLUMNS = [
   'id', 'user_id', 'event_id', 'media_type', 'media_url', 'thumbnail_url', 'caption', 'captured_at', 'created_at',
@@ -18,7 +18,13 @@ const MOMENT_COLUMNS = [
 // More than this and the oldest stay out; the player is built for hundreds.
 const MAX_MOMENTS = 800;
 
-type PostMeta = { durationSec: number | null; width: number | null; height: number | null; likes: number };
+type PostMeta = {
+  durationSec: number | null;
+  width: number | null;
+  height: number | null;
+  likes: number;
+  views: number | null;
+};
 
 const toNumber = (value: unknown) => {
   const number = typeof value === 'string' ? Number(value) : value;
@@ -41,16 +47,39 @@ export const toTimelineMoment = (post: PostWithSetlist, meta?: PostMeta): Timeli
   width: meta?.width ?? null,
   height: meta?.height ?? null,
   likes: meta?.likes ?? 0,
+  views: meta?.views ?? null,
   post,
 });
 
+/**
+ * Views per post of the concert, or null when the backend does not have
+ * view counts yet (migration 20261110000100 not applied: the function is
+ * missing) or the call fails. Then overlaps are decided by likes.
+ */
+export const fetchViewCounts = async (eventId: string): Promise<Map<string, number> | null> => {
+  try {
+    const { data, error } = await supabase.rpc('get_event_post_view_counts', { p_event_id: eventId });
+    if (error || !Array.isArray(data)) return null;
+    const counts = new Map<string, number>();
+    for (const row of data as { post_id: string; views: number | string }[]) {
+      counts.set(row.post_id, toNumber(row.views) ?? 0);
+    }
+    return counts;
+  } catch {
+    return null;
+  }
+};
+
 const fetchMeta = async (eventId: string): Promise<Map<string, PostMeta>> => {
-  const { data, error } = await supabase
-    .from('posts')
-    .select('id, media:media_assets(duration_seconds,width,height), post_likes(count)')
-    .eq('event_id', eventId)
-    .eq('status', 'published')
-    .limit(MAX_MOMENTS);
+  const [{ data, error }, views] = await Promise.all([
+    supabase
+      .from('posts')
+      .select('id, media:media_assets(duration_seconds,width,height), post_likes(count)')
+      .eq('event_id', eventId)
+      .eq('status', 'published')
+      .limit(MAX_MOMENTS),
+    fetchViewCounts(eventId),
+  ]);
   const meta = new Map<string, PostMeta>();
   // Durations and likes only refine the timeline: without them it still plays.
   if (error || !data) return meta;
@@ -62,6 +91,8 @@ const fetchMeta = async (eventId: string): Promise<Map<string, PostMeta>> => {
       width: toNumber(media?.width),
       height: toNumber(media?.height),
       likes: toNumber(likes) ?? 0,
+      // Known counts: posts without a row have 0 views.
+      views: views ? views.get(row.id) ?? 0 : null,
     });
   }
   return meta;

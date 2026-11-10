@@ -8,6 +8,7 @@ import {
   DEFAULT_VIDEO_SEC,
   ESTIMATED_SONG_MS,
   manualStillApplies,
+  MIN_HOLD_MS,
   nextClipStart,
   pickClip,
   PHOTO_SEC,
@@ -189,6 +190,83 @@ describe('overlaps', () => {
     expect(manualStillApplies(timeline, ms(11, 0), manual)).toBe(false);
     // A choice that no longer covers the playhead is ignored.
     expect(pickClip(timeline, ms(10, 16), { clipId: 'gone' })?.id).toBe('other');
+  });
+});
+
+describe('popularity by views', () => {
+  it('ranks by views, then likes', () => {
+    const timeline = buildConcertTimeline({
+      startsAt: STARTS,
+      moments: [
+        moment({ id: 'liked', userId: 'u1', capturedAt: at(10), likes: 20, views: 3 }),
+        moment({ id: 'viewed', userId: 'u2', capturedAt: at(10), likes: 1, views: 40 }),
+        moment({ id: 'liked-no-views', userId: 'u3', capturedAt: at(10), likes: 30, views: null }),
+      ],
+    });
+    expect(pickClip(timeline, ms(10, 1))?.id).toBe('viewed');
+  });
+
+  it('falls back to likes when no view counts are known', () => {
+    const timeline = buildConcertTimeline({
+      startsAt: STARTS,
+      moments: [
+        moment({ id: 'a', userId: 'u1', capturedAt: at(10), likes: 2, views: undefined }),
+        moment({ id: 'b', userId: 'u2', capturedAt: at(10), likes: 5, views: undefined }),
+      ],
+    });
+    expect(pickClip(timeline, ms(10, 1))?.id).toBe('b');
+  });
+});
+
+describe('no mid-clip cuts', () => {
+  const cutting = () =>
+    buildConcertTimeline({
+      startsAt: STARTS,
+      moments: [
+        moment({ id: 'current', userId: 'u1', capturedAt: at(10), durationSec: 30, views: 0 }),
+        moment({ id: 'popular', userId: 'u2', capturedAt: at(10, 3), durationSec: 30, views: 50 }),
+        moment({ id: 'short', userId: 'u3', capturedAt: at(20), durationSec: 4, views: 0 }),
+        moment({ id: 'popular-late', userId: 'u4', capturedAt: at(20, 1), durationSec: 30, views: 99 }),
+      ],
+    });
+
+  it('keeps the current clip until it has played the minimum time', () => {
+    const timeline = cutting();
+    const hold = { clipId: 'current', since: ms(10) };
+    expect(MIN_HOLD_MS).toBe(8000);
+    // Without a hold the popular clip would take over at 10:03.
+    expect(pickClip(timeline, ms(10, 4))?.id).toBe('popular');
+    expect(pickClip(timeline, ms(10, 4), null, hold)?.id).toBe('current');
+    expect(pickClip(timeline, ms(10, 7.9), null, hold)?.id).toBe('current');
+    expect(pickClip(timeline, ms(10, 8), null, hold)?.id).toBe('popular');
+  });
+
+  it('measures the hold from when the clip became current', () => {
+    const timeline = cutting();
+    // Came on screen at 10:05 (e.g. after a seek): held until 10:13.
+    const hold = { clipId: 'current', since: ms(10, 5) };
+    expect(pickClip(timeline, ms(10, 12), null, hold)?.id).toBe('current');
+    expect(pickClip(timeline, ms(10, 13), null, hold)?.id).toBe('popular');
+  });
+
+  it('leaves early when the current clip ends first', () => {
+    const timeline = cutting();
+    const hold = { clipId: 'short', since: ms(20) };
+    expect(pickClip(timeline, ms(20, 3), null, hold)?.id).toBe('short');
+    expect(pickClip(timeline, ms(20, 4), null, hold)?.id).toBe('popular-late');
+  });
+
+  it('lets a manual choice override the hold immediately', () => {
+    const timeline = cutting();
+    const hold = { clipId: 'current', since: ms(10) };
+    expect(pickClip(timeline, ms(10, 4), { clipId: 'popular' }, hold)?.id).toBe('popular');
+  });
+
+  it('preloads the clip that comes on when the hold ends', () => {
+    const timeline = cutting();
+    const hold = { clipId: 'current', since: ms(10) };
+    expect(upcomingClip(timeline, ms(10, 1), null, hold)?.id).toBe('popular');
+    expect(resolvePlayhead(timeline, ms(10, 5), null, hold).clip?.id).toBe('current');
   });
 });
 
