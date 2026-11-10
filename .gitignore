@@ -54,3 +54,7 @@ next-env.d.ts
 /docs/.vitepress/cache
 /docs/.vitepress/dist
 /supabase/.temp
+
+# Firebase config (FCM). Kept out of the public repo; local builds only.
+android/app/google-services.json
+ios/App/App/GoogleService-Info.plist
