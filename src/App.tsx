@@ -20,6 +20,7 @@ import { hasSeenOnboarding } from './app/onboarding';
 import { clearReturnTo, readReturnTo, rememberReturnTo, readLeavingTo } from './auth/returnTo';
 import MomentNudges from './features/moments/MomentNudges';
 import ConcertAlertsListener from './features/alerts/ConcertAlertsListener';
+import PushNotifications from './features/notifications/PushNotifications';
 import ShareTargetListener from './features/socialImport/ShareTargetListener';
 import Welcome from './pages/Welcome';
 import Events from './pages/Events';
@@ -262,6 +263,7 @@ const AppRoutes = () => {
       <FirstRunGate />
       <MomentNudges />
       <ConcertAlertsListener />
+      <PushNotifications />
       <ShareTargetListener />
       <React.Suspense fallback={<div className="h-dvh bg-app-bg" />}>
         <Routes>

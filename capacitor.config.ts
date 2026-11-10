@@ -19,6 +19,18 @@ const config: CapacitorConfig = {
         twitter: false
       },
       logLevel: 1
+    },
+    // Push (src/features/notifications). With the app open the system shows
+    // nothing and the app puts up a toast instead. Background look on
+    // Android: icon, colour and default channel in AndroidManifest.xml.
+    PushNotifications: {
+      presentationOptions: []
+    },
+    // Local notifications (new concerts, «¿Subes lo de anoche?») share the
+    // push look: monochrome brand mark tinted with the accent.
+    LocalNotifications: {
+      smallIcon: 'ic_stat_live_space',
+      iconColor: '#ff5b2e'
     }
   }
 };

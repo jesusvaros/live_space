@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status-bar icon for notifications (push and local): the Live Space mark
+     (ring + dot, src/components/AppBrand.tsx) in plain white. Android tints
+     it; the accent #ff5b2e comes from the manifest / capacitor.config.ts. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="28"
+    android:viewportHeight="28">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2.75"
+        android:pathData="M14,2.5a11.5,11.5 0,1 1,0 23a11.5,11.5 0,1 1,0 -23z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M14,9.5a4.5,4.5 0,1 1,0 9a4.5,4.5 0,1 1,0 -9z" />
+</vector>

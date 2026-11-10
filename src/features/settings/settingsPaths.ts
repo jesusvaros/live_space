@@ -4,6 +4,7 @@
 export const SETTINGS_SECTIONS = {
   perfil: { title: 'Perfil', back: '/ajustes' },
   gestion: { title: 'Gestión', back: '/ajustes' },
+  notificaciones: { title: 'Notificaciones', back: '/ajustes' },
   privacidad: { title: 'Privacidad', back: '/ajustes' },
   bloqueados: { title: 'Usuarios bloqueados', back: '/ajustes/privacidad' },
   'ocultos-mapa': { title: 'Ocultos del mapa', back: '/ajustes/privacidad' },

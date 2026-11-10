@@ -1,6 +1,8 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { supabase } from '../../lib/supabase';
+import { isNotificationTypeOn } from '../../shared/notifications/prefs';
+import { offerNotifications } from '../notifications/offer';
 
 // "Nuevo concierto de X": when a followed artist, venue or festival gets a
 // concert announced (scraped or added by hand), the follower hears about it.
@@ -109,20 +111,14 @@ export const fetchNewFollowedConcerts = async (followerSubjectId: string, since:
 const dateLabel = (iso: string) =>
   new Date(iso).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/\./g, '');
 
-// Asks for notification permission when the user follows something, never
-// on app open, and records the starting point of the checks.
+// Called when the user follows something: records the starting point of
+// the checks and offers notifications (explainer first, never on app open;
+// src/features/notifications/offer.ts).
 export const enableConcertAlerts = async () => {
   if (!isNativeNotifications()) return;
-  try {
-    const { display } = await LocalNotifications.checkPermissions();
-    if (display === 'prompt' || display === 'prompt-with-rationale') {
-      await LocalNotifications.requestPermissions();
-    }
-  } catch {
-    // The phone keeps the decision; the in-app list still works.
-  }
   const state = readState();
   if (!state.since) writeState({ since: new Date().toISOString(), notified: [] });
+  await offerNotifications('follow');
 };
 
 let syncing: Promise<void> | null = null;
@@ -153,7 +149,11 @@ const runSync = async (followerSubjectId: string) => {
 
   const since = new Date(Date.parse(state.since) - OVERLAP_MS).toISOString();
   const notified = new Set(state.notified || []);
-  const fresh = (await fetchNewFollowedConcerts(followerSubjectId, since)).filter(concert => !notified.has(concert.id));
+  // Switched off in Ajustes → Notificaciones: move the starting point on
+  // without announcing, so switching back on does not flood the phone.
+  const fresh = isNotificationTypeOn('followed_new_concert')
+    ? (await fetchNewFollowedConcerts(followerSubjectId, since)).filter(concert => !notified.has(concert.id))
+    : [];
 
   if (fresh.length > 0) {
     const at = new Date(Date.now() + 1000);

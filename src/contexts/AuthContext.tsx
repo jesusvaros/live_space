@@ -8,6 +8,7 @@ import { useAuthStore, useWorkspaceStore } from '../store/appStore';
 import { mapProfile } from '../data/canonicalMappers';
 import { readStoredSessionUser } from '../app/bootCache';
 import { clearUserPersisted, readPersisted, setPersistViewer, writePersisted } from '../lib/persistentCache';
+import { runBeforeSignOut } from '../lib/signOutTasks';
 
 // The signed-in person's profile is kept across restarts (per user), so the
 // app opens straight into their account instead of waiting for two requests.
@@ -317,6 +318,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
+      // Still signed in: e.g. this device's push token row goes first.
+      await runBeforeSignOut();
       const { error } = await supabase.auth.signOut();
       if (error) {
         await supabase.auth.signOut({ scope: 'local' });

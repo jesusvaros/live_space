@@ -6,6 +6,7 @@ import com.getcapacitor.BridgeActivity;
 import com.livespace.app.gallery.GalleryScanPlugin;
 import com.livespace.app.media.LiveSpaceMediaPlugin;
 import com.livespace.app.ocr.TextScanPlugin;
+import com.livespace.app.settings.AppSettingsPlugin;
 
 public class MainActivity extends BridgeActivity {
   @Override
@@ -14,6 +15,7 @@ public class MainActivity extends BridgeActivity {
     registerPlugin(GalleryScanPlugin.class);
     registerPlugin(LiveSpaceMediaPlugin.class);
     registerPlugin(TextScanPlugin.class);
+    registerPlugin(AppSettingsPlugin.class);
     super.onCreate(savedInstanceState);
 
     getOnBackPressedDispatcher().addCallback(

@@ -1,11 +1,13 @@
 import React from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import { Content, Page } from '../../components/ui/AppPrimitives';
-import { IconBriefcase, IconDocument, IconInfo, IconShield, IconUser } from '../../components/icons';
+import { IconBell, IconBriefcase, IconDocument, IconInfo, IconShield, IconUser } from '../../components/icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useWorkspace } from '../../contexts/WorkspaceContext';
 import { useBlockedUserIds } from '../blocks/useBlockedUsers';
 import { useHiddenOnMap } from '../hiddenMap/useHiddenOnMap';
+import NotificationsSettingsPage from '../notifications/NotificationsSettingsPage';
+import { useNotificationSettings } from '../notifications/useNotificationSettings';
 import ProfileSettingsPage from './ProfileSettingsPage';
 import {
   AboutPage,
@@ -27,6 +29,7 @@ import { isSettingsSection, SETTINGS_SECTIONS, type SettingsSection } from './se
 const PAGES: Record<SettingsSection, () => React.ReactNode> = {
   perfil: () => <div className="px-4 pb-10 pt-4"><ProfileSettingsPage /></div>,
   gestion: () => <ManagementPage />,
+  notificaciones: () => <NotificationsSettingsPage />,
   privacidad: () => <PrivacyPage />,
   bloqueados: () => <BlockedUsersPage />,
   'ocultos-mapa': () => <HiddenOnMapPage />,
@@ -41,6 +44,7 @@ const SettingsHome: React.FC = () => {
   const blocked = useBlockedUserIds();
   const { items: hidden } = useHiddenOnMap();
   const version = useAppVersion();
+  const { summary: notificationsValue } = useNotificationSettings();
   const managed = managedEntities.filter(entity => entity.type === 'artist' || entity.type === 'venue').length;
   const privacyValue = blocked.size + hidden.length > 0
     ? [blocked.size ? `${blocked.size} bloqueados` : '', hidden.length ? `${hidden.length} ocultos` : ''].filter(Boolean).join(' · ')
@@ -60,6 +64,7 @@ const SettingsHome: React.FC = () => {
         ) : null}
       </SettingsGroup>
       <SettingsGroup>
+        <SettingsRow to="/ajustes/notificaciones" icon={<IconBell size={18} />} title="Notificaciones" value={notificationsValue} />
         <SettingsRow to="/ajustes/privacidad" icon={<IconShield size={18} />} title="Privacidad" value={privacyValue} />
       </SettingsGroup>
       <SettingsGroup>

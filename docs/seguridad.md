@@ -79,7 +79,9 @@ La función:
    se encolan: son de la entidad.
 2. Anonimiza sus filas de `post_views` (clave aleatoria, sin perfil).
 3. Borra sus posts y `media_assets` (son `ON DELETE RESTRICT`), sus membresías y
-   reclamaciones y, por último, `auth.users`; el resto cae en cascada desde
+   reclamaciones, sus datos de notificaciones (`push_devices`,
+   `notification_preferences`, `notifications_sent`; migración
+   `20261110080200`) y, por último, `auth.users`; el resto cae en cascada desde
    `profiles`/`subjects` (likes, follows en ambos sentidos, guardados, asistencia,
    bloqueos, reportes que envió, etiquetas de sala, ocultos del mapa, reservas) o
    queda a `null` (`created_by`, `reviewed_by`, `merch_orders.buyer_id`).

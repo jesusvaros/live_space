@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
@@ -25,6 +25,7 @@ import { getReuseConsent, setReuseConsent } from '../community/licence';
 import DeleteAccountSection from '../account/DeleteAccountSection';
 import { legalAppPath } from '../legal/paths';
 import { LEGAL_CONTACT_EMAIL } from '../legal/config';
+import PushTokenDevPanel, { enableDevMode, isDevMode } from '../notifications/PushTokenDevPanel';
 import { SettingsGroup, SettingsHelp, SettingsItem, SettingsRow, Switch } from './SettingsList';
 
 const PROVIDER_LABELS: Record<string, string> = { email: 'Email y contraseña', google: 'Google', apple: 'Apple' };
@@ -272,12 +273,25 @@ export const useAppVersion = () => {
 
 export const AboutPage: React.FC = () => {
   const version = useAppVersion();
+  const [dev, setDev] = useState(isDevMode);
+  const taps = useRef(0);
+  // Seven taps on «Versión» turn on the developer tools (push token).
+  const tapVersion = () => {
+    taps.current += 1;
+    if (taps.current >= 7 && !dev) {
+      enableDevMode();
+      setDev(true);
+    }
+  };
   return (
     <div className="px-4 pb-10">
-      <SettingsGroup>
-        <SettingsItem icon={<IconInfo size={18} />} title="Versión" value={version || '—'} />
-      </SettingsGroup>
+      <div onClick={tapVersion}>
+        <SettingsGroup>
+          <SettingsItem icon={<IconInfo size={18} />} title="Versión" value={version || '—'} />
+        </SettingsGroup>
+      </div>
       <SettingsHelp>Live Space: los conciertos, contados por el público.</SettingsHelp>
+      {dev ? <PushTokenDevPanel /> : null}
     </div>
   );
 };
