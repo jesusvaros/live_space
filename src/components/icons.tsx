@@ -214,3 +214,24 @@ export const IconFilters: React.FC<IconProps> = ({ className, size = 20 }) => (
     <path d="M10 18h4" />
   </svg>
 );
+
+export const IconClock: React.FC<IconProps> = ({ className, size = 20 }) => (
+  <svg {...baseProps(size)} className={className}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+  </svg>
+);
+
+export const IconWallet: React.FC<IconProps> = ({ className, size = 20 }) => (
+  <svg {...baseProps(size)} className={className}>
+    <rect x="3" y="6" width="18" height="14" rx="3" />
+    <path d="M3 10h18M16 15h2" />
+  </svg>
+);
+
+export const IconCamera: React.FC<IconProps> = ({ className, size = 20 }) => (
+  <svg {...baseProps(size)} className={className}>
+    <path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
+    <circle cx="12" cy="13.5" r="3.5" />
+  </svg>
+);

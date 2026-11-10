@@ -1,24 +1,38 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import AuthPanel from '../../auth/AuthPanel';
+import { Modal } from '../../components/ui/AppPrimitives';
 import { useAuth } from '../../contexts/AuthContext';
-import { EventMerchStand, formatEuros, MerchItem, merchService } from '../../services/merch.service';
+import { EventMerchStand, merchService } from '../../services/merch.service';
+import MerchStandView from './MerchStandView';
+import { Cart, cartLines, changeQuantity, reservationsClosed } from './merchRules';
 
-type EventMerchSectionProps = { eventId: string; startsAt: string };
+type EventMerchSectionProps = {
+  eventId: string;
+  startsAt: string;
+  endsAt?: string | null;
+  venueName?: string | null;
+  /** The signed-in user is marked as going (or went). */
+  attending: boolean;
+  /** Marks the user as going; resolves false if it failed. */
+  onAttend: () => Promise<boolean>;
+};
 
-const CLOSES_AFTER_MS = 3 * 60 * 60 * 1000;
-
-type Cart = Record<string, number>; // variant id → quantity
-
-// "Merch del concierto": reserve and pay in the app, collect at the stand.
-// Hidden when nobody sells at this concert or reservations are closed.
-const EventMerchSection: React.FC<EventMerchSectionProps> = ({ eventId, startsAt }) => {
+// «Merch del concierto». Anyone sees it; only people going to the concert
+// reserve. Pickup is always at the stand; each seller picks how to pay
+// (in the app or at the stand). Hidden when nobody sells or reservations closed.
+const EventMerchSection: React.FC<EventMerchSectionProps> = ({ eventId, startsAt, endsAt, venueName, attending, onAttend }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [stands, setStands] = useState<EventMerchStand[]>([]);
   const [cart, setCart] = useState<Cart>({});
-  const [paying, setPaying] = useState<string | null>(null);
-  const [error, setError] = useState('');
-  const closed = Date.now() > Date.parse(startsAt) + CLOSES_AFTER_MS;
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<{ stand: string; message: string } | null>(null);
+  const [needsAttendance, setNeedsAttendance] = useState<string | null>(null);
+  const [marking, setMarking] = useState(false);
+  const [authFor, setAuthFor] = useState<string | null>(null);
+  const closed = reservationsClosed(startsAt);
 
   useEffect(() => {
     if (closed) return undefined;
@@ -34,93 +48,59 @@ const EventMerchSection: React.FC<EventMerchSectionProps> = ({ eventId, startsAt
     };
   }, [eventId, closed]);
 
-  const variantPrice = useMemo(() => {
-    const prices = new Map<string, number>();
-    for (const stand of stands) for (const item of stand.items) for (const variant of item.variants) prices.set(variant.id, item.priceCents);
-    return prices;
-  }, [stands]);
+  // Signed in from the sheet: close it and carry on (the «Voy» step shows
+  // only if the user is not going yet; the cart is kept).
+  useEffect(() => {
+    if (!user || !authFor) return;
+    setNeedsAttendance(authFor);
+    setAuthFor(null);
+  }, [user, authFor]);
 
   if (closed || stands.length === 0) return null;
 
-  const change = (variantId: string, delta: number, max: number | null) => {
-    setCart(current => {
-      const next = Math.max(0, Math.min((current[variantId] || 0) + delta, max ?? 10, 10));
-      const copy = { ...current };
-      if (next === 0) delete copy[variantId];
-      else copy[variantId] = next;
-      return copy;
-    });
-  };
+  const variantIdsOf = (stand: EventMerchStand) => stand.items.flatMap(item => item.variants.map(variant => variant.id));
 
-  const pay = async (stand: EventMerchStand) => {
-    if (!user) {
-      navigate('/welcome');
-      return;
-    }
-    const variantIds = new Set(stand.items.flatMap(item => item.variants.map(variant => variant.id)));
-    const lines = Object.entries(cart)
-      .filter(([variantId]) => variantIds.has(variantId))
-      .map(([variantId, quantity]) => ({ variantId, quantity }));
+  const submit = async (stand: EventMerchStand) => {
+    const lines = cartLines(cart, variantIdsOf(stand));
     if (lines.length === 0) return;
-    setPaying(stand.sellerSubjectId);
-    setError('');
+    setBusy(stand.sellerSubjectId);
+    setError(null);
     try {
-      const orderId = await merchService.checkout({ eventId, sellerSubjectId: stand.sellerSubjectId, lines });
+      const input = { eventId, sellerSubjectId: stand.sellerSubjectId, lines };
+      const orderId = stand.paymentMethod === 'at_stand' ? await merchService.reserve(input) : await merchService.checkout(input);
       navigate(`/pedidos/${orderId}`);
     } catch (err: any) {
-      setError(err?.message || 'No se ha podido iniciar el pago.');
+      setError({ stand: stand.sellerSubjectId, message: err?.message || 'No se ha podido reservar.' });
+      // Stock may have changed under us.
+      merchService.forEvent(eventId).then(setStands).catch(() => undefined);
     } finally {
-      setPaying(null);
+      setBusy(null);
     }
   };
 
-  const renderItem = (item: MerchItem) => (
-    <li key={item.id} className="flex gap-3 rounded-2xl border border-app-line bg-app-surface p-2.5">
-      {item.imageUrl ? (
-        <img src={item.imageUrl} alt="" loading="lazy" className="h-20 w-20 shrink-0 rounded-xl object-cover" />
-      ) : null}
-      <div className="min-w-0 flex-1">
-        <p className="font-display text-[15px] font-bold leading-snug text-app-ink">{item.name}</p>
-        <p className="font-mono text-[13px] font-semibold text-app-accent">{formatEuros(item.priceCents)}</p>
-        {item.description ? <p className="mt-0.5 text-[13px] text-[#c9c5bd] line-clamp-2">{item.description}</p> : null}
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {item.variants.map(variant => {
-            const quantity = cart[variant.id] || 0;
-            const soldOut = variant.stock === 0;
-            return (
-              <span
-                key={variant.id}
-                className={`inline-flex min-h-9 items-center gap-1 rounded-full border px-1 text-[13px] font-semibold ${
-                  quantity > 0 ? 'border-app-accent text-app-ink' : 'border-app-line text-[#c9c5bd]'
-                } ${soldOut ? 'opacity-45' : ''}`}
-              >
-                {quantity > 0 ? (
-                  <button
-                    type="button"
-                    aria-label={`Quitar una ${variant.label}`}
-                    onClick={() => change(variant.id, -1, variant.stock)}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-full"
-                  >
-                    −
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  disabled={soldOut}
-                  aria-label={soldOut ? `${variant.label} agotada` : `Añadir ${variant.label}`}
-                  onClick={() => change(variant.id, 1, variant.stock)}
-                  className="inline-flex h-8 items-center px-2"
-                >
-                  {variant.label}
-                  {quantity > 0 ? ` × ${quantity}` : soldOut ? ' · agotada' : ''}
-                </button>
-              </span>
-            );
-          })}
-        </div>
-      </div>
-    </li>
-  );
+  const reserve = (stand: EventMerchStand) => {
+    if (!user) {
+      setAuthFor(stand.sellerSubjectId);
+      return;
+    }
+    if (!attending) {
+      setNeedsAttendance(stand.sellerSubjectId);
+      return;
+    }
+    void submit(stand);
+  };
+
+  const attend = async (stand: EventMerchStand) => {
+    setMarking(true);
+    const ok = await onAttend();
+    setMarking(false);
+    if (!ok) {
+      setError({ stand: stand.sellerSubjectId, message: 'No hemos podido marcarte «Voy». Inténtalo de nuevo.' });
+      return;
+    }
+    setNeedsAttendance(null);
+    void submit(stand);
+  };
 
   return (
     <section aria-labelledby="merch" className="flex flex-col gap-3">
@@ -128,37 +108,46 @@ const EventMerchSection: React.FC<EventMerchSectionProps> = ({ eventId, startsAt
         <h2 id="merch" className="font-display text-xl font-bold text-app-ink">
           Merch del concierto
         </h2>
-        <p className="text-sm text-[#c9c5bd]">Resérvalo y págalo aquí. Lo recoges esa noche sin hacer cola.</p>
+        <p className="text-sm text-[#c9c5bd]">Resérvalo ahora y recógelo esa noche en el puesto, sin colas ni agotados.</p>
       </div>
-      {stands.map(stand => {
-        const total = Object.entries(cart).reduce((sum, [variantId, quantity]) => {
-          const inStand = stand.items.some(item => item.variants.some(variant => variant.id === variantId));
-          return inStand ? sum + (variantPrice.get(variantId) || 0) * quantity : sum;
-        }, 0);
-        return (
-          <div key={stand.sellerSubjectId} className="flex flex-col gap-2">
-            {stands.length > 1 ? <p className="font-mono text-[11px] font-semibold uppercase text-[#8f8b84]">{stand.sellerName}</p> : null}
-            <ul className="flex flex-col gap-2">{stand.items.map(renderItem)}</ul>
-            <p className="text-[13px] text-white/60">Recogida: {stand.pickupPoint}</p>
-            {total > 0 ? (
-              <button
-                type="button"
-                disabled={paying !== null}
-                onClick={() => pay(stand)}
-                className="min-h-12 rounded-full bg-app-accent px-5 text-[15px] font-bold text-[#14151a] disabled:opacity-60"
-              >
-                {paying === stand.sellerSubjectId ? 'Abriendo el pago…' : `Reservar y pagar · ${formatEuros(total)}`}
-              </button>
-            ) : null}
-          </div>
-        );
-      })}
-      {error ? <p className="text-sm text-rose-400">{error}</p> : null}
+
+      {stands.map(stand => (
+        <MerchStandView
+          key={stand.sellerSubjectId}
+          stand={stand}
+          startsAt={startsAt}
+          endsAt={endsAt}
+          venueName={venueName}
+          showSellerName={stands.length > 1}
+          cart={cart}
+          onChange={(variantId, delta, stock) => setCart(current => changeQuantity(current, variantId, delta, stock, variantIdsOf(stand)))}
+          onReserve={() => reserve(stand)}
+          busy={busy === stand.sellerSubjectId}
+          error={error?.stand === stand.sellerSubjectId ? error.message : ''}
+          needsAttendance={needsAttendance === stand.sellerSubjectId && !attending}
+          onAttend={() => attend(stand)}
+          attending={marking}
+        />
+      ))}
+
       {user ? (
-        <button type="button" onClick={() => navigate('/pedidos')} className="self-start text-sm font-semibold text-app-accent">
+        <button type="button" onClick={() => navigate('/pedidos')} className="min-h-11 self-start text-sm font-semibold text-app-accent">
           Ver mis pedidos
         </button>
       ) : null}
+
+      <Modal isOpen={authFor !== null} onDidDismiss={() => setAuthFor(null)} initialBreakpoint={0.95} title="Entra para reservar">
+        <div className="max-h-[90dvh] overflow-y-auto px-5 pb-[calc(24px+env(safe-area-inset-bottom,0px))] pt-3">
+          <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/20" aria-hidden />
+          <h3 className="m-0 font-display text-2xl font-bold text-app-ink">Entra para reservar</h3>
+          <p className="m-0 mt-1.5 text-sm text-[#c9c5bd]">
+            Te guardamos el merch con tu cuenta y te damos el código para recogerlo en el puesto.
+          </p>
+          <div className="mt-5">
+            <AuthPanel defaultMode="signup" minimal providerReturnPath={`${location.pathname}${location.search}`} />
+          </div>
+        </div>
+      </Modal>
     </section>
   );
 };

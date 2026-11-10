@@ -2,6 +2,10 @@ import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
 import { supabase } from '../api';
 import { isMissingRelation } from './claims.service';
+import { compressProductPhoto } from '../features/merch/compressImage';
+import type { PaymentMethod } from '../features/merch/merchRules';
+
+export type { PaymentMethod } from '../features/merch/merchRules';
 
 export type MerchVariant = { id: string; label: string; stock: number | null; position: number };
 
@@ -21,10 +25,11 @@ export type EventMerchStand = {
   sellerSubjectId: string;
   sellerName: string;
   pickupPoint: string;
+  paymentMethod: PaymentMethod;
   items: MerchItem[];
 };
 
-export type MerchOrderStatus = 'pending' | 'paid' | 'collected' | 'cancelled' | 'refunded';
+export type MerchOrderStatus = 'pending' | 'reserved' | 'paid' | 'collected' | 'cancelled' | 'refunded';
 
 export type MerchOrderLine = { itemName: string; variantLabel: string; quantity: number; unitPriceCents: number };
 
@@ -33,25 +38,44 @@ export type MerchOrder = {
   eventId: string;
   sellerSubjectId: string;
   status: MerchOrderStatus;
+  paymentMethod: PaymentMethod;
   totalCents: number;
+  paidCents: number | null;
   pickupCode: string;
   pickupPoint: string;
   createdAt: string;
   collectedAt: string | null;
+  cancelledAt: string | null;
+  expiresAt: string | null;
   lines: MerchOrderLine[];
-  event: { name: string; startsAt: string; venueName: string | null; city: string | null } | null;
+  event: { name: string; startsAt: string; endsAt: string | null; venueName: string | null; city: string | null } | null;
 };
+
+/** How a seller sells at one concert. */
+export type MerchStandSettings = { pickupPoint: string; paymentMethod: PaymentMethod };
 
 export const formatEuros = (cents: number) =>
   (cents / 100).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: cents % 100 ? 2 : 0 });
 
 export const MERCH_STATUS_LABELS: Record<MerchOrderStatus, string> = {
   pending: 'Pendiente de pago',
+  reserved: 'Reservado · pagas al recoger',
   paid: 'Pagado · por recoger',
   collected: 'Recogido',
   cancelled: 'Cancelado',
   refunded: 'Devuelto',
 };
+
+/** A reservation nobody collected: shown as «Caducado» rather than «Cancelado». */
+export const orderStatusLabel = (order: Pick<MerchOrder, 'status' | 'expiresAt' | 'cancelledAt'>) => {
+  if (order.status === 'cancelled' && order.expiresAt && order.cancelledAt && order.cancelledAt >= order.expiresAt) {
+    return 'Caducado · no se recogió';
+  }
+  if (order.status === 'reserved' && order.expiresAt && Date.parse(order.expiresAt) < Date.now()) return 'Caducado · no se recogió';
+  return MERCH_STATUS_LABELS[order.status];
+};
+
+const PHOTO_BUCKET = 'merch-photos';
 
 const ITEM_COLUMNS = 'id,seller_subject_id,name,description,image_url,price_cents,active,variants:merch_variants(id,label,stock,position)';
 
@@ -68,21 +92,48 @@ const mapItem = (row: any): MerchItem => ({
     .sort((left, right) => left.position - right.position || left.label.localeCompare(right.label, 'es')),
 });
 
-const ORDER_COLUMNS =
-  'id,event_id,seller_subject_id,status,total_cents,pickup_code,pickup_point,created_at,collected_at,' +
-  'lines:merch_order_lines(item_name,variant_label,quantity,unit_price_cents),' +
-  'event:events(name,starts_at,city,venue:venue_places!events_venue_place_id_fkey(name))';
+// Columns added by 20261110050200_merch_pay_at_stand. Until it runs, reads fall
+// back to the old columns and pay-at-stand stays hidden.
+const ORDER_BASE = 'id,event_id,seller_subject_id,status,total_cents,pickup_code,pickup_point,created_at,collected_at';
+const ORDER_AT_STAND = ',payment_method,expires_at,cancelled_at,paid_cents';
+const ORDER_RELATIONS =
+  ',lines:merch_order_lines(item_name,variant_label,quantity,unit_price_cents)' +
+  ',event:events(name,starts_at,ends_at,city,venue:venue_places!events_venue_place_id_fkey(name))';
+
+let atStandSchema: boolean | null = null;
+
+/** Runs a read with the new columns, retrying with the old ones while the migration is not live. */
+const withAtStandColumns = async <T>(
+  run: (atStand: boolean) => PromiseLike<{ data: T | null; error: any }>,
+): Promise<{ data: T | null; error: any; atStand: boolean }> => {
+  if (atStandSchema !== false) {
+    const result = await run(true);
+    if (!result.error || !isMissingRelation(result.error)) {
+      if (!result.error) atStandSchema = true;
+      return { ...result, atStand: true };
+    }
+    atStandSchema = false;
+  }
+  const legacy = await run(false);
+  return { ...legacy, atStand: false };
+};
+
+const orderColumns = (atStand: boolean) => ORDER_BASE + (atStand ? ORDER_AT_STAND : '') + ORDER_RELATIONS;
 
 const mapOrder = (row: any): MerchOrder => ({
   id: row.id,
   eventId: row.event_id,
   sellerSubjectId: row.seller_subject_id,
   status: row.status,
+  paymentMethod: row.payment_method === 'at_stand' ? 'at_stand' : 'in_app',
   totalCents: row.total_cents,
+  paidCents: row.paid_cents ?? null,
   pickupCode: row.pickup_code,
   pickupPoint: row.pickup_point,
   createdAt: row.created_at,
   collectedAt: row.collected_at ?? null,
+  cancelledAt: row.cancelled_at ?? null,
+  expiresAt: row.expires_at ?? null,
   lines: (row.lines || []).map((line: any) => ({
     itemName: line.item_name,
     variantLabel: line.variant_label,
@@ -90,7 +141,13 @@ const mapOrder = (row: any): MerchOrder => ({
     unitPriceCents: line.unit_price_cents,
   })),
   event: row.event
-    ? { name: row.event.name, startsAt: row.event.starts_at, venueName: row.event.venue?.name ?? null, city: row.event.city ?? null }
+    ? {
+        name: row.event.name,
+        startsAt: row.event.starts_at,
+        endsAt: row.event.ends_at ?? null,
+        venueName: row.event.venue?.name ?? null,
+        city: row.event.city ?? null,
+      }
     : null,
 });
 
@@ -121,13 +178,41 @@ const openExternal = async (url: string) => {
   else window.location.assign(url);
 };
 
+// merch_reserve / merch_collect raise "merch:<reason>".
+const RESERVE_ERRORS: Record<string, string> = {
+  auth: 'Entra en tu cuenta para reservar.',
+  closed: 'Las reservas de este concierto ya están cerradas.',
+  event: 'Este concierto no admite reservas.',
+  not_selling: 'Este merch ya no se puede reservar en este concierto.',
+  not_attending: 'Márcate «Voy» en el concierto para reservar su merch.',
+  stock: 'No quedan unidades suficientes. Revisa las tallas.',
+  variant: 'Uno de los productos ya no está disponible.',
+  quantity: 'Como mucho 10 unidades por pedido y 10 de cada talla.',
+  lines: 'Pedido no válido.',
+  too_many_pending: 'Ya tienes tres reservas o pedidos sin pagar. Recoge o cancela alguno.',
+};
+
+const reason = (error: { message?: string } | null) => /merch:([a-z_]+)/.exec(error?.message ?? '')?.[1] ?? null;
+
+// Gives back the stock of reservations nobody collected (no cron: lazily).
+const releaseExpired = async (eventId: string | null) => {
+  try {
+    await supabase.rpc('merch_release_expired', eventId ? { p_event_id: eventId } : {});
+  } catch {
+    // Not live yet or offline: the stock shown may just be a bit low.
+  }
+};
+
 export const merchService = {
   // Stands with something to sell at this concert. Empty until the migration runs.
   async forEvent(eventId: string): Promise<EventMerchStand[]> {
-    const { data: stands, error } = await supabase
-      .from('event_merch')
-      .select('seller_subject_id,pickup_point')
-      .eq('event_id', eventId);
+    await releaseExpired(eventId);
+    const { data: stands, error, atStand } = await withAtStandColumns<any[]>(withMethod =>
+      supabase
+        .from('event_merch')
+        .select(withMethod ? 'seller_subject_id,pickup_point,payment_method' : 'seller_subject_id,pickup_point')
+        .eq('event_id', eventId),
+    );
     if (error) {
       if (isMissingRelation(error)) return [];
       throw error;
@@ -142,32 +227,56 @@ export const merchService = {
     ]);
     const canCharge = new Set((sellers || []).filter((row: any) => row.charges_enabled).map((row: any) => String(row.subject_id)));
     return (stands || [])
-      .map((row: any) => ({
+      .map((row: any): EventMerchStand => ({
         sellerSubjectId: String(row.seller_subject_id),
         sellerName: names.get(String(row.seller_subject_id)) || 'Merch',
         pickupPoint: row.pickup_point,
+        paymentMethod: atStand && row.payment_method === 'at_stand' ? 'at_stand' : 'in_app',
         items: (items || []).map(mapItem).filter(item => item.sellerSubjectId === String(row.seller_subject_id)),
       }))
-      .filter(stand => canCharge.has(stand.sellerSubjectId) && stand.items.length > 0);
+      .filter(stand => (stand.paymentMethod === 'at_stand' || canCharge.has(stand.sellerSubjectId)) && stand.items.length > 0);
   },
 
-  // Reserves the stock and opens Stripe Checkout. Returns the order id.
+  // In-app payment: reserves the stock and opens Stripe Checkout. Returns the order id.
   async checkout(input: { eventId: string; sellerSubjectId: string; lines: { variantId: string; quantity: number }[] }) {
     const result = await invoke<{ orderId: string; url: string }>('merch-checkout', input);
     await openExternal(result.url);
     return result.orderId;
   },
 
+  // Pay at the stand: reserves the stock without paying. Returns the order id.
+  async reserve(input: { eventId: string; sellerSubjectId: string; lines: { variantId: string; quantity: number }[] }) {
+    const { data, error } = await supabase.rpc('merch_reserve', {
+      p_event_id: input.eventId,
+      p_seller_subject_id: input.sellerSubjectId,
+      p_lines: input.lines.map(line => ({ variant_id: line.variantId, quantity: line.quantity })),
+    });
+    if (error) {
+      const why = reason(error);
+      throw new Error((why && RESERVE_ERRORS[why]) || 'No se ha podido reservar. Inténtalo de nuevo.');
+    }
+    return String((data as { order_id: string }).order_id);
+  },
+
+  async cancelReservation(orderId: string) {
+    const { data, error } = await supabase.rpc('merch_cancel_reservation', { p_order_id: orderId });
+    if (error) throw new Error('No se ha podido cancelar la reserva.');
+    if (data !== true) throw new Error('Esta reserva ya no se puede cancelar.');
+  },
+
   async myOrders(): Promise<MerchOrder[]> {
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) return [];
-    const { data, error } = await supabase
-      .from('merch_orders')
-      .select(ORDER_COLUMNS)
-      .eq('buyer_id', auth.user.id)
-      .neq('status', 'cancelled')
-      .order('created_at', { ascending: false })
-      .limit(100);
+    await releaseExpired(null);
+    const { data, error } = await withAtStandColumns<any[]>(atStand =>
+      supabase
+        .from('merch_orders')
+        .select(orderColumns(atStand))
+        .eq('buyer_id', auth.user!.id)
+        .neq('status', 'cancelled')
+        .order('created_at', { ascending: false })
+        .limit(100),
+    );
     if (error) {
       if (isMissingRelation(error)) return [];
       throw error;
@@ -176,12 +285,28 @@ export const merchService = {
   },
 
   async order(orderId: string): Promise<MerchOrder | null> {
-    const { data, error } = await supabase.from('merch_orders').select(ORDER_COLUMNS).eq('id', orderId).maybeSingle();
+    const { data, error } = await withAtStandColumns<any>(atStand =>
+      supabase.from('merch_orders').select(orderColumns(atStand)).eq('id', orderId).maybeSingle(),
+    );
     if (error) throw error;
     return data ? mapOrder(data) : null;
   },
 
   // --- Sellers -------------------------------------------------------------
+
+  /** Whether pay-at-stand can be offered (the migration is live). */
+  async atStandAvailable() {
+    if (atStandSchema !== null) return atStandSchema;
+    const { error } = await supabase.from('event_merch').select('payment_method').limit(1);
+    atStandSchema = !error || !isMissingRelation(error);
+    return atStandSchema;
+  },
+
+  /** charges_enabled read straight from the table: works before merch-seller is deployed. */
+  async chargesEnabled(subjectId: string) {
+    const { data } = await supabase.from('merch_sellers').select('charges_enabled').eq('subject_id', subjectId).maybeSingle();
+    return Boolean((data as any)?.charges_enabled);
+  },
 
   async sellerStatus(subjectId: string) {
     return invoke<{ started: boolean; chargesEnabled: boolean; detailsSubmitted?: boolean }>('merch-seller', {
@@ -205,12 +330,22 @@ export const merchService = {
     return (data || []).map(mapItem);
   },
 
+  /** Compresses the photo (~1200 px WebP/JPEG) and stores it. Returns its public https URL. */
+  async uploadPhoto(subjectId: string, file: Blob) {
+    const { blob, extension } = await compressProductPhoto(file);
+    const path = `${subjectId}/${crypto.randomUUID()}.${extension}`;
+    const { error } = await supabase.storage
+      .from(PHOTO_BUCKET)
+      .upload(path, blob, { contentType: blob.type, cacheControl: '31536000', upsert: false });
+    if (error) throw new Error('No se ha podido subir la foto. Puedes guardar el producto sin ella y añadirla luego.');
+    return supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
+  },
+
   // Creates or updates an item and replaces its variants by label.
   async saveItem(input: {
     id?: string | null;
     sellerSubjectId: string;
     name: string;
-    description: string;
     imageUrl: string;
     priceCents: number;
     variants: { label: string; stock: number | null }[];
@@ -218,7 +353,6 @@ export const merchService = {
     const values = {
       seller_subject_id: input.sellerSubjectId,
       name: input.name.trim(),
-      description: input.description.trim() || null,
       image_url: input.imageUrl.trim() || null,
       price_cents: input.priceCents,
     };
@@ -251,16 +385,31 @@ export const merchService = {
     if (error) throw error;
   },
 
-  async standsForSeller(subjectId: string): Promise<Map<string, string>> {
-    const { data, error } = await supabase.from('event_merch').select('event_id,pickup_point').eq('seller_subject_id', subjectId);
+  async standsForSeller(subjectId: string): Promise<Map<string, MerchStandSettings>> {
+    const { data, error, atStand } = await withAtStandColumns<any[]>(withMethod =>
+      supabase
+        .from('event_merch')
+        .select(withMethod ? 'event_id,pickup_point,payment_method' : 'event_id,pickup_point')
+        .eq('seller_subject_id', subjectId),
+    );
     if (error) throw error;
-    return new Map((data || []).map((row: any) => [String(row.event_id), row.pickup_point as string]));
+    return new Map(
+      (data || []).map((row: any) => [
+        String(row.event_id),
+        { pickupPoint: row.pickup_point as string, paymentMethod: atStand && row.payment_method === 'at_stand' ? 'at_stand' : 'in_app' },
+      ]),
+    );
   },
 
-  async openStand(eventId: string, subjectId: string, pickupPoint: string) {
-    const { error } = await supabase
-      .from('event_merch')
-      .upsert({ event_id: eventId, seller_subject_id: subjectId, pickup_point: pickupPoint.trim() || 'Puesto de merch' });
+  async openStand(eventId: string, subjectId: string, settings: MerchStandSettings) {
+    const row: Record<string, unknown> = {
+      event_id: eventId,
+      seller_subject_id: subjectId,
+      pickup_point: settings.pickupPoint.trim() || 'Puesto de merch',
+    };
+    // Without the migration every stand is in-app, which is the column's default.
+    if (atStandSchema !== false) row.payment_method = settings.paymentMethod;
+    const { error } = await supabase.from('event_merch').upsert(row);
     if (error) throw error;
   },
 
@@ -270,13 +419,16 @@ export const merchService = {
   },
 
   async ordersForStand(eventId: string, subjectId: string): Promise<MerchOrder[]> {
-    const { data, error } = await supabase
-      .from('merch_orders')
-      .select(ORDER_COLUMNS)
-      .eq('event_id', eventId)
-      .eq('seller_subject_id', subjectId)
-      .in('status', ['paid', 'collected', 'refunded'])
-      .order('created_at');
+    await releaseExpired(eventId);
+    const { data, error } = await withAtStandColumns<any[]>(withAtStand =>
+      supabase
+        .from('merch_orders')
+        .select(orderColumns(withAtStand))
+        .eq('event_id', eventId)
+        .eq('seller_subject_id', subjectId)
+        .in('status', withAtStand ? ['reserved', 'paid', 'collected', 'refunded'] : ['paid', 'collected', 'refunded'])
+        .order('created_at'),
+    );
     if (error) throw error;
     return (data || []).map(mapOrder);
   },
@@ -284,13 +436,15 @@ export const merchService = {
   async collect(eventId: string, code: string) {
     const { data, error } = await supabase.rpc('merch_collect', { p_event_id: eventId, p_code: code });
     if (error) {
-      const reason = /merch:([a-z_]+)/.exec(error.message ?? '')?.[1];
+      const why = reason(error);
       throw new Error(
-        reason === 'already_collected'
+        why === 'already_collected'
           ? 'Ese pedido ya se entregó.'
-          : reason === 'not_paid'
+          : why === 'not_paid'
             ? 'Ese pedido no está pagado.'
-            : 'Código no encontrado en este concierto.',
+            : why === 'cancelled'
+              ? 'Esa reserva se canceló o caducó.'
+              : 'Código no encontrado en este concierto.',
       );
     }
     return data as string;

@@ -117,6 +117,29 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
+      # Pay-at-stand merch reservations nobody collected give their stock
+      # back (merch_release_expired). The app also does it lazily on reads and
+      # new reservations; this is the daily sweep. Harmless before the
+      # migration exists (the call just fails).
+      - name: Release expired merch reservations
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
+            echo "Skipped: SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not set."; exit 0
+          fi
+          curl -sS --fail-with-body -X POST "${SUPABASE_URL%/}/rest/v1/rpc/merch_release_expired" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Content-Type: application/json" \
+            -d '{}'
+          echo
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
       - name: Resolve obsolete watcher alerts
         if: always()
         run: npm run scrape:maintenance
