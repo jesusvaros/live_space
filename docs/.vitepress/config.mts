@@ -1,6 +1,10 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
+  // docs/legal/*.md are also the public web pages (/privacidad, /condiciones,
+  // /borrar-cuenta, /licencia-momentos): their links point at the website,
+  // not at pages of this documentation.
+  ignoreDeadLinks: [/^\/(privacidad|condiciones|borrar-cuenta|licencia-momentos)\/?$/],
   lang: 'es-ES',
   title: 'Live Space',
   description: 'Wiki técnica y operativa de Live Space',
