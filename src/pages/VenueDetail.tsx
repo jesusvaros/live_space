@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DetailSkeleton } from '../components/ui/AppPrimitives';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -13,7 +13,7 @@ import MomentGrid from '../components/ui/MomentGrid';
 import { IconCheckCircle, IconMap } from '../components/icons';
 import { VenueFeedbackSummary } from '../features/community';
 import { mapVenue } from '../data/canonicalMappers';
-import { fetchEventCards } from '../data/eventQueries';
+import { fetchEventCards, fetchPastEventCards } from '../data/eventQueries';
 import { readCache, venueCacheKey, writeCache } from '../data/pageCache';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
 import DetailHeader from '../components/ui/DetailHeader';
@@ -22,6 +22,7 @@ import GeneratedPoster from '../components/ui/GeneratedPoster';
 import PhotoCredit from '../components/ui/PhotoCredit';
 import ClaimProfileLink from '../components/pro/ClaimProfileLink';
 import { enableConcertAlerts } from '../features/alerts/concertAlerts';
+import PastConcertsSection from '../features/events/PastConcertsSection';
 
 const VENUE_TYPE_LABELS: Record<string, string> = {
   music_venue: 'Sala de conciertos',
@@ -213,6 +214,16 @@ const VenueDetail: React.FC = () => {
     return () => observer.disconnect();
   }, [events, hasMoreEvents, id]);
 
+  // Past concerts, most recent first: read by PastConcertsSection only once it
+  // scrolls into view.
+  const fetchPastPage = useCallback(
+    (offset: number, limit: number) =>
+      !id
+        ? Promise.resolve([])
+        : fetchPastEventCards({ venueId: id, beforeIso: startOfTodayIso(), offset, limit }),
+    [id],
+  );
+
   const handleFollowToggle = async () => {
     if (!user || !currentUserProfile?.subject_id || !venue?.subject_id) {
       if (!user) navigate('/welcome');
@@ -364,6 +375,15 @@ const VenueDetail: React.FC = () => {
               </div>
             )}
           </section>
+
+          <PastConcertsSection
+            ownerKey={`venue:${venue.id}`}
+            fetchPage={fetchPastPage}
+            titleOf={getPrimaryArtistName}
+            subtitleOf={event => (getPrimaryArtistName(event) !== event.name ? event.name : null)}
+            hideWhenEmpty={events.length === 0}
+            className="px-4 pt-5"
+          />
 
           <section className="px-4 pt-5">
             <h2 className="mb-2.5 font-display text-xl font-bold text-app-ink">Grabado aquí</h2>

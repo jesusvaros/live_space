@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import type { EventListItem } from '../features/events/types';
+import type { MomentStats } from '../features/events/pastConcerts';
 import { mapArtist, mapEvent, mapVenue } from './canonicalMappers';
 import { posterChain, posterSourcesFromRow, uniqueImageUrls } from '../lib/eventCover';
 import { eventCacheKey, writeCache } from './pageCache';
@@ -25,6 +26,11 @@ const EVENT_CARD_SELECT_BY_VENUE = EVENT_CARD_SELECT.replace(
   'venue_places!events_venue_place_id_fkey',
   'venue_places!events_venue_place_id_fkey!inner',
 );
+
+// The same, keeping only concerts that list this artist. The filter runs on
+// its own alias so the card still carries the whole lineup.
+const EVENT_CARD_SELECT_BY_ARTIST = `${EVENT_CARD_SELECT},
+  artist_filter:event_artists!inner(artist_id)`;
 
 // PostgREST caps a response at 1000 rows; longer lists are read in pages.
 const MAX_ROWS = 1000;
@@ -67,6 +73,8 @@ export type EventCardQuery = {
   eventId?: string;
   eventIds?: string[];
   venueId?: string;
+  /** Only concerts whose lineup lists this artist. */
+  artistId?: string;
   festivalId?: string;
   /** Only this city's concerts (the event's city, any case). */
   city?: string;
@@ -93,13 +101,16 @@ export const fetchEventCards = async (options: EventCardQuery): Promise<EventLis
   const build = () => {
     let query = supabase
       .from('events')
-      .select(options.bounds ? EVENT_CARD_SELECT_BY_VENUE : EVENT_CARD_SELECT)
+      .select(
+        options.bounds ? EVENT_CARD_SELECT_BY_VENUE : options.artistId ? EVENT_CARD_SELECT_BY_ARTIST : EVENT_CARD_SELECT,
+      )
       .eq('status', 'published');
     if (options.startIso) query = query.gte('starts_at', options.startIso);
     if (options.endIso) query = query.lte('starts_at', options.endIso);
     if (options.eventId) query = query.eq('id', options.eventId);
     if (options.eventIds) query = query.in('id', options.eventIds);
     if (options.venueId) query = query.eq('venue_place_id', options.venueId);
+    if (options.artistId) query = query.eq('artist_filter.artist_id', options.artistId);
     if (options.festivalId) query = query.eq('festival_id', options.festivalId);
     if (options.city) query = query.ilike('city', escapeLike(options.city.trim()));
     if (options.bounds) {
@@ -134,6 +145,74 @@ export const fetchEventCards = async (options: EventCardQuery): Promise<EventLis
   // screen needs first.
   for (const card of cards) writeCache(eventCacheKey(card.id), card);
   return cards;
+};
+
+// A past concert as a row of «Conciertos pasados»: date, venue, lineup and
+// the cover (the newest fan photo, else the poster). Half the bytes of a full
+// card; the concert page reads the rest when it opens.
+const PAST_CARD_SELECT = `
+  id,name,starts_at,city,address,status,image_url,poster_thumb_url,poster_url,
+  venue_place:venue_places!events_venue_place_id_fkey (id,name,city),
+  event_artists (
+    artist:artists!event_artists_artist_id_fkey (id,name,image_url)
+  ),
+  media_assets!media_assets_event_id_fkey (kind,status,secure_url,thumbnail_url,created_at)
+`;
+
+/**
+ * One page of a venue's or an artist's concerts that started before
+ * `beforeIso`, most recent first (id breaks ties so pages never overlap).
+ * Slim rows: not written to the card cache.
+ */
+export const fetchPastEventCards = async (options: {
+  venueId?: string;
+  artistId?: string;
+  beforeIso: string;
+  offset: number;
+  limit: number;
+}): Promise<EventListItem[]> => {
+  if (!options.venueId && !options.artistId) return [];
+  let query = supabase
+    .from('events')
+    .select(options.artistId ? `${PAST_CARD_SELECT}, artist_filter:event_artists!inner(artist_id)` : PAST_CARD_SELECT)
+    .eq('status', 'published')
+    .lt('starts_at', options.beforeIso)
+    .eq('media_assets.kind', 'image')
+    .eq('media_assets.status', 'published')
+    .order('created_at', { referencedTable: 'media_assets', ascending: false })
+    .limit(1, { referencedTable: 'media_assets' });
+  if (options.venueId) query = query.eq('venue_place_id', options.venueId);
+  if (options.artistId) query = query.eq('artist_filter.artist_id', options.artistId);
+  const { data, error } = await query
+    .order('starts_at', { ascending: false })
+    .order('id', { ascending: false })
+    .range(options.offset, options.offset + options.limit - 1);
+  if (error) throw error;
+  return (data || []).map(mapEventCard);
+};
+
+/**
+ * Moments per concert (count and the newest one's thumbnail), for a page of
+ * ids. One small RPC; until that function is deployed (or if it fails) the
+ * map stays empty and the cards just show no count.
+ */
+let momentStatsRpcMissing = false;
+
+export const fetchEventMomentStats = async (eventIds: string[]): Promise<Map<string, MomentStats>> => {
+  const stats = new Map<string, MomentStats>();
+  if (eventIds.length === 0 || momentStatsRpcMissing) return stats;
+  const { data, error } = await supabase.rpc('get_event_moment_stats', { p_event_ids: eventIds });
+  if (error) {
+    // PGRST202: not in the schema cache yet. Do not ask again this session.
+    if (error.code === 'PGRST202' || error.code === '42883') momentStatsRpcMissing = true;
+    return stats;
+  }
+  for (const row of (data || []) as any[]) {
+    const count = Number(row.moment_count ?? 0);
+    if (!row.event_id || !(count > 0)) continue;
+    stats.set(String(row.event_id), { count, latestThumbnailUrl: row.latest_thumbnail_url ?? null });
+  }
+  return stats;
 };
 
 export const fetchEventCardById = async (eventId: string) => {
