@@ -346,11 +346,13 @@ export const seedSources: SeedSource[] = [
   source('Garaje Beat Club', 'https://www.garajebeatclub.es/conciertos-live', 'Murcia', 'https://www.garajebeatclub.es/', {
     ready: true,
     reviewedAt: '2026-11-10T00:00:00.000Z',
+    structuredDataVerified: true,
     parserKey: 'garaje-beat-agenda',
   }),
   source('Escenario Santander', 'https://escenariosantander.com/agenda/', 'Santander', 'https://escenariosantander.com/', {
     ready: true,
     reviewedAt: '2026-11-10T00:00:00.000Z',
+    structuredDataVerified: true,
     parserKey: 'escenario-santander-agenda',
   }),
   source('Supersonic Vigo', 'https://supersonicvigo.es/', 'Vigo', 'https://supersonicvigo.es/', {
