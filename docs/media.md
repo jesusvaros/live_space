@@ -264,6 +264,27 @@ sustituye el aviso genérico por «Hemos encontrado N vídeos…», o lo cancela
 hay nada. Si la app no se abre, el aviso genérico programado hace de respaldo.
 La confirmación llama a `enqueueMomentUploads` (`src/media/uploadQueue.ts`).
 
+## Detección del concierto al subir
+
+En `/subir`, `src/lib/moments.ts` lee de cada archivo, en el móvil, la hora de
+captura y, si la lleva, la ubicación: fotos con `exifr` (EXIF GPS); vídeos
+buscando en los primeros y últimos 2 MB (nunca el archivo entero) el átomo
+`©xyz` de QuickTime/Android o la clave `com.apple.quicktime.location.ISO6709`
+(`src/lib/mediaLocation.ts`, cadena ISO 6709). `src/lib/concertDetection.ts`
+elige el concierto: hora como siempre (`distanceToConcert`, ±3 h) más la
+distancia mediana a la sala (≤ 300 m fuerte, ≤ 2 km débil, 2–25 km penaliza,
+> 25 km otra ciudad: nunca se elige solo por la hora). Si la hora es la del
+archivo (`lastModified`) pero el lugar es la sala y hay concierto a ±1 día, se
+sugiere con menos confianza. La etiqueta dice si fue «por la hora» o «por la hora
+y el lugar». Tras detectarlo se ofrece «¿Marcamos que fuiste?» (un toque, nunca
+automático; `src/features/events/AttendanceSuggestion.tsx`).
+
+**Privacidad:** las coordenadas solo viven en memoria en esa pantalla
+(`MomentItem.location`) para elegir el concierto. No se suben ni se guardan en
+la base de datos, ni en el móvil, ni en registros. Solo se guarda el concierto.
+En el navegador y en los selectores de fotos de iOS/Android el sistema puede
+quitar la ubicación de los archivos; entonces se detecta solo por la hora.
+
 ## Clips importados
 
 Los vídeos de Instagram, TikTok y YouTube no se descargan ni se re-alojan: se

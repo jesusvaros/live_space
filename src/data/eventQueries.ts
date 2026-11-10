@@ -142,11 +142,12 @@ export const fetchEventCardById = async (eventId: string) => {
 };
 
 // The upload screen's concert picker: what a row shows (artist, venue, date),
-// what detection by capture time needs (starts_at, ends_at) and the poster of
+// what detection needs (starts_at, ends_at, the venue's coordinates to compare
+// with where the media was taken, on the device) and the poster of
 // the chosen one (the scraped image or the newest fan photo, not all of them).
 const UPLOAD_CANDIDATE_SELECT = `
-  id,name,starts_at,ends_at,city,image_url,
-  venue_place:venue_places!events_venue_place_id_fkey (id,name,city),
+  id,name,starts_at,ends_at,city,image_url,latitude,longitude,
+  venue_place:venue_places!events_venue_place_id_fkey (id,name,city,latitude,longitude),
   event_artists (
     artist:artists!event_artists_artist_id_fkey (id,name)
   ),

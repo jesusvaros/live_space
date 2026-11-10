@@ -1,3 +1,5 @@
+import { findMp4Location, gpsFromExif, type LatLng } from './mediaLocation';
+
 export type MomentItem = {
   id: string;
   file: File;
@@ -6,6 +8,9 @@ export type MomentItem = {
   captureAt: Date | null;
   captureSource: string | null;
   manualValue: string;
+  // Where it was taken, from the file's own metadata. In memory only, to pick
+  // the concert on the upload screen: never uploaded, stored or logged.
+  location: LatLng | null;
 };
 
 const MAC_EPOCH_OFFSET_SECONDS = 2082844800;
@@ -99,37 +104,57 @@ const findMp4CreationSeconds = (buffer: ArrayBuffer) => {
   return null;
 };
 
-const detectVideoCaptureTime = async (file: File) => {
+const toCaptureDate = (seconds: number | null) => {
+  if (!seconds || seconds <= MAC_EPOCH_OFFSET_SECONDS) return null;
+  const date = new Date((seconds - MAC_EPOCH_OFFSET_SECONDS) * 1000);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+// Time and place of a video from its first and last 2 MB (the `moov` box with
+// the metadata sits at one end), never the whole file.
+const detectVideoMetadata = async (file: File) => {
   const maxBytes = 2 * 1024 * 1024;
   const slices = [file.slice(0, maxBytes)];
   if (file.size > maxBytes) {
     slices.push(file.slice(Math.max(file.size - maxBytes, 0), file.size));
   }
 
+  let capturedAt: Date | null = null;
+  let location: LatLng | null = null;
   for (const slice of slices) {
+    if (capturedAt && location) break;
     try {
       const buffer = await slice.arrayBuffer();
-      const seconds = findMp4CreationSeconds(buffer);
-      if (seconds && seconds > MAC_EPOCH_OFFSET_SECONDS) {
-        const date = new Date((seconds - MAC_EPOCH_OFFSET_SECONDS) * 1000);
-        if (!Number.isNaN(date.getTime())) return date;
-      }
+      capturedAt ??= toCaptureDate(findMp4CreationSeconds(buffer));
+      location ??= findMp4Location(buffer);
     } catch {
       // Ignore parsing errors.
     }
   }
 
-  return null;
+  return { capturedAt, location };
 };
 
-const detectCaptureInfo = async (file: File) => {
+const EXIF_TAGS = [
+  'DateTimeOriginal', 'CreateDate', 'ModifyDate',
+  'GPSLatitude', 'GPSLatitudeRef', 'GPSLongitude', 'GPSLongitudeRef',
+];
+
+type CaptureInfo = { capturedAt: Date | null; source: string | null; location: LatLng | null };
+
+const detectCaptureInfo = async (file: File): Promise<CaptureInfo> => {
   const isImage = file.type.startsWith('image/');
   const isVideo = file.type.startsWith('video/');
+  let location: LatLng | null = null;
   if (isImage) {
     try {
       const exifrModule = await import('exifr');
       const exifr = (exifrModule as any).default ?? exifrModule;
-      const data = await exifr.parse(file, ['DateTimeOriginal', 'CreateDate', 'ModifyDate']);
+      const data = await exifr.parse(file, { pick: EXIF_TAGS });
+      // PRIVACY: the GPS is read here, on the device, only to choose the
+      // concert. It stays in this MomentItem in memory and is never uploaded,
+      // stored, logged or sent anywhere (see lib/mediaLocation.ts).
+      location = gpsFromExif(data);
       const candidate = data?.DateTimeOriginal || data?.CreateDate || data?.ModifyDate;
       const parsed =
         candidate instanceof Date
@@ -138,7 +163,7 @@ const detectCaptureInfo = async (file: File) => {
             ? new Date(candidate)
             : null;
       if (parsed && !Number.isNaN(parsed.getTime())) {
-        return { capturedAt: parsed, source: 'exif' };
+        return { capturedAt: parsed, source: 'exif', location };
       }
     } catch {
       // Ignore EXIF parsing errors.
@@ -146,24 +171,27 @@ const detectCaptureInfo = async (file: File) => {
   }
 
   if (isVideo) {
-    const videoCapturedAt = await detectVideoCaptureTime(file);
-    if (videoCapturedAt) {
-      return { capturedAt: videoCapturedAt, source: 'video.metadata' };
+    // PRIVACY: same rule as for photos: the location is only used in memory to
+    // choose the concert, never uploaded, stored or logged.
+    const video = await detectVideoMetadata(file);
+    location = video.location;
+    if (video.capturedAt) {
+      return { capturedAt: video.capturedAt, source: 'video.metadata', location };
     }
   }
 
   if (Number.isFinite(file.lastModified) && file.lastModified > 0) {
-    return { capturedAt: new Date(file.lastModified), source: 'file.lastModified' };
+    return { capturedAt: new Date(file.lastModified), source: 'file.lastModified', location };
   }
 
-  return { capturedAt: null, source: null };
+  return { capturedAt: null, source: null, location };
 };
 
 export const buildMomentItems = async (files: File[]) => {
   const now = new Date();
   const items = await Promise.all(
     files.map(async file => {
-      const { capturedAt, source } = await detectCaptureInfo(file);
+      const { capturedAt, source, location } = await detectCaptureInfo(file);
       const mediaType = file.type.startsWith('video') ? 'video' : 'image';
       const initialDate = capturedAt ?? now;
       const captureSource = capturedAt ? source : 'manual';
@@ -180,6 +208,7 @@ export const buildMomentItems = async (files: File[]) => {
         captureAt: capturedAt ?? initialDate,
         captureSource: captureSource ?? null,
         manualValue: toDatetimeLocalValue(initialDate),
+        location,
       } as MomentItem;
     })
   );
