@@ -90,6 +90,8 @@ const EventDetail: React.FC = () => {
     setLoading(!cached);
     setError('');
 
+    // The setlist only needs the id: ask for it alongside the concert.
+    const setlistRequest = eventService.getEventSetlist(id).catch(() => [] as EventSetlistEntry[]);
     try {
       const data = await fetchEventCardById(id);
 
@@ -102,7 +104,7 @@ const EventDetail: React.FC = () => {
       setEvent(data as EventDetailData);
       setLoading(false);
 
-      setSetlist(await eventService.getEventSetlist(id));
+      setSetlist(await setlistRequest);
     } catch (err) {
       // Offline with a cached copy: keep showing it.
       if (!cached) {

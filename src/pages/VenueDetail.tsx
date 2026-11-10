@@ -45,8 +45,20 @@ type VenueEvent = Event & {
 type VenueSnapshot = {
   venue: VenuePlace;
   events: VenueEvent[];
+  /** More upcoming concerts than the ones loaded so far. */
+  hasMoreEvents?: boolean;
   moments: PostWithSetlist[];
   followersCount: number;
+};
+
+// A busy venue lists months ahead: the agenda comes in pages as the visitor
+// scrolls along it.
+const EVENTS_PAGE = 24;
+
+const startOfTodayIso = () => {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  return date.toISOString();
 };
 
 const VenueDetail: React.FC = () => {
@@ -58,6 +70,9 @@ const VenueDetail: React.FC = () => {
   const initial = readCache<VenueSnapshot>(venueCacheKey(id || ''));
   const [venue, setVenue] = useState<VenuePlace | null>(initial?.venue ?? null);
   const [events, setEvents] = useState<VenueEvent[]>(initial?.events ?? []);
+  const [hasMoreEvents, setHasMoreEvents] = useState(initial?.hasMoreEvents ?? false);
+  const eventsScrollerRef = useRef<HTMLDivElement | null>(null);
+  const eventsEndRef = useRef<HTMLSpanElement | null>(null);
   const [moments, setMoments] = useState<PostWithSetlist[]>(initial?.moments ?? []);
   const [loading, setLoading] = useState(!initial);
   const [error, setError] = useState('');
@@ -72,18 +87,16 @@ const VenueDetail: React.FC = () => {
       const cached = readCache<VenueSnapshot>(venueCacheKey(id || ''));
       setVenue(cached?.venue ?? null);
       setEvents(cached?.events ?? []);
+      setHasMoreEvents(cached?.hasMoreEvents ?? false);
       setMoments(cached?.moments ?? []);
       setFollowersCount(cached?.followersCount ?? 0);
       setLoading(!cached);
       setError('');
       try {
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0);
-
         // The venue, its listings and its moments only need the venue id.
         const [venueResult, eventsResult, momentsResult] = await Promise.allSettled([
           supabase.from('v_subject_venues').select('*').eq('venue_place_id', id).single(),
-          fetchEventCards({ venueId: id, startIso: startOfToday.toISOString() }),
+          fetchEventCards({ venueId: id, startIso: startOfTodayIso(), limit: EVENTS_PAGE }),
           // Everything recorded here, past concerts included.
           supabase
             .from('v_post_cards')
@@ -114,7 +127,9 @@ const VenueDetail: React.FC = () => {
         }
 
         setVenue(mappedVenue);
+        const moreEvents = eventsData.length === EVENTS_PAGE;
         setEvents(eventsData);
+        setHasMoreEvents(moreEvents);
         setMoments(momentsData);
         setLoading(false);
 
@@ -140,6 +155,7 @@ const VenueDetail: React.FC = () => {
         writeCache<VenueSnapshot>(venueCacheKey(id || ''), {
           venue: mappedVenue,
           events: eventsData,
+          hasMoreEvents: moreEvents,
           moments: momentsData,
           followersCount: count,
         });
@@ -157,6 +173,43 @@ const VenueDetail: React.FC = () => {
 
     loadVenue();
   }, [id, user, currentUserProfile?.subject_id]);
+
+  // The next page of the agenda once the end of the row comes into view.
+  // One page at a time; a page that lands after leaving this venue is dropped.
+  const currentIdRef = useRef(id);
+  currentIdRef.current = id;
+  const loadingMoreRef = useRef(false);
+  useEffect(() => {
+    const scroller = eventsScrollerRef.current;
+    const end = eventsEndRef.current;
+    if (!id || !hasMoreEvents || !scroller || !end || typeof IntersectionObserver === 'undefined') return undefined;
+    const observer = new IntersectionObserver(
+      entries => {
+        if (loadingMoreRef.current || !entries.some(entry => entry.isIntersecting)) return;
+        loadingMoreRef.current = true;
+        fetchEventCards({ venueId: id, startIso: startOfTodayIso(), offset: events.length, limit: EVENTS_PAGE })
+          .then(page => {
+            if (currentIdRef.current !== id) return;
+            const seen = new Set(events.map(event => event.id));
+            const next = [...events, ...(page as VenueEvent[]).filter(event => !seen.has(event.id))];
+            const more = page.length === EVENTS_PAGE;
+            setEvents(next);
+            setHasMoreEvents(more);
+            const snapshot = readCache<VenueSnapshot>(venueCacheKey(id));
+            if (snapshot) writeCache<VenueSnapshot>(venueCacheKey(id), { ...snapshot, events: next, hasMoreEvents: more });
+          })
+          .catch(() => {
+            if (currentIdRef.current === id) setHasMoreEvents(false);
+          })
+          .finally(() => {
+            loadingMoreRef.current = false;
+          });
+      },
+      { root: scroller, rootMargin: '0px 420px 0px 0px' },
+    );
+    observer.observe(end);
+    return () => observer.disconnect();
+  }, [events, hasMoreEvents, id]);
 
   const handleFollowToggle = async () => {
     if (!user || !currentUserProfile?.subject_id || !venue?.subject_id) {
@@ -278,7 +331,7 @@ const VenueDetail: React.FC = () => {
             {events.length === 0 ? (
               <p className="text-sm text-white/55">No hay conciertos anunciados ahora mismo.</p>
             ) : (
-              <div className="-mr-4 flex gap-3 overflow-x-auto pr-4">
+              <div ref={eventsScrollerRef} className="-mr-4 flex gap-3 overflow-x-auto pr-4">
                 {events.map(event => {
                   const artist = getPrimaryArtistName(event as EventListItem);
                   const cover = getEventCoverImage(event as EventListItem);
@@ -301,6 +354,7 @@ const VenueDetail: React.FC = () => {
                     </button>
                   );
                 })}
+                {hasMoreEvents ? <span ref={eventsEndRef} aria-hidden className="w-px shrink-0" /> : null}
               </div>
             )}
           </section>

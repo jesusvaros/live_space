@@ -1,8 +1,7 @@
 import { supabase } from '../../../lib/supabase';
 import { cached } from '../../../lib/requestCache';
-import { EventListItem } from '../../events/types';
 import { calculateDistanceKm, toNumber } from '../../events/utils';
-import { fetchUpcomingEvents } from './discoverUpcomingEvents';
+import { fetchUpcomingEvents, type UpcomingVenueEvent } from './discoverUpcomingEvents';
 import { DiscoverVenue, SuggestedSection } from '../types';
 import { withVenueRecentPosters } from './discoverRecentPosters';
 
@@ -56,7 +55,7 @@ const fetchVenuesByIds = async (venuePlaceIds: string[]) => {
   return withVenueRecentPosters(venues);
 };
 
-const topVenueIdsFromEvents = (events: EventListItem[]) => {
+const topVenueIdsFromEvents = (events: UpcomingVenueEvent[]) => {
   const counts = new Map<string, number>();
   for (const event of events) {
     const venuePlaceId = event.venue_place?.id;
@@ -87,7 +86,7 @@ export const getSuggestedVenues = async (options?: { location?: { lat: number; l
   ).then(withVenueRecentPosters);
   const events = await fetchUpcomingEvents(startOfToday.toISOString(), endOfTwoWeeks.toISOString());
 
-  const nearEvents: EventListItem[] = [];
+  const nearEvents: UpcomingVenueEvent[] = [];
   if (options?.location) {
     for (const event of events) {
       const eventLat = toNumber(event.latitude ?? event.venue_place?.latitude ?? null);

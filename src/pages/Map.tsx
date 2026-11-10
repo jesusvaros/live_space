@@ -8,11 +8,13 @@ import MapMarkers from '../components/map/MapMarkers';
 import MapFilterBar from '../components/map/MapFilterBar';
 import MapFilterModal from '../components/map/MapFilterModal';
 import MapSelectionSheet from '../components/map/MapSelectionSheet';
-import { useMapFilters, type MapArtistFilter } from '../hooks/useMapFilters';
+import { getWhenRange, useMapFilters, type MapArtistFilter } from '../hooks/useMapFilters';
 import { useQuery } from '../shared/hooks/useQuery';
 import { persistStoredLocation, type StoredLocation } from '../shared/hooks/useStoredLocation';
 import { IconLocate } from '../components/icons';
 import { fetchMapEvents, type MapEvent } from '../data/eventQueries';
+
+type MapScope = 'next30' | 'upcoming' | 'all';
 
 // The bundled worker is emitted as its own asset: MapLibre's default lookup is
 // relative to its own module URL, which neither Vite chunks nor capacitor:// keep.
@@ -90,20 +92,27 @@ const Map: React.FC = () => {
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState('');
 
-  const [includePastQuery, setIncludePastQuery] = useState(false);
+  // What to download: the date chips other than "Cualquier fecha" all fall
+  // inside the next 30 days, so only that window is fetched by default; the
+  // whole agenda (and the past, if asked) only when the visitor picks it.
+  const [scope, setScope] = useState<MapScope>('next30');
   const eventsQuery = useQuery<MapEvent[]>(
-    ['map:events', includePastQuery ? 'all' : 'upcoming'],
-    () => fetchMapEvents({ includePast: includePastQuery }),
+    ['map:events', scope],
+    () =>
+      fetchMapEvents({
+        includePast: scope === 'all',
+        endIso: scope === 'next30' ? getWhenRange('next30')?.[1].toISOString() : undefined,
+      }),
     { ttlMs: 60_000, initialData: EMPTY_EVENTS }
   );
   const events = eventsQuery.data ?? EMPTY_EVENTS;
 
   const filters = useMapFilters(events);
-  const { venueGroups, filteredEvents, artists, city, addArtist, includePast } = filters;
+  const { venueGroups, filteredEvents, artists, city, addArtist, includePast, when } = filters;
 
   useEffect(() => {
-    setIncludePastQuery(includePast);
-  }, [includePast]);
+    setScope(when !== 'all' ? 'next30' : includePast ? 'all' : 'upcoming');
+  }, [includePast, when]);
 
   // Arriving from an artist page: filter the map to that artist.
   useEffect(() => {
