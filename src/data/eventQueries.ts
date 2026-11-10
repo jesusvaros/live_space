@@ -238,8 +238,11 @@ export const fetchUpcomingCities = async (startIso: string, endIso: string): Pro
 // The map only needs enough to place one pin per venue and list its concerts.
 // Venues and artist photos are read once on their own instead of being
 // repeated inside every concert.
+// The app runs on https: an http:// image is blocked as mixed content.
+const httpsOnly = (url: string | null | undefined) => (url && url.startsWith('https://') ? url : null);
+
 const MAP_EVENT_SELECT = `
-  id,name,starts_at,city,venue_place_id,
+  id,name,starts_at,city,venue_place_id,image_url,
   event_artists (
     billing_order,is_headliner,
     artist:artists!event_artists_artist_id_fkey (id,name)
@@ -286,7 +289,9 @@ export const mapMapEvent = (
     name: String(row.name ?? ''),
     starts_at: String(row.starts_at ?? ''),
     city: String(row.city ?? ''),
-    cover_image_url: latestImageUrl(row.media_assets),
+    // Fan photos first, then the venue's poster (the map only showed fan
+    // photos, which almost no concert has yet).
+    cover_image_url: latestImageUrl(row.media_assets) ?? httpsOnly(row.image_url),
     venue,
     artist: primary
       ? { id: String(primary.id), name: String(primary.name ?? ''), avatar_url: artistImages.get(String(primary.id)) ?? null }
