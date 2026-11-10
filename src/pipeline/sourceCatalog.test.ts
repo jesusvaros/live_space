@@ -21,15 +21,19 @@ describe('pilot source catalog', () => {
       'Café Central',
       'Café La Palma',
       'Café Libertad 8',
+      'Dabadaba',
       'El Intruso',
+      'Escenario Santander',
       'Freedonia',
       'Fun Club',
+      'Garaje Beat Club',
       'Gruta 77',
       'Heliogàbal',
       'Honky Tonk',
       'Independance Club',
       'Jamboree',
       'Jimmy Glass Jazz Bar',
+      'Kafe Antzokia',
       'La Riviera',
       'Loco Club',
       'Luz de Gas',
@@ -39,6 +43,7 @@ describe('pilot source catalog', () => {
       'Movistar Arena',
       'Radio City',
       'Razzmatazz',
+      'Rock & Blues Café',
       'Sala Apolo',
       'Sala But',
       'Sala Custom',
@@ -46,12 +51,15 @@ describe('pilot source catalog', () => {
       'Sala Galileo Galilei',
       'Sala Malandar',
       'Sala Pandora',
+      'Sala Planta Baja',
       'Sala Repvblicca',
       'Sala Vol',
       'Sidecar',
       'Siroco',
       'Soda Acústic',
+      'Supersonic Vigo',
       'Supra Music Hall',
+      'Taberna J&J',
       'Tempo Club',
       'Wolf Barcelona',
       'Wurlitzer Ballroom',
@@ -65,9 +73,9 @@ describe('pilot source catalog', () => {
     expect(pending.every((source) => source.metadata.fixtureVerified === false)).toBe(true);
   });
 
-  it('keeps every source outside the four pilot cities pending review', () => {
+  it('activates the eight local-scene sources outside the pilot cities, reviewed', () => {
     const elsewhere = seedSources.filter((source) => !['Madrid', 'Barcelona', 'Sevilla', 'Valencia'].includes(source.city));
     expect(elsewhere).toHaveLength(8);
-    expect(elsewhere.every((source) => !source.is_active && source.metadata.termsReviewStatus === 'pending')).toBe(true);
+    expect(elsewhere.every((source) => source.is_active && source.metadata.termsReviewStatus === 'approved')).toBe(true);
   });
 });
