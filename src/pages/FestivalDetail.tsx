@@ -17,6 +17,7 @@ import { useRouteEntityId } from '../hooks/useRouteEntityId';
 import type { PostWithSetlist } from '../lib/types';
 import { Festival, festivalDateRange, festivalService } from '../services/festival.service';
 import { socialService } from '../services/social.service';
+import { NAV_CLEARANCE } from '../components/BottomNav';
 
 const madridDay = (iso: string) => new Date(iso).toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
 const madridTime = (iso: string) =>
@@ -147,7 +148,7 @@ const FestivalDetail: React.FC = () => {
       {!loading && error ? <p className="p-4 text-sm text-rose-400">{error}</p> : null}
 
       {!loading && festival ? (
-        <div className="pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
+        <div className={NAV_CLEARANCE}>
           <section className="relative h-[340px] w-full overflow-hidden">
             {festival.coverImageUrl ? (
               <img src={festival.coverImageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />

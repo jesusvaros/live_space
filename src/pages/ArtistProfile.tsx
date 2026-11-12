@@ -21,6 +21,7 @@ import MapVisibilityMenu from '../features/hiddenMap/MapVisibilityMenu';
 import ClaimProfileLink from '../components/pro/ClaimProfileLink';
 import PastConcertsSection from '../features/events/PastConcertsSection';
 import type { EventListItem } from '../features/events/types';
+import { NAV_CLEARANCE } from '../components/BottomNav';
 
 type ArtistTab = 'shows' | 'moments' | 'about';
 
@@ -359,7 +360,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
             onEdit={() => navigate('/tabs/profile?edit=artist')}
           />
 
-          <div className="px-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))] pt-4">
+          <div className={`px-4 pt-4 ${NAV_CLEARANCE}`}>
             {tabBar}
             <div className="pt-3.5">{renderTabContent()}</div>
             {/* Claiming is for the few who are the artist: tucked away under

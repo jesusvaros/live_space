@@ -10,7 +10,7 @@ import {
   useLocation,
   useNavigate,
 } from 'react-router-dom';
-import BottomNav, { isDetailRoute } from './components/BottomNav';
+import BottomNav, { hidesBottomNav } from './components/BottomNav';
 import { Spinner } from './components/ui/AppPrimitives';
 import { useAuth } from './contexts/AuthContext';
 import { useWorkspace } from './contexts/WorkspaceContext';
@@ -201,8 +201,8 @@ const TabsLayout: React.FC<TabsLayoutProps> = ({
 }) => {
   const { pathname } = useLocation();
   void isArtistWorkspace;
-  // Detail screens have their own back header and bottom action bar.
-  const showNav = !isDetailRoute(pathname) || pathname === profileTabHref;
+  // Always there except in full-screen flows (upload, management, onboarding).
+  const showNav = !hidesBottomNav(pathname) || pathname === profileTabHref;
 
   return (
     <div className="flex h-dvh min-h-0 flex-col bg-app-bg text-white">
@@ -270,10 +270,7 @@ const AppRoutes = () => {
         <Routes>
           <Route path="/welcome" element={<WelcomeRoute />} />
           <Route path="/bienvenida" element={deferredPage(<Onboarding />)} />
-          <Route path="/event/:id" element={deferredPage(<EventDetail />)} />
-          <Route path="/concierto/:slug" element={deferredPage(<EventDetail />)} />
           <Route path="/profile/:id" element={<ProfileDetail />} />
-          <Route path="/post/:id" element={<PostDetail />} />
           <Route path="/discover" element={<Navigate to="/tabs/discover" replace />} />
           <Route path="/artist/:id" element={<LegacyEntityRedirect type="artist" />} />
           <Route path="/venue/:id" element={<LegacyEntityRedirect type="venue" />} />
@@ -344,6 +341,10 @@ const AppRoutes = () => {
               />
             )}
           >
+            {/* Concert and moment pages keep the bottom bar too. */}
+            <Route path="event/:id" element={<EventDetail />} />
+            <Route path="concierto/:slug" element={<EventDetail />} />
+            <Route path="post/:id" element={<PostDetail />} />
             <Route path="sala/:slug" element={<VenueDetail />} />
             <Route path="artista/:slug" element={<ArtistProfile />} />
             <Route path="madrid/conciertos/*" element={<Events />} />

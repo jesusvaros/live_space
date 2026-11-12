@@ -24,6 +24,7 @@ import ClaimProfileLink from '../components/pro/ClaimProfileLink';
 import { enableConcertAlerts } from '../features/alerts/concertAlerts';
 import PastConcertsSection from '../features/events/PastConcertsSection';
 import { useFirstContent } from '../lib/perfTiming';
+import { NAV_CLEARANCE } from '../components/BottomNav';
 
 const VENUE_TYPE_LABELS: Record<string, string> = {
   music_venue: 'Sala de conciertos',
@@ -319,7 +320,7 @@ const VenueDetail: React.FC = () => {
       {!loading && error && <div className="p-4"><p className="text-sm text-rose-400">{error}</p></div>}
 
       {!loading && venue && (
-        <div className="pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
+        <div className={NAV_CLEARANCE}>
           <section className="relative h-[300px] w-full overflow-hidden">
             {venueCover ? (
               <img src={venueCover} alt="" className="absolute inset-0 h-full w-full object-cover" />
@@ -445,7 +446,7 @@ const VenueDetail: React.FC = () => {
               <MomentGrid moments={moments} />
             )}
           </section>
-          <ClaimProfileLink type="venue" entityId={venue.id} subjectId={venue.subject_id} className="px-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))] pt-6" />
+          <ClaimProfileLink type="venue" entityId={venue.id} subjectId={venue.subject_id} className="px-4 pt-6" />
         </div>
       )}
     </AppShell>

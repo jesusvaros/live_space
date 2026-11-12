@@ -76,8 +76,9 @@ type ConcertPlayerProps = {
   // Most of the stage on screen: playback runs only then (autoplay on
   // arrival, pause on leaving; a pause by the viewer is kept).
   inView?: boolean;
-  // The page's fixed bottom bar is on screen: keep the controls clear of it.
-  bottomBarShown?: boolean;
+  // Space the page keeps over the bottom of the stage (its fixed bottom nav
+  // and action bar): the controls and tracks sit right above it.
+  bottomClearance?: string;
 };
 
 const clock = (t: number, seconds = true) =>
@@ -122,7 +123,7 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
   onDuration,
   onView = recordPostView,
   inView = true,
-  bottomBarShown = true,
+  bottomClearance = 'calc(84px + env(safe-area-inset-bottom, 0px))',
 }) => {
   const tracksRef = useRef<ConcertTracksHandle | null>(null);
   const videosRef = useRef(new Map<string, HTMLVideoElement>());
@@ -735,13 +736,9 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
         {muted ? <span className="text-[13px] font-bold">Activar sonido</span> : null}
       </button>
 
-      {/* Controls over the bottom of the picture, clear of the page's fixed
-          upload bar when there is one. */}
-      <div
-        className={`absolute inset-x-0 bottom-0 z-10 px-3 ${
-          bottomBarShown ? 'pb-[calc(84px+env(safe-area-inset-bottom,0px))]' : 'pb-[calc(8px+env(safe-area-inset-bottom,0px))]'
-        }`}
-      >
+      {/* Controls over the bottom of the picture, clear of the page's
+          bottom nav and action bar. */}
+      <div className="absolute inset-x-0 bottom-0 z-10 px-3" style={{ paddingBottom: bottomClearance }}>
         <div className="flex items-end gap-2">
           {/* Caption */}
           <div className="pointer-events-none min-w-0 flex-1 pb-1">
