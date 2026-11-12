@@ -76,13 +76,20 @@ const EventUploadButton: React.FC<EventUploadButtonProps> = ({ eventId, userId, 
       disabled={inProgress || done || uploaded === null}
       aria-busy={inProgress}
       className={`relative flex h-[52px] flex-1 items-center justify-center gap-2 overflow-hidden rounded-full text-base font-bold transition-colors duration-500 ${
-        failed ? 'bg-rose-500 text-white' : done ? 'bg-app-surface text-app-ink/70' : 'bg-app-accent text-[#14151a]'
+        failed
+          ? 'bg-rose-500 text-white'
+          : done
+            ? 'bg-app-surface text-app-ink/70'
+            : inProgress
+              ? 'bg-[#3a3b42] text-white'
+              : 'bg-app-accent text-[#14151a]'
       }`}
     >
+      {/* While uploading the button turns grey and fills with orange. */}
       <span
         aria-hidden="true"
-        className="absolute inset-y-0 left-0 bg-white/35 transition-[width,opacity] duration-500 ease-out"
-        style={{ width: inProgress ? `${summary.percent}%` : done ? '100%' : '0%', opacity: inProgress ? 1 : 0 }}
+        className="absolute inset-y-0 left-0 bg-app-accent transition-[width,opacity] duration-500 ease-out"
+        style={{ width: inProgress ? `${Math.max(3, summary.percent)}%` : '0%', opacity: inProgress ? 1 : 0 }}
       />
       <span className="relative flex items-center gap-2 tabular-nums">{label}</span>
     </button>

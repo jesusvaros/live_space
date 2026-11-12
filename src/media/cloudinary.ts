@@ -262,9 +262,14 @@ export class CloudinaryMediaProvider implements MediaProvider {
     );
   }
 
-  private buildForm(request: MediaUploadRequest, authorization: CloudinaryAuthorization) {
+  private buildForm(request: MediaUploadRequest, authorization: CloudinaryAuthorization, body?: Blob) {
     const form = new FormData();
-    form.set('file', request.file);
+    // A File in FormData carries the modification time Chrome saw when it was
+    // picked, and the upload aborts with ERR_UPLOAD_FILE_CHANGED if the file no
+    // longer matches (Android photo picker files do this). A slice is a plain
+    // Blob without that check, which is how video parts already go to R2.
+    const file = request.file;
+    form.set('file', body ?? file.slice(0, file.size, file.type), file.name || 'upload');
     form.set('api_key', authorization.apiKey);
     form.set('timestamp', String(authorization.timestamp));
     form.set('signature', authorization.signature);
@@ -284,16 +289,29 @@ export class CloudinaryMediaProvider implements MediaProvider {
     request: MediaUploadRequest,
     authorization: CloudinaryAuthorization,
   ): Promise<MediaUploadResult> {
-    let response: Response;
-    try {
-      response = await webviewFetch(this.uploadUrl(authorization), {
+    const send = (body?: Blob) =>
+      webviewFetch(this.uploadUrl(authorization), {
         method: 'POST',
-        body: this.buildForm(request, authorization),
+        body: this.buildForm(request, authorization, body),
         signal: request.signal,
       });
+    let response: Response;
+    try {
+      response = await send();
     } catch (error) {
       if (request.signal?.aborted) throw createAbortedError(request.signal.reason);
-      throw new MediaUploadError('upload_failed', 'Cloudinary upload failed.', { cause: error });
+      // Still refused: copy the bytes into memory (a photo is at most 10 MB) and
+      // send that copy once.
+      try {
+        const bytes = typeof request.file.arrayBuffer === 'function'
+          ? await request.file.arrayBuffer()
+          : await new Response(request.file).arrayBuffer();
+        const copy = new Blob([bytes], { type: request.file.type });
+        response = await send(copy);
+      } catch (retryError) {
+        if (request.signal?.aborted) throw createAbortedError(request.signal.reason);
+        throw new MediaUploadError('upload_failed', 'Cloudinary upload failed.', { cause: retryError ?? error });
+      }
     }
     const payload = (await response.json().catch(() => ({}))) as CloudinaryUploadPayload;
     if (!response.ok) {
