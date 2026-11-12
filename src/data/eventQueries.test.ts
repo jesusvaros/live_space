@@ -30,4 +30,21 @@ describe('mapEventCard lineup order', () => {
     });
     expect(card.event_artists?.map(entry => entry.artist?.name)).toEqual(['A', 'B']);
   });
+
+  it('carries the venue image (https only) as its cover', () => {
+    const card = mapEventCard({
+      id: 'e3',
+      name: 'X',
+      starts_at: '2026-10-03T19:00:00Z',
+      venue_place: { id: 'v', name: 'Fun Club', city: 'Sevilla', image_url: 'https://funclubsevilla.com/logo.jpg' },
+    });
+    expect(card.venue_place?.cover_image_url).toBe('https://funclubsevilla.com/logo.jpg');
+    const insecure = mapEventCard({
+      id: 'e4',
+      name: 'Y',
+      starts_at: '2026-10-03T19:00:00Z',
+      venue_place: { id: 'v', name: 'Intruso', city: 'Madrid', image_url: 'http://example.com/a.jpg' },
+    });
+    expect(insecure.venue_place?.cover_image_url ?? null).toBeNull();
+  });
 });

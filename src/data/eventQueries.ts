@@ -12,7 +12,7 @@ const EVENT_CARD_SELECT = `
   id,venue_place_id,name,description,starts_at,ends_at,city,address,latitude,longitude,genres,
   is_free,price_tiers,ticket_url,source_url,status,created_by,created_at,updated_at,image_url,
   poster_thumb_url,poster_url,share_tag,timezone,festival_id,room,
-  venue_place:venue_places!events_venue_place_id_fkey (id,name,city,address,latitude,longitude),
+  venue_place:venue_places!events_venue_place_id_fkey (id,name,city,address,latitude,longitude,image_url),
   event_artists (
     billing_order,is_headliner,
     artist:artists!event_artists_artist_id_fkey (id,name,genres,image_url)
@@ -69,7 +69,10 @@ export const mapEventCard = (row: any): EventListItem => {
   return {
     ...mapEvent({ ...row, cover_image_url: coverImageUrl }),
     poster_sources: posterSources,
-    venue_place: row.venue_place ? mapVenue({ ...row.venue_place, photos: [] }) : null,
+    // venue_places.image_url is the venue's logo/cover (scraped from its site).
+    venue_place: row.venue_place
+      ? mapVenue({ ...row.venue_place, cover_image_url: httpsOnly(row.venue_place.image_url), photos: [] })
+      : null,
     // Headliner first: PostgREST returns the lineup in no particular order.
     event_artists: [...(row.event_artists || [])].sort(byBilling).map((entry: any) => ({
       artist: entry.artist ? mapArtist({ ...entry.artist, avatar_url: entry.artist.image_url ?? null }) : null,
