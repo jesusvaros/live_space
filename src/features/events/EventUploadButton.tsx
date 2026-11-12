@@ -14,7 +14,9 @@ type EventUploadButtonProps = {
  * does not show it at all (useEventUploadBar().visible).
  */
 const EventUploadButton: React.FC<EventUploadButtonProps> = ({ bar, onUpload }) => {
-  const { summary, retryAll, inProgress, failed } = bar;
+  const { summary, retryAll, clearFailed, inProgress, failed } = bar;
+  // Too big / too long / unsupported: retrying can't help, offer to remove.
+  const canRetry = summary.retryable > 0;
   const live = summary.total - summary.failed;
 
   let label: React.ReactNode;
@@ -23,7 +25,9 @@ const EventUploadButton: React.FC<EventUploadButtonProps> = ({ bar, onUpload }) 
   else if (inProgress && summary.compressing) label = `Preparando vídeo · ${summary.percent} %`;
   else if (inProgress) label = `Subiendo ${summary.current} de ${live} · ${summary.percent} %`;
   else if (failed)
-    label = summary.failed === 1 ? '1 no se pudo subir · Reintentar' : `${summary.failed} no se pudieron subir · Reintentar`;
+    label = canRetry
+      ? summary.failed === 1 ? '1 no se pudo subir · Reintentar' : `${summary.failed} no se pudieron subir · Reintentar`
+      : `${summary.errorMessage ?? (summary.failed === 1 ? '1 no se pudo subir' : `${summary.failed} no se pudieron subir`)} · Quitar`;
   else
     label = (
       <>
@@ -37,7 +41,7 @@ const EventUploadButton: React.FC<EventUploadButtonProps> = ({ bar, onUpload }) 
   return (
     <button
       type="button"
-      onClick={failed ? () => void retryAll() : onUpload}
+      onClick={failed ? () => void (canRetry ? retryAll() : clearFailed()) : onUpload}
       disabled={inProgress}
       aria-busy={inProgress}
       className={`relative flex h-[52px] flex-1 items-center justify-center gap-2 overflow-hidden rounded-full text-base font-bold transition-colors duration-500 ${
@@ -50,7 +54,13 @@ const EventUploadButton: React.FC<EventUploadButtonProps> = ({ bar, onUpload }) 
         className="absolute inset-y-0 left-0 bg-app-accent transition-[width,opacity] duration-500 ease-out"
         style={{ width: inProgress ? `${Math.max(3, summary.percent)}%` : '0%', opacity: inProgress ? 1 : 0 }}
       />
-      <span className="relative flex items-center gap-2 tabular-nums">{label}</span>
+      <span
+        className={`relative flex items-center gap-2 tabular-nums ${
+          failed ? 'line-clamp-2 block px-5 text-center text-[13px] leading-tight' : ''
+        }`}
+      >
+        {label}
+      </span>
     </button>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { readStoredCity } from '../features/agenda/agendaPrefs';
 import { Spinner } from '../components/ui/AppPrimitives';
 import { PostWithRelations, VenuePlace } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
@@ -20,7 +21,7 @@ import { IconHeart, IconHeartFilled, IconPlus, IconShare } from '../components/i
 const PAGE_SIZE = 8;
 const MAX_BARS = 8;
 
-type FeedScope = 'city' | 'following';
+type FeedScope = 'all' | 'city' | 'following';
 type FeedPost = PostWithRelations & { events?: (PostWithRelations['events'] & { venue_place?: VenuePlace | null }) | null };
 
 const sameDay = (left: Date, right: Date) => left.toDateString() === right.toDateString();
@@ -181,8 +182,10 @@ const Feed: React.FC = () => {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const resumeTick = useAppResume();
-  const city = profile?.primary_city || 'Madrid';
-  const [scope, setScope] = useState<FeedScope>('city');
+  // The city chosen on Inicio (agenda), then the profile's; no default city:
+  // without one the feed shows everything instead of somebody else's city.
+  const city = readStoredCity() || profile?.primary_city || null;
+  const [scope, setScope] = useState<FeedScope>(() => (city ? 'city' : 'all'));
   const [loadedPosts, setPosts] = useState<FeedPost[]>([]);
   // v_post_cards already leaves out people who block each other; this drops
   // someone blocked from this screen without reloading it.
@@ -217,7 +220,8 @@ const Feed: React.FC = () => {
         if (followedEventIdsRef.current.length === 0) return [];
         return (await fetchPostCards({ from, to, eventIds: followedEventIdsRef.current })) as FeedPost[];
       }
-      let query = supabase.from('v_post_cards').select('*').ilike('events->>city', city);
+      let query = supabase.from('v_post_cards').select('*');
+      if (scope === 'city' && city) query = query.ilike('events->>city', city);
       query = query.order('created_at', { ascending: false }).range(from, to);
       const { data, error: queryError } = await query;
       if (queryError) throw queryError;
@@ -380,7 +384,8 @@ const Feed: React.FC = () => {
     <div className="relative h-full bg-black">
       <div className="pointer-events-none absolute inset-x-4 top-[calc(14px+env(safe-area-inset-top,0px))] z-20 flex items-center justify-between">
         <div role="tablist" aria-label="Qué momentos ver" className="pointer-events-auto flex gap-1.5">
-          {scopeButton('city', city)}
+          {scopeButton('all', 'Todo')}
+          {city ? scopeButton('city', city) : null}
           {scopeButton('following', 'Siguiendo')}
         </div>
         <button
