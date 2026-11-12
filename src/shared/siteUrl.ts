@@ -4,7 +4,7 @@
 // builds). Supabase Edge Functions keep a copy of this default because Deno
 // cannot import from src/ (supabase/functions/_shared/stripe.ts).
 // It is printed in concert QR codes: settle it before printing them.
-export const DEFAULT_PUBLIC_SITE_URL = 'https://livespace.vercel.app';
+export const DEFAULT_PUBLIC_SITE_URL = 'https://livespace-dusky.vercel.app';
 
 /** The configured URL, or the default, without a trailing slash. */
 export const resolvePublicSiteUrl = (configured?: string | null) =>

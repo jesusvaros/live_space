@@ -193,7 +193,7 @@ la ejecución. Alta, una sola vez, desde la raíz del repo:
    `gh secret set VERCEL_PROJECT_ID` (`VITE_SUPABASE_URL` y
    `VITE_SUPABASE_ANON_KEY` ya existen).
 5. Opcional: `gh variable set PUBLIC_SITE_URL --body https://<dominio>` si la
-   web no queda en `https://livespace.vercel.app` (el valor por defecto, en
+   web no queda en `https://livespace-dusky.vercel.app` (el valor por defecto, en
    `src/shared/siteUrl.ts`) o con dominio propio. La misma URL va en
    `VITE_PUBLIC_SITE_URL` del `.env` del build de la app y en el secret
    `PUBLIC_SITE_URL` de las funciones de Supabase (merch, `/vuelta`).

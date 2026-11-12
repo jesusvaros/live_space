@@ -131,7 +131,7 @@ escrito del autor. Una foto nueva entra con su URL de origen y su licencia en
 | `VITE_CONTACT_EMAIL` | Dirección del botón «Pide tu QR» / «¿Organizas…?» y contacto de los textos legales (`{{EMAIL}}`). Si está vacía, el botón no aparece y los textos muestran «[EMAIL DE CONTACTO]». |
 | `VITE_LEGAL_OWNER` | Responsable del tratamiento en la política de privacidad y las condiciones (`{{TITULAR}}`). Vacía: «[TITULAR]». Ponerla también en el `.env` del build de la app. |
 | `VITE_ANDROID_URL`, `VITE_IOS_URL` | Enlaces de Google Play y App Store. Con alguno definido, la lista de espera se sustituye por los botones de tienda. |
-| `PUBLIC_SITE_URL` | URL de la web: canonical y sitemap del prerender y, como `VITE_PUBLIC_SITE_URL`, enlaces y QR. Vacía: `https://livespace.vercel.app` (`src/shared/siteUrl.ts`). Va en los QR impresos: fijarla antes de imprimir. |
+| `PUBLIC_SITE_URL` | URL de la web: canonical y sitemap del prerender y, como `VITE_PUBLIC_SITE_URL`, enlaces y QR. Vacía: `https://livespace-dusky.vercel.app` (`src/shared/siteUrl.ts`). Va en los QR impresos: fijarla antes de imprimir. |
 
 En el despliegue son variables del repo (`vars.*`) que lee `publish-web.yml`.
 

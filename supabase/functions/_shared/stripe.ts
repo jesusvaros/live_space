@@ -18,6 +18,6 @@ export const merchFeeBps = () => {
 // Public site that hands Stripe's redirects back to the app (/vuelta).
 // Same default as src/shared/siteUrl.ts (Deno cannot import it).
 export const publicSiteUrl = () =>
-  (Deno.env.get("PUBLIC_SITE_URL")?.trim() || "https://livespace.vercel.app").replace(/\/+$/, "");
+  (Deno.env.get("PUBLIC_SITE_URL")?.trim() || "https://livespace-dusky.vercel.app").replace(/\/+$/, "");
 
 export { Stripe };

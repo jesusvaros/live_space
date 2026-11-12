@@ -60,7 +60,7 @@ Live Space». «Seguir a todos» hace una sola inserción (`socialService.follow
 
 Al terminar, «Compartir en stories» dibuja una imagen 1080×1920 («Sigo a mis 5
 del Wrapped») con un QR a la web (`VITE_PUBLIC_SITE_URL` o
-`https://livespace.vercel.app`, con `utm_source=wrapped`). En la app se
+`https://livespace-dusky.vercel.app`, con `utm_source=wrapped`). En la app se
 comparte con `@capacitor/share` (archivo en la caché, ya cubierta por el
 `FileProvider`); en la web con Web Share o, si no hay, se descarga.
 
