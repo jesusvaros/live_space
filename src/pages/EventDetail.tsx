@@ -16,6 +16,8 @@ import { eventCacheKey, readCache } from '../data/pageCache';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
 import { useEventUploads } from '../media/useUploadQueue';
 import SetlistAttribution from '../components/event/SetlistAttribution';
+import SetlistProposalAction from '../features/setlist/SetlistProposalAction';
+import SetlistCredit from '../features/setlist/SetlistCredit';
 import { enableMomentNudges } from '../features/moments/momentNudge';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { EventStatsCard, VenueFeedbackPrompt } from '../features/community';
@@ -117,6 +119,16 @@ const EventDetail: React.FC = () => {
     document.querySelector<HTMLElement>('.event-detail-content')?.scrollTo({ top: 0, behavior: 'auto' });
   };
 
+  const reloadSetlist = () => {
+    const requestedId = id;
+    eventService
+      .getEventSetlist(id)
+      .then(entries => {
+        if (currentIdRef.current === requestedId) setSetlist(entries);
+      })
+      .catch(() => undefined);
+  };
+
   const loadEvent = async () => {
     // A concert listed on the previous screen paints at once; the fetch below
     // only refreshes it.
@@ -127,13 +139,7 @@ const EventDetail: React.FC = () => {
 
     // The setlist only needs the id: asked for alongside the concert and
     // shown when it arrives, whichever answers first.
-    const requestedId = id;
-    eventService
-      .getEventSetlist(id)
-      .then(entries => {
-        if (currentIdRef.current === requestedId) setSetlist(entries);
-      })
-      .catch(() => undefined);
+    reloadSetlist();
     try {
       const data = await fetchEventCardById(id);
 
@@ -681,6 +687,15 @@ const EventDetail: React.FC = () => {
                     <SetlistAttribution url={setlist.find(entry => entry.source_url)?.source_url} />
                   </div>
                 )}
+                <SetlistCredit setlist={setlist} className="px-4" />
+                <SetlistProposalAction
+                  eventId={event.id}
+                  startsAt={event.starts_at}
+                  setlist={setlist}
+                  attendance={attendanceStatus}
+                  onApplied={reloadSetlist}
+                  className="px-4 pt-3"
+                />
                 <div className="px-4 pt-4">
                   <button
                     type="button"

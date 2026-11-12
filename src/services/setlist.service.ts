@@ -19,6 +19,7 @@ const mapSetlistEntry = (row: any): EventSetlistEntry => ({
   created_at: row.created_at,
   source: row.source ?? null,
   source_url: row.source_url ?? null,
+  created_by: row.created_by ?? null,
   ...(row.performer ? { performer: row.performer } : {}),
   ...(row.song ? { song: row.song } : {}),
 }) as EventSetlistEntry;
