@@ -60,3 +60,21 @@ jobs:
             backup/live-space.sql.sha256
           if-no-files-found: error
           retention-days: 14
+
+  # Usage-analytics retention (docs/analiticas.md): events older than 13
+  # months are deleted once a week. Independent of the backup secrets.
+  purge-analytics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - name: Purge analytics events older than 13 months
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "Purge skipped: configure SUPABASE_DB_URL."
+            exit 0
+          fi
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -tA -c "select 'deleted ' || public.purge_analytics_events() || ' events'"

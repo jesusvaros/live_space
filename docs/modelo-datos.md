@@ -138,6 +138,19 @@ El QR de cada concierto enlaza a `/upload?qr=<token>`; el token vive en
 `event_upload_tokens` (solo lo leen quienes gestionan el evento) y se resuelve
 con `resolve_event_upload_token()`. Nunca va en el enlace público del evento.
 
+## Analíticas
+
+- **`public.analytics_events`**: eventos de uso propios (id de dispositivo
+  aleatorio, `user_id → auth.users` con `ON DELETE SET NULL`, sesión, nombre,
+  `props` < 2 KB, versión, plataforma, idioma). RLS sin políticas: solo escribe
+  `track_events()` (anónimo o con sesión) y solo lee el esquema `analytics`. Se
+  purgan a los 13 meses (`purge_analytics_events`, semanal).
+- **Esquema `analytics`**: `excluded_users` (cuentas del equipo fuera de las
+  métricas), las vistas `raw_events`, `device_users`, `activity`, `activation`,
+  `funnel_steps`, `app_metrics` y las funciones de informes, que solo devuelven
+  agregados. Núcleo genérico + parte de Live Space; detalle en
+  [Analíticas](./analiticas.md).
+
 ## Reglas de evolución
 
 - Una migración aplicada nunca se edita; se crea una compensatoria.

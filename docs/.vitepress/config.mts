@@ -45,6 +45,7 @@ export default defineConfig({
           { text: 'Importar clips', link: '/importar-clips' },
           { text: 'Importar el Wrapped', link: '/wrapped' },
           { text: 'Notificaciones', link: '/notificaciones' },
+          { text: 'Analíticas', link: '/analiticas' },
           { text: 'Runbooks', link: '/runbooks' },
         ],
       },
