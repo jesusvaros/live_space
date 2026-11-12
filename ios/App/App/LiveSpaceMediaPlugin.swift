@@ -1,9 +1,10 @@
 import Capacitor
 import Foundation
+import ImageIO
 import PhotosUI
 import UniformTypeIdentifiers
 
-/// App-local plugin behind src/media/native: pick videos, compress them on the
+/// App-local plugin behind src/media/native: pick photos and videos, compress videos on the
 /// device and upload byte ranges straight from disk. Registered by
 /// MainViewController. Mirrors android/.../media/LiveSpaceMediaPlugin.java.
 @objc(LiveSpaceMediaPlugin)
@@ -12,6 +13,7 @@ public class LiveSpaceMediaPlugin: CAPPlugin, CAPBridgedPlugin, PHPickerViewCont
     public let jsName = "LiveSpaceMedia"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "pickVideos", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "pickMedia", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getVideoInfo", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "compressVideo", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "uploadFileRange", returnType: CAPPluginReturnPromise),
@@ -21,6 +23,8 @@ public class LiveSpaceMediaPlugin: CAPPlugin, CAPBridgedPlugin, PHPickerViewCont
     private let compressor = VideoCompressor()
     private var pendingPickCall: CAPPluginCall?
     private var pendingPickLimit = 10
+    /// pickMedia (photos and videos) rather than pickVideos.
+    private var pendingPickMedia = false
 
     // MARK: - Picking
 
@@ -36,6 +40,26 @@ public class LiveSpaceMediaPlugin: CAPPlugin, CAPBridgedPlugin, PHPickerViewCont
             picker.delegate = self
             self.pendingPickCall = call
             self.pendingPickLimit = limit
+            self.pendingPickMedia = false
+            self.bridge?.viewController?.present(picker, animated: true)
+        }
+    }
+
+    /// Photos and videos together. Videos are copied like in pickVideos (the
+    /// upload queue compresses them); photos are copied as they are, with a
+    /// small JPEG preview. No photo-library permission is needed.
+    @objc func pickMedia(_ call: CAPPluginCall) {
+        let limit = max(1, min(call.getInt("limit") ?? 30, 100))
+        DispatchQueue.main.async {
+            var configuration = PHPickerConfiguration()
+            configuration.filter = .any(of: [.images, .videos])
+            configuration.selectionLimit = limit
+            configuration.preferredAssetRepresentationMode = .current
+            let picker = PHPickerViewController(configuration: configuration)
+            picker.delegate = self
+            self.pendingPickCall = call
+            self.pendingPickLimit = limit
+            self.pendingPickMedia = true
             self.bridge?.viewController?.present(picker, animated: true)
         }
     }
@@ -44,6 +68,10 @@ public class LiveSpaceMediaPlugin: CAPPlugin, CAPBridgedPlugin, PHPickerViewCont
         picker.dismiss(animated: true)
         guard let call = pendingPickCall else { return }
         pendingPickCall = nil
+        if pendingPickMedia {
+            finishPickingMedia(results, call: call)
+            return
+        }
 
         let group = DispatchGroup()
         let lock = NSLock()
@@ -74,6 +102,138 @@ public class LiveSpaceMediaPlugin: CAPPlugin, CAPBridgedPlugin, PHPickerViewCont
             let videos = picked.keys.sorted().compactMap { picked[$0] }
             call.resolve(["videos": videos])
         }
+    }
+
+    private func finishPickingMedia(_ results: [PHPickerResult], call: CAPPluginCall) {
+        let group = DispatchGroup()
+        let lock = NSLock()
+        var picked: [Int: JSObject] = [:]
+        for (index, result) in results.prefix(pendingPickLimit).enumerated() {
+            let provider = result.itemProvider
+            let isVideo = provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier)
+            let type = isVideo ? UTType.movie : UTType.image
+            guard isVideo || provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) else { continue }
+            group.enter()
+            provider.loadFileRepresentation(forTypeIdentifier: type.identifier) { url, _ in
+                defer { group.leave() }
+                // The provided file is deleted when this block returns: copy it.
+                guard let url = url, let directory = try? VideoCompressor.workDirectory() else { return }
+                let ext = url.pathExtension.isEmpty ? (isVideo ? "mov" : "jpg") : url.pathExtension.lowercased()
+                let destination = directory.appendingPathComponent("src-\(UUID().uuidString).\(ext)")
+                do {
+                    try FileManager.default.copyItem(at: url, to: destination)
+                } catch {
+                    return
+                }
+                let object = isVideo
+                    ? LiveSpaceMediaPlugin.pickedVideoToJs(destination)
+                    : LiveSpaceMediaPlugin.pickedImageToJs(destination)
+                lock.lock()
+                picked[index] = object
+                lock.unlock()
+            }
+        }
+        group.notify(queue: .main) {
+            let items = picked.keys.sorted().compactMap { picked[$0] }
+            call.resolve(["items": items])
+        }
+    }
+
+    private static func mimeType(of url: URL) -> JSValue {
+        return jsOptional(UTType(filenameExtension: url.pathExtension)?.preferredMIMEType)
+    }
+
+    private static func pickedVideoToJs(_ url: URL) -> JSObject {
+        let info = VideoCompressor.info(for: url)
+        return [
+            "kind": "video",
+            "path": url.path,
+            "mimeType": mimeType(of: url),
+            "sizeBytes": Int(info.sizeBytes),
+            "capturedAt": jsOptional(info.capturedAt),
+            "durationSeconds": info.durationSeconds,
+            "width": info.width,
+            "height": info.height,
+            "location": locationToJs(info),
+            "thumbnailPath": jsOptional(VideoCompressor.writeThumbnail(for: url, durationSeconds: info.durationSeconds)),
+        ]
+    }
+
+    /// EXIF date (local time plus optional offset), GPS, size and a preview.
+    private static func pickedImageToJs(_ url: URL) -> JSObject {
+        let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
+        let size = (attributes?[.size] as? NSNumber)?.intValue ?? -1
+        var object: JSObject = [
+            "kind": "image",
+            "path": url.path,
+            "mimeType": mimeType(of: url),
+            "sizeBytes": size,
+            "capturedAt": NSNull(),
+            "durationSeconds": 0,
+            "width": 0,
+            "height": 0,
+            "location": NSNull(),
+            "thumbnailPath": NSNull(),
+        ]
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return object }
+        if let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any] {
+            var width = (properties[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue ?? 0
+            var height = (properties[kCGImagePropertyPixelHeight] as? NSNumber)?.intValue ?? 0
+            let orientation = (properties[kCGImagePropertyOrientation] as? NSNumber)?.intValue ?? 1
+            if orientation >= 5 { swap(&width, &height) }
+            object["width"] = width
+            object["height"] = height
+            if let exif = properties[kCGImagePropertyExifDictionary] as? [CFString: Any] {
+                object["capturedAt"] = jsOptional(exifDate(
+                    exif[kCGImagePropertyExifDateTimeOriginal] as? String,
+                    offset: exif[kCGImagePropertyExifOffsetTimeOriginal] as? String
+                ))
+            }
+            if let gps = properties[kCGImagePropertyGPSDictionary] as? [CFString: Any],
+               var latitude = (gps[kCGImagePropertyGPSLatitude] as? NSNumber)?.doubleValue,
+               var longitude = (gps[kCGImagePropertyGPSLongitude] as? NSNumber)?.doubleValue {
+                if (gps[kCGImagePropertyGPSLatitudeRef] as? String) == "S" { latitude = -latitude }
+                if (gps[kCGImagePropertyGPSLongitudeRef] as? String) == "W" { longitude = -longitude }
+                if abs(latitude) <= 90, abs(longitude) <= 180, !(latitude == 0 && longitude == 0) {
+                    object["location"] = ["latitude": latitude, "longitude": longitude] as JSObject
+                }
+            }
+        }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: 640,
+        ]
+        if let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary),
+           let data = UIImage(cgImage: thumbnail).jpegData(compressionQuality: 0.8) {
+            let thumbnailURL = url.deletingLastPathComponent()
+                .appendingPathComponent("pick-\(UUID().uuidString).jpg")
+            if (try? data.write(to: thumbnailURL, options: .atomic)) != nil {
+                object["thumbnailPath"] = thumbnailURL.path
+            }
+        }
+        return object
+    }
+
+    /// "2026:10:03 22:05:00" (local time of the camera) to ISO-8601 UTC.
+    private static func exifDate(_ value: String?, offset: String?) -> String? {
+        guard let value = value, !value.isEmpty else { return nil }
+        let parser = DateFormatter()
+        parser.locale = Locale(identifier: "en_US_POSIX")
+        if let offset = offset, offset.count == 6 {
+            parser.dateFormat = "yyyy:MM:dd HH:mm:ssxxx"
+            if let date = parser.date(from: value + offset) { return isoString(date) }
+        }
+        parser.dateFormat = "yyyy:MM:dd HH:mm:ss"
+        parser.timeZone = TimeZone.current
+        guard let date = parser.date(from: value), date.timeIntervalSince1970 > 0 else { return nil }
+        return isoString(date)
+    }
+
+    private static func isoString(_ date: Date) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.string(from: date)
     }
 
     // MARK: - Metadata and compression

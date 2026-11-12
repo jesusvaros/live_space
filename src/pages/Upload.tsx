@@ -4,14 +4,15 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { EventSetlistEntry } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
 import QrScanner from '../components/QrScanner';
-import { buildMomentItems, momentItemFromGallery, releasePreview, MomentItem } from '../lib/moments';
+import { buildMomentItems, momentItemFromGallery, momentItemFromNativePick, releasePreview, MomentItem } from '../lib/moments';
 import AppShell from '../components/AppShell';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
 import { IconChevronDown, IconMic, IconPlay, IconPlus, IconQrCode } from '../components/icons';
 import VideoThumb from '../components/ui/VideoThumb';
 import { fetchEventCardById, fetchUploadCandidates } from '../data/eventQueries';
 import { eventService } from '../services/event.service';
-import { enqueueMomentUploads } from '../media';
+import { enqueueMomentUploads, isNativeMediaAvailable, pickMomentMedia } from '../media';
+import { deleteNativeFile } from '../media/native';
 import { distanceToConcert, songAtTime } from '../lib/songAssignment';
 import { detectConcert, hasReliableTime, type DetectionReason } from '../lib/concertDetection';
 import { EventListItem } from '../features/events/types';
@@ -90,6 +91,14 @@ const detectEvent = (items: MomentItem[], events: EventListItem[], city: string 
       local: inCity(event, city),
     })),
   );
+
+// A picked item that will not be published: its preview and, for the app's
+// system picker, the native copy (iOS) or read grant (Android) and thumbnail.
+const discardItem = (item: MomentItem) => {
+  releasePreview(item);
+  void deleteNativeFile(item.nativePath);
+  void deleteNativeFile(item.nativeThumbnailPath);
+};
 
 const byCaptureTime = (left: MomentItem, right: MomentItem) =>
   (left.captureAt?.getTime() ?? 0) - (right.captureAt?.getTime() ?? 0);
@@ -230,7 +239,9 @@ const Upload: React.FC = () => {
     itemsRef.current = items;
   }, [items]);
 
-  useEffect(() => () => itemsRef.current.forEach(releasePreview), []);
+  // Leaving without publishing: free the previews and the picker's files
+  // (iOS copies, Android read grants). After publishing the queue owns them.
+  useEffect(() => () => itemsRef.current.forEach(discardItem), []);
 
   // Someone who opens the app through a QR has already found out what it is for.
   useEffect(() => {
@@ -389,14 +400,33 @@ const Upload: React.FC = () => {
 
   const inAppGallery = Boolean(event && galleryPermission && canReadGallery(galleryPermission));
 
-  // Synchronous on purpose: the WebView only opens the file input from a tap.
-  const openPicker = () => {
-    if (inAppGallery) setGalleryOpen(true);
+  // In the app, the system photo picker through the plugin: it hands over
+  // native paths, so videos are compressed on the device before the 75 MB
+  // check (an <input type="file"> only gives Files, uploaded as they are).
+  const pickNative = async () => {
+    try {
+      const picked = await pickMomentMedia();
+      if (picked.length) await addItems(picked.map(momentItemFromNativePick));
+    } catch (pickError) {
+      console.warn('[upload] native picker failed', pickError);
+      setError('No hemos podido abrir tu galería. Inténtalo de nuevo.');
+    }
+  };
+
+  // Web: the file input. Synchronous on purpose: the WebView only opens it
+  // from a tap.
+  const openSystemPicker = () => {
+    if (isNativeMediaAvailable()) void pickNative();
     else fileInputRef.current?.click();
   };
 
+  const openPicker = () => {
+    if (inAppGallery) setGalleryOpen(true);
+    else openSystemPicker();
+  };
+
   const openFullGallery = () => {
-    fileInputRef.current?.click();
+    openSystemPicker();
     setGalleryOpen(false);
   };
 
@@ -414,9 +444,14 @@ const Upload: React.FC = () => {
     const files = Array.from(input.target.files || []);
     input.target.value = '';
     if (!files.length) return;
+    await addItems(await buildMomentItems(files));
+  };
+
+  // New picks join the list and, unless the concert was chosen, detect it.
+  const addItems = async (built: MomentItem[]) => {
     setError('');
-    const built = await buildMomentItems(files);
-    const next = [...items, ...built].sort(byCaptureTime);
+    const next = [...itemsRef.current, ...built].sort(byCaptureTime);
+    itemsRef.current = next;
     setItems(next);
     if (presetEventId || (event && choice === 'chosen')) return;
     setDetecting(true);
@@ -438,11 +473,9 @@ const Upload: React.FC = () => {
   };
 
   const removeItem = (id: string) => {
-    setItems(prev => {
-      const target = prev.find(item => item.id === id);
-      if (target) releasePreview(target);
-      return prev.filter(item => item.id !== id);
-    });
+    const target = items.find(item => item.id === id);
+    if (target) discardItem(target);
+    setItems(prev => prev.filter(item => item.id !== id));
   };
 
   // Song per item: the user's pick, else the preset song, else by time.
@@ -515,6 +548,16 @@ const Upload: React.FC = () => {
               { eventId: event.id, songId },
             ),
           );
+        } else if (item.nativePath) {
+          // From the app's system picker: the queue compresses videos and
+          // reads photos from the native path.
+          uploads.push({
+            nativePath: item.nativePath,
+            kind: item.mediaType,
+            eventId: event.id,
+            capturedAt: item.captureAt ? item.captureAt.toISOString() : null,
+            songId,
+          });
         } else {
           uploads.push({
             file: item.file,
@@ -527,7 +570,12 @@ const Upload: React.FC = () => {
         setProgress({ current: uploads.length, total: items.length });
       }
       await enqueueMomentUploads(uploads);
-      itemsRef.current.forEach(releasePreview);
+      // The queue owns the native files now: only previews are freed.
+      itemsRef.current.forEach(item => {
+        releasePreview(item);
+        void deleteNativeFile(item.nativeThumbnailPath);
+      });
+      itemsRef.current = [];
       setItems([]);
       clearReturnTo();
       // Recognised from the media but they could not be asked here (they

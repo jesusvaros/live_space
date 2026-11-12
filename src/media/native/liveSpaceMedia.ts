@@ -26,6 +26,32 @@ export type NativeVideoInfo = {
   location: CaptureLocation | null;
 };
 
+/** One photo or video from pickMedia(). */
+export type NativePickedMedia = {
+  kind: 'image' | 'video';
+  /**
+   * content:// URI (Android, read access kept across restarts) or an absolute
+   * path to a private copy (iOS). Pass it to the upload queue as `nativePath`.
+   */
+  path: string;
+  mimeType: string | null;
+  /** -1 when the platform does not report it. */
+  sizeBytes: number;
+  /** Capture date (EXIF / QuickTime / MediaStore), ISO-8601, or null. */
+  capturedAt: string | null;
+  /** 0 for photos. */
+  durationSeconds: number;
+  width: number;
+  height: number;
+  /**
+   * GPS from the file, or null (pickers often redact it). PRIVACY: in memory
+   * only, to choose the concert; never uploaded, stored or logged.
+   */
+  location: CaptureLocation | null;
+  /** Small JPEG preview inside the plugin's upload folder, or null. */
+  thumbnailPath: string | null;
+};
+
 export type CompressVideoOptions = {
   path: string;
   /** Correlates compressProgress events. */
@@ -69,6 +95,11 @@ export type UploadFileRangeResult = { status: number; etag: string | null };
 export interface LiveSpaceMediaPlugin {
   /** System picker for videos (no photo-library permission needed). */
   pickVideos(options?: { limit?: number }): Promise<{ videos: NativeVideoInfo[] }>;
+  /**
+   * System picker for photos and videos together (no photo-library
+   * permission needed): Android photo picker, iOS PHPicker.
+   */
+  pickMedia(options?: { limit?: number }): Promise<{ items: NativePickedMedia[] }>;
   getVideoInfo(options: { path: string }): Promise<NativeVideoInfo>;
   compressVideo(options: CompressVideoOptions): Promise<CompressedVideo>;
   /** PUT a byte range of a local file, streamed from disk on a native thread. */

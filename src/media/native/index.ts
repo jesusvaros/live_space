@@ -4,6 +4,7 @@ import {
   isNativeMediaAvailable,
   LiveSpaceMedia,
   type CompressedVideo,
+  type NativePickedMedia,
   type NativeVideoInfo,
 } from './liveSpaceMedia';
 
@@ -13,6 +14,7 @@ export type {
   CompressedVideo,
   CompressVideoOptions,
   LiveSpaceMediaPlugin,
+  NativePickedMedia,
   NativeVideoInfo,
   UploadFileRangeOptions,
   UploadFileRangeResult,
@@ -27,6 +29,27 @@ export const pickMomentVideos = async (limit = 10): Promise<NativeVideoInfo[]> =
   if (!isNativeMediaAvailable()) return [];
   const { videos } = await LiveSpaceMedia.pickVideos({ limit });
   return videos;
+};
+
+/** A system-picker pick with a preview the WebView can load. */
+export type PickedMomentMedia = NativePickedMedia & {
+  /** convertFileSrc() of the thumbnail (or of the photo itself), or null. */
+  previewUri: string | null;
+};
+
+/**
+ * Opens the system photo/video picker (no gallery permission). Each item has a
+ * native path for enqueueMomentUploads as `nativePath`, so videos are
+ * compressed on the device and photos read from disk. Empty on web: use an
+ * <input type="file"> there.
+ */
+export const pickMomentMedia = async (limit = 30): Promise<PickedMomentMedia[]> => {
+  if (!isNativeMediaAvailable()) return [];
+  const { items } = await LiveSpaceMedia.pickMedia({ limit });
+  return items.map((item) => {
+    const preview = item.thumbnailPath ?? (item.kind === 'image' ? item.path : null);
+    return { ...item, previewUri: preview ? Capacitor.convertFileSrc(preview) : null };
+  });
 };
 
 /** Transcodes to the upload format (720p H.264/AAC faststart MP4, ≤ 45 s, no GPS). */

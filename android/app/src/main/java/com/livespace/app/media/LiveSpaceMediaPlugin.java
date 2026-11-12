@@ -25,7 +25,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * App-local plugin behind src/media/native: pick videos, compress them on the
+ * App-local plugin behind src/media/native: pick photos and videos, compress videos on the
  * device and upload byte ranges straight from disk. Registered in MainActivity.
  */
 @CapacitorPlugin(name = "LiveSpaceMedia")
@@ -61,16 +61,7 @@ public class LiveSpaceMediaPlugin extends Plugin {
   @ActivityCallback
   private void pickVideosResult(PluginCall call, ActivityResult result) {
     if (call == null) return;
-    Intent data = result.getData();
-    List<Uri> uris = new ArrayList<>();
-    if (result.getResultCode() == Activity.RESULT_OK && data != null) {
-      ClipData clip = data.getClipData();
-      if (clip != null) {
-        for (int index = 0; index < clip.getItemCount(); index += 1) uris.add(clip.getItemAt(index).getUri());
-      } else if (data.getData() != null) {
-        uris.add(data.getData());
-      }
-    }
+    List<Uri> uris = pickedUris(result);
     final int limit = Math.max(1, Math.min(call.getInt("limit", 10), 50));
     ioExecutor.execute(() -> {
       JSArray videos = new JSArray();
@@ -95,6 +86,75 @@ public class LiveSpaceMediaPlugin extends Plugin {
       response.put("videos", videos);
       call.resolve(response);
     });
+  }
+
+  /**
+   * System picker for photos and videos together. No gallery permission: the
+   * photo picker (or the document picker on old devices) grants read access to
+   * what the user picks, kept across restarts for the upload queue.
+   */
+  @PluginMethod
+  public void pickMedia(PluginCall call) {
+    int limit = Math.max(1, Math.min(call.getInt("limit", 30), 100));
+    Intent intent;
+    if (ActivityResultContracts.PickVisualMedia.isPhotoPickerAvailable(getContext())) {
+      // Without a type the photo picker shows photos and videos.
+      intent = new Intent(MediaStore.ACTION_PICK_IMAGES);
+      if (limit > 1) {
+        int systemLimit = Build.VERSION.SDK_INT >= 33 ? MediaStore.getPickImagesMaxLimit() : limit;
+        intent.putExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, Math.min(limit, systemLimit));
+      }
+    } else {
+      // OPEN_DOCUMENT rather than GET_CONTENT: its grants can be persisted.
+      intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+      intent.addCategory(Intent.CATEGORY_OPENABLE);
+      intent.setType("*/*");
+      intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[] { "image/*", "video/*" });
+      intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, limit > 1);
+    }
+    startActivityForResult(call, intent, "pickMediaResult");
+  }
+
+  @ActivityCallback
+  private void pickMediaResult(PluginCall call, ActivityResult result) {
+    if (call == null) return;
+    List<Uri> uris = pickedUris(result);
+    final int limit = Math.max(1, Math.min(call.getInt("limit", 30), 100));
+    ioExecutor.execute(() -> {
+      PickedMedia.cleanOldThumbnails(getContext());
+      JSArray items = new JSArray();
+      for (Uri uri : uris) {
+        if (items.length() >= limit) break;
+        try {
+          // Keep access across restarts: the upload queue may read it later.
+          getContext().getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        } catch (Exception ignored) {
+          // Not every provider allows persisting the grant.
+        }
+        try {
+          items.put(PickedMedia.read(getContext(), uri));
+        } catch (Exception ignored) {
+          // Skip files the platform cannot read as a photo or a video.
+        }
+      }
+      JSObject response = new JSObject();
+      response.put("items", items);
+      call.resolve(response);
+    });
+  }
+
+  private static List<Uri> pickedUris(ActivityResult result) {
+    Intent data = result.getData();
+    List<Uri> uris = new ArrayList<>();
+    if (result.getResultCode() == Activity.RESULT_OK && data != null) {
+      ClipData clip = data.getClipData();
+      if (clip != null) {
+        for (int index = 0; index < clip.getItemCount(); index += 1) uris.add(clip.getItemAt(index).getUri());
+      } else if (data.getData() != null) {
+        uris.add(data.getData());
+      }
+    }
+    return uris;
   }
 
   @PluginMethod
