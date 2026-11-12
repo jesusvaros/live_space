@@ -73,7 +73,7 @@ const parseMvhdSeconds = (view: DataView, offset: number, end: number) => {
   return view.getUint32(offset + 4);
 };
 
-const findMp4CreationSeconds = (buffer: ArrayBuffer) => {
+export const findMp4CreationSeconds = (buffer: ArrayBuffer) => {
   const view = new DataView(buffer);
   const end = view.byteLength;
   let offset = 0;
@@ -101,6 +101,26 @@ const findMp4CreationSeconds = (buffer: ArrayBuffer) => {
     offset += header.size;
   }
 
+  return findMvhdBySignature(view);
+};
+
+// The tail slice of a phone video starts in the middle of `mdat`, not on a box
+// boundary, so walking boxes from 0 never reaches `moov` (phones write it at
+// the end). Find the `mvhd` box by its type instead.
+const MVHD = [0x6d, 0x76, 0x68, 0x64]; // "mvhd"
+const findMvhdBySignature = (view: DataView) => {
+  const end = view.byteLength;
+  for (let at = 4; at + 4 <= end; at += 1) {
+    if (
+      view.getUint8(at) === MVHD[0] && view.getUint8(at + 1) === MVHD[1]
+      && view.getUint8(at + 2) === MVHD[2] && view.getUint8(at + 3) === MVHD[3]
+    ) {
+      const size = view.getUint32(at - 4);
+      if (size < 16) continue;
+      const seconds = parseMvhdSeconds(view, at + 4, Math.min(end, at - 4 + size));
+      if (seconds !== null && seconds > MAC_EPOCH_OFFSET_SECONDS) return seconds;
+    }
+  }
   return null;
 };
 

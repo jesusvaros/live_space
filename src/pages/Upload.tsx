@@ -7,11 +7,12 @@ import QrScanner from '../components/QrScanner';
 import { buildMomentItems, MomentItem } from '../lib/moments';
 import AppShell from '../components/AppShell';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
-import { IconChevronDown, IconPlus, IconQrCode } from '../components/icons';
+import { IconChevronDown, IconMic, IconPlus, IconQrCode } from '../components/icons';
+import VideoThumb from '../components/ui/VideoThumb';
 import { fetchEventCardById, fetchUploadCandidates } from '../data/eventQueries';
 import { eventService } from '../services/event.service';
 import { enqueueMomentUploads } from '../media';
-import { songAtTime } from '../lib/songAssignment';
+import { distanceToConcert, songAtTime } from '../lib/songAssignment';
 import { detectConcert, hasReliableTime, type DetectionReason } from '../lib/concertDetection';
 import { EventListItem } from '../features/events/types';
 import { ReuseNotice } from '../features/community';
@@ -593,33 +594,40 @@ const Upload: React.FC = () => {
           </div>
         ) : (
           <>
-            <h2 className="mx-4 mb-2 mt-[18px] font-display text-base font-bold text-app-ink">
-              {setlist.length ? 'Cada uno va a su canción' : 'Tus momentos'}
-            </h2>
             {event && setlist.length === 0 ? (
-              <p className="mx-4 mb-2 text-[13px] text-white/55">
-                Este concierto aún no tiene setlist: los colocamos por la hora.
-              </p>
+              <div className="mx-4 mt-[18px] flex gap-3 rounded-2xl border border-app-accent/40 bg-app-accent/10 p-3.5">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-app-accent text-[#14151a]">
+                  <IconMic size={18} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-display text-[15px] font-bold text-app-ink">Aún no hay setlist</span>
+                  <span className="mt-0.5 block text-[13px] leading-snug text-[#c9c5bd]">
+                    Colocamos tus momentos por la hora a la que los grabaste. Cuando llegue el setlist, cada vídeo irá
+                    solo a su canción.
+                  </span>
+                </span>
+              </div>
             ) : null}
+            <h2 className="mx-4 mb-2 mt-[18px] font-display text-base font-bold text-app-ink">
+              {setlist.length ? 'Cada vídeo va a su canción' : 'Tus momentos'}
+            </h2>
             <ul className="flex flex-col gap-2 px-4">
               {items.map(item => {
-                const song = songFor(item);
+                const isVideo = item.mediaType === 'video';
+                // Photos are not tied to a song on this screen; videos are, when there is a setlist.
+                const song = isVideo ? songFor(item) : null;
                 const length = duration(durations[item.id]);
+                const offNight = Boolean(
+                  event && item.captureAt && distanceToConcert(item.captureAt, event.starts_at, event.ends_at ?? null) > 0,
+                );
                 return (
                   <li key={item.id} className="flex items-center gap-3">
                     <span className="relative h-20 w-16 shrink-0 overflow-hidden rounded-[10px] bg-app-surface">
                       {item.mediaType === 'video' ? (
-                        <video
-                          src={`${item.previewUrl}#t=0.1`}
-                          muted
-                          playsInline
-                          preload="metadata"
-                          aria-label={`Vídeo de las ${clock(item.captureAt)}`}
-                          className="h-full w-full object-cover"
-                          onLoadedMetadata={eventTarget => {
-                            const seconds = eventTarget.currentTarget.duration;
-                            setDurations(prev => ({ ...prev, [item.id]: seconds }));
-                          }}
+                        <VideoThumb
+                          src={item.previewUrl}
+                          label={`Vídeo de las ${clock(item.captureAt)}`}
+                          onDuration={seconds => setDurations(prev => ({ ...prev, [item.id]: seconds }))}
                         />
                       ) : (
                         <img src={item.previewUrl} alt={`Foto de las ${clock(item.captureAt)}`} className="h-full w-full object-cover" />
@@ -641,12 +649,24 @@ const Upload: React.FC = () => {
                       </button>
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block font-mono text-[11px] font-semibold text-[#8f8b84]">{clock(item.captureAt)}</span>
+                      {offNight ? (
+                        <span className="block text-[11px] font-semibold text-amber-300">
+                          Sin la hora del concierto · irá a «Sin hora exacta»
+                        </span>
+                      ) : (
+                        <span className="block font-mono text-[11px] font-semibold text-[#8f8b84]">{clock(item.captureAt)}</span>
+                      )}
                       <span className="block font-display text-[15px] font-bold leading-snug text-app-ink line-clamp-2">
-                        {song ? `${pad(song.ordinal)} · ${song.song_title || 'Canción'}` : setlist.length ? 'Sin canción' : 'Sin setlist'}
+                        {song
+                          ? `${pad(song.ordinal)} · ${song.song_title || 'Canción'}`
+                          : isVideo && setlist.length
+                            ? 'Elige la canción'
+                            : isVideo
+                              ? 'Vídeo'
+                              : 'Foto'}
                       </span>
                     </span>
-                    {setlist.length ? (
+                    {isVideo && setlist.length ? (
                       <button
                         type="button"
                         aria-label="Cambiar canción"
