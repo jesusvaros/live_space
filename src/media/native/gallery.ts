@@ -1,4 +1,5 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
+import type { MomentUploadItem } from '../uploadQueue';
 
 // Wrapper over the local GalleryScan plugin
 // (android/app/src/main/java/com/livespace/app/gallery/GalleryScanPlugin.java and
@@ -121,3 +122,16 @@ export const getUploadPath = async (id: string): Promise<string> => {
   if (!isGalleryScanAvailable()) throw new Error('La galería solo está disponible en la app.');
   return (await GalleryScan.getUploadPath({ id })).path;
 };
+
+// A camera-roll asset as an upload-queue item: its native path, its kind and
+// the gallery's capture time. Shared by /subir/sugerido and the uploader's
+// in-app gallery. Never carries the asset's location.
+export const galleryUploadItem = async (
+  asset: Pick<GalleryAsset, 'id' | 'kind' | 'createdAt'>,
+  extra: Pick<MomentUploadItem, 'eventId'> & Partial<Pick<MomentUploadItem, 'setlistItemId' | 'songId'>>,
+): Promise<MomentUploadItem> => ({
+  ...extra,
+  nativePath: await getUploadPath(asset.id),
+  kind: asset.kind === 'video' ? 'video' : 'image',
+  capturedAt: asset.createdAt,
+});

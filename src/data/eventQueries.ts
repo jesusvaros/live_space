@@ -11,7 +11,7 @@ import { eventCacheKey, writeCache } from './pageCache';
 const EVENT_CARD_SELECT = `
   id,venue_place_id,name,description,starts_at,ends_at,city,address,latitude,longitude,genres,
   is_free,price_tiers,ticket_url,source_url,status,created_by,created_at,updated_at,image_url,
-  poster_thumb_url,poster_url,share_tag,festival_id,room,
+  poster_thumb_url,poster_url,share_tag,timezone,festival_id,room,
   venue_place:venue_places!events_venue_place_id_fkey (id,name,city,address,latitude,longitude),
   event_artists (
     billing_order,is_headliner,
@@ -240,7 +240,7 @@ export const fetchEventCardById = async (eventId: string) => {
 // with where the media was taken, on the device) and the poster of
 // the chosen one (the scraped image or the newest fan photo, not all of them).
 const UPLOAD_CANDIDATE_SELECT = `
-  id,name,starts_at,ends_at,city,image_url,latitude,longitude,
+  id,name,starts_at,ends_at,timezone,city,image_url,latitude,longitude,
   venue_place:venue_places!events_venue_place_id_fkey (id,name,city,latitude,longitude),
   event_artists (
     billing_order,is_headliner,
