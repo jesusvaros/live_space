@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
-import { canGoBack } from './useGoBack';
+import { canGoBack, trackNavigation } from './useGoBack';
 import { settingsParentPath } from '../features/settings/settingsPaths';
 
 const OVERLAY_SELECTOR = '[data-app-overlay]';
@@ -20,9 +20,13 @@ const AppBackHandler: React.FC<AppBackHandlerProps> = ({ mainTabPath = '/tabs/ev
   const locationRef = useRef(location);
   const lastHandledAtRef = useRef(0);
 
+  const navigationType = useNavigationType();
+
+  // Keep the in-app history that canGoBack() reads (web and native alike).
   useEffect(() => {
     locationRef.current = location;
-  }, [location]);
+    trackNavigation(navigationType, location.key);
+  }, [location, navigationType]);
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return undefined;
