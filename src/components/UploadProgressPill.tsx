@@ -11,7 +11,7 @@ type UploadProgressPillProps = {
  * uploads saved before the app was closed.
  */
 const UploadProgressPill = ({ className }: UploadProgressPillProps) => {
-  const { summary, retryAll, clearFinished } = useUploadQueue();
+  const { summary, retryAll, clearFailed, clearFinished } = useUploadQueue();
 
   // "Subidos" stays a few seconds, then the pill goes away.
   useEffect(() => {
@@ -32,7 +32,16 @@ const UploadProgressPill = ({ className }: UploadProgressPillProps) => {
       label = `Esperando wifi · ${summary.pending} pendiente${summary.pending === 1 ? '' : 's'}`;
       break;
     case 'error':
-      label = summary.failed === 1 ? '1 momento no se pudo subir' : `${summary.failed} momentos no se pudieron subir`;
+      if (summary.failed === 1 && summary.errorMessage) {
+        // Say why (too big, too long…): it tells them whether retrying helps.
+        label = summary.errorMessage;
+      } else if (summary.retryable === 0) {
+        label = summary.errorMessage
+          ? `${summary.failed} momentos no se pueden subir: ${summary.errorMessage}`
+          : `${summary.failed} momentos no se pueden subir`;
+      } else {
+        label = summary.failed === 1 ? '1 momento no se pudo subir' : `${summary.failed} momentos no se pudieron subir`;
+      }
       break;
     case 'done':
       label = summary.done === 1 ? 'Momento subido' : `${summary.done} momentos subidos`;
@@ -44,11 +53,14 @@ const UploadProgressPill = ({ className }: UploadProgressPillProps) => {
   }
 
   const showBar = summary.state === 'working';
-  const action = summary.failed > 0
+  // Only what can succeed is retried; the rest (too big, too long…) is removed.
+  const action = summary.retryable > 0
     ? { text: 'Reintentar', onClick: retryAll }
-    : summary.state === 'done'
-      ? { text: 'Cerrar', onClick: () => void clearFinished() }
-      : null;
+    : summary.failed > 0
+      ? { text: 'Quitar', onClick: () => void clearFailed() }
+      : summary.state === 'done'
+        ? { text: 'Cerrar', onClick: () => void clearFinished() }
+        : null;
 
   return (
     <div
@@ -67,7 +79,7 @@ const UploadProgressPill = ({ className }: UploadProgressPillProps) => {
           summary.state === 'working' ? 'animate-pulse motion-reduce:animate-none' : '',
         ].join(' ')}
       />
-      <span className="min-w-0 flex-1 truncate">{label}</span>
+      <span className={['min-w-0 flex-1', summary.state === 'error' ? 'line-clamp-2' : 'truncate'].join(' ')}>{label}</span>
       {action && (
         <button
           type="button"

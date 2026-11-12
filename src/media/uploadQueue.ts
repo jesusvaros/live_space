@@ -36,7 +36,10 @@ import { extractVideoThumbnail, probeVideo } from './videoProbe';
 export type MomentUploadItem = {
   /** A picked File (web, or <input type="file"> in the app). */
   file?: File | null;
-  /** A native path from pickMomentVideos() (compressed on the device). */
+  /**
+   * A native path (pickMomentMedia(), pickMomentVideos() or the in-app
+   * gallery). Videos are compressed on the device; photos are read from it.
+   */
   nativePath?: string | null;
   eventId: string;
   /** Song of the setlist the clip belongs to; its song becomes posts.song_id. */
@@ -100,6 +103,12 @@ export type UploadJob = {
   attempts: number;
   nextAttemptAt: number;
   error: string | null;
+  /**
+   * The failure cannot be fixed by trying again (too big, too long, not a
+   * video…): «Reintentar» leaves it alone and the UI offers to remove it.
+   * Missing on jobs saved before this field existed.
+   */
+  permanent?: boolean;
   provider: 'r2' | 'cloudinary' | null;
   /** Cloudinary reservation already uploaded; only its webhook is awaited on retries. */
   cloudinaryReservationId: string | null;
@@ -170,6 +179,23 @@ const writeWifiOnly = (value: boolean) => {
 
 const newId = () =>
   globalThis.crypto?.randomUUID?.() ?? `job-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+const megabytes = (bytes: number) => `${Math.max(1, Math.round(bytes / 1_000_000))} MB`;
+
+/** Spanish messages for the limits in limits.ts, with the real size. */
+export const limitMessages = {
+  videoTooLarge: (bytes: number) =>
+    `Este vídeo es demasiado grande (pesa ${megabytes(bytes)}). El máximo es ${megabytes(VIDEO_MAX_BYTES)}.`,
+  compressedVideoTooLarge: (bytes: number) =>
+    `Este vídeo es demasiado grande: comprimido sigue pesando ${megabytes(bytes)} y el máximo es ${megabytes(VIDEO_MAX_BYTES)}.`,
+  videoTooLong: () => `Este vídeo dura más de ${VIDEO_MAX_DURATION_SECONDS} s. Recórtalo antes de subirlo.`,
+  photoTooLarge: (bytes: number) =>
+    `Esta foto es demasiado grande (pesa ${megabytes(bytes)}). El máximo es ${megabytes(IMAGE_MAX_BYTES)}.`,
+};
+
+/** A failed job that «Reintentar» can fix (not a size/format/length problem). */
+export const isRetryableFailure = (job: Pick<UploadJob, 'status' | 'permanent'>) =>
+  job.status === 'failed' && !job.permanent;
 
 const toIso = (value: string | Date | null | undefined) => {
   if (!value) return null;
@@ -308,6 +334,7 @@ export class UploadQueue {
         attempts: 0,
         nextAttemptAt: 0,
         error: null,
+        permanent: false,
         provider: null,
         cloudinaryReservationId: null,
         r2: null,
@@ -322,17 +349,30 @@ export class UploadQueue {
     return created.map((job) => job.id);
   }
 
-  /** Retry a failed job now (also clears its backoff). */
+  /**
+   * Retry a job now (also clears its backoff). Permanent failures (too big,
+   * too long…) would fail the same way again: they stay failed.
+   */
   retry(id: string) {
+    const job = this.get(id);
+    if (!job || job.status === 'done' || job.permanent) return;
     this.patch(id, { status: 'queued', attempts: 0, nextAttemptAt: 0, error: null }, true);
     this.kick();
   }
 
   retryAll() {
     for (const job of this.jobs) {
-      if (job.status !== 'done') this.patch(job.id, { attempts: 0, nextAttemptAt: 0, error: null, status: 'queued' }, true);
+      if (job.status !== 'done' && !job.permanent) {
+        this.patch(job.id, { attempts: 0, nextAttemptAt: 0, error: null, status: 'queued' }, true);
+      }
     }
     this.kick();
+  }
+
+  /** Forget the jobs that failed for good (the UI's «Quitar»). */
+  async clearFailed() {
+    const failed = this.snapshot.jobs.filter((job) => job.status === 'failed' && job.permanent);
+    await Promise.all(failed.map((job) => this.remove(job.id)));
   }
 
   /** Cancel and forget a job; frees its R2 reservation and temporary files. */
@@ -531,7 +571,12 @@ export class UploadQueue {
         this.patch(id, { r2: null, provider: null, loadedBytes: 0 }, true);
       }
       if (failure.permanent || (attempts >= MAX_ATTEMPTS && !failure.longWait)) {
-        this.patch(id, { status: 'failed', attempts, error: failure.permanent ? failure.message : 'No se pudo subir tras varios intentos.' }, true);
+        this.patch(id, {
+          status: 'failed',
+          attempts,
+          permanent: failure.permanent,
+          error: failure.permanent ? failure.message : 'No se pudo subir tras varios intentos.',
+        }, true);
       } else {
         this.patch(id, {
           status: 'retrying',
@@ -552,10 +597,11 @@ export class UploadQueue {
     const userId = await this.deps.currentUserId();
     if (!userId) throw new MediaUploadError('authentication_required', 'Sign in before uploading media.');
 
-    // 1. Prepare: compress native videos, check limits on the web fallback.
+    // 1. Prepare: compress native videos (the size limit applies to the
+    // compressed file), check limits on files that are uploaded as they are.
     if (!job.prepared && job.kind === 'video') job = await this.prepareVideo(job);
     if (job.kind === 'image' && job.file && job.file.size > IMAGE_MAX_BYTES) {
-      throw new MediaUploadError('file_too_large', 'La foto pesa más de 10 MB.');
+      throw new MediaUploadError('file_too_large', limitMessages.photoTooLarge(job.file.size));
     }
 
     // 2. Upload and record the media asset.
@@ -604,9 +650,11 @@ export class UploadQueue {
         await deleteNativeFile(compressed.thumbnailPath);
         throw new MediaUploadError('aborted', 'The media upload was cancelled.');
       }
+      // The limit is checked here, after compression, never on the original.
       if (compressed.sizeBytes > VIDEO_MAX_BYTES) {
         await deleteNativeFile(compressed.path);
-        throw new MediaUploadError('file_too_large', 'El vídeo comprimido supera 75 MB.');
+        await deleteNativeFile(compressed.thumbnailPath);
+        throw new MediaUploadError('file_too_large', limitMessages.compressedVideoTooLarge(compressed.sizeBytes));
       }
       const prepared: PreparedVideo = {
         path: compressed.path,
@@ -629,7 +677,8 @@ export class UploadQueue {
       }, true)!;
     }
 
-    // Web fallback (or a File picked inside the app): no transcoding.
+    // Web (or a File picked inside the app): uploaded as is, no transcoding.
+    // The app's pickers hand over native paths, so videos get compressed.
     let file = job.file;
     if (!file && job.nativePath) {
       const blob = await readNativeFile(job.nativePath, 'video/mp4');
@@ -637,11 +686,11 @@ export class UploadQueue {
     }
     if (!file) throw new MediaUploadError('unsupported_media', 'No encontramos el archivo del vídeo.');
     if (file.size > VIDEO_MAX_BYTES) {
-      throw new MediaUploadError('file_too_large', 'El vídeo pesa más de 75 MB.');
+      throw new MediaUploadError('file_too_large', limitMessages.videoTooLarge(file.size));
     }
     const probe = await probeVideo(file);
     if (probe && probe.durationSeconds > VIDEO_MAX_DURATION_SECONDS + 0.5) {
-      throw new MediaUploadError('upload_rejected', 'El vídeo dura más de 45 s. Recórtalo antes de subirlo.');
+      throw new MediaUploadError('upload_rejected', limitMessages.videoTooLong());
     }
     const prepared: PreparedVideo = {
       path: null,
@@ -663,6 +712,7 @@ export class UploadQueue {
     }
     if (job.cloudinaryReservationId) return this.deps.waitForAsset(job.cloudinaryReservationId, 'image');
     if (!file) throw new MediaUploadError('unsupported_media', 'No encontramos el archivo de la foto.');
+    if (file.size > IMAGE_MAX_BYTES) throw new MediaUploadError('file_too_large', limitMessages.photoTooLarge(file.size));
     const result = await this.deps.provider().uploadToCloudinary({
       file,
       kind: 'image',
@@ -877,7 +927,8 @@ export const getUploadQueue = () => {
  * follow it with useUploadQueue() or <UploadProgressPill />.
  *
  * - Web: pass `file` (photos ≤ 10 MB, videos ≤ 75 MB and ≤ 45 s).
- * - App: pass `nativePath` from pickMomentVideos() so the video is compressed
- *   on the device; photos and <input type="file"> picks can pass `file`.
+ * - App: pass `nativePath` from pickMomentMedia() / the in-app gallery so
+ *   videos are compressed on the device (75 MB applies to the compressed
+ *   file) and photos are read from disk.
  */
 export const enqueueMomentUploads = (items: MomentUploadItem[]) => getUploadQueue().enqueue(items);

@@ -1,5 +1,6 @@
 import { findMp4Location, gpsFromExif, type LatLng } from './mediaLocation';
 import type { GalleryAsset } from '../media/native/gallery';
+import type { PickedMomentMedia } from '../media/native';
 
 export type MomentItem = {
   id: string;
@@ -8,6 +9,12 @@ export type MomentItem = {
   file: File | null;
   // GalleryScan asset id, when it came from the in-app gallery.
   galleryAssetId?: string;
+  // Native path from the app's system picker (pickMomentMedia): a content://
+  // URI on Android, a private copy on iOS. The upload queue compresses videos
+  // and reads photos from it.
+  nativePath?: string;
+  // Thumbnail file written by the picker, deleted with the item.
+  nativeThumbnailPath?: string | null;
   // Length known up front (the gallery reports it); files measure it on preview.
   durationSec?: number | null;
   previewUrl: string;
@@ -214,6 +221,11 @@ const detectCaptureInfo = async (file: File): Promise<CaptureInfo> => {
   return { capturedAt: null, source: null, location };
 };
 
+const newItemId = () =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
 export const buildMomentItems = async (files: File[]) => {
   const now = new Date();
   const items = await Promise.all(
@@ -222,13 +234,8 @@ export const buildMomentItems = async (files: File[]) => {
       const mediaType = file.type.startsWith('video') ? 'video' : 'image';
       const initialDate = capturedAt ?? now;
       const captureSource = capturedAt ? source : 'manual';
-      const id =
-        typeof crypto !== 'undefined' && 'randomUUID' in crypto
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
       return {
-        id,
+        id: newItemId(),
         file,
         previewUrl: URL.createObjectURL(file),
         mediaType,
@@ -243,24 +250,59 @@ export const buildMomentItems = async (files: File[]) => {
   return items;
 };
 
+// An item without a File (it uploads from a native path), from a capture time
+// the platform already read. Without one, the user sets it by hand.
+const nativeMomentItem = (
+  base: Pick<MomentItem, 'id' | 'mediaType' | 'previewUrl' | 'durationSec' | 'location'> &
+    Partial<Pick<MomentItem, 'galleryAssetId' | 'nativePath' | 'nativeThumbnailPath'>>,
+  capturedAt: Date | null,
+  source: string,
+): MomentItem => {
+  const valid = capturedAt && !Number.isNaN(capturedAt.getTime()) ? capturedAt : null;
+  const initialDate = valid ?? new Date();
+  return {
+    file: null,
+    ...base,
+    captureAt: initialDate,
+    captureSource: valid ? source : 'manual',
+    manualValue: toDatetimeLocalValue(initialDate),
+  };
+};
+
 // A camera-roll asset from the in-app gallery as an uploader item. The
 // gallery's capture time is more reliable than file metadata. PRIVACY: the
 // location stays in memory, like the one read from files above.
-export const momentItemFromGallery = (asset: GalleryAsset): MomentItem => {
-  const capturedAt = new Date(asset.createdAt);
-  return {
-    id: `gallery:${asset.id}`,
-    file: null,
-    galleryAssetId: asset.id,
-    durationSec: asset.durationSec,
-    previewUrl: asset.thumbnailUri ?? '',
-    mediaType: asset.kind === 'video' ? 'video' : 'image',
-    captureAt: capturedAt,
-    captureSource: 'gallery',
-    manualValue: toDatetimeLocalValue(capturedAt),
-    location: asset.location,
-  };
-};
+export const momentItemFromGallery = (asset: GalleryAsset): MomentItem =>
+  nativeMomentItem(
+    {
+      id: `gallery:${asset.id}`,
+      galleryAssetId: asset.id,
+      durationSec: asset.durationSec,
+      previewUrl: asset.thumbnailUri ?? '',
+      mediaType: asset.kind === 'video' ? 'video' : 'image',
+      location: asset.location,
+    },
+    new Date(asset.createdAt),
+    'gallery',
+  );
+
+// A photo or video from the app's system picker (pickMomentMedia). The capture
+// time comes from the file's own metadata, read natively. PRIVACY: the
+// location stays in memory, like the one read from files above.
+export const momentItemFromNativePick = (picked: PickedMomentMedia): MomentItem =>
+  nativeMomentItem(
+    {
+      id: newItemId(),
+      nativePath: picked.path,
+      nativeThumbnailPath: picked.thumbnailPath,
+      durationSec: picked.kind === 'video' && picked.durationSeconds > 0 ? picked.durationSeconds : null,
+      previewUrl: picked.previewUri ?? '',
+      mediaType: picked.kind,
+      location: picked.location ? { lat: picked.location.latitude, lng: picked.location.longitude } : null,
+    },
+    picked.capturedAt ? new Date(picked.capturedAt) : null,
+    picked.kind === 'video' ? 'video.metadata' : 'exif',
+  );
 
 // Only object URLs made here need releasing (gallery thumbnails are files).
 export const releasePreview = (item: Pick<MomentItem, 'previewUrl'>) => {
