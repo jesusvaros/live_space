@@ -8,13 +8,17 @@ type DetailHeaderProps = {
   // Element whose scroll decides when the bar turns solid and shows the title.
   scrollRef?: React.RefObject<HTMLElement | null>;
   fallbackHref?: string;
+  // Something full-screen (the concert player) is under the bar: stay
+  // see-through even past the hero.
+  overlay?: boolean;
 };
 
 // Back bar pinned to the top of a detail page, over its hero. Solid with the
 // title once the hero has scrolled away.
-const DetailHeader: React.FC<DetailHeaderProps> = ({ title, actions, scrollRef, fallbackHref = '/tabs/events' }) => {
+const DetailHeader: React.FC<DetailHeaderProps> = ({ title, actions, scrollRef, fallbackHref = '/tabs/events', overlay = false }) => {
   const goBack = useGoBack(fallbackHref);
-  const [solid, setSolid] = useState(false);
+  const [scrolledPast, setSolid] = useState(false);
+  const solid = scrolledPast && !overlay;
 
   useEffect(() => {
     const node = scrollRef?.current;

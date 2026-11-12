@@ -9,6 +9,8 @@ export const LABEL_W = 92;
 const ROW_H = 44;
 const RULER_H = 52;
 const VISIBLE_ROWS = 5;
+// Over the full-screen stage: fewer rows, so the video keeps the screen.
+const OVERLAY_VISIBLE_ROWS = 3;
 const PAD_MS = 8000;
 const MIN_BLOCK_PX = 14;
 const WINDOW_BUFFER_PX = 480;
@@ -36,6 +38,8 @@ type ConcertTracksProps = {
   onSeek: (t: number, options?: { scrubbing?: boolean }) => void;
   onScrubEnd: () => void;
   onPickClip: (clip: Clip) => void;
+  // Laid over the video (translucent panels) instead of a solid card.
+  overlay?: boolean;
 };
 
 const clock = (t: number, seconds = false) =>
@@ -106,7 +110,9 @@ const ClipBlock = memo(({ clip, left, width, top, height, label, active, coverin
 ClipBlock.displayName = 'ClipBlock';
 
 const ConcertTracks = forwardRef<ConcertTracksHandle, ConcertTracksProps>(
-  ({ timeline, initialTime, activeClipId, coveringIds, pxPerSec, following, onUserScroll, onSeek, onScrubEnd, onPickClip }, ref) => {
+  ({ timeline, initialTime, activeClipId, coveringIds, pxPerSec, following, onUserScroll, onSeek, onScrubEnd, onPickClip, overlay = false }, ref) => {
+    // Panel colour: solid on the page, see-through over the stage.
+    const panel = overlay ? 'bg-black/55' : 'bg-[#111317]';
     const scrollerRef = useRef<HTMLDivElement | null>(null);
     const playheadRef = useRef<HTMLDivElement | null>(null);
     const timeRef = useRef(initialTime);
@@ -303,15 +309,17 @@ const ConcertTracks = forwardRef<ConcertTracksHandle, ConcertTracksProps>(
         onTouchMove={markInput}
         onWheel={markInput}
         onPointerDown={markInput}
-        className="relative overflow-auto overscroll-contain rounded-2xl border border-app-line bg-[#111317] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        style={{ maxHeight: RULER_H + ROW_H * VISIBLE_ROWS + 4 }}
+        className={`relative overflow-auto overscroll-contain rounded-2xl border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+          overlay ? 'border-white/10 bg-black/35 backdrop-blur-[2px]' : 'border-app-line bg-[#111317]'
+        }`}
+        style={{ maxHeight: RULER_H + ROW_H * (overlay ? OVERLAY_VISIBLE_ROWS : VISIBLE_ROWS) + 4 }}
         aria-label="Pistas del concierto"
         role="region"
       >
         <div className="relative" style={{ width: LABEL_W + contentWidth, height: RULER_H + contentHeight }}>
           {/* Ruler */}
           <div
-            className="sticky top-0 z-20 cursor-ew-resize touch-none select-none border-b border-app-line bg-[#111317]"
+            className={`sticky top-0 z-20 cursor-ew-resize touch-none select-none border-b border-app-line ${panel}`}
             style={{ height: RULER_H, width: LABEL_W + contentWidth }}
             role="slider"
             aria-label="Línea de tiempo del concierto. Toca o arrastra para moverte"
@@ -362,7 +370,7 @@ const ConcertTracks = forwardRef<ConcertTracksHandle, ConcertTracksProps>(
                 <span className="font-mono text-[10px] leading-[22px] text-white/45">{clock(t, stepSec < 60)}</span>
               </div>
             ))}
-            <div className="sticky left-0 z-10 flex h-full flex-col justify-center border-r border-app-line bg-[#111317] px-2.5" style={{ width: LABEL_W }}>
+            <div className={`sticky left-0 z-10 flex h-full flex-col justify-center border-r border-app-line px-2.5 ${panel}`} style={{ width: LABEL_W }}>
               <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-white/45">Canción</span>
               <span className="mt-1 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-white/30">Hora</span>
             </div>
@@ -377,6 +385,7 @@ const ConcertTracks = forwardRef<ConcertTracksHandle, ConcertTracksProps>(
               height={row.height}
               width={LABEL_W + contentWidth}
               active={row.track.id === activeTrackId}
+              overlay={overlay}
               onSeekX={x => onSeek(Math.max(timeline.start, Math.min(timeline.end, tOf(x - LABEL_W))))}
             />
           ))}
@@ -406,10 +415,11 @@ type TrackRowProps = {
   height: number;
   width: number;
   active: boolean;
+  overlay?: boolean;
   onSeekX: (x: number) => void;
 };
 
-const TrackRow = memo(({ track, top, height, width, active, onSeekX }: TrackRowProps) => (
+const TrackRow = memo(({ track, top, height, width, active, overlay, onSeekX }: TrackRowProps) => (
   <div
     className={`absolute left-0 border-b border-white/[0.06] ${active ? 'bg-app-accent/[0.06]' : ''}`}
     style={{ top, height, width }}
@@ -421,7 +431,7 @@ const TrackRow = memo(({ track, top, height, width, active, onSeekX }: TrackRowP
     <div
       onClick={event => event.stopPropagation()}
       className={`sticky left-0 z-[15] flex h-full items-center gap-1.5 border-r border-app-line px-2 ${
-        active ? 'bg-[#2a1a14]' : 'bg-[#111317]'
+        active ? (overlay ? 'bg-[#2a1a14]/85' : 'bg-[#2a1a14]') : overlay ? 'bg-black/70' : 'bg-[#111317]'
       }`}
       style={{ width: LABEL_W }}
     >

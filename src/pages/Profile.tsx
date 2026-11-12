@@ -407,6 +407,17 @@ const Profile: React.FC = () => {
         {!isManagementMode ? (
           <button
             type="button"
+            onClick={() => navigate('/guardadas')}
+            className="mx-4 mt-2 flex min-h-12 items-center justify-between rounded-[14px] border border-app-line bg-app-surface px-3.5 text-left text-sm font-semibold text-app-ink"
+          >
+            <span>Guardadas</span>
+            <span className="font-mono text-[11px] font-semibold uppercase text-app-accent">Fotos con ♥</span>
+          </button>
+        ) : null}
+
+        {!isManagementMode ? (
+          <button
+            type="button"
             onClick={() => navigate('/empezar', { state: { returnTo: '/tabs/profile' } })}
             className="mx-4 mt-2 flex min-h-12 items-center justify-between rounded-[14px] border border-app-line bg-app-surface px-3.5 text-left text-sm font-semibold text-app-ink"
           >
