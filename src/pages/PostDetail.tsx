@@ -9,6 +9,7 @@ import { ExternalMomentCard, isExternalPost } from '../features/socialImport';
 import { MomentReuseControls, ReportMomentButton } from '../features/community';
 import { blockTargetLabel } from '../features/blocks/blocking';
 import { useBlockedUserIds } from '../features/blocks/useBlockedUsers';
+import { videoPoster } from '../media/videoPoster';
 
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -67,7 +68,7 @@ const PostDetail: React.FC = () => {
                 controls
                 playsInline
                 className="absolute inset-0 h-full w-full object-cover"
-                poster={post.thumbnail_url || post.events?.cover_image_url || undefined}
+                poster={videoPoster(post.thumbnail_url, post.events?.cover_image_url)}
               >
                 <source src={post.media_url} />
               </video>

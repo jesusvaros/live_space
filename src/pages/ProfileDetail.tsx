@@ -264,7 +264,7 @@ const ProfileDetail: React.FC = () => {
                           className="aspect-square overflow-hidden bg-white/5 transition-opacity hover:opacity-90"
                         >
                           {moment.media_type === 'video' ? (
-                            <video className="h-full w-full object-cover" muted>
+                            <video className="h-full w-full object-cover" muted playsInline preload="metadata" poster={moment.thumbnail_url || undefined}>
                               <source src={moment.media_url} />
                             </video>
                           ) : (

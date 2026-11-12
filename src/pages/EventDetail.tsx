@@ -22,6 +22,7 @@ import { festivalService } from '../services/festival.service';
 import EventMerchSection from '../features/merch/EventMerchSection';
 import AttendanceSuggestion from '../features/events/AttendanceSuggestion';
 import EventUploadButton from '../features/events/EventUploadButton';
+import { useEventUploadBar } from '../features/events/useEventUploadBar';
 import ConcertPlayer, { type SeekRequest } from '../features/moments/ConcertPlayer';
 import { useConcertMoments, useConcertTimeline } from '../features/moments/useConcertTimeline';
 import type { Clip, TimelineMoment } from '../features/moments/concertTimeline';
@@ -74,6 +75,7 @@ const EventDetail: React.FC = () => {
   const { user } = useAuth();
   // This concert's uploads show in its bottom button, not in the top pill.
   const eventUploads = useEventUploads(id);
+  const uploadBar = useEventUploadBar(id, user?.id ?? null);
   const { isFollowing } = useFollowedSubjects();
   const [event, setEvent] = useState<EventDetailData | null>(() => readCache<EventDetailData>(eventCacheKey(id)) ?? null);
   const [festival, setFestival] = useState<{ id: string; name: string } | null>(null);
@@ -428,6 +430,11 @@ const EventDetail: React.FC = () => {
   const lived = hasStarted && (setlist.length > 0 || moments.length > 0);
   const attendanceTarget: 'going' | 'attended' = isPastEvent ? 'attended' : 'going';
   const attendanceActive = attendanceStatus === attendanceTarget;
+  // After the concert the bottom bar is only «Sube lo que grabaste» (or its
+  // progress / Reintentar): gone for someone who already uploaded here.
+  const uploadMode = isPastEvent || lived;
+  const showBottomBar = !uploadMode || uploadBar.visible;
+  const pagePadding = showBottomBar ? 'pb-[calc(96px+env(safe-area-inset-bottom,0px))]' : 'pb-[calc(24px+env(safe-area-inset-bottom,0px))]';
 
   const handleFollowClick = () => {
     if (!user) {
@@ -486,11 +493,11 @@ const EventDetail: React.FC = () => {
             title={heroTitle}
             scrollRef={contentRef}
             overlay={stageInView}
-            actions={stageInView ? null : shareButton}
+            actions={shareButton}
           />
 
           {lived ? (
-            <div className="pb-[calc(96px+env(safe-area-inset-bottom,0px))]">
+            <div className={pagePadding}>
               {/* The poster, as before the concert; it drifts at half speed
                   while the stage below slides over it. */}
               <div ref={heroRef} className="relative z-0 will-change-transform">
@@ -521,6 +528,7 @@ const EventDetail: React.FC = () => {
                     onActiveSongChange={onActiveSongChange}
                     onDuration={reportDuration}
                     inView={stageInView && pageVisible}
+                    bottomBarShown={showBottomBar}
                   />
                 </section>
               ) : null}
@@ -693,7 +701,7 @@ const EventDetail: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="pb-[calc(96px+env(safe-area-inset-bottom,0px))]">
+            <div className={pagePadding}>
               <EventHero
                 event={event}
                 title={heroTitle}
@@ -754,53 +762,57 @@ const EventDetail: React.FC = () => {
               onMarked={status => setAttendanceStatus(status)}
               // Asked once: going back to this page does not ask again.
               onClose={() => navigate(`${location.pathname}${location.search}`, { replace: true, state: null })}
-              className="fixed inset-x-4 bottom-[calc(84px+env(safe-area-inset-bottom,0px))] z-[1301] shadow-xl"
+              className={`fixed inset-x-4 z-[1301] shadow-xl ${
+                showBottomBar ? 'bottom-[calc(84px+env(safe-area-inset-bottom,0px))]' : 'bottom-[calc(16px+env(safe-area-inset-bottom,0px))]'
+              }`}
             />
           ) : null}
 
-          <div className="fixed inset-x-0 bottom-0 z-[1300] flex items-center gap-2 border-t border-app-line bg-app-bg/95 px-4 pb-[calc(10px+env(safe-area-inset-bottom,0px))] pt-2.5 backdrop-blur-xl">
-            {isPastEvent || lived ? (
-              <EventUploadButton eventId={event.id} userId={user?.id ?? null} onUpload={() => openUpload()} />
-            ) : (
-              <>
-                <button
-                  type="button"
-                  aria-label={followed ? 'Quitar de guardados' : 'Guardar'}
-                  aria-pressed={followed}
-                  disabled={followLoading}
-                  onClick={handleFollowClick}
-                  className={`flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full border transition ${
-                    followed ? 'border-app-accent bg-app-accent/15 text-app-accent' : 'border-app-line bg-app-surface text-app-ink'
-                  }`}
-                >
-                  {followed ? <IconBookmarkFilled className="h-5 w-5" /> : <IconBookmark className="h-5 w-5" />}
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={attendanceActive}
-                  disabled={attendanceLoading}
-                  onClick={handleAttendanceClick}
-                  className={`h-[50px] shrink-0 rounded-full border px-4 text-[15px] font-semibold transition ${
-                    attendanceActive
-                      ? 'border-[#25d47b] bg-[#25d47b]/[0.12] text-[#25d47b]'
-                      : 'border-app-line bg-app-surface text-app-ink'
-                  } ${event.ticket_url ? '' : 'flex-1'}`}
-                >
-                  Voy
-                </button>
-                {event.ticket_url ? (
-                  <a
-                    href={event.ticket_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-[50px] flex-1 items-center justify-center rounded-full border border-app-line text-[15px] font-semibold text-app-ink"
+          {showBottomBar ? (
+            <div className="fixed inset-x-0 bottom-0 z-[1300] flex items-center gap-2 border-t border-app-line bg-app-bg/95 px-4 pb-[calc(10px+env(safe-area-inset-bottom,0px))] pt-2.5 backdrop-blur-xl">
+              {uploadMode ? (
+                <EventUploadButton bar={uploadBar} onUpload={() => openUpload()} />
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    aria-label={followed ? 'Quitar de guardados' : 'Guardar'}
+                    aria-pressed={followed}
+                    disabled={followLoading}
+                    onClick={handleFollowClick}
+                    className={`flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full border transition ${
+                      followed ? 'border-app-accent bg-app-accent/15 text-app-accent' : 'border-app-line bg-app-surface text-app-ink'
+                    }`}
                   >
-                    Entradas
-                  </a>
-                ) : null}
-              </>
-            )}
-          </div>
+                    {followed ? <IconBookmarkFilled className="h-5 w-5" /> : <IconBookmark className="h-5 w-5" />}
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={attendanceActive}
+                    disabled={attendanceLoading}
+                    onClick={handleAttendanceClick}
+                    className={`h-[50px] shrink-0 rounded-full border px-4 text-[15px] font-semibold transition ${
+                      attendanceActive
+                        ? 'border-[#25d47b] bg-[#25d47b]/[0.12] text-[#25d47b]'
+                        : 'border-app-line bg-app-surface text-app-ink'
+                    } ${event.ticket_url ? '' : 'flex-1'}`}
+                  >
+                    Voy
+                  </button>
+                  {event.ticket_url ? (
+                    <a
+                      href={event.ticket_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex h-[50px] flex-1 items-center justify-center rounded-full border border-app-line text-[15px] font-semibold text-app-ink"
+                    >
+                      Entradas
+                    </a>
+                  ) : null}
+                </>
+              )}
+            </div>
+          ) : null}
         </>
       )}
 
