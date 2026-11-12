@@ -38,6 +38,7 @@ const user = (overrides: Partial<UserData> = {}): UserData => ({
   uploadedEventIds: new Set(),
   merchOrders: [],
   follows: [],
+  suggestedEvents: [],
   sent: [],
   ...overrides,
 });
@@ -189,5 +190,52 @@ describe('followed_new_concert', () => {
   it('nothing for concerts the person already said «Voy» to, nor without devices', () => {
     expect(build({ user: user({ follows: [followsArtist], attendance: [{ eventId: 'n1', status: 'going' }] }), now, newEvents: [fresh('n1')] })).toEqual([]);
     expect(build({ user: user({ follows: [followsArtist], devices: [] }), now, newEvents: [fresh('n1')] })).toEqual([]);
+  });
+});
+
+describe('suggestion_imported', () => {
+  const now = new Date('2026-11-12T11:00:00Z');
+  const imported = ev('s1', {
+    startsAt: '2026-11-21T20:30:00Z',
+    headliner: 'Frisbi',
+    venueName: 'Fun Club',
+    city: 'Sevilla',
+    artistIds: ['artist-frisbi'],
+  });
+
+  it('«Ya está: {Artista} en {Sala} el {fecha}», to the concert', () => {
+    const notices = build({ user: user({ suggestedEvents: [imported] }), now });
+    expect(notices).toHaveLength(1);
+    expect(notices[0]).toMatchObject({
+      type: 'suggestion_imported',
+      dedupeKey: 'suggestion_imported:s1',
+      title: 'Ya está: Frisbi en Fun Club el sábado 21 de noviembre',
+      route: '/event/s1',
+      channel: 'conciertos',
+      expiresAt: '2026-11-21T20:30:00Z',
+    });
+  });
+
+  it('not once the concert started; never also as «new concert of what you follow»', () => {
+    expect(build({ user: user({ suggestedEvents: [imported] }), now: new Date('2026-11-21T21:00:00Z') })).toEqual([]);
+    const follows = [{ artistId: 'artist-frisbi', venuePlaceId: null, festivalId: null, createdAt: '2026-09-01T00:00:00Z' }];
+    const fresh = { ...imported, announcedAt: '2026-11-12T08:00:00Z' };
+    const notices = build({ user: user({ follows, suggestedEvents: [fresh] }), now, newEvents: [fresh] });
+    expect(notices.map(notice => notice.type)).toEqual(['suggestion_imported']);
+    // Already told by this notice: later runs do not announce it as followed either.
+    const sent = [
+      { type: 'suggestion_imported', dedupeKey: 'suggestion_imported:s1', sentAt: '2026-11-12T10:00:00Z', payload: { event_ids: ['s1'] } },
+    ];
+    expect(build({ user: user({ follows, sent }), now, newEvents: [fresh] })).toEqual([]);
+  });
+
+  it('goes after the concert-day notice', () => {
+    const today = ev('t1', { startsAt: '2026-11-12T20:00:00Z' });
+    const notices = build({
+      user: user({ suggestedEvents: [imported], attendance: [{ eventId: 't1', status: 'going' }] }),
+      now,
+      list: [today],
+    });
+    expect(notices.map(notice => notice.type)).toEqual(['concert_day', 'suggestion_imported']);
   });
 });

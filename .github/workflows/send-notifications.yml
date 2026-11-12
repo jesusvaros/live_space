@@ -24,6 +24,7 @@ on:
           - concert_day
           - upload_reminder
           - merch_pickup
+          - suggestion_imported
           - followed_new_concert
       profile:
         description: "Solo este perfil (uuid), p. ej. tu cuenta para probar"

@@ -51,7 +51,8 @@ un toast.
   `locale`, `timezone`, `created_at`, `last_seen_at`, `disabled_at`. La persona
   lee y borra sus filas; escribe con las RPC. Máximo 10 por persona.
 - `notification_preferences`: `enabled`, `concert_day`, `upload_reminder`,
-  `merch_pickup`, `new_moments`, `followed_new_concert`, `quiet_start` /
+  `merch_pickup`, `new_moments`, `followed_new_concert`, `suggestion_imported`
+  (migración `20261112000100`), `quiet_start` /
   `quiet_end` (hora local, 23:00–09:00), `daily_limit` (3). Sin fila = valores
   por defecto.
 - `notifications_sent`: `profile_id`, `type`, `dedupe_key` (único por persona),
@@ -79,9 +80,17 @@ noche anterior).
 | `merch_pickup` | Día del concierto con un pedido `reserved`/`paid` sin recoger | 12:00–22:00, hasta que acaba | «Recoge tu pedido en el puesto: código K7Q2» · «Hoy, en Morat · La Riviera.» (punto de recogida si lo hay) | `/pedidos/<id>` | `merch` |
 | `concert_day` | Día de un concierto con «Voy» (`going`) | 12:00–18:00, antes de empezar | «Hoy: Morat en La Riviera a las 21:30» · «Que lo disfrutes. Si grabas algo, luego lo subes en un momento.» | `/event/<id>` | `conciertos` |
 | `upload_reminder` | Mañana siguiente a un concierto `going`/`attended` sin nada subido (ni post ni media suya) | 10:00–14:00 | «¿Grabaste algo de Morat? Súbelo» · «Tus fotos y vídeos de anoche en La Riviera, en un par de toques.» | `/tabs/upload?event=<id>` | `momentos` |
+| `suggestion_imported` | Se publica un concierto del que pasaste el link en «¿No encuentras un concierto?» (`event_link_suggestions.status = 'imported'` en los últimos 7 días), aún por empezar | 10:00–21:00, antes de empezar | «Ya está: Frisbi en Fun Club el sábado 12 de diciembre» · «El concierto que nos pasaste ya está en Live Space. Toca para verlo.» | `/event/<id>` | `conciertos` |
 | `followed_new_concert` | Un artista, sala o festival que sigues anuncia concierto | 10:00–21:00 | Uno: «Morat anuncia concierto en Madrid el sábado 12 de diciembre» · «En La Riviera. Toca para verlo.» Varios: «3 conciertos nuevos de lo que sigues» · «Morat, Rels B.» | `/event/<id>` o `/tabs/events` | `conciertos` |
 
 `new_moments` queda para un paso posterior (por eventos, no programado).
+
+Conciertos que nos pasas: uno por concierto (si llegan varios, uno por pasada).
+Solo `imported`, no `duplicate` (el concierto ya estaba). Un concierto avisado
+así no vuelve a salir como «nuevo de lo que sigues» (su id cuenta como
+anunciado, igual que los de `followed_new_concert`). El estado lo pone el
+importador del scraping diario (docs/scraping.md, «Sugerencias de usuarios»);
+el aviso sale en la primera pasada horaria dentro de la ventana.
 
 Conciertos nuevos de lo que sigues: publicados y futuros, anunciados
 (`coalesce(published_at, created_at)`) en las últimas 48 h **y** después del
@@ -101,11 +110,11 @@ iguales = sin silencio) · el concierto ya empezó/acabó · `daily_limit` (env�
 de las últimas 24 h, sin contar los fallidos) · **uno por persona y pasada**: si
 tocan dos (merch y concierto el mismo día), el segundo sale en la hora
 siguiente. Prioridad: `merch_pickup` > `concert_day` > `upload_reminder` >
-`followed_new_concert`. Sin fila de preferencias = valores por defecto.
+`suggestion_imported` > `followed_new_concert`. Sin fila de preferencias = valores por defecto.
 
 Claves: `concert_day:<event>`, `upload_reminder:<event>`,
-`merch_pickup:<order>`, `followed_new_concert:<event>` o
-`followed_new_concert:batch:<hash de los ids>`.
+`merch_pickup:<order>`, `suggestion_imported:<event>`,
+`followed_new_concert:<event>` o `followed_new_concert:batch:<hash de los ids>`.
 
 ### Envío y fallos
 

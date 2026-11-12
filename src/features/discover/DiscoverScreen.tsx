@@ -14,6 +14,7 @@ import { useDiscoverResults } from './hooks/useDiscoverResults';
 import { useStoredLocation } from '../../shared/hooks/useStoredLocation';
 import { useFollowedSubjects } from '../../hooks/useFollowedSubjects';
 import WrappedCard from '../wrapped/WrappedCard';
+import { SuggestConcertCard, SuggestConcertSheet } from '../suggestions/SuggestConcert';
 
 type RouteState = { initialTab?: DiscoverTabKey } | undefined;
 
@@ -30,6 +31,7 @@ const DiscoverScreen: React.FC = () => {
   const [tab, setTab] = useState<DiscoverTabKey>('artists');
   const [query, setQuery] = useState('');
   const [style, setStyle] = useState<string | null>(null);
+  const [suggestOpen, setSuggestOpen] = useState(false);
   const debouncedQuery = useDebouncedValue(query, 350);
 
   const { canFollow, isFollowing, isToggling, toggleFollowSubject } = useFollowedSubjects();
@@ -99,13 +101,20 @@ const DiscoverScreen: React.FC = () => {
     </ul>
   );
 
+  // «¿No encuentras un concierto?»: under an empty search and at the end of
+  // the results, for a concert we do not have yet.
+  const suggestCard = <SuggestConcertCard onOpen={() => setSuggestOpen(true)} />;
+
   const noResults = (
-    <DiscoverEmptyState
-      title={`Sin resultados para "${debouncedQuery.trim()}"`}
-      description="Prueba con otra ortografía o busca por ciudad."
-      actionLabel="Borrar búsqueda"
-      onAction={() => setQuery('')}
-    />
+    <div className="flex flex-col gap-3">
+      <DiscoverEmptyState
+        title={`Sin resultados para "${debouncedQuery.trim()}"`}
+        description="Prueba con otra ortografía o busca por ciudad."
+        actionLabel="Borrar búsqueda"
+        onAction={() => setQuery('')}
+      />
+      {suggestCard}
+    </div>
   );
 
   return (
@@ -150,7 +159,12 @@ const DiscoverScreen: React.FC = () => {
 
         {!loading && tab === 'artists' && (
           isSearching ? (
-            artists.length === 0 ? noResults : artistGrid(artists)
+            artists.length === 0 ? noResults : (
+              <>
+                {artistGrid(artists)}
+                {suggestCard}
+              </>
+            )
           ) : selectedShelf ? (
             <section>
               <h2 className="mb-3 font-display text-xl font-bold text-app-ink">{selectedShelf.style}</h2>
@@ -192,7 +206,12 @@ const DiscoverScreen: React.FC = () => {
 
         {!loading && tab === 'venues' && (
           isSearching ? (
-            venues.length === 0 ? noResults : venueList(venues)
+            venues.length === 0 ? noResults : (
+              <>
+                {venueList(venues)}
+                {suggestCard}
+              </>
+            )
           ) : suggestedVenueSections.length === 0 ? (
             <DiscoverEmptyState
               title="Aún no hay salas sugeridas"
@@ -208,6 +227,8 @@ const DiscoverScreen: React.FC = () => {
           )
         )}
       </div>
+
+      <SuggestConcertSheet isOpen={suggestOpen} onOpen={() => setSuggestOpen(true)} onClose={() => setSuggestOpen(false)} />
     </div>
   );
 };

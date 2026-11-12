@@ -49,6 +49,24 @@ jobs:
           ENABLE_AI_NORMALIZATION: "false"
           SCRAPER_CITY_ALLOWLIST: "Madrid,Barcelona,Sevilla,Valencia,Bilbao,Granada,Murcia,San Sebastián,Santander,Vigo,Zaragoza"
 
+      # Ticket links people sent from «¿No encuentras un concierto?»
+      # (event_link_suggestions). Reads each page's schema.org Event (JSON-LD,
+      # no AI), stages it, runs the normal staging pipeline and updates each
+      # suggestion's status; the hourly push job then tells the person.
+      # Up to 50 links a run, each tried at most 3 times. Logs and exits 0
+      # while the migration is not applied. Before the enrichers, so a
+      # concert imported today also gets its poster mirrored today.
+      - name: Import concerts from user links
+        if: always()
+        continue-on-error: true
+        run: npm run suggestions:import -- --apply --limit=50
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SCRAPER_CONCURRENCY: "3"
+          SCRAPER_TIMEOUT_MS: "30000"
+          ENABLE_AI_NORMALIZATION: "false"
+
       - name: Enrich images (event posters, artist photos)
         if: always()
         continue-on-error: true

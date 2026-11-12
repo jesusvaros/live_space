@@ -283,11 +283,15 @@ export const normalizeStagingEvent = (
   const startsAt =
     record.extracted_starts_at ||
     parseDateTextToIso(record.extracted_date_text || description || title, referenceDate);
+  // A link sent by a user is a ticket page, not the venue's website: a venue
+  // created from it gets no website rather than the suggestions source URL.
+  const fromUserSuggestion = source.metadata.userSuggestions === true;
   const venue = normalizeVenue({
     name: record.extracted_venue_name || source.name,
     city: record.extracted_city || source.city,
-    sourceUrl: source.base_url,
-    websiteUrl: typeof source.metadata.officialWebsite === 'string' ? source.metadata.officialWebsite : null,
+    sourceUrl: fromUserSuggestion ? null : source.base_url,
+    websiteUrl:
+      !fromUserSuggestion && typeof source.metadata.officialWebsite === 'string' ? source.metadata.officialWebsite : null,
   });
   const eventType = detectEventType(source, title || '', description);
   const canonicalName = buildCanonicalName(title, artistResult.artists);

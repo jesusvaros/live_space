@@ -46,6 +46,8 @@ describe('prefsFromRow', () => {
     });
     expect(prefs.types.concert_day).toBe(false);
     expect(prefs.types.new_moments).toBe(false);
+    // A row from before the column existed: the default (on).
+    expect(prefs.types.suggestion_imported).toBe(true);
     expect(prefs.quietStart).toBe('22:30');
     expect(prefs.quietEnd).toBe('08:00');
     expect(prefs.dailyLimit).toBe(5);
@@ -71,6 +73,7 @@ describe('rowFromPrefs', () => {
       merch_pickup: false,
       new_moments: true,
       followed_new_concert: true,
+      suggestion_imported: true,
       quiet_start: '07:05',
       quiet_end: '09:00',
       daily_limit: 3,

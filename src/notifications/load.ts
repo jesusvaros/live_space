@@ -10,6 +10,8 @@ const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 /** notifications_sent read back: covers daily_limit and announced concerts. */
 const SENT_MEMORY_MS = 14 * DAY_MS;
+/** Suggestions imported this recently still announce their concert. */
+export const SUGGESTION_MEMORY_MS = 7 * DAY_MS;
 const CHUNK = 100;
 const PAGE = 1000;
 
@@ -239,7 +241,43 @@ export const loadSenderData = async (supabase: SupabaseClient, { now, profileId 
     homeCities.set(user, [...counts.entries()].sort((left, right) => right[1] - left[1]).slice(0, 3).map(([city]) => city));
   }
 
-  // 7. Preferences and what was already sent.
+  // 7. Concerts imported from links they sent (event_link_suggestions).
+  // Optional: before migration 20261112000100 the table does not exist and
+  // nobody has suggestions; any other error still fails the run.
+  const suggestedByUser = new Map<string, EventInfo[]>();
+  let suggestionRows: Row[] = [];
+  try {
+    suggestionRows = await inChunks(deviceUsers, chunk =>
+      supabase
+        .from('event_link_suggestions')
+        .select('suggested_by,result_event_id')
+        .eq('status', 'imported')
+        .not('result_event_id', 'is', null)
+        .gte('processed_at', new Date(now.getTime() - SUGGESTION_MEMORY_MS).toISOString())
+        .in('suggested_by', chunk),
+    );
+  } catch (error) {
+    const code = (error as { code?: string })?.code;
+    if (code !== '42P01' && code !== 'PGRST205') throw error;
+  }
+  if (suggestionRows.length > 0) {
+    const suggestedRows = await inChunks(
+      suggestionRows.map(row => String(row.result_event_id)),
+      chunk => supabase.from('events').select(EVENT_SELECT).eq('status', 'published').gte('starts_at', now.toISOString()).in('id', chunk),
+    );
+    const suggestedEvents = new Map(suggestedRows.map(row => [String(row.id), toEventInfo(row)]));
+    for (const row of suggestionRows) {
+      const event = suggestedEvents.get(String(row.result_event_id));
+      if (!event) continue;
+      const user = String(row.suggested_by);
+      const list = suggestedByUser.get(user) ?? [];
+      if (!list.some(item => item.id === event.id)) list.push(event);
+      suggestedByUser.set(user, list);
+    }
+    for (const list of suggestedByUser.values()) list.sort((left, right) => left.startsAt.localeCompare(right.startsAt));
+  }
+
+  // 8. Preferences and what was already sent.
   const prefRows = await inChunks(allUsers, chunk => supabase.from('notification_preferences').select('*').in('profile_id', chunk));
   const prefsByUser = new Map(prefRows.map(row => [String(row.profile_id), row]));
   const sentRows = await inChunks(allUsers, chunk =>
@@ -287,6 +325,7 @@ export const loadSenderData = async (supabase: SupabaseClient, { now, profileId 
     ),
     merchOrders: merchByUser.get(id) ?? [],
     follows: followsByUser.get(id) ?? [],
+    suggestedEvents: suggestedByUser.get(id) ?? [],
     sent: sentByUser.get(id) ?? [],
   }));
 

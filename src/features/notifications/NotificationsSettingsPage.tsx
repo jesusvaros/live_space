@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import type { PushPermission } from '@jesusvaros/app-kit/push';
-import { IconBell, IconCalendar, IconCamera, IconClock, IconPlay, IconShield, IconTicket } from '../../components/icons';
+import { IconBell, IconCalendar, IconCamera, IconCheckCircle, IconClock, IconPlay, IconShield, IconTicket } from '../../components/icons';
 import Button from '../../components/ui/Button';
 import {
   NOTIFICATION_TYPE_LABELS,
@@ -24,6 +24,7 @@ const TYPE_ICONS: Record<NotificationType, React.ReactNode> = {
   merch_pickup: <IconTicket size={18} />,
   new_moments: <IconPlay size={18} />,
   followed_new_concert: <IconBell size={18} />,
+  suggestion_imported: <IconCheckCircle size={18} />,
 };
 
 const PERMISSION_LABELS: Record<PushPermission, string> = {

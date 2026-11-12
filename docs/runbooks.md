@@ -130,6 +130,23 @@ persona en el SQL editor, en una transacción:
 Borrar el usuario directamente en Authentication falla mientras tenga momentos
 (`media_assets` es `RESTRICT`) y no encola sus archivos.
 
+## Links de conciertos que mandan los usuarios
+
+El paso «Import concerts from user links» de `scrape-weekly.yml` importa cada día
+los links de «¿No encuentras un concierto?» (docs/scraping.md, «Sugerencias de
+usuarios»). Ensayo sin escribir: `npm run suggestions:import` (descarga y lee los
+pendientes, imprime qué haría). Lo que necesita a una persona:
+
+- Revisión con fila de staging: la cola de staging habitual (fuente «Sugerencias
+  de usuarios…»). Aprobada, la publica el procesado del día siguiente y avisa.
+- Revisión sin staging (sin JSON-LD, varios eventos…):
+  `select url, note, error, created_at from event_link_suggestions where status = 'review' and staging_event_id is null order by created_at;`.
+  Si se crea el concierto a mano, marcar la fila
+  `status = 'imported', result_event_id = '<evento>', processed_at = now()` para
+  que la persona reciba el aviso.
+- Un sitio de venta nuevo que publica bien su JSON-LD: añadir su host a
+  `TRUSTED_TICKET_HOSTS` (`src/pipeline/importEventSuggestions.ts`).
+
 ## Keepalive de crons
 
 GitHub desactiva los workflows programados de un repositorio público tras 60 días
