@@ -14,7 +14,7 @@ import {
   canReadGallery,
   checkGalleryPermission,
   findMedia,
-  getUploadPath,
+  galleryUploadItem,
   isGalleryScanAvailable,
   requestGalleryPermission,
   type GalleryAsset,
@@ -173,14 +173,9 @@ const SuggestedUpload: React.FC = () => {
     setSubmitting(true);
     try {
       const items = [];
+      // One at a time: on iOS each path is an export (maybe from iCloud).
       for (const item of chosen) {
-        items.push({
-          nativePath: await getUploadPath(item.asset.id),
-          kind: item.asset.kind === 'video' ? 'video' as const : 'image' as const,
-          eventId: event.id,
-          setlistItemId: songs[item.assetId] ?? undefined,
-          capturedAt: item.asset.createdAt,
-        });
+        items.push(await galleryUploadItem(item.asset, { eventId: event.id, setlistItemId: songs[item.assetId] ?? undefined }));
       }
       await enqueueMomentUploads(items);
       presentToast({ message: `Subiendo ${describeClips(videoCount, chosen.length - videoCount)}` });

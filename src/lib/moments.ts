@@ -1,8 +1,15 @@
 import { findMp4Location, gpsFromExif, type LatLng } from './mediaLocation';
+import type { GalleryAsset } from '../media/native/gallery';
 
 export type MomentItem = {
   id: string;
-  file: File;
+  // Picked with the system picker. Null for camera-roll assets (the app's
+  // in-app gallery), which upload from their native path instead.
+  file: File | null;
+  // GalleryScan asset id, when it came from the in-app gallery.
+  galleryAssetId?: string;
+  // Length known up front (the gallery reports it); files measure it on preview.
+  durationSec?: number | null;
   previewUrl: string;
   mediaType: 'image' | 'video';
   captureAt: Date | null;
@@ -234,4 +241,28 @@ export const buildMomentItems = async (files: File[]) => {
   );
 
   return items;
+};
+
+// A camera-roll asset from the in-app gallery as an uploader item. The
+// gallery's capture time is more reliable than file metadata. PRIVACY: the
+// location stays in memory, like the one read from files above.
+export const momentItemFromGallery = (asset: GalleryAsset): MomentItem => {
+  const capturedAt = new Date(asset.createdAt);
+  return {
+    id: `gallery:${asset.id}`,
+    file: null,
+    galleryAssetId: asset.id,
+    durationSec: asset.durationSec,
+    previewUrl: asset.thumbnailUri ?? '',
+    mediaType: asset.kind === 'video' ? 'video' : 'image',
+    captureAt: capturedAt,
+    captureSource: 'gallery',
+    manualValue: toDatetimeLocalValue(capturedAt),
+    location: asset.location,
+  };
+};
+
+// Only object URLs made here need releasing (gallery thumbnails are files).
+export const releasePreview = (item: Pick<MomentItem, 'previewUrl'>) => {
+  if (item.previewUrl.startsWith('blob:')) URL.revokeObjectURL(item.previewUrl);
 };

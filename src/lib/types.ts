@@ -110,6 +110,8 @@ export interface Event {
   ends_at: string | null;
   // Concert tag for social imports, e.g. "LSRIV29" (see features/socialImport).
   share_tag?: string | null;
+  // IANA zone of the venue (events.timezone, default Europe/Madrid).
+  timezone?: string | null;
   // Festival set: the festival and its stage.
   festival_id?: string | null;
   room?: string | null;

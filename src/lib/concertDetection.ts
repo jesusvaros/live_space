@@ -24,8 +24,9 @@ export const TIME_TOLERANCE_MS = 3 * HOUR_MS;
 /** Time unreliable but the place is the venue: concerts this close in time. */
 export const PLACE_ONLY_WINDOW_MS = DAY_MS;
 
-// Times read from the media itself; the file date can be a copy or a download.
-const RELIABLE_SOURCES = new Set(['exif', 'video.metadata']);
+// Times read from the media itself (or the camera roll's capture date); the
+// file date can be a copy or a download.
+const RELIABLE_SOURCES = new Set(['exif', 'video.metadata', 'gallery']);
 
 export type DetectionMedia = {
   captureAt: Date | null;

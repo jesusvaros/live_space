@@ -4,10 +4,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { EventSetlistEntry } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
 import QrScanner from '../components/QrScanner';
-import { buildMomentItems, MomentItem } from '../lib/moments';
+import { buildMomentItems, momentItemFromGallery, releasePreview, MomentItem } from '../lib/moments';
 import AppShell from '../components/AppShell';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
-import { IconChevronDown, IconMic, IconPlus, IconQrCode } from '../components/icons';
+import { IconChevronDown, IconMic, IconPlay, IconPlus, IconQrCode } from '../components/icons';
 import VideoThumb from '../components/ui/VideoThumb';
 import { fetchEventCardById, fetchUploadCandidates } from '../data/eventQueries';
 import { eventService } from '../services/event.service';
@@ -27,6 +27,16 @@ import { markOnboardingSeen } from '../app/onboarding';
 import { readStoredCity, sameCity } from '../features/agenda/agendaPrefs';
 import AttendanceSuggestion from '../features/events/AttendanceSuggestion';
 import { attendanceTargetFor, markAttendance } from '../features/events/attendance';
+import GalleryRangeSheet from '../features/moments/GalleryRangeSheet';
+import {
+  canReadGallery,
+  checkGalleryPermission,
+  galleryUploadItem,
+  isGalleryScanAvailable,
+  type GalleryAsset,
+  type GalleryPermission,
+} from '../media/native/gallery';
+import type { MomentUploadItem } from '../media';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -80,6 +90,9 @@ const detectEvent = (items: MomentItem[], events: EventListItem[], city: string 
       local: inCity(event, city),
     })),
   );
+
+const byCaptureTime = (left: MomentItem, right: MomentItem) =>
+  (left.captureAt?.getTime() ?? 0) - (right.captureAt?.getTime() ?? 0);
 
 const mediaNoun = (items: MomentItem[]) => (items.some(item => item.mediaType === 'video') ? 'vídeos' : 'fotos');
 
@@ -207,6 +220,9 @@ const Upload: React.FC = () => {
   const [error, setError] = useState('');
   const [authOpen, setAuthOpen] = useState(false);
   const [publishAfterAuth, setPublishAfterAuth] = useState(false);
+  // Camera-roll access, checked (never requested) once there is a concert.
+  const [galleryPermission, setGalleryPermission] = useState<GalleryPermission | null>(null);
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const itemsRef = useRef<MomentItem[]>([]);
 
@@ -214,7 +230,7 @@ const Upload: React.FC = () => {
     itemsRef.current = items;
   }, [items]);
 
-  useEffect(() => () => itemsRef.current.forEach(item => URL.revokeObjectURL(item.previewUrl)), []);
+  useEffect(() => () => itemsRef.current.forEach(releasePreview), []);
 
   // Someone who opens the app through a QR has already found out what it is for.
   useEffect(() => {
@@ -230,7 +246,7 @@ const Upload: React.FC = () => {
         if (cancelled || !pending) return;
         const built = await buildMomentItems(pending.files);
         if (cancelled) return;
-        setItems(built.sort((left, right) => (left.captureAt?.getTime() ?? 0) - (right.captureAt?.getTime() ?? 0)));
+        setItems(built.sort(byCaptureTime));
         if (pending.eventId && !presetEventId) {
           const found = await fetchEventCardById(pending.eventId).catch(() => null);
           if (!cancelled && found) {
@@ -341,15 +357,66 @@ const Upload: React.FC = () => {
     if (pickerOpen && candidates.length === 0) loadCandidates(items).catch(() => setCandidates([]));
   }, [pickerOpen]);
 
+  // With a concert, the app and gallery access already granted (full or
+  // limited), «Elegir fotos y vídeos» opens the in-app gallery around the
+  // concert's dates. Re-checked when the app comes back, in case it changed
+  // in Ajustes. Never shows the system permission dialog from here.
+  useEffect(() => {
+    if (!event || !isGalleryScanAvailable()) {
+      setGalleryPermission(null);
+      return;
+    }
+    let cancelled = false;
+    const check = () => {
+      checkGalleryPermission()
+        .then(permission => {
+          if (!cancelled) setGalleryPermission(permission);
+        })
+        .catch(() => {
+          if (!cancelled) setGalleryPermission(null);
+        });
+    };
+    check();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') check();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [event?.id]);
+
+  const inAppGallery = Boolean(event && galleryPermission && canReadGallery(galleryPermission));
+
+  // Synchronous on purpose: the WebView only opens the file input from a tap.
+  const openPicker = () => {
+    if (inAppGallery) setGalleryOpen(true);
+    else fileInputRef.current?.click();
+  };
+
+  const openFullGallery = () => {
+    fileInputRef.current?.click();
+    setGalleryOpen(false);
+  };
+
+  // What was ticked in the in-app gallery replaces the earlier gallery picks;
+  // files from the system picker stay.
+  const addFromGallery = (assets: GalleryAsset[]) => {
+    setGalleryOpen(false);
+    setError('');
+    setItems(current =>
+      [...current.filter(item => !item.galleryAssetId), ...assets.map(momentItemFromGallery)].sort(byCaptureTime),
+    );
+  };
+
   const handleFiles = async (input: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(input.target.files || []);
     input.target.value = '';
     if (!files.length) return;
     setError('');
     const built = await buildMomentItems(files);
-    const next = [...items, ...built].sort(
-      (left, right) => (left.captureAt?.getTime() ?? 0) - (right.captureAt?.getTime() ?? 0),
-    );
+    const next = [...items, ...built].sort(byCaptureTime);
     setItems(next);
     if (presetEventId || (event && choice === 'chosen')) return;
     setDetecting(true);
@@ -373,7 +440,7 @@ const Upload: React.FC = () => {
   const removeItem = (id: string) => {
     setItems(prev => {
       const target = prev.find(item => item.id === id);
-      if (target) URL.revokeObjectURL(target.previewUrl);
+      if (target) releasePreview(target);
       return prev.filter(item => item.id !== id);
     });
   };
@@ -435,15 +502,32 @@ const Upload: React.FC = () => {
     try {
       // The background queue uploads, retries and creates the posts; progress
       // shows in the upload pill, so the screen can close right away.
-      await enqueueMomentUploads(items.map(item => ({
-        file: item.file,
-        kind: item.mediaType,
-        eventId: event.id,
-        capturedAt: item.captureAt ? item.captureAt.toISOString() : null,
+      const uploads: MomentUploadItem[] = [];
+      for (const item of items) {
         // Only setlist songs that exist in the catalogue can be linked.
-        songId: songFor(item)?.song_id ?? null,
-      })));
-      itemsRef.current.forEach(item => URL.revokeObjectURL(item.previewUrl));
+        const songId = songFor(item)?.song_id ?? null;
+        if (item.galleryAssetId) {
+          // From the in-app gallery: the native original, one at a time (on
+          // iOS each path is an export, maybe from iCloud).
+          uploads.push(
+            await galleryUploadItem(
+              { id: item.galleryAssetId, kind: item.mediaType === 'video' ? 'video' : 'photo', createdAt: (item.captureAt ?? new Date()).toISOString() },
+              { eventId: event.id, songId },
+            ),
+          );
+        } else {
+          uploads.push({
+            file: item.file,
+            kind: item.mediaType,
+            eventId: event.id,
+            capturedAt: item.captureAt ? item.captureAt.toISOString() : null,
+            songId,
+          });
+        }
+        setProgress({ current: uploads.length, total: items.length });
+      }
+      await enqueueMomentUploads(uploads);
+      itemsRef.current.forEach(releasePreview);
       setItems([]);
       clearReturnTo();
       // Recognised from the media but they could not be asked here (they
@@ -496,7 +580,7 @@ const Upload: React.FC = () => {
         <QrWelcome
           event={event}
           error={error}
-          onPick={() => fileInputRef.current?.click()}
+          onPick={openPicker}
           onChooseOther={() => setPickerOpen(true)}
           onClose={close}
         />
@@ -569,7 +653,7 @@ const Upload: React.FC = () => {
           <div className="flex flex-col gap-3 px-4 pt-5">
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={openPicker}
               className="flex min-h-[160px] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-app-line text-app-ink"
             >
               <span className="flex h-12 w-12 items-center justify-center rounded-full bg-app-accent text-[#14151a]">
@@ -616,14 +700,23 @@ const Upload: React.FC = () => {
                 const isVideo = item.mediaType === 'video';
                 // Photos are not tied to a song on this screen; videos are, when there is a setlist.
                 const song = isVideo ? songFor(item) : null;
-                const length = duration(durations[item.id]);
+                const length = duration(durations[item.id] ?? item.durationSec ?? undefined);
                 const offNight = Boolean(
                   event && item.captureAt && distanceToConcert(item.captureAt, event.starts_at, event.ends_at ?? null) > 0,
                 );
                 return (
                   <li key={item.id} className="flex items-center gap-3">
                     <span className="relative h-20 w-16 shrink-0 overflow-hidden rounded-[10px] bg-app-surface">
-                      {item.mediaType === 'video' ? (
+                      {!item.file ? (
+                        // From the in-app gallery: the plugin's thumbnail (a frame, for videos).
+                        item.previewUrl ? (
+                          <img src={item.previewUrl} alt={`${item.mediaType === 'video' ? 'Vídeo' : 'Foto'} de las ${clock(item.captureAt)}`} className="h-full w-full object-cover" />
+                        ) : (
+                          <span className="flex h-full w-full items-center justify-center text-[#8f8b84]">
+                            <IconPlay size={20} />
+                          </span>
+                        )
+                      ) : item.mediaType === 'video' ? (
                         <VideoThumb
                           src={item.previewUrl}
                           label={`Vídeo de las ${clock(item.captureAt)}`}
@@ -682,7 +775,7 @@ const Upload: React.FC = () => {
               <li>
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={openPicker}
                   className="flex min-h-16 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-app-line text-sm font-semibold text-[#c9c5bd]"
                 >
                   <IconPlus size={18} />
@@ -721,6 +814,18 @@ const Upload: React.FC = () => {
       )}
 
       <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple onChange={handleFiles} className="hidden" />
+
+      {event && inAppGallery ? (
+        <GalleryRangeSheet
+          isOpen={galleryOpen}
+          concert={{ startsAt: event.starts_at, endsAt: event.ends_at ?? null, timeZone: event.timezone }}
+          alreadyAdded={items.flatMap(item => (item.galleryAssetId ? [item.galleryAssetId] : []))}
+          limited={galleryPermission === 'limited'}
+          onClose={() => setGalleryOpen(false)}
+          onConfirm={addFromGallery}
+          onOpenFullGallery={openFullGallery}
+        />
+      ) : null}
 
       <Modal isOpen={pickerOpen} onDidDismiss={() => setPickerOpen(false)} initialBreakpoint={0.8} title="Elegir concierto">
         <div className="flex max-h-[85dvh] flex-col px-4 pb-[calc(16px+env(safe-area-inset-bottom,0px))] pt-3">
@@ -822,7 +927,8 @@ const Upload: React.FC = () => {
               beforeProviderRedirect={() =>
                 savePendingSelection({
                   eventId: event?.id ?? null,
-                  files: items.map(item => item.file),
+                  // Web only (the app keeps the page alive), so every item is a File.
+                  files: items.flatMap(item => (item.file ? [item.file] : [])),
                   detectedBy: choice === 'detected' ? detectedBy : null,
                 })
               }
