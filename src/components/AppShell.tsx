@@ -36,8 +36,10 @@ const AppShell: React.FC<AppShellProps> = ({
       <Content ref={contentRef} fullscreen={contentFullscreen} className={contentClassName}>
         {contentWrapperClassName === false ? content : <div className={contentWrapperClassName}>{content}</div>}
       </Content>
-      {/* Background uploads (src/media/uploadQueue.ts); renders nothing when idle. */}
-      <div className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top,0px)+8px)] z-50 flex justify-center px-4">
+      {/* Background uploads (src/media/uploadQueue.ts); renders nothing when idle.
+          Kept between the round back / share buttons pages put in the top
+          corners (44 px at 16 px from the edge). */}
+      <div className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top,0px)+8px)] z-50 flex justify-center px-[68px]">
         <UploadProgressPill className="pointer-events-auto w-full max-w-sm" />
       </div>
     </Page>

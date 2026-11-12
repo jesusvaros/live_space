@@ -171,6 +171,7 @@ export class CloudinaryMediaProvider implements MediaProvider {
   private readonly getAccessToken: () => Promise<string | null>;
   private readonly fetchImpl: typeof globalThis.fetch;
   private readonly xhrFactory: () => XMLHttpRequest;
+  private readonly webviewFetch: typeof globalThis.fetch | null;
   private readonly now: () => number;
   private readonly minimumAuthorizationTtlMs: number;
 
@@ -182,6 +183,14 @@ export class CloudinaryMediaProvider implements MediaProvider {
     this.getAccessToken = options.getAccessToken;
     this.fetchImpl = options.fetch ?? globalThis.fetch.bind(globalThis);
     this.xhrFactory = options.xhrFactory ?? (() => new XMLHttpRequest());
+    // With CapacitorHttp enabled, window.XMLHttpRequest sends the body over the
+    // native bridge as base64; for a picked photo that read fails inside the
+    // bridge, the error is never reported to the XHR and the upload hangs at
+    // 0 %. Capacitor keeps the WebView's own fetch as CapacitorWebFetch: use it
+    // on native (no byte progress, a photo is small). Same as r2.ts.
+    this.webviewFetch = options.xhrFactory
+      ? null
+      : (globalThis as { CapacitorWebFetch?: typeof fetch }).CapacitorWebFetch ?? null;
     this.now = options.now ?? Date.now;
     this.minimumAuthorizationTtlMs =
       options.minimumAuthorizationTtlMs ?? DEFAULT_MINIMUM_AUTHORIZATION_TTL_MS;
@@ -253,13 +262,60 @@ export class CloudinaryMediaProvider implements MediaProvider {
     );
   }
 
+  private buildForm(request: MediaUploadRequest, authorization: CloudinaryAuthorization) {
+    const form = new FormData();
+    form.set('file', request.file);
+    form.set('api_key', authorization.apiKey);
+    form.set('timestamp', String(authorization.timestamp));
+    form.set('signature', authorization.signature);
+    form.set('context', authorization.context);
+    form.set('folder', authorization.folder);
+    form.set('public_id', authorization.public_id);
+    form.set('upload_preset', authorization.upload_preset);
+    return form;
+  }
+
+  private uploadUrl(authorization: CloudinaryAuthorization) {
+    return `https://api.cloudinary.com/v1_1/${encodeURIComponent(authorization.cloudName)}/${authorization.resourceType}/upload`;
+  }
+
+  private async uploadWithWebviewFetch(
+    webviewFetch: typeof globalThis.fetch,
+    request: MediaUploadRequest,
+    authorization: CloudinaryAuthorization,
+  ): Promise<MediaUploadResult> {
+    let response: Response;
+    try {
+      response = await webviewFetch(this.uploadUrl(authorization), {
+        method: 'POST',
+        body: this.buildForm(request, authorization),
+        signal: request.signal,
+      });
+    } catch (error) {
+      if (request.signal?.aborted) throw createAbortedError(request.signal.reason);
+      throw new MediaUploadError('upload_failed', 'Cloudinary upload failed.', { cause: error });
+    }
+    const payload = (await response.json().catch(() => ({}))) as CloudinaryUploadPayload;
+    if (!response.ok) {
+      throw new MediaUploadError(
+        'upload_failed',
+        readErrorMessage(payload, 'Cloudinary rejected the media upload.'),
+        { status: response.status },
+      );
+    }
+    const result = parseUploadResult(payload, authorization);
+    request.onProgress?.(normalizeProgress(request.file.size, request.file.size));
+    return result;
+  }
+
   private uploadToCloudinary(
     request: MediaUploadRequest,
     authorization: CloudinaryAuthorization,
   ): Promise<MediaUploadResult> {
+    if (this.webviewFetch) return this.uploadWithWebviewFetch(this.webviewFetch, request, authorization);
     return new Promise((resolve, reject) => {
       const xhr = this.xhrFactory();
-      const uploadUrl = `https://api.cloudinary.com/v1_1/${encodeURIComponent(authorization.cloudName)}/${authorization.resourceType}/upload`;
+      const uploadUrl = this.uploadUrl(authorization);
       let settled = false;
 
       const settle = (callback: () => void) => {
@@ -309,16 +365,7 @@ export class CloudinaryMediaProvider implements MediaProvider {
 
       request.signal?.addEventListener('abort', abort, { once: true });
 
-      const form = new FormData();
-      form.set('file', request.file);
-      form.set('api_key', authorization.apiKey);
-      form.set('timestamp', String(authorization.timestamp));
-      form.set('signature', authorization.signature);
-      form.set('context', authorization.context);
-      form.set('folder', authorization.folder);
-      form.set('public_id', authorization.public_id);
-      form.set('upload_preset', authorization.upload_preset);
-      xhr.send(form);
+      xhr.send(this.buildForm(request, authorization));
     });
   }
 }
