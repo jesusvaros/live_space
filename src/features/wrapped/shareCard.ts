@@ -1,16 +1,16 @@
 import QRCode from 'qrcode';
 import { Capacitor } from '@capacitor/core';
 import { POSTER_COLORS } from '../../lib/qrPoster';
+import { resolvePublicSiteUrl } from '../../shared/siteUrl';
 
 // The story a fan posts after importing: "Sigo a mis 5 del Wrapped en Live
 // Space", their artists and a QR to the app.
 
 const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env ?? {};
-const DEFAULT_SITE_URL = 'https://livespace.pages.dev';
 
 // Not window.location: inside the app that is https://localhost.
 export const wrappedShareUrl = () => {
-  const base = (env.VITE_PUBLIC_SITE_URL?.trim() || DEFAULT_SITE_URL).replace(/\/+$/, '');
+  const base = resolvePublicSiteUrl(env.VITE_PUBLIC_SITE_URL);
   return `${base}/?utm_source=wrapped`;
 };
 
