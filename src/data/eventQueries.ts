@@ -14,6 +14,7 @@ const EVENT_CARD_SELECT = `
   poster_thumb_url,poster_url,share_tag,festival_id,room,
   venue_place:venue_places!events_venue_place_id_fkey (id,name,city,address,latitude,longitude),
   event_artists (
+    billing_order,is_headliner,
     artist:artists!event_artists_artist_id_fkey (id,name,genres,image_url)
   ),
   media_assets!media_assets_event_id_fkey (
@@ -45,6 +46,14 @@ const toCoordinate = (value: unknown): number | null => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+/** Headliner first, then billing order (the order the scrapers saved). */
+export const byBilling = (
+  left: { is_headliner?: boolean | null; billing_order?: number | null },
+  right: { is_headliner?: boolean | null; billing_order?: number | null },
+) =>
+  Number(Boolean(right.is_headliner)) - Number(Boolean(left.is_headliner))
+  || (left.billing_order ?? 99) - (right.billing_order ?? 99);
+
 export const mapEventCard = (row: any): EventListItem => {
   const publishedImages = (row.media_assets || [])
     .filter((asset: any) => asset.kind === 'image' && asset.status === 'published')
@@ -61,7 +70,8 @@ export const mapEventCard = (row: any): EventListItem => {
     ...mapEvent({ ...row, cover_image_url: coverImageUrl }),
     poster_sources: posterSources,
     venue_place: row.venue_place ? mapVenue({ ...row.venue_place, photos: [] }) : null,
-    event_artists: (row.event_artists || []).map((entry: any) => ({
+    // Headliner first: PostgREST returns the lineup in no particular order.
+    event_artists: [...(row.event_artists || [])].sort(byBilling).map((entry: any) => ({
       artist: entry.artist ? mapArtist({ ...entry.artist, avatar_url: entry.artist.image_url ?? null }) : null,
     })),
   };
@@ -155,6 +165,7 @@ const PAST_CARD_SELECT = `
   id,name,starts_at,city,address,status,image_url,poster_thumb_url,poster_url,
   venue_place:venue_places!events_venue_place_id_fkey (id,name,city),
   event_artists (
+    billing_order,is_headliner,
     artist:artists!event_artists_artist_id_fkey (id,name,image_url)
   ),
   media_assets!media_assets_event_id_fkey (kind,status,secure_url,thumbnail_url,created_at)
@@ -232,6 +243,7 @@ const UPLOAD_CANDIDATE_SELECT = `
   id,name,starts_at,ends_at,city,image_url,latitude,longitude,
   venue_place:venue_places!events_venue_place_id_fkey (id,name,city,latitude,longitude),
   event_artists (
+    billing_order,is_headliner,
     artist:artists!event_artists_artist_id_fkey (id,name)
   ),
   media_assets!media_assets_event_id_fkey (kind,status,secure_url,thumbnail_url,created_at)
