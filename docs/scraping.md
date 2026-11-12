@@ -256,9 +256,11 @@ lanza con `--apply` justo después del scraping:
 
 - «Sugerencias de usuarios (taquillas conocidas)», `structuredDataVerified`:
   links de taquillas conocidas (`TRUSTED_TICKET_HOSTS` en
-  `importEventSuggestions.ts`: DICE, Entradium, Wegow, Ticketmaster, Eventbrite…)
-  o de la web de una fuente que ya scrapeamos. Un concierto completo se publica
-  solo con la regla de fuente fiable.
+  `importEventSuggestions.ts`: taquillas que curan su catálogo, como DICE,
+  Wegow, Ticketmaster o See Tickets) o de la web de una fuente que ya
+  scrapeamos. Un concierto completo se publica solo con la regla de fuente
+  fiable. Las plataformas de autoservicio, donde cualquiera crea un evento
+  (Entradium, Eventbrite, Universe…), van siempre a revisión.
 - «Sugerencias de usuarios (revisión)»: cualquier otro sitio; se queda en
   revisión humana. Al aprobarla, el procesado diario la publica y la
   reconciliación avisa a quien la mandó.

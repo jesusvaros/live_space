@@ -48,36 +48,21 @@ export type SuggestionRow = {
 
 const SUGGESTION_SELECT = 'id,url,url_host,suggested_by,status,attempts,staging_event_id,result_event_id,error,created_at';
 
-// Ticket sellers whose event pages publish the organiser's own schema.org
-// data. A complete event from one of them (or from the website of a source
-// we already scrape) is staged under the trusted source and may publish
-// without a person; anything else waits for review.
+// Ticket sellers that curate their listings (an organiser cannot open an event
+// page on their own). A complete event from one of them (or from the website
+// of a source we already scrape) is staged under the trusted source and may
+// publish without a person. Self-service platforms where anyone can create an
+// event page (Entradium, Eventbrite, Universe, Enterticket, Giglon…) always
+// wait for review: otherwise a suggestion could put a made-up concert on the
+// map.
 export const TRUSTED_TICKET_HOSTS = [
   'dice.fm',
-  'entradium.com',
-  'wegow.com',
   'ticketmaster.es',
   'livenation.es',
   'seetickets.com',
   'entradas.com',
-  'eventbrite.es',
-  'eventbrite.com',
-  'tomaticket.es',
-  'giglon.com',
-  'ataquilla.com',
-  'enterticket.es',
-  'compralaentrada.com',
-  'notikumi.com',
-  'mutick.com',
-  'redentradas.com',
-  'taquilla.com',
-  'generaltickets.com',
-  'proticketing.com',
-  'ticketib.com',
-  'codetickets.com',
-  'universe.com',
+  'wegow.com',
   'feverup.com',
-  'bclever.tv',
   'elcorteingles.es',
 ];
 
