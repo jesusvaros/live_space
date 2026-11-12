@@ -16,6 +16,7 @@ import { eventCoverSources } from '../lib/eventCover';
 import { fetchEventCardById } from '../data/eventQueries';
 import { eventCacheKey, readCache } from '../data/pageCache';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
+import { useEventUploads } from '../media/useUploadQueue';
 import SetlistAttribution from '../components/event/SetlistAttribution';
 import { enableMomentNudges } from '../features/moments/momentNudge';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
@@ -23,6 +24,7 @@ import { EventStatsCard, VenueFeedbackPrompt } from '../features/community';
 import { festivalService } from '../services/festival.service';
 import EventMerchSection from '../features/merch/EventMerchSection';
 import AttendanceSuggestion from '../features/events/AttendanceSuggestion';
+import EventUploadButton from '../features/events/EventUploadButton';
 import ConcertPlayer, { type SeekRequest } from '../features/moments/ConcertPlayer';
 import { useConcertMoments, useConcertTimeline } from '../features/moments/useConcertTimeline';
 import type { Clip, TimelineMoment } from '../features/moments/concertTimeline';
@@ -68,6 +70,8 @@ const EventDetail: React.FC = () => {
   const suggestAttendance = Boolean((location.state as { suggestAttendance?: boolean } | null)?.suggestAttendance);
   const id = useRouteEntityId() || '';
   const { user } = useAuth();
+  // This concert's uploads show in its bottom button, not in the top pill.
+  const eventUploads = useEventUploads(id);
   const { isFollowing } = useFollowedSubjects();
   const [event, setEvent] = useState<EventDetailData | null>(() => readCache<EventDetailData>(eventCacheKey(id)) ?? null);
   const [festival, setFestival] = useState<{ id: string; name: string } | null>(null);
@@ -377,7 +381,7 @@ const EventDetail: React.FC = () => {
   ) : null;
 
   return (
-    <AppShell headerProps={null} contentRef={contentRef} contentWrapperClassName={false} contentClassName="event-detail-content">
+    <AppShell headerProps={null} hideUploadPill={eventUploads.summary.state !== 'idle'} contentRef={contentRef} contentWrapperClassName={false} contentClassName="event-detail-content">
       {loading && <DetailSkeleton />}
 
       {!loading && error && <div className="p-4"><p className="text-sm text-rose-400">{error}</p></div>}
@@ -695,14 +699,7 @@ const EventDetail: React.FC = () => {
 
           <div className="fixed inset-x-0 bottom-0 z-[1300] flex items-center gap-2 border-t border-app-line bg-app-bg/95 px-4 pb-[calc(10px+env(safe-area-inset-bottom,0px))] pt-2.5 backdrop-blur-xl">
             {isPastEvent || lived ? (
-              <button
-                type="button"
-                onClick={() => openUpload()}
-                className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-full bg-app-accent text-base font-bold text-[#14151a]"
-              >
-                <IconPlus className="h-5 w-5" />
-                Sube lo que grabaste
-              </button>
+              <EventUploadButton eventId={event.id} userId={user?.id ?? null} onUpload={() => openUpload()} />
             ) : (
               <>
                 <button

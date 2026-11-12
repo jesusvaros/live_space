@@ -81,3 +81,12 @@ export const useUploadQueue = () => {
   }), [queue]);
   return { ...snapshot, summary, ...actions };
 };
+
+/** The queue as seen from one concert: only the jobs going to that event. */
+export const useEventUploads = (eventId: string | null | undefined) => {
+  const queue = useUploadQueue();
+  const { jobs, retryAll } = queue;
+  const eventJobs = useMemo(() => (eventId ? jobs.filter((job) => job.eventId === eventId) : []), [jobs, eventId]);
+  const summary = useMemo(() => summarizeUploads({ ...queue, jobs: eventJobs }), [queue, eventJobs]);
+  return { summary, retryAll };
+};
