@@ -144,6 +144,66 @@ describe('CloudinaryMediaProvider', () => {
     expect(progress).toHaveBeenLastCalledWith({ loadedBytes: 4, totalBytes: 4, percent: 100 });
   });
 
+  it('on native (CapacitorHttp) uploads with the WebView fetch, not the patched XHR', async () => {
+    const webviewFetch = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      jsonResponse({
+        public_id: 'asset-1',
+        secure_url: 'https://res.cloudinary.com/live-space/image/upload/asset-1.jpg',
+        resource_type: 'image',
+        version: 42,
+        width: 1200,
+        height: 800,
+        bytes: 4,
+        format: 'jpg',
+      }),
+    );
+    const globals = globalThis as { CapacitorWebFetch?: typeof fetch };
+    globals.CapacitorWebFetch = webviewFetch as unknown as typeof fetch;
+    try {
+      const fetchMock = vi.fn(async () => jsonResponse(authorization()));
+      const provider = new CloudinaryMediaProvider({
+        edgeFunctionUrl: 'https://project.supabase.co/functions/v1/cloudinary-sign-upload',
+        getAccessToken: async () => 'user-access-token',
+        fetch: fetchMock as unknown as typeof fetch,
+        now: () => NOW,
+      });
+      const progress = vi.fn();
+      const result = await provider.upload({
+        file: new File(['test'], 'poster.jpg', { type: 'image/jpeg' }),
+        eventId: 'event-1',
+        onProgress: progress,
+      });
+
+      expect(result.publicId).toBe('asset-1');
+      expect(webviewFetch).toHaveBeenCalledOnce();
+      const [url, init] = webviewFetch.mock.calls[0];
+      expect(url).toBe('https://api.cloudinary.com/v1_1/live-space/image/upload');
+      expect(init?.method).toBe('POST');
+      expect((init?.body as FormData).get('signature')).toBe('a'.repeat(40));
+      expect(progress).toHaveBeenLastCalledWith({ loadedBytes: 4, totalBytes: 4, percent: 100 });
+    } finally {
+      delete globals.CapacitorWebFetch;
+    }
+  });
+
+  it('reports a Cloudinary rejection from the WebView fetch instead of hanging', async () => {
+    const globals = globalThis as { CapacitorWebFetch?: typeof fetch };
+    globals.CapacitorWebFetch = (async () => jsonResponse({ error: { message: 'Invalid signature' } }, 401)) as typeof fetch;
+    try {
+      const provider = new CloudinaryMediaProvider({
+        edgeFunctionUrl: 'https://project.supabase.co/functions/v1/cloudinary-sign-upload',
+        getAccessToken: async () => 'user-access-token',
+        fetch: (async () => jsonResponse(authorization())) as typeof fetch,
+        now: () => NOW,
+      });
+      await expect(
+        provider.upload({ file: new File(['test'], 'poster.jpg', { type: 'image/jpeg' }), eventId: 'event-1' }),
+      ).rejects.toMatchObject({ code: 'upload_failed', status: 401 });
+    } finally {
+      delete globals.CapacitorWebFetch;
+    }
+  });
+
   it('rejects an expired authorization before sending the file', async () => {
     const fetchMock = vi.fn(async () =>
       jsonResponse(authorization({ expiresAt: new Date(NOW - 1).toISOString() })),

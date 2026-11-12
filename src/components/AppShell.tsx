@@ -11,6 +11,8 @@ type AppShellProps = {
   contentFullscreen?: boolean;
   contentWrapperClassName?: string | false;
   contentRef?: React.Ref<HTMLElement>;
+  /** The page shows the upload progress itself (a concert's upload button). */
+  hideUploadPill?: boolean;
 };
 
 const AppShell: React.FC<AppShellProps> = ({
@@ -21,6 +23,7 @@ const AppShell: React.FC<AppShellProps> = ({
   contentFullscreen = true,
   contentWrapperClassName = 'min-h-full',
   contentRef,
+  hideUploadPill = false,
 }) => {
   const headerNode = headerProps ? <AppHeader {...headerProps} /> : null;
   const content = (
@@ -36,9 +39,12 @@ const AppShell: React.FC<AppShellProps> = ({
       <Content ref={contentRef} fullscreen={contentFullscreen} className={contentClassName}>
         {contentWrapperClassName === false ? content : <div className={contentWrapperClassName}>{content}</div>}
       </Content>
-      {/* Background uploads (src/media/uploadQueue.ts); renders nothing when idle. */}
-      <div className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top,0px)+8px)] z-50 flex justify-center px-4">
-        <UploadProgressPill className="pointer-events-auto w-full max-w-sm" />
+      {/* Background uploads (src/media/uploadQueue.ts); renders nothing when idle.
+          Kept between the round back / share buttons pages put in the top
+          corners (44 px at 16 px from the edge). */}
+      <div className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top,0px)+8px)] z-50 flex justify-center px-[68px]">
+        {/* Still mounted when hidden: mounting it resumes saved uploads. */}
+        <UploadProgressPill className={`pointer-events-auto w-full max-w-sm ${hideUploadPill ? 'hidden' : ''}`} />
       </div>
     </Page>
   );
