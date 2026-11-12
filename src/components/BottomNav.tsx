@@ -57,13 +57,12 @@ const tabFromPath = (pathname: string, profileTabHref: string): TabKey | null =>
   return null;
 };
 
-// Detail screens bring their own back header and bottom action bar.
-export const isDetailRoute = (pathname: string) =>
-  /^\/tabs\/(artist|venue|upload|create-event)\b/.test(pathname) ||
-  /^\/(artista|sala)\//.test(pathname) ||
-  /^\/(event|concierto|post)\//.test(pathname) ||
-  // Management screens (/gestion, its stats and QR, /reclamar) are full screen.
-  /^\/(gestion|reclamar)(\/|$)/.test(pathname);
+// The bar stays on every screen (concert, artist, venue, moment too) so you
+// never get lost; only full-screen flows hide it: uploading, creating a
+// concert, management and claiming (/gestion, /reclamar) and onboarding.
+export const hidesBottomNav = (pathname: string) =>
+  /^\/tabs\/(upload|create-event)\b/.test(pathname) ||
+  /^\/(subir|upload|create-event|gestion|reclamar|bienvenida|empezar|welcome)(\/|$)/.test(pathname);
 
 // Bottom padding a scrolling page needs so its end is not hidden by the bar.
 export const NAV_CLEARANCE = 'pb-[calc(96px+env(safe-area-inset-bottom,0px))]';

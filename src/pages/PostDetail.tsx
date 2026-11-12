@@ -9,6 +9,8 @@ import { ExternalMomentCard, isExternalPost } from '../features/socialImport';
 import { MomentReuseControls, ReportMomentButton } from '../features/community';
 import { blockTargetLabel } from '../features/blocks/blocking';
 import { useBlockedUserIds } from '../features/blocks/useBlockedUsers';
+import { videoPoster } from '../media/videoPoster';
+import { NAV_CLEARANCE } from '../components/BottomNav';
 
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -67,7 +69,7 @@ const PostDetail: React.FC = () => {
                 controls
                 playsInline
                 className="absolute inset-0 h-full w-full object-cover"
-                poster={post.thumbnail_url || post.events?.cover_image_url || undefined}
+                poster={videoPoster(post.thumbnail_url, post.events?.cover_image_url)}
               >
                 <source src={post.media_url} />
               </video>
@@ -89,7 +91,7 @@ const PostDetail: React.FC = () => {
           </div>
           )}
 
-          <div className="flex flex-col gap-6 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
+          <div className={`flex flex-col gap-6 p-4 ${NAV_CLEARANCE}`}>
             <div className="flex gap-2">
               <button
                 type="button"

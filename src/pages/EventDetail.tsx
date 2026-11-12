@@ -6,6 +6,7 @@ import { Event, Profile, VenuePlace, EventSetlistEntry, Artist } from '../lib/ty
 import { eventService } from '../services/event.service';
 import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
+import { NAV_CLEARANCE } from '../components/BottomNav';
 import ShareSheet from '../components/ShareSheet';
 import { IconBookmark, IconBookmarkFilled, IconPlus, IconShare } from '../components/icons';
 import DetailHeader from '../components/ui/DetailHeader';
@@ -22,6 +23,7 @@ import { festivalService } from '../services/festival.service';
 import EventMerchSection from '../features/merch/EventMerchSection';
 import AttendanceSuggestion from '../features/events/AttendanceSuggestion';
 import EventUploadButton from '../features/events/EventUploadButton';
+import { useEventUploadBar } from '../features/events/useEventUploadBar';
 import ConcertPlayer, { type SeekRequest } from '../features/moments/ConcertPlayer';
 import { useConcertMoments, useConcertTimeline } from '../features/moments/useConcertTimeline';
 import type { Clip, TimelineMoment } from '../features/moments/concertTimeline';
@@ -31,6 +33,14 @@ import EventPhotos from '../features/photos/EventPhotos';
 import { useHiddenPostIds } from '../features/photos/postCollections';
 import { withoutHidden } from '../features/photos/photoAlbums';
 import { heroParallaxOffset, stageIsMostlyVisible } from '../features/moments/stageParallax';
+
+// Bottom of the screen, from the edge up: the app's floating nav (about 72 px
+// over the safe area), then this page's action bar (about 60 px) right above
+// it. Whatever sits at the bottom of the page clears both, or just the nav
+// when there is no action bar.
+const ACTION_BAR_BOTTOM = 'bottom-[calc(76px+env(safe-area-inset-bottom,0px))]';
+const CLEAR_NAV = 'calc(84px + env(safe-area-inset-bottom, 0px))';
+const CLEAR_NAV_AND_BAR = 'calc(146px + env(safe-area-inset-bottom, 0px))';
 
 type EventDetailData = Event & {
   organizer?: Profile | null;
@@ -74,6 +84,7 @@ const EventDetail: React.FC = () => {
   const { user } = useAuth();
   // This concert's uploads show in its bottom button, not in the top pill.
   const eventUploads = useEventUploads(id);
+  const uploadBar = useEventUploadBar(id, user?.id ?? null);
   const { isFollowing } = useFollowedSubjects();
   const [event, setEvent] = useState<EventDetailData | null>(() => readCache<EventDetailData>(eventCacheKey(id)) ?? null);
   const [festival, setFestival] = useState<{ id: string; name: string } | null>(null);
@@ -428,6 +439,12 @@ const EventDetail: React.FC = () => {
   const lived = hasStarted && (setlist.length > 0 || moments.length > 0);
   const attendanceTarget: 'going' | 'attended' = isPastEvent ? 'attended' : 'going';
   const attendanceActive = attendanceStatus === attendanceTarget;
+  // After the concert the bottom bar is only «Sube lo que grabaste» (or its
+  // progress / Reintentar): gone for someone who already uploaded here.
+  const uploadMode = isPastEvent || lived;
+  const showBottomBar = !uploadMode || uploadBar.visible;
+  const bottomClearance = showBottomBar ? CLEAR_NAV_AND_BAR : CLEAR_NAV;
+  const pagePadding = showBottomBar ? 'pb-[calc(156px+env(safe-area-inset-bottom,0px))]' : NAV_CLEARANCE;
 
   const handleFollowClick = () => {
     if (!user) {
@@ -486,11 +503,11 @@ const EventDetail: React.FC = () => {
             title={heroTitle}
             scrollRef={contentRef}
             overlay={stageInView}
-            actions={stageInView ? null : shareButton}
+            actions={shareButton}
           />
 
           {lived ? (
-            <div className="pb-[calc(96px+env(safe-area-inset-bottom,0px))]">
+            <div className={pagePadding}>
               {/* The poster, as before the concert; it drifts at half speed
                   while the stage below slides over it. */}
               <div ref={heroRef} className="relative z-0 will-change-transform">
@@ -521,6 +538,7 @@ const EventDetail: React.FC = () => {
                     onActiveSongChange={onActiveSongChange}
                     onDuration={reportDuration}
                     inView={stageInView && pageVisible}
+                    bottomClearance={bottomClearance}
                   />
                 </section>
               ) : null}
@@ -693,7 +711,7 @@ const EventDetail: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="pb-[calc(96px+env(safe-area-inset-bottom,0px))]">
+            <div className={pagePadding}>
               <EventHero
                 event={event}
                 title={heroTitle}
@@ -754,53 +772,60 @@ const EventDetail: React.FC = () => {
               onMarked={status => setAttendanceStatus(status)}
               // Asked once: going back to this page does not ask again.
               onClose={() => navigate(`${location.pathname}${location.search}`, { replace: true, state: null })}
-              className="fixed inset-x-4 bottom-[calc(84px+env(safe-area-inset-bottom,0px))] z-[1301] shadow-xl"
+              className={`fixed inset-x-4 z-[1301] shadow-xl ${
+                showBottomBar ? 'bottom-[calc(146px+env(safe-area-inset-bottom,0px))]' : 'bottom-[calc(84px+env(safe-area-inset-bottom,0px))]'
+              }`}
             />
           ) : null}
 
-          <div className="fixed inset-x-0 bottom-0 z-[1300] flex items-center gap-2 border-t border-app-line bg-app-bg/95 px-4 pb-[calc(10px+env(safe-area-inset-bottom,0px))] pt-2.5 backdrop-blur-xl">
-            {isPastEvent || lived ? (
-              <EventUploadButton eventId={event.id} userId={user?.id ?? null} onUpload={() => openUpload()} />
-            ) : (
-              <>
-                <button
-                  type="button"
-                  aria-label={followed ? 'Quitar de guardados' : 'Guardar'}
-                  aria-pressed={followed}
-                  disabled={followLoading}
-                  onClick={handleFollowClick}
-                  className={`flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full border transition ${
-                    followed ? 'border-app-accent bg-app-accent/15 text-app-accent' : 'border-app-line bg-app-surface text-app-ink'
-                  }`}
-                >
-                  {followed ? <IconBookmarkFilled className="h-5 w-5" /> : <IconBookmark className="h-5 w-5" />}
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={attendanceActive}
-                  disabled={attendanceLoading}
-                  onClick={handleAttendanceClick}
-                  className={`h-[50px] shrink-0 rounded-full border px-4 text-[15px] font-semibold transition ${
-                    attendanceActive
-                      ? 'border-[#25d47b] bg-[#25d47b]/[0.12] text-[#25d47b]'
-                      : 'border-app-line bg-app-surface text-app-ink'
-                  } ${event.ticket_url ? '' : 'flex-1'}`}
-                >
-                  Voy
-                </button>
-                {event.ticket_url ? (
-                  <a
-                    href={event.ticket_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-[50px] flex-1 items-center justify-center rounded-full border border-app-line text-[15px] font-semibold text-app-ink"
-                  >
-                    Entradas
-                  </a>
-                ) : null}
-              </>
-            )}
-          </div>
+          {showBottomBar ? (
+            // Floats right above the app's bottom nav, never over it.
+            <div className={`pointer-events-none fixed inset-x-0 z-[1300] flex justify-center px-3 ${ACTION_BAR_BOTTOM}`}>
+              <div className="pointer-events-auto flex w-full max-w-[34rem] items-center gap-2 rounded-full border border-white/10 bg-app-bg/85 p-1 shadow-[0_8px_28px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+                {uploadMode ? (
+                  <EventUploadButton bar={uploadBar} onUpload={() => openUpload()} />
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      aria-label={followed ? 'Quitar de guardados' : 'Guardar'}
+                      aria-pressed={followed}
+                      disabled={followLoading}
+                      onClick={handleFollowClick}
+                      className={`flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full border transition ${
+                        followed ? 'border-app-accent bg-app-accent/15 text-app-accent' : 'border-app-line bg-app-surface text-app-ink'
+                      }`}
+                    >
+                      {followed ? <IconBookmarkFilled className="h-5 w-5" /> : <IconBookmark className="h-5 w-5" />}
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={attendanceActive}
+                      disabled={attendanceLoading}
+                      onClick={handleAttendanceClick}
+                      className={`h-[50px] shrink-0 rounded-full border px-4 text-[15px] font-semibold transition ${
+                        attendanceActive
+                          ? 'border-[#25d47b] bg-[#25d47b]/[0.12] text-[#25d47b]'
+                          : 'border-app-line bg-app-surface text-app-ink'
+                      } ${event.ticket_url ? '' : 'flex-1'}`}
+                    >
+                      Voy
+                    </button>
+                    {event.ticket_url ? (
+                      <a
+                        href={event.ticket_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex h-[50px] flex-1 items-center justify-center rounded-full border border-app-line text-[15px] font-semibold text-app-ink"
+                      >
+                        Entradas
+                      </a>
+                    ) : null}
+                  </>
+                )}
+              </div>
+            </div>
+          ) : null}
         </>
       )}
 

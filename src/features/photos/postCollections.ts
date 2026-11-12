@@ -12,7 +12,8 @@ import { supabase } from '../../lib/supabase';
 // One shared store per set, so the viewer, the albums and the player agree.
 
 type Table = 'post_likes' | 'hidden_posts';
-type State = { userId: string | null; ids: ReadonlySet<string>; local: boolean };
+// ready: the server's list for userId has arrived (or failed).
+type State = { userId: string | null; ids: ReadonlySet<string>; local: boolean; ready: boolean };
 
 const EMPTY: ReadonlySet<string> = new Set();
 // Enough for any person's likes; older ones only matter on «Guardadas», which
@@ -20,7 +21,7 @@ const EMPTY: ReadonlySet<string> = new Set();
 const MAX_ROWS = 2000;
 
 const createStore = (table: Table) => {
-  let state: State = { userId: null, ids: EMPTY, local: false };
+  let state: State = { userId: null, ids: EMPTY, local: false, ready: false };
   const listeners = new Set<() => void>();
   const setState = (next: Partial<State>) => {
     state = { ...state, ...next };
@@ -32,7 +33,7 @@ const createStore = (table: Table) => {
   };
 
   const load = async (userId: string) => {
-    setState({ userId, ids: EMPTY, local: false });
+    setState({ userId, ids: EMPTY, local: false, ready: false });
     const { data, error } = await supabase
       .from(table)
       .select('post_id')
@@ -41,10 +42,10 @@ const createStore = (table: Table) => {
       .limit(MAX_ROWS);
     if (state.userId !== userId) return;
     if (error) {
-      setState({ local: true });
+      setState({ local: true, ready: true });
       return;
     }
-    setState({ ids: new Set((data || []).map(row => (row as { post_id: string }).post_id)) });
+    setState({ ready: true, ids: new Set((data || []).map(row => (row as { post_id: string }).post_id)) });
   };
 
   const useIds = (): ReadonlySet<string> => {
@@ -52,13 +53,20 @@ const createStore = (table: Table) => {
     const userId = user?.id ?? null;
     useEffect(() => {
       if (!userId) {
-        if (state.userId) setState({ userId: null, ids: EMPTY, local: false });
+        if (state.userId) setState({ userId: null, ids: EMPTY, local: false, ready: false });
         return;
       }
       if (state.userId !== userId) void load(userId);
     }, [userId]);
     const snapshot = useSyncExternalStore(subscribe, () => state);
     return snapshot.userId && snapshot.userId === userId ? snapshot.ids : EMPTY;
+  };
+
+  /** Whether useIds already reflects the server (not the empty set of a load in flight). */
+  const useReady = (): boolean => {
+    const { user } = useAuth();
+    const snapshot = useSyncExternalStore(subscribe, () => state);
+    return Boolean(user && snapshot.userId === user.id && snapshot.ready);
   };
 
   const apply = (postId: string, on: boolean) => {
@@ -89,7 +97,7 @@ const createStore = (table: Table) => {
     throw error;
   };
 
-  return { useIds, set };
+  return { useIds, useReady, set };
 };
 
 const saved = createStore('post_likes');
@@ -97,6 +105,7 @@ const hidden = createStore('hidden_posts');
 
 export const useSavedPostIds = saved.useIds;
 export const setPostSaved = saved.set;
+export const useSavedPostIdsReady = saved.useReady;
 export const useHiddenPostIds = hidden.useIds;
 export const setPostHidden = hidden.set;
 

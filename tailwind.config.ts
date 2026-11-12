@@ -39,10 +39,18 @@ export default {
           '0%': { opacity: '0', transform: 'translateY(6px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        // The ♥ that pops on the concert player after a double tap.
+        'like-burst': {
+          '0%': { opacity: '0', transform: 'scale(0.6)' },
+          '20%': { opacity: '1', transform: 'scale(1.1)' },
+          '70%': { opacity: '1', transform: 'scale(1)' },
+          '100%': { opacity: '0', transform: 'scale(1.15)' },
+        },
       },
       animation: {
         'fade-up': 'fade-up 0.6s ease-out both',
         'timeline-fade': 'timeline-fade 0.35s ease',
+        'like-burst': 'like-burst 0.7s ease-out both',
       },
     },
   },

@@ -1,14 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { IconHeart, IconHeartFilled } from '../../components/icons';
+import { videoPoster } from '../../media/videoPoster';
 import { ReportMomentButton } from '../community';
+import { likesShown } from '../photos/likeCount';
+import { usePostLikes } from '../photos/usePostLikes';
 import { ExternalMomentCard } from '../socialImport';
 import ConcertTracks, { type ConcertTracksHandle } from './ConcertTracks';
 import {
+  clipOffsetSec,
   clipsAt,
   manualStillApplies,
   rankClips,
   resolvePlayhead,
   songSegmentAt,
-  upcomingClip,
+  upcomingCut,
   VIEW_AFTER_MS,
   type Clip,
   type ConcertTimeline,
@@ -17,6 +22,14 @@ import {
   type TimelineMoment,
 } from './concertTimeline';
 import { recordPostView } from './postViews';
+import {
+  CROSSFADE_MS,
+  frameReadyAt,
+  HANDOFF_TIMEOUT_MS,
+  handoffSource,
+  SEEK_TOLERANCE_SEC,
+  videoSlots,
+} from './videoHandoff';
 
 // The concert as one long video: a full-screen player that follows concert
 // time from clip to clip, with the multi-track timeline (one row per person)
@@ -32,10 +45,21 @@ import { recordPostView } from './postViews';
 // VIEW_AFTER_MS counts one view (post_views).
 //
 // Never more than two <video> elements: the one on screen and the next one,
-// preloading.
+// preloading and already seeked to where the cut will enter it. Cuts are
+// seamless (videoHandoff.ts): the outgoing video stays on screen until the
+// incoming one has shown a frame at the right time, then the new one fades in
+// over it. During that handoff the outgoing one takes the second slot and the
+// clip after next waits to preload.
+//
+// ♥ (post_likes, the same set as «Guardar» in the photos) for the clip on
+// screen: the button on the right or a double tap on the picture. A single
+// tap still plays or pauses (after DOUBLE_TAP_MS, to tell the two apart).
 
 const ZOOMS = [0.5, 1.5, 4]; // px per second of concert
 const DEFAULT_ZOOM = 1;
+const DOUBLE_TAP_MS = 260;
+
+type RvfcVideo = HTMLVideoElement & { requestVideoFrameCallback?: (callback: () => void) => number };
 
 export type SeekRequest = { clipId: string; nonce: number } | null;
 
@@ -52,6 +76,9 @@ type ConcertPlayerProps = {
   // Most of the stage on screen: playback runs only then (autoplay on
   // arrival, pause on leaving; a pause by the viewer is kept).
   inView?: boolean;
+  // Space the page keeps over the bottom of the stage (its fixed bottom nav
+  // and action bar): the controls and tracks sit right above it.
+  bottomClearance?: string;
 };
 
 const clock = (t: number, seconds = true) =>
@@ -87,7 +114,17 @@ const PlayPauseIcon: React.FC<{ playing: boolean; size?: number }> = ({ playing,
   </svg>
 );
 
-const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChip, seekRequest, onActiveSongChange, onDuration, onView = recordPostView, inView = true }) => {
+const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
+  timeline,
+  title,
+  stageChip,
+  seekRequest,
+  onActiveSongChange,
+  onDuration,
+  onView = recordPostView,
+  inView = true,
+  bottomClearance = 'calc(84px + env(safe-area-inset-bottom, 0px))',
+}) => {
   const tracksRef = useRef<ConcertTracksHandle | null>(null);
   const videosRef = useRef(new Map<string, HTMLVideoElement>());
   const timelineRef = useRef(timeline);
@@ -107,6 +144,18 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
   onViewRef.current = onView;
   // Real playback of the clip on screen, to count a view after 3 s.
   const playedRef = useRef<{ clipId: string | null; ms: number; counted?: boolean }>({ clipId: null, ms: 0 });
+  // Seamless cuts: the active video once it shows the right frame, the one
+  // kept on screen until then, and per video whether a frame was presented
+  // since its last seek.
+  const revealedRef = useRef<string | null>(null);
+  const handoffRef = useRef<string | null>(null);
+  const presentedRef = useRef(new Map<string, boolean>());
+  const handoffTimerRef = useRef(0);
+  const fadeTimerRef = useRef(0);
+  const slotOrderRef = useRef<string[]>([]);
+  const upcomingRef = useRef<{ clip: Clip; at: number } | null>(null);
+  const tapRef = useRef({ at: 0, timer: 0 });
+  const burstTimerRef = useRef(0);
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [manual, setManual] = useState<ManualChoice>(null);
@@ -118,15 +167,22 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [displayTime, setDisplayTime] = useState(timeline.start);
   const [shapes, setShapes] = useState<Record<string, boolean>>({});
+  const [revealedId, setRevealedId] = useState<string | null>(null);
+  const [handoffId, setHandoffIdState] = useState<string | null>(null);
+  const [burst, setBurst] = useState(0);
+  const { likedIds, ready: likesReady, setLiked } = usePostLikes();
+  // Liked or not when the like counts were loaded (once the set is known).
+  const [likedAtLoad, setLikedAtLoad] = useState<Record<string, boolean>>({});
 
   const active = useMemo(() => timeline.clips.find(clip => clip.id === activeId) ?? null, [timeline.clips, activeId]);
   const covering = useMemo(() => clipsAt(timeline, displayTime), [timeline, displayTime]);
   const coveringIds = useMemo(() => new Set(covering.map(clip => clip.id)), [covering]);
   const upcoming = useMemo(
-    () => upcomingClip(timeline, tRef.current, manual, holdRef.current),
+    () => upcomingCut(timeline, tRef.current, manual, holdRef.current),
     // Recomputed when the angle changes, not every frame.
     [timeline, activeId, manual],
   );
+  upcomingRef.current = upcoming;
   const segment = songSegmentAt(timeline.segments, displayTime);
 
   const setManualChoice = (next: ManualChoice) => {
@@ -144,8 +200,8 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
     const video = videosRef.current.get(clip.id);
     if (!video) return;
     video.muted = mutedRef.current;
-    const offset = Math.max(0, (tRef.current - clip.start) / 1000);
-    if (Math.abs(video.currentTime - offset) > 0.35) {
+    const offset = clipOffsetSec(clip, tRef.current);
+    if (Math.abs(video.currentTime - offset) > SEEK_TOLERANCE_SEC) {
       try {
         video.currentTime = offset;
       } catch {
@@ -163,16 +219,104 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
     }
   }, []);
 
+  const setHandoff = useCallback((clipId: string | null) => {
+    handoffRef.current = clipId;
+    setHandoffIdState(clipId);
+  }, []);
+
+  /** The active video shows the right frame: fade it in, then drop the outgoing one. */
+  const reveal = useCallback((clipId: string) => {
+    if (revealedRef.current === clipId) return;
+    revealedRef.current = clipId;
+    setRevealedId(clipId);
+    window.clearTimeout(handoffTimerRef.current);
+    window.clearTimeout(fadeTimerRef.current);
+    if (handoffRef.current) {
+      fadeTimerRef.current = window.setTimeout(() => {
+        if (revealedRef.current === clipId) setHandoff(null);
+      }, CROSSFADE_MS + 30);
+    }
+  }, [setHandoff]);
+
+  const checkReveal = useCallback(() => {
+    const clip = activeRef.current;
+    if (!clip || clip.kind !== 'video' || revealedRef.current === clip.id) return;
+    const video = videosRef.current.get(clip.id);
+    if (!video) return;
+    const ready = frameReadyAt(
+      {
+        readyState: video.readyState,
+        seeking: video.seeking,
+        currentTime: video.currentTime,
+        presented: presentedRef.current.get(clip.id) ?? false,
+      },
+      clipOffsetSec(clip, tRef.current),
+    );
+    if (ready) reveal(clip.id);
+  }, [reveal]);
+
+  // A frame of `clipId` reached the screen (requestVideoFrameCallback) or at
+  // least the decoder (seeked/loadeddata/playing/timeupdate: where rVFC is
+  // missing, or does not fire for a video kept transparent).
+  const markPresented = useCallback((clipId: string, video: HTMLVideoElement) => {
+    if (video.seeking || video.readyState < 2) return;
+    presentedRef.current.set(clipId, true);
+    if (clipId === activeRef.current?.id) checkReveal();
+  }, [checkReveal]);
+
+  const watchFrame = useCallback((clipId: string, video: HTMLVideoElement) => {
+    const rvfc = (video as RvfcVideo).requestVideoFrameCallback;
+    if (typeof rvfc !== 'function') return;
+    rvfc.call(video, () => markPresented(clipId, video));
+  }, [markPresented]);
+
+  /** Seeks the next clip to where the cut will enter it, while it waits hidden. */
+  const primeUpcoming = useCallback(() => {
+    const cut = upcomingRef.current;
+    if (!cut || cut.clip.kind !== 'video' || cut.clip.id === activeRef.current?.id) return;
+    const video = videosRef.current.get(cut.clip.id);
+    if (!video || video.readyState < 1) return; // loadedmetadata primes it
+    const offset = clipOffsetSec(cut.clip, cut.at);
+    if (Math.abs(video.currentTime - offset) <= SEEK_TOLERANCE_SEC) return;
+    try {
+      video.currentTime = offset;
+    } catch {
+      // Not seekable yet: activation seeks it.
+    }
+  }, []);
+
   const activate = useCallback((clip: Clip | null) => {
-    if (activeRef.current?.id === clip?.id) return;
+    const previous = activeRef.current;
+    if (previous?.id === clip?.id) return;
+    // What stays on screen until the new video has its frame.
+    const from = handoffSource({
+      previousId: previous?.id ?? null,
+      previousIsVideo: previous?.kind === 'video',
+      revealedId: revealedRef.current,
+      handoffId: handoffRef.current,
+      nextId: clip?.id ?? null,
+      nextIsVideo: clip?.kind === 'video',
+    });
     activeRef.current = clip;
     holdRef.current = clip ? { clipId: clip.id, since: tRef.current } : null;
     playedRef.current = { clipId: clip?.id ?? null, ms: 0 };
     setActiveId(clip?.id ?? null);
     setBuffering(false);
+    window.clearTimeout(handoffTimerRef.current);
+    window.clearTimeout(fadeTimerRef.current);
+    revealedRef.current = null;
+    setRevealedId(null);
+    setHandoff(from && videosRef.current.has(from) ? from : null);
+    if (clip?.kind === 'video') {
+      // Never stuck on the old picture: show the new clip (and its spinner).
+      handoffTimerRef.current = window.setTimeout(() => {
+        if (activeRef.current?.id === clip.id) reveal(clip.id);
+      }, HANDOFF_TIMEOUT_MS);
+    }
     // The new <video> may still need to mount; the effect below syncs it then.
     syncVideo(clip);
-  }, [syncVideo]);
+    checkReveal();
+  }, [checkReveal, reveal, setHandoff, syncVideo]);
 
   const publishTime = useCallback((t: number, force = false) => {
     tracksRef.current?.setPlayhead(t);
@@ -281,7 +425,30 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
   // A newly mounted <video> for the clip on screen gets its time and plays.
   useEffect(() => {
     syncVideo(active);
-  }, [active, syncVideo]);
+    checkReveal();
+  }, [active, syncVideo, checkReveal]);
+
+  // The next clip, once mounted: seek it to where the cut will enter it.
+  useEffect(() => {
+    primeUpcoming();
+  }, [upcoming, handoffId, primeUpcoming]);
+
+  useEffect(() => {
+    const tap = tapRef.current;
+    return () => {
+      window.clearTimeout(handoffTimerRef.current);
+      window.clearTimeout(fadeTimerRef.current);
+      window.clearTimeout(tap.timer);
+      window.clearTimeout(burstTimerRef.current);
+    };
+  }, []);
+
+  // The like count each clip was loaded with already includes this person's
+  // like if they had given it: remember which, once their likes are known.
+  useEffect(() => {
+    if (!likesReady || !active || likedAtLoad[active.id] !== undefined) return;
+    setLikedAtLoad(previous => ({ ...previous, [active.id]: likedIds.has(active.id) }));
+  }, [likesReady, active, likedIds, likedAtLoad]);
 
   useEffect(() => {
     onActiveSongChange?.(segment?.songId ?? active?.moment.songId ?? null);
@@ -319,6 +486,41 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
   };
 
   const togglePlay = () => (playingRef.current ? pause() : play());
+  // The delayed single tap runs the latest version (not the one at the tap).
+  const togglePlayRef = useRef(togglePlay);
+  togglePlayRef.current = togglePlay;
+
+  const liked = active ? likedIds.has(active.id) : false;
+  const likeCount = active ? likesShown(active.moment.likes ?? 0, likedAtLoad[active.id] ?? liked, liked) : 0;
+
+  const toggleLike = () => {
+    if (active) setLiked(active.id, !liked);
+  };
+
+  const showBurst = () => {
+    window.clearTimeout(burstTimerRef.current);
+    setBurst(value => value + 1);
+    burstTimerRef.current = window.setTimeout(() => setBurst(0), 750);
+  };
+
+  // One tap plays or pauses; two quick taps like the clip (never unlike).
+  const onPictureTap = (event: React.MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    if (!(target === event.currentTarget || target.tagName === 'VIDEO' || target.tagName === 'IMG')) return;
+    const tap = tapRef.current;
+    const now = performance.now();
+    window.clearTimeout(tap.timer);
+    if (tap.at && now - tap.at < DOUBLE_TAP_MS) {
+      tap.at = 0;
+      if (active && setLiked(active.id, true)) showBurst();
+      return;
+    }
+    tap.at = now;
+    tap.timer = window.setTimeout(() => {
+      tap.at = 0;
+      togglePlayRef.current();
+    }, DOUBLE_TAP_MS);
+  };
 
   const toggleMute = () => {
     const next = !mutedRef.current;
@@ -379,11 +581,15 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
 
   const registerVideo = (clipId: string) => (node: HTMLVideoElement | null) => {
     if (node) videosRef.current.set(clipId, node);
-    else videosRef.current.delete(clipId);
+    else {
+      videosRef.current.delete(clipId);
+      presentedRef.current.delete(clipId);
+    }
   };
 
-  const videoClips = [active, upcoming].filter((clip, index, list): clip is Clip =>
-    Boolean(clip && clip.kind === 'video' && list.findIndex(other => other?.id === clip.id) === index));
+  const handoffClip = handoffId ? timeline.clips.find(clip => clip.id === handoffId) ?? null : null;
+  const videoClips = videoSlots(active, upcoming?.clip ?? null, handoffClip, slotOrderRef.current);
+  slotOrderRef.current = videoClips.map(clip => clip.id);
 
   // Horizontal clips sit whole over the blurred backdrop; vertical ones fill
   // the screen. Stored size first, the decoded video's size once known.
@@ -405,56 +611,74 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(255,91,46,0.28),transparent_65%)]" />
       )}
 
-      {/* Picture: fills the screen; tapping it plays or pauses. */}
-      <div
-        className="absolute inset-0"
-        onClick={event => {
-          if (event.target === event.currentTarget || (event.target as HTMLElement).tagName === 'VIDEO' || (event.target as HTMLElement).tagName === 'IMG') togglePlay();
-        }}
-      >
-        {videoClips.map(clip => (
-          <video
-            key={clip.id}
-            ref={registerVideo(clip.id)}
-            src={clip.moment.mediaUrl}
-            poster={clip.moment.thumbnailUrl || undefined}
-            muted={muted}
-            playsInline
-            preload="auto"
-            aria-hidden={clip.id !== active?.id}
-            className={`absolute inset-0 h-full w-full ${isLandscape(clip.moment) ? 'object-contain' : 'object-cover'} ${
-              clip.id === active?.id ? 'opacity-100' : 'pointer-events-none opacity-0'
-            }`}
-            onLoadedMetadata={event => {
-              const video = event.currentTarget;
-              if (Number.isFinite(video.duration) && !clip.moment.durationSec) onDuration?.(clip.id, video.duration);
-              if (video.videoWidth && video.videoHeight) {
-                const wide = video.videoWidth > video.videoHeight;
-                setShapes(previous => (previous[clip.id] === wide ? previous : { ...previous, [clip.id]: wide }));
-              }
-              if (clip.id === activeRef.current?.id) syncVideo(activeRef.current);
-            }}
-            onWaiting={() => clip.id === activeRef.current?.id && setBuffering(true)}
-            onPlaying={() => clip.id === activeRef.current?.id && setBuffering(false)}
-            onError={() => {
-              // Broken file: skip to what comes after it.
-              if (clip.id === activeRef.current?.id) goTo(clip.end, null);
-            }}
-          />
-        ))}
+      {/* Picture: fills the screen; a tap plays or pauses, two like. */}
+      <div className="absolute inset-0 z-0 touch-manipulation" onClick={onPictureTap}>
+        {videoClips.map(clip => {
+          const isActive = clip.id === active?.id;
+          // On top once it shows the right frame (fading in over the
+          // outgoing one); the outgoing one under it; the next one hidden.
+          const layer = isActive
+            ? revealedId === clip.id
+              ? 'z-[2] opacity-100 transition-opacity ease-out motion-reduce:transition-none'
+              : 'z-[2] opacity-0'
+            : clip.id === handoffId
+              ? 'pointer-events-none z-[1] opacity-100'
+              : 'pointer-events-none z-0 opacity-0';
+          return (
+            <video
+              key={clip.id}
+              ref={registerVideo(clip.id)}
+              src={clip.moment.mediaUrl}
+              // Always a poster: without one Android paints a grey play icon.
+              poster={videoPoster(clip.moment.thumbnailUrl)}
+              muted={muted}
+              playsInline
+              preload="auto"
+              aria-hidden={!isActive}
+              style={isActive ? { transitionDuration: `${CROSSFADE_MS}ms` } : undefined}
+              className={`absolute inset-0 h-full w-full ${isLandscape(clip.moment) ? 'object-contain' : 'object-cover'} ${layer}`}
+              onLoadedMetadata={event => {
+                const video = event.currentTarget;
+                if (Number.isFinite(video.duration) && !clip.moment.durationSec) onDuration?.(clip.id, video.duration);
+                if (video.videoWidth && video.videoHeight) {
+                  const wide = video.videoWidth > video.videoHeight;
+                  setShapes(previous => (previous[clip.id] === wide ? previous : { ...previous, [clip.id]: wide }));
+                }
+                if (clip.id === activeRef.current?.id) syncVideo(activeRef.current);
+                else primeUpcoming();
+              }}
+              onSeeking={event => {
+                presentedRef.current.set(clip.id, false);
+                watchFrame(clip.id, event.currentTarget);
+              }}
+              onLoadedData={event => markPresented(clip.id, event.currentTarget)}
+              onSeeked={event => markPresented(clip.id, event.currentTarget)}
+              onTimeUpdate={event => markPresented(clip.id, event.currentTarget)}
+              onWaiting={() => clip.id === activeRef.current?.id && setBuffering(true)}
+              onPlaying={event => {
+                if (clip.id === activeRef.current?.id) setBuffering(false);
+                markPresented(clip.id, event.currentTarget);
+              }}
+              onError={() => {
+                // Broken file: skip to what comes after it.
+                if (clip.id === activeRef.current?.id) goTo(clip.end, null);
+              }}
+            />
+          );
+        })}
 
         {active?.kind === 'photo' && moment ? (
           <img
             key={active.id}
             src={moment.mediaUrl}
             alt={`Foto de ${handle}`}
-            className={`absolute inset-0 h-full w-full ${landscape ? 'object-contain' : 'object-cover'}`}
+            className={`absolute inset-0 z-[3] h-full w-full ${landscape ? 'object-contain' : 'object-cover'}`}
           />
         ) : null}
 
         {active?.kind === 'external' && moment?.post ? (
           // Playing the original pauses the concert clock: it is not ours to time.
-          <div key={active.id} className="absolute inset-0 mx-auto max-w-[480px]" onClickCapture={() => pause()}>
+          <div key={active.id} className="absolute inset-0 z-[3] mx-auto max-w-[480px]" onClickCapture={() => pause()}>
             <ExternalMomentCard post={moment.post} variant="media" />
           </div>
         ) : null}
@@ -479,9 +703,22 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
         </button>
       ) : null}
 
+      {/* Between the page's back and share buttons (44 px each, 12 px in). */}
       {stageChip ? (
-        <div className="pointer-events-none absolute right-3 top-[calc(14px+env(safe-area-inset-top,0px))] z-10 max-w-[64%]">
-          {stageChip}
+        <div className="pointer-events-none absolute inset-x-[64px] top-[calc(14px+env(safe-area-inset-top,0px))] z-10 flex justify-center">
+          <div className="min-w-0 max-w-full">{stageChip}</div>
+        </div>
+      ) : null}
+
+      {burst ? (
+        <div
+          key={burst}
+          aria-hidden="true"
+          className="pointer-events-none absolute left-1/2 top-[38%] z-10 -translate-x-1/2 -translate-y-1/2 text-app-accent drop-shadow-[0_6px_24px_rgba(0,0,0,0.45)]"
+        >
+          <div className="animate-like-burst motion-reduce:animate-none">
+            <IconHeartFilled size={96} />
+          </div>
         </div>
       ) : null}
 
@@ -500,8 +737,8 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
       </button>
 
       {/* Controls over the bottom of the picture, clear of the page's
-          fixed upload bar. */}
-      <div className="absolute inset-x-0 bottom-0 z-10 px-3 pb-[calc(84px+env(safe-area-inset-bottom,0px))]">
+          bottom nav and action bar. */}
+      <div className="absolute inset-x-0 bottom-0 z-10 px-3" style={{ paddingBottom: bottomClearance }}>
         <div className="flex items-end gap-2">
           {/* Caption */}
           <div className="pointer-events-none min-w-0 flex-1 pb-1">
@@ -519,8 +756,26 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
               <p className="mt-0.5 text-[11px] text-white/60">Sin hora exacta: colocado en su canción</p>
             ) : null}
           </div>
-          {/* Right column */}
+          {/* Right column, stacked like short-video apps. */}
           <div className="flex shrink-0 flex-col items-center gap-2">
+            {active ? (
+              <button
+                type="button"
+                onClick={toggleLike}
+                aria-pressed={liked}
+                aria-label={liked ? `Quitar me gusta (${likeCount})` : `Me gusta (${likeCount})`}
+                className="flex w-12 flex-col items-center gap-0.5 text-white"
+              >
+                <span
+                  className={`flex h-12 w-12 items-center justify-center rounded-full bg-black/45 backdrop-blur ${
+                    liked ? 'text-app-accent' : 'text-white'
+                  }`}
+                >
+                  {liked ? <IconHeartFilled size={24} /> : <IconHeart size={24} />}
+                </span>
+                <span className="font-mono text-[11px] font-bold tabular-nums drop-shadow">{likeCount}</span>
+              </button>
+            ) : null}
             {active && active.kind !== 'external' ? (
               <ReportMomentButton
                 postId={active.id}

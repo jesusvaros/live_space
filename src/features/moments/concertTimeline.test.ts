@@ -15,6 +15,8 @@ import {
   resolvePlayhead,
   songSegmentAt,
   upcomingClip,
+  upcomingCut,
+  clipOffsetSec,
   type TimelineMoment,
 } from './concertTimeline';
 
@@ -367,5 +369,51 @@ describe('song segments', () => {
 
   it('has no segments without a setlist', () => {
     expect(buildSongSegments([], [], STARTS, ENDS)).toEqual([]);
+  });
+});
+
+describe('upcomingCut (pre-seeking the next clip)', () => {
+  it('starts the next clip at its own start after a gap', () => {
+    const timeline = buildConcertTimeline({
+      startsAt: STARTS,
+      moments: [
+        moment({ id: 'first', capturedAt: at(10), durationSec: 10 }),
+        moment({ id: 'second', userId: 'u2', capturedAt: at(40), durationSec: 10 }),
+      ],
+    });
+    const cut = upcomingCut(timeline, ms(10, 2));
+    expect(cut?.clip.id).toBe('second');
+    expect(cut?.at).toBe(ms(40));
+    expect(clipOffsetSec(cut!.clip, cut!.at)).toBe(0);
+  });
+
+  it('cuts into the middle of a more popular angle once the hold is over', () => {
+    const timeline = buildConcertTimeline({
+      startsAt: STARTS,
+      moments: [
+        moment({ id: 'long', userId: 'u1', capturedAt: at(10), durationSec: 60, likes: 0 }),
+        moment({ id: 'liked', userId: 'u2', capturedAt: at(10, 20), durationSec: 30, likes: 5 }),
+      ],
+    });
+    // "long" took the screen at 10:15: it is held until 10:23.
+    const hold = { clipId: 'long', since: ms(10, 15) };
+    const cut = upcomingCut(timeline, ms(10, 16), null, hold);
+    expect(cut?.clip.id).toBe('liked');
+    expect(cut?.at).toBe(ms(10, 15) + MIN_HOLD_MS);
+    expect(clipOffsetSec(cut!.clip, cut!.at)).toBeCloseTo(3);
+  });
+
+  it('has nothing to cut to at the end', () => {
+    const timeline = buildConcertTimeline({ startsAt: STARTS, moments: [moment({ id: 'only', capturedAt: at(10) })] });
+    expect(upcomingCut(timeline, ms(10, 1))).toBeNull();
+  });
+});
+
+describe('clipOffsetSec', () => {
+  it('is the time into the clip, clamped to the clip', () => {
+    const clip = { start: 10_000, end: 25_000 };
+    expect(clipOffsetSec(clip, 12_500)).toBe(2.5);
+    expect(clipOffsetSec(clip, 5_000)).toBe(0);
+    expect(clipOffsetSec(clip, 40_000)).toBe(15);
   });
 });

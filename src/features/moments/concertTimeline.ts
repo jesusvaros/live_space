@@ -470,17 +470,18 @@ export const resolvePlayhead = (
 };
 
 /**
- * The next clip that will take the screen after `t` (to preload it): walks
+ * The next cut after `t` (to preload and pre-seek the clip it cuts to): walks
  * the following decision points (clip boundaries and the end of the minimum
  * hold) until the pick changes — a cut to a more popular angle, the end of
- * the current clip, or the start after a gap.
+ * the current clip, or the start after a gap. `at` is the concert time the
+ * incoming clip starts playing from (after a gap: its own start).
  */
-export const upcomingClip = (
+export const upcomingCut = (
   timeline: Pick<ConcertTimeline, 'clips'>,
   t: number,
   manual: ManualChoice = null,
   hold: Hold = null,
-): Clip | null => {
+): { clip: Clip; at: number } | null => {
   const current = pickClip(timeline, t, manual, hold);
   const boundaries = new Set<number>();
   for (const clip of timeline.clips) {
@@ -490,9 +491,21 @@ export const upcomingClip = (
   if (hold && hold.since + MIN_HOLD_MS > t) boundaries.add(hold.since + MIN_HOLD_MS);
   for (const at of [...boundaries].sort((left, right) => left - right)) {
     const keep = manual && manualStillApplies(timeline, at, manual) ? manual : null;
-    const { clip } = resolvePlayhead(timeline, at, keep, hold);
-    if (!clip) return null;
-    if (clip.id !== current?.id) return clip;
+    const resolved = resolvePlayhead(timeline, at, keep, hold);
+    if (!resolved.clip) return null;
+    if (resolved.clip.id !== current?.id) return { clip: resolved.clip, at: resolved.t };
   }
   return null;
 };
+
+/** The next clip that will take the screen after `t` (see upcomingCut). */
+export const upcomingClip = (
+  timeline: Pick<ConcertTimeline, 'clips'>,
+  t: number,
+  manual: ManualChoice = null,
+  hold: Hold = null,
+): Clip | null => upcomingCut(timeline, t, manual, hold)?.clip ?? null;
+
+/** Where inside `clip` (seconds from its first frame) concert time `t` falls. */
+export const clipOffsetSec = (clip: Pick<Clip, 'start' | 'end'>, t: number) =>
+  Math.max(0, Math.min(t, clip.end) - clip.start) / 1000;

@@ -14,6 +14,7 @@ import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { useFollowedEntities } from '../hooks/useFollowedEntities';
 import ShareSheet from '../components/ShareSheet';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
+import { videoPoster } from '../media/videoPoster';
 import { IconHeart, IconHeartFilled, IconPlus, IconShare } from '../components/icons';
 
 const PAGE_SIZE = 8;
@@ -79,7 +80,7 @@ const MomentSlide: React.FC<SlideProps> = ({ post, songNumber, group, liked, onL
   const event = post.events || null;
   const venue = event?.venue_place?.name || event?.city || '';
   const title = event?.name || 'Concierto';
-  const poster = post.thumbnail_url || event?.cover_image_url || undefined;
+  const poster = videoPoster(post.thumbnail_url, event?.cover_image_url);
 
   useEffect(() => {
     const node = ref.current;
