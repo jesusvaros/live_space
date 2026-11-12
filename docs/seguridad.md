@@ -81,7 +81,9 @@ La función:
 3. Borra sus posts y `media_assets` (son `ON DELETE RESTRICT`), sus membresías y
    reclamaciones, sus datos de notificaciones (`push_devices`,
    `notification_preferences`, `notifications_sent`; migración
-   `20261110080200`) y, por último, `auth.users`; el resto cae en cascada desde
+   `20261110080200`), los links de conciertos que envió
+   (`event_link_suggestions`; migración `20261112000200`; los conciertos
+   importados se quedan) y, por último, `auth.users`; el resto cae en cascada desde
    `profiles`/`subjects` (likes, follows en ambos sentidos, guardados, asistencia,
    bloqueos, reportes que envió, etiquetas de sala, ocultos del mapa, reservas) o
    queda a `null` (`created_by`, `reviewed_by`, `merch_orders.buyer_id`).
@@ -96,8 +98,9 @@ secretos `R2_*` y, si existen `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` y
 esperan. Solo acepta claves `v/<aaaa>/<mm>/<uuid>.<ext>` en R2, reintenta hasta 8
 veces y nunca registra a quién pertenecía el archivo.
 
-Prueba local: `supabase/tests/delete_my_account.sql` contra una base desechable
-con todas las migraciones (instrucciones en el propio archivo).
+Prueba local: `supabase/tests/delete_my_account.sql` y
+`supabase/tests/event_link_suggestions.sql` contra una base desechable con todas
+las migraciones (instrucciones en el propio archivo).
 
 ## Backups y datos heredados
 

@@ -2,7 +2,7 @@
 
 import type { NotificationPrefs } from '../shared/notifications/prefs.js';
 
-export const SENDER_TYPES = ['merch_pickup', 'concert_day', 'upload_reminder', 'followed_new_concert'] as const;
+export const SENDER_TYPES = ['merch_pickup', 'concert_day', 'upload_reminder', 'suggestion_imported', 'followed_new_concert'] as const;
 export type SenderType = (typeof SENDER_TYPES)[number];
 
 export type Channel = 'conciertos' | 'momentos' | 'merch';
@@ -69,6 +69,8 @@ export type UserData = {
   uploadedEventIds: Set<string>;
   merchOrders: MerchOrder[];
   follows: Follow[];
+  /** Upcoming published concerts imported from links this person sent (event_link_suggestions). */
+  suggestedEvents: EventInfo[];
   /** notifications_sent of the last days (dedupe, daily limit, announced concerts). */
   sent: SentRow[];
 };

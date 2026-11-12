@@ -5,7 +5,7 @@
 //   npm run notifications:send -- --apply         → sends (FIREBASE_SERVICE_ACCOUNT required)
 //
 // Options:
-//   --only=<type>     concert_day | upload_reminder | merch_pickup | followed_new_concert
+//   --only=<type>     concert_day | upload_reminder | merch_pickup | suggestion_imported | followed_new_concert
 //   --profile=<uuid>  only this person (e.g. a test on your own account)
 //   --limit=<n>       at most n notices sent in this run (default 500)
 //

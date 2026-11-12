@@ -80,6 +80,8 @@ export type ScrapeSourceMetadata = {
   icsUrl?: string;
   termsReviewStatus?: 'pending' | 'approved' | 'rejected';
   fixtureVerified?: boolean;
+  /** Owns the rows staged from «¿No encuentras un concierto?» links (never scraped). */
+  userSuggestions?: boolean;
   autoProbe?: {
     status: 'ready_for_review' | 'needs_parser' | 'unreachable' | 'unsupported';
     parserKey?: ParserKey;

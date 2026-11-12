@@ -43,7 +43,8 @@
     "venues:discover": "npm run scrape:build && node dist-scraper/scripts/discoverVenues.js",
     "venues:geocode": "npm run scrape:build && node dist-scraper/scripts/geocodeVenues.js",
     "venues:curate": "npm run scrape:build && node dist-scraper/scripts/curateVenues.js",
-    "notifications:send": "npm run scrape:build && node dist-scraper/scripts/sendNotifications.js"
+    "notifications:send": "npm run scrape:build && node dist-scraper/scripts/sendNotifications.js",
+    "suggestions:import": "npm run scrape:build && node dist-scraper/scripts/importEventSuggestions.js"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.1",

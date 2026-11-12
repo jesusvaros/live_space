@@ -9,6 +9,7 @@ export const NOTIFICATION_TYPES = [
   'merch_pickup',
   'new_moments',
   'followed_new_concert',
+  'suggestion_imported',
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -28,6 +29,7 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, { title: string;
   merch_pickup: { title: 'Recoger tu merch', help: 'Cuándo y dónde recoger lo que reservas.' },
   new_moments: { title: 'Momentos nuevos', help: 'Cuando el público sube momentos de un concierto al que fuiste.' },
   followed_new_concert: { title: 'Conciertos nuevos', help: 'Cuando un artista, sala o festival que sigues anuncia uno.' },
+  suggestion_imported: { title: 'Conciertos que nos pasas', help: 'Cuando añadimos un concierto del que nos enviaste el link.' },
 };
 
 export const DEFAULT_PREFS: NotificationPrefs = {
@@ -38,6 +40,7 @@ export const DEFAULT_PREFS: NotificationPrefs = {
     merch_pickup: true,
     new_moments: true,
     followed_new_concert: true,
+    suggestion_imported: true,
   },
   quietStart: '23:00',
   quietEnd: '09:00',

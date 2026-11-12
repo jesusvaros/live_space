@@ -17,6 +17,7 @@ export const WINDOWS: Record<SenderType, { from: number; to: number }> = {
   merch_pickup: { from: at(12), to: at(22) },
   concert_day: { from: at(12), to: at(18) },
   upload_reminder: { from: at(10), to: at(14) },
+  suggestion_imported: { from: at(10), to: at(21) },
   followed_new_concert: { from: at(10), to: at(21) },
 };
 
@@ -25,7 +26,8 @@ export const TYPE_ORDER: Record<SenderType, number> = {
   merch_pickup: 0,
   concert_day: 1,
   upload_reminder: 2,
-  followed_new_concert: 3,
+  suggestion_imported: 3,
+  followed_new_concert: 4,
 };
 
 /** New concerts of what you follow: only those announced this recently. */
@@ -163,12 +165,36 @@ export const followedNotice = (profileId: string, concerts: EventInfo[], timezon
   };
 };
 
-/** Concert ids already announced to this person (followed_new_concert payloads). */
+/**
+ * «Ya está»: a concert imported from a ticket link this person sent with
+ * «¿No encuentras un concierto?». One notice per concert; the policy sends at
+ * most one per run, so several arrive on later runs.
+ */
+export const suggestionImportedNotice = (profileId: string, event: EventInfo, timezone: string): Notice => {
+  const place = placeOf(event);
+  return {
+    type: 'suggestion_imported',
+    profileId,
+    dedupeKey: dedupeKey('suggestion_imported', event.id),
+    title: `Ya está: ${subjectOf(event)}${place ? ` en ${place}` : ''} el ${dateLabel(event.startsAt, timezone)}`,
+    body: 'El concierto que nos pasaste ya está en Live Space. Toca para verlo.',
+    route: `/event/${event.id}`,
+    channel: 'conciertos',
+    priority: 'normal',
+    ttlSeconds: 24 * 3600,
+    eventIds: [event.id],
+    window: WINDOWS.suggestion_imported,
+    expiresAt: event.startsAt,
+  };
+};
+
+/** Concert ids already announced to this person (followed_new_concert and suggestion_imported payloads). */
 export const announcedEventIds = (user: UserData, now: Date) => {
   const ids = new Set<string>();
   const since = now.getTime() - ANNOUNCED_MEMORY_MS;
   for (const row of user.sent) {
-    if (row.type !== 'followed_new_concert' || new Date(row.sentAt).getTime() < since) continue;
+    if (row.type !== 'followed_new_concert' && row.type !== 'suggestion_imported') continue;
+    if (new Date(row.sentAt).getTime() < since) continue;
     const list = row.payload?.event_ids;
     if (Array.isArray(list)) for (const id of list) if (typeof id === 'string') ids.add(id);
   }
@@ -243,7 +269,16 @@ export const buildCandidates = (input: CandidateInput): Notice[] => {
     notices.push(merchPickupNotice(user.profileId, order, event));
   }
 
-  const followed = followedConcerts(input);
+  // A concert they sent us is announced as theirs, never again as «new
+  // concert of what you follow».
+  const suggested = new Set<string>();
+  for (const event of user.suggestedEvents) {
+    suggested.add(event.id);
+    if (new Date(event.startsAt).getTime() <= now.getTime()) continue;
+    notices.push(suggestionImportedNotice(user.profileId, event, timezone));
+  }
+
+  const followed = followedConcerts(input).filter(event => !suggested.has(event.id));
   if (followed.length > 0) notices.push(followedNotice(user.profileId, followed, timezone));
 
   return notices.sort((left, right) => TYPE_ORDER[left.type] - TYPE_ORDER[right.type]);

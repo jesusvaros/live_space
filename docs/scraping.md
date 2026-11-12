@@ -184,6 +184,99 @@ Los factores de puntuación deben ser explicables: identificador externo, URL,
 fecha/hora, sala normalizada, localidad, artistas y similitud de título. Nunca se
 publica a partir de una puntuación opaca.
 
+## Sugerencias de usuarios
+
+«¿No encuentras un concierto? Pásanos el link de las entradas» (Explorar, bajo
+una búsqueda sin resultados y al final de los resultados) guarda el link en
+`public.event_link_suggestions` (migración `20261112000100`). El scraping diario
+lo importa sin IA y sin navegador; la persona recibe un push cuando se publica
+(docs/notificaciones.md, `suggestion_imported`).
+
+**Tabla.** `url` (normalizada: sin espacios, sin `#…`, sin `utm_*`, `fbclid`,
+`gclid` y similares; mismas reglas en `src/shared/suggestions/url.ts` y en
+`public.normalize_suggestion_url()`), `url_host` (sin `www.`), `note`,
+`suggested_by`, `status` (`pending` → `review` | `imported` | `duplicate` |
+`failed`), `result_event_id`, `staging_event_id`, `error`, `attempts`,
+`processed_at`, `created_at`. Única por (`suggested_by`, `url`).
+
+- **RLS:** la persona inserta (solo `url` y `note`) y lee sus filas; nadie más
+  las lee; `service_role` procesa. Sin `update`/`delete` para usuarios.
+- **Trigger `before insert`** (no una RPC, para que valga cualquier camino de
+  inserción): normaliza el link (o `invalid_url`), calcula `url_host`, pone las
+  columnas de proceso a su valor inicial diga lo que diga el cliente y aplica el
+  **límite de 10 links por persona en 24 h** (`rate_limited`), con un
+  `pg_advisory_xact_lock` por persona para que dos inserciones a la vez se
+  cuenten.
+- **Cuenta borrada:** `suggested_by` cae en cascada y `delete_my_account()` lo
+  borra explícitamente (`20261112000200`). Los conciertos importados se quedan.
+
+**Importación** (`npm run suggestions:import`, simulación por defecto;
+`-- --apply` escribe; `-- --limit=N`, 50 por defecto). El workflow diario lo
+lanza con `--apply` justo después del scraping:
+
+1. Reconcilia lo ya preparado: fila de staging publicada → `imported` si el
+   evento se creó después de la sugerencia, `duplicate` si ya existía;
+   `rejected` → `failed`; `merged` → `duplicate`; pendiente de revisión → sigue
+   en `review`.
+2. Por cada link `pending` (como mucho 3 intentos, una vez por link aunque lo
+   manden varias personas):
+   - Si un evento publicado ya tiene ese link en `source_url` o `ticket_url` →
+     `duplicate`, sin descargar nada.
+   - Descarga con `src/pipeline/safeFetch.ts`: `LiveSpaceBot/1.0` como el resto
+     de enriquecedores, 20 s, 2 MB, 1 petición por segundo y host, puertos
+     80/443, redirecciones seguidas a mano y **cada salto debe resolver a
+     direcciones públicas** (nada de `localhost`, redes privadas ni
+     `169.254.169.254`). 404/410 y similares → `failed`; red, timeout o 5xx →
+     se reintenta otro día.
+   - Lee la página con `src/pipeline/eventLinkExtract.ts`: el `Event` de
+     schema.org en JSON-LD (`@graph`, listas, `ItemList`, subtipos como
+     `MusicEvent` o `Festival`, `performer` en lista o texto, `location` `Place`
+     con dirección en objeto o texto y `geo`, `offers` con `price`/`lowPrice`/
+     `highPrice` y `url`, `image`). Fechas sin zona se leen en hora de Madrid.
+     OpenGraph solo aporta título e imagen para quien revise: **nunca basta para
+     publicar**.
+   - Resultado:
+     - concierto completo (nombre, fecha, sala) y futuro → se prepara en
+       `staging_events` con la misma forma que el resto de fuentes
+       (`buildStagingRow`; `source_event_id` = página canónica; enlace de venta
+       y precios en el `payload` para `extractOffer`) → `review` con
+       `staging_event_id`;
+     - sin JSON-LD, varios eventos en la página, sin fecha o sin sala, fuera de
+       España o aplazado → `review` (en `error`, el motivo y el título OG);
+     - el JSON-LD describe otra cosa (una portada, un listado), cancelado,
+       solo online o ya pasado → `failed`.
+3. Si se preparó algo, ejecuta el procesado normal de staging (normalización
+   determinista, sala y artistas, deduplicación, confianza) y reconcilia otra
+   vez, para que el aviso salga el mismo día. Este camino **nunca llama a la
+   IA**: si `ENABLE_AI_NORMALIZATION` estuviera activo, deja las filas para la
+   siguiente pasada del scraping en vez de procesarlas.
+
+**Fuentes.** Las filas de staging pertenecen a dos `scrape_sources` inactivas
+(nunca se scrapean), creadas por la migración:
+
+- «Sugerencias de usuarios (taquillas conocidas)», `structuredDataVerified`:
+  links de taquillas conocidas (`TRUSTED_TICKET_HOSTS` en
+  `importEventSuggestions.ts`: taquillas que curan su catálogo, como DICE,
+  Wegow, Ticketmaster o See Tickets) o de la web de una fuente que ya
+  scrapeamos. Un concierto completo se publica solo con la regla de fuente
+  fiable. Las plataformas de autoservicio, donde cualquiera crea un evento
+  (Entradium, Eventbrite, Universe…), van siempre a revisión.
+- «Sugerencias de usuarios (revisión)»: cualquier otro sitio; se queda en
+  revisión humana. Al aprobarla, el procesado diario la publica y la
+  reconciliación avisa a quien la mandó.
+
+Si la página de una sala no dice la sala (`location` vacío) y el host es el de
+una única fuente de tipo `venue`, se usa esa sala. Una sala nueva creada desde
+una sugerencia no recibe `website_url` (el link es de la taquilla, no de la
+sala).
+
+**Revisar.** Lo que queda en `review` sin `staging_event_id` (sin datos
+estructurados) se mira en Supabase → `event_link_suggestions`; el resto, en la
+cola de staging como cualquier fuente. Comprobado el 12-nov contra páginas
+reales: DICE (`MusicEvent` completo) y Loco Club (sala desde su fuente) se
+importan; Entradium no publica JSON-LD (→ `review`); un listado de DICE
+(`Organization`/`WebSite`) → `failed`.
+
 ## Descubrimiento y ciclo de vida de salas
 
 Los datos verificados a mano viven en `src/venues/curation.ts` y se aplican con

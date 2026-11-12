@@ -16,7 +16,7 @@ const asText = (value: unknown): string | undefined => {
 // ("En Bruto &#8211; Open mic").
 const NAMED_ENTITIES: Record<string, string> = { amp: '&', quot: '"', apos: "'", lt: '<', gt: '>', nbsp: ' ' };
 
-const decodeEntities = (text: string): string =>
+export const decodeEntities = (text: string): string =>
   text.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (match, entity: string) => {
     if (entity[0] !== '#') return NAMED_ENTITIES[entity.toLowerCase()] ?? match;
     const code = entity[1] === 'x' || entity[1] === 'X' ? parseInt(entity.slice(2), 16) : Number(entity.slice(1));
