@@ -180,9 +180,11 @@ export interface EventSetlistEntry {
   starts_offset_ms: number | null;
   ends_offset_ms: number | null;
   created_at: string;
-  // 'manual' (managers) or 'setlistfm' (pipeline fallback, needs attribution).
+  // 'manual' (managers), 'setlistfm' (pipeline fallback, needs attribution)
+  // or 'audience' (an approved setlist_proposals row; created_by = proposer).
   source?: string | null;
   source_url?: string | null;
+  created_by?: string | null;
 }
 
 export interface ManagedEntity {

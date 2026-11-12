@@ -9,6 +9,7 @@ import { IconChevronLeft } from '../components/icons';
 import EventEditForm from '../components/pro/EventEditForm';
 import SetlistEditor from '../components/pro/SetlistEditor';
 import ConcertProposals from '../components/pro/ConcertProposals';
+import SetlistProposalsReview from '../features/setlist/SetlistProposalsReview';
 import { EntityStatsSummary, EventStatsCard } from '../features/community';
 import { useAuth } from '../contexts/AuthContext';
 import { useWorkspace } from '../contexts/WorkspaceContext';
@@ -216,6 +217,12 @@ const Management: React.FC = () => {
         ) : null}
         {currentEntityId && entity.type === 'artist' ? (
           <ConcertProposals key={`artist-${currentEntityId}`} mode="artist" artistId={currentEntityId} />
+        ) : null}
+        {currentEntityId && entity.type === 'venue' ? (
+          <SetlistProposalsReview key={`setlists-venue-${currentEntityId}`} mode="venue" venueId={currentEntityId} />
+        ) : null}
+        {currentEntityId && entity.type === 'artist' ? (
+          <SetlistProposalsReview key={`setlists-artist-${currentEntityId}`} mode="artist" artistId={currentEntityId} />
         ) : null}
         <div role="tablist" aria-label="Eventos" className="flex items-center gap-1.5 px-4 pt-4">
           {([

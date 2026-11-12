@@ -3,6 +3,7 @@ import { Content, Modal, Spinner } from '../components/ui/AppPrimitives';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { EventSetlistEntry } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
+import SetlistProposalAction from '../features/setlist/SetlistProposalAction';
 import QrScanner from '../components/QrScanner';
 import { buildMomentItems, momentItemFromGallery, momentItemFromNativePick, releasePreview, MomentItem } from '../lib/moments';
 import AppShell from '../components/AppShell';
@@ -215,6 +216,8 @@ const Upload: React.FC = () => {
   // offered here. Otherwise it is offered on the concert page after publishing.
   const [detectedSignedIn, setDetectedSignedIn] = useState(false);
   const [setlist, setSetlist] = useState<EventSetlistEntry[]>([]);
+  // Bumped when a setlist is saved from here (a manager's proposal applies at once).
+  const [setlistVersion, setSetlistVersion] = useState(0);
   const [items, setItems] = useState<MomentItem[]>([]);
   const [durations, setDurations] = useState<Record<string, number>>({});
   const [songOverrides, setSongOverrides] = useState<Record<string, number | null>>({});
@@ -338,7 +341,7 @@ const Upload: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [event?.id]);
+  }, [event?.id, setlistVersion]);
 
   // Concerts to choose from, every city: around the capture times, or the
   // last two weeks. Slim rows: just what the picker and detection need. With
@@ -731,13 +734,20 @@ const Upload: React.FC = () => {
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-app-accent text-[#14151a]">
                   <IconMic size={18} />
                 </span>
-                <span className="min-w-0">
+                <div className="min-w-0">
                   <span className="block font-display text-[15px] font-bold text-app-ink">Aún no hay setlist</span>
                   <span className="mt-0.5 block text-[13px] leading-snug text-[#c9c5bd]">
                     Colocamos tus momentos por la hora a la que los grabaste. Cuando llegue el setlist, cada vídeo irá
                     solo a su canción.
                   </span>
-                </span>
+                  <SetlistProposalAction
+                    eventId={event.id}
+                    startsAt={event.starts_at}
+                    setlist={setlist}
+                    variant="upload"
+                    onApplied={() => setSetlistVersion(version => version + 1)}
+                  />
+                </div>
               </div>
             ) : null}
             <h2 className="mx-4 mb-2 mt-[18px] font-display text-base font-bold text-app-ink">
