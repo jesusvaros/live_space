@@ -208,7 +208,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
       navigate('/welcome');
       return;
     }
-    await toggleFollowSubject(artist.subject_id);
+    await toggleFollowSubject(artist.subject_id, 'artist');
   };
 
   // Info only when it has something to say; its managers always see it to

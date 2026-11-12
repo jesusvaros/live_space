@@ -54,12 +54,12 @@ const DiscoverScreen: React.FC = () => {
 
   const selectedShelf = style ? styleShelves.find(shelf => shelf.style === style) ?? null : null;
 
-  const onToggleFollow = async (subjectId: string) => {
+  const onToggleFollow = async (subjectId: string, kind: 'artist' | 'venue') => {
     if (!canFollow) {
       navigate('/welcome');
       return;
     }
-    const result = await toggleFollowSubject(subjectId);
+    const result = await toggleFollowSubject(subjectId, kind);
     if (!result.ok && result.reason === 'network') {
       presentToast({
         message: 'No se pudo seguir. Inténtalo de nuevo.',
@@ -78,7 +78,7 @@ const DiscoverScreen: React.FC = () => {
           canFollow={canFollow}
           isFollowing={isFollowing(artist.subject_id)}
           followLoading={isToggling(artist.subject_id)}
-          onToggleFollow={() => onToggleFollow(artist.subject_id)}
+          onToggleFollow={() => onToggleFollow(artist.subject_id, 'artist')}
           onOpenProfile={() => navigate(`/tabs/artist/${artist.id}`)}
         />
       ))}
@@ -94,7 +94,7 @@ const DiscoverScreen: React.FC = () => {
           canFollow={canFollow}
           isFollowing={isFollowing(venue.subject_id)}
           followLoading={isToggling(venue.subject_id)}
-          onToggleFollow={() => onToggleFollow(venue.subject_id)}
+          onToggleFollow={() => onToggleFollow(venue.subject_id, 'venue')}
           onOpenProfile={() => navigate(`/tabs/venue/${venue.id}`)}
         />
       ))}

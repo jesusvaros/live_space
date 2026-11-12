@@ -7,6 +7,7 @@ import { EventMerchStand, merchService } from '../../services/merch.service';
 import { offerNotifications } from '../notifications/offer';
 import MerchStandView from './MerchStandView';
 import { Cart, cartLines, changeQuantity, reservationsClosed } from './merchRules';
+import { track } from '../analytics/analytics';
 
 type EventMerchSectionProps = {
   eventId: string;
@@ -68,6 +69,11 @@ const EventMerchSection: React.FC<EventMerchSectionProps> = ({ eventId, startsAt
     setError(null);
     try {
       const input = { eventId, sellerSubjectId: stand.sellerSubjectId, lines };
+      track('merch_order_start', {
+        payment: stand.paymentMethod,
+        lines: lines.length,
+        units: lines.reduce((sum, line) => sum + line.quantity, 0),
+      });
       const orderId = stand.paymentMethod === 'at_stand' ? await merchService.reserve(input) : await merchService.checkout(input);
       // «¿Te avisamos para recoger tu pedido?» (only if not decided yet).
       void offerNotifications('merch');

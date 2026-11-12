@@ -6,6 +6,8 @@ import { Spinner } from '../components/ui/AppPrimitives';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { fetchEnabledProviders, signInWithProvider, type OAuthProvider } from './nativeAuth';
+import { track } from '../features/analytics/analytics';
+import { rememberPendingSignIn, trackSignInTap } from '../features/analytics/signInEvents';
 
 // Sign-in / sign-up block shared by /welcome, the first-run onboarding and the
 // sheet that pops up when someone who came in through a concert QR presses
@@ -147,10 +149,13 @@ const AuthPanel: React.FC<AuthPanelProps> = ({
       return;
     }
     setBusy('email');
+    trackSignInTap('email');
+    const signInMode = mode;
     try {
       if (mode === 'signup') {
         const { error: signUpError } = await signUp(email, password, { username, displayName, primaryCity });
         if (signUpError) {
+          track('sign_in_failed', { provider: 'email', mode: signInMode });
           setError(authErrorToSpanish(signUpError.message));
           return;
         }
@@ -160,19 +165,24 @@ const AuthPanel: React.FC<AuthPanelProps> = ({
           // another device: leave the form ready to sign in here.
           setMode('signin');
           setNotice(confirmationNotice);
+          track('sign_in', { provider: 'email', mode: 'signup', confirmed: false });
           onDone?.('confirmation-sent');
           return;
         }
+        track('sign_in', { provider: 'email', mode: 'signup', confirmed: true });
         onDone?.('signed-up');
         return;
       }
       const { error: signInError } = await signIn(email, password);
       if (signInError) {
+        track('sign_in_failed', { provider: 'email', mode: signInMode });
         setError(authErrorToSpanish(signInError.message));
         return;
       }
+      track('sign_in', { provider: 'email', mode: 'signin' });
       onDone?.('signed-in');
     } catch {
+      track('sign_in_failed', { provider: 'email', mode: signInMode });
       setError('Algo ha fallado. Vuelve a intentarlo.');
     } finally {
       setBusy(null);
@@ -182,10 +192,21 @@ const AuthPanel: React.FC<AuthPanelProps> = ({
   const handleProvider = async (provider: OAuthProvider) => {
     setError('');
     setBusy(provider);
+    trackSignInTap(provider);
     try {
-      if (!Capacitor.isNativePlatform()) await beforeProviderRedirect?.();
-      const { error: providerError } = await signInWithProvider(provider, providerReturnPath);
-      if (providerError) setError(authErrorToSpanish(providerError.message));
+      const native = Capacitor.isNativePlatform();
+      if (!native) await beforeProviderRedirect?.();
+      // Through a page (the web redirect leaves this one; the in-app browser
+      // comes back by deep link) the sign-in counts when the session lands.
+      if (!native) rememberPendingSignIn(provider);
+      const { error: providerError, outcome } = await signInWithProvider(provider, providerReturnPath);
+      if (native && outcome === 'redirecting') rememberPendingSignIn(provider);
+      if (outcome === 'signed-in') track('sign_in', { provider, via: 'native' });
+      else if (outcome === 'cancelled') track('sign_in_cancelled', { provider });
+      if (providerError) {
+        track('sign_in_failed', { provider });
+        setError(authErrorToSpanish(providerError.message));
+      }
     } finally {
       setBusy(null);
     }

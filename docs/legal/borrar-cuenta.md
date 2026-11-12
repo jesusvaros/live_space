@@ -27,6 +27,7 @@ Escribe a **{{EMAIL}}** desde el email con el que te registraste, con el asunto 
 
 - **Archivos de fotos y vídeos:** dejan de verse al instante y se eliminan de nuestros servidores de almacenamiento en los días siguientes.
 - **Copias de seguridad:** la copia cifrada semanal de la base de datos se borra sola a los 14 días.
+- **Eventos de uso de la app:** dejan de estar ligados a tu cuenta; quedan solo con el identificador aleatorio del móvil y se borran al cumplir 13 meses.
 - **Datos que ya no te identifican:** el total de visualizaciones de los momentos de otras personas, el registro de decisiones de moderación (sin tu nombre) y los pedidos de merch sin tu nombre. Los datos de los pagos los conserva Stripe el tiempo que le exige la ley.
 - **Artistas, salas y festivales que gestionabas:** no son tuyos, así que siguen en la app; solo dejas de gestionarlos. Los carteles que subiste para sus conciertos se quedan con el concierto.
 - **Lista de espera de la web:** si te apuntaste, es aparte de la cuenta; pídenos que te borremos de ella en el mismo email.

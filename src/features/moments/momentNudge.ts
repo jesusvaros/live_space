@@ -6,6 +6,7 @@ import { isServerPushActive } from '../../shared/notifications/serverPush';
 import { offerNotifications } from '../notifications/offer';
 import { eventWindow, matchMoments } from './matchMoments';
 import { fetchUserMomentEvents, type MomentEvent } from './momentsData';
+import { track } from '../analytics/analytics';
 
 // "¿Subes lo de anoche?" — the morning-after nudge.
 //
@@ -231,6 +232,7 @@ export const listenForNudgeTaps = (open: (path: string) => void) => {
   const handle = LocalNotifications.addListener('localNotificationActionPerformed', action => {
     const extra = action.notification.extra;
     if (extra?.kind !== NUDGE_KIND || typeof extra.eventId !== 'string') return;
+    track('notification_tapped', { type: 'moment_nudge', source: 'local' });
     open(`${SUGGESTED_UPLOAD_PATH}?event=${encodeURIComponent(extra.eventId)}`);
   });
   return () => {

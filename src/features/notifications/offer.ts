@@ -2,6 +2,7 @@ import type { AskDecision, PushPermission } from '@jesusvaros/app-kit/push';
 import { readLocalPrefs, type NotificationPrefs } from '../../shared/notifications/prefs';
 import { askPolicy, getPushPermission, push } from './pushClient';
 import { registerIfGranted } from './pushDevice';
+import { track } from '../analytics/analytics';
 
 // When Live Space offers notifications. Never on app open: only right after
 // the person did something a notice would help with.
@@ -79,6 +80,7 @@ export const offerNotifications = async (trigger: NotificationTrigger, onGranted
   if (decision === 'skip' || !presenter || showing) return false;
 
   showing = true;
+  track('push_prompt', { trigger, step: 'explainer' });
   let accepted = false;
   try {
     accepted = await presenter(trigger);
@@ -86,11 +88,16 @@ export const offerNotifications = async (trigger: NotificationTrigger, onGranted
     showing = false;
   }
   if (!accepted) {
+    track('push_denied', { trigger, step: 'explainer' });
     askPolicy.declined();
     return false;
   }
   askPolicy.reset();
-  if ((await push.requestPermissionWhenUseful()) !== 'granted') return false;
+  if ((await push.requestPermissionWhenUseful()) !== 'granted') {
+    track('push_denied', { trigger, step: 'system' });
+    return false;
+  }
+  track('push_granted', { trigger });
   await Promise.resolve(onGranted?.()).catch(() => undefined);
   void registerIfGranted();
   return true;

@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import { track } from '../analytics/analytics';
 
 // Setlists proposed by the audience (migration 20261112030100). A proposal
 // waits for the concert's managers or moderation; approving it writes the
@@ -35,7 +36,9 @@ export const submitSetlistProposal = async (eventId: string, titles: string[]): 
   const { data, error } = await supabase.rpc('submit_audience_setlist', { p_event_id: eventId, p_titles: titles });
   if (error) return { kind: submitErrorKind(error) };
   const row = (data || {}) as { status?: string; titles?: string[] };
-  return { kind: row.status === 'approved' ? 'approved' : 'pending', titles: row.titles ?? titles };
+  const kind = row.status === 'approved' ? 'approved' : 'pending';
+  track('setlist_proposed', { status: kind, songs: (row.titles ?? titles).length });
+  return { kind, titles: row.titles ?? titles };
 };
 
 /** The signed-in person's latest proposal for this concert (RLS: own rows). */

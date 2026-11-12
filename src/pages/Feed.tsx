@@ -472,6 +472,7 @@ const Feed: React.FC = () => {
       <ShareSheet
         isOpen={Boolean(shareId)}
         onClose={() => setShareId(null)}
+        kind="post"
         link={shareId ? `${window.location.origin}/post/${shareId}` : ''}
       />
     </div>

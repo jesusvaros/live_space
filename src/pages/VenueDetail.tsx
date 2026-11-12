@@ -25,6 +25,7 @@ import { enableConcertAlerts } from '../features/alerts/concertAlerts';
 import PastConcertsSection from '../features/events/PastConcertsSection';
 import { useFirstContent } from '../lib/perfTiming';
 import { NAV_CLEARANCE } from '../components/BottomNav';
+import { track } from '../features/analytics/analytics';
 
 const VENUE_TYPE_LABELS: Record<string, string> = {
   music_venue: 'Sala de conciertos',
@@ -275,10 +276,12 @@ const VenueDetail: React.FC = () => {
     try {
       if (isFollowing) {
         await socialService.unfollow(currentUserProfile.subject_id, venue.subject_id);
+        track('unfollow', { kind: 'venue' });
         setIsFollowing(false);
         setFollowersCount(prev => Math.max(0, prev - 1));
       } else {
         await socialService.follow(currentUserProfile.subject_id, venue.subject_id);
+        track('follow', { kind: 'venue' });
         void enableConcertAlerts();
         setIsFollowing(true);
         setFollowersCount(prev => prev + 1);

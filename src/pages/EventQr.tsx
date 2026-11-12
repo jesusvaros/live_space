@@ -9,6 +9,7 @@ import { buildUploadQrUrl } from '../lib/uploadQr';
 import { POSTER_COLORS, PosterVariant, qrSvg, renderPosterPng } from '../lib/qrPoster';
 import { eventManagementService, ManagedEvent } from '../services/eventManagement.service';
 import { canGoBack } from '../app/useGoBack';
+import { track } from '../features/analytics/analytics';
 
 const posterDate = (iso: string) =>
   new Date(iso)
@@ -106,6 +107,7 @@ const EventQr: React.FC = () => {
       const file = new File([blob], fileName, { type: 'image/png' });
       if (Capacitor.isNativePlatform() && navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title: 'QR del concierto' });
+        track('share_link', { kind: 'qr_poster', method: 'share' });
         return;
       }
       const url = URL.createObjectURL(blob);

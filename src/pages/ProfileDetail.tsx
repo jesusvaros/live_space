@@ -13,6 +13,7 @@ import { fetchPostCards } from '../data/postQueries';
 import BlockUserButton from '../features/blocks/BlockUserButton';
 import { blockTargetLabel } from '../features/blocks/blocking';
 import { useBlockedUserIds } from '../features/blocks/useBlockedUsers';
+import { track } from '../features/analytics/analytics';
 
 type ProfileEvent = Event & {
   organizer?: Profile | null;
@@ -94,10 +95,12 @@ const ProfileDetail: React.FC = () => {
     try {
       if (isFollowing) {
         await socialService.unfollow(currentUserProfile.subject_id, profile.subject_id);
+        track('unfollow', { kind: 'profile' });
         setIsFollowing(false);
         setFollowersCount(prev => Math.max(0, prev - 1));
       } else {
         await socialService.follow(currentUserProfile.subject_id, profile.subject_id);
+        track('follow', { kind: 'profile' });
         setIsFollowing(true);
         setFollowersCount(prev => prev + 1);
       }

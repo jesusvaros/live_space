@@ -3,6 +3,7 @@ import {
   MAX_SUGGESTION_NOTE_LENGTH,
   normalizeSuggestionUrl,
 } from '../../shared/suggestions/url';
+import { track } from '../analytics/analytics';
 
 // «¿No encuentras un concierto?»: the ticket link goes to
 // public.event_link_suggestions (migration 20261112000100). The database
@@ -28,7 +29,9 @@ export const sendEventLinkSuggestion = async (rawUrl: string, rawNote: string): 
   if (!url) return 'invalid_url';
   const note = rawNote.trim().slice(0, MAX_SUGGESTION_NOTE_LENGTH) || null;
   const { error } = await supabase.from('event_link_suggestions').insert({ url, note });
-  return suggestErrorToResult(error);
+  const result = suggestErrorToResult(error);
+  if (result === 'sent' || result === 'already_sent') track('suggestion_sent', { duplicate: result === 'already_sent', with_note: Boolean(note) });
+  return result;
 };
 
 // What was typed before going to sign in with Google/Apple (a full redirect

@@ -5,6 +5,7 @@ import Button from '../components/ui/Button';
 import { Spinner } from '../components/ui/AppPrimitives';
 import { IconLocate } from '../components/icons';
 import { useAuth } from '../contexts/AuthContext';
+import { track } from '../features/analytics/analytics';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { supabase } from '../lib/supabase';
 import { useLastKnownLocation } from '../shared/hooks/useLastKnownLocation';
@@ -173,7 +174,12 @@ const AgendaSetup: React.FC = () => {
     }
   };
 
-  const finish = () => {
+  useEffect(() => {
+    track('onboarding_step', { flow: 'agenda', step });
+  }, [step]);
+
+  const finish = (result: 'completed' | 'skipped' | 'closed') => {
+    track('onboarding_done', { flow: 'agenda', step, result });
     if (user) markSetupDone(user.id);
     navigate(returnTo, { replace: true });
   };
@@ -186,7 +192,7 @@ const AgendaSetup: React.FC = () => {
     }
     if (step === 2) persistTastes(tastes);
     if (step < STEPS) setStep(step + 1);
-    else finish();
+    else finish('completed');
   };
 
   const titles = ['¿Dónde vas a conciertos?', '¿Qué música te gusta?', 'Sigue a quien te interesa'];
@@ -287,7 +293,7 @@ const AgendaSetup: React.FC = () => {
           type="button"
           aria-pressed={following}
           disabled={!canFollow || isToggling(item.subjectId)}
-          onClick={() => void toggleFollowSubject(item.subjectId)}
+          onClick={() => void toggleFollowSubject(item.subjectId, item.kind)}
           className={`min-h-11 shrink-0 rounded-full px-4 text-[13px] font-semibold disabled:opacity-50 ${
             following ? 'border border-app-line text-app-ink' : 'bg-app-accent text-[#14151a]'
           }`}
@@ -337,7 +343,7 @@ const AgendaSetup: React.FC = () => {
       <header className="flex items-center gap-2 px-3 pb-1 pt-[calc(10px+env(safe-area-inset-top,0px))]">
         <button
           type="button"
-          onClick={finish}
+          onClick={() => finish('closed')}
           aria-label="Cerrar"
           className="flex h-11 w-11 items-center justify-center rounded-full border border-app-line bg-app-surface text-app-ink"
         >
@@ -346,7 +352,7 @@ const AgendaSetup: React.FC = () => {
         <span className="flex-1 text-center font-mono text-xs font-semibold text-white/50">PASO {step} DE {STEPS}</span>
         <button
           type="button"
-          onClick={() => (step < STEPS ? setStep(step + 1) : finish())}
+          onClick={() => (step < STEPS ? setStep(step + 1) : finish('skipped'))}
           className="min-h-11 px-3 text-sm font-semibold text-white/70"
         >
           Saltar

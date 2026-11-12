@@ -14,6 +14,7 @@ import { recognizeImageText, usesNativeOcr } from '../features/wrapped/recognize
 import { loadSharedImage, WRAPPED_PATH, wrappedPathFor } from '../features/wrapped/sharedImage';
 import { renderWrappedStory, shareWrappedStory } from '../features/wrapped/shareCard';
 import { canGoBack } from '../app/useGoBack';
+import { track } from '../features/analytics/analytics';
 
 type Step =
   | { kind: 'pick'; error?: string }
@@ -131,6 +132,7 @@ const Wrapped: React.FC = () => {
       const names = artists.slice(0, 5).map(artist => artist.name);
       const blob = await renderWrappedStory(names);
       const outcome = await shareWrappedStory(blob, names.length);
+      if (outcome !== 'cancelled') track('share_link', { kind: 'wrapped', method: outcome === 'shared' ? 'share' : 'download' });
       if (outcome === 'downloaded') {
         presentToast({ message: 'Imagen descargada. Súbela a tu story.', duration: 2500, position: 'top' });
       }

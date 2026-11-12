@@ -35,6 +35,7 @@ import EventPhotos from '../features/photos/EventPhotos';
 import { useHiddenPostIds } from '../features/photos/postCollections';
 import { withoutHidden } from '../features/photos/photoAlbums';
 import { heroParallaxOffset, stageIsMostlyVisible } from '../features/moments/stageParallax';
+import { track } from '../features/analytics/analytics';
 
 // Bottom of the screen, from the edge up: the app's floating nav (about 72 px
 // over the safe area), then this page's action bar (about 60 px) right above
@@ -372,6 +373,7 @@ const EventDetail: React.FC = () => {
           .eq('profile_id', user.id);
         if (deleteError) throw deleteError;
         setFollowed(false);
+        track('unfollow', { kind: 'event' });
       } else {
         const { error: insertError } = await supabase
           .from('event_saves')
@@ -381,6 +383,7 @@ const EventDetail: React.FC = () => {
           });
         if (insertError) throw insertError;
         setFollowed(true);
+        track('follow', { kind: 'event' });
         // Morning-after "¿Subes lo de anoche?" for saved concerts.
         void enableMomentNudges(user.id);
       }
@@ -404,6 +407,7 @@ const EventDetail: React.FC = () => {
           .eq('profile_id', user.id);
         if (deleteError) throw deleteError;
         setAttendanceStatus(null);
+        track('attendance_mark', { status: 'none', source: 'event' });
         return true;
       }
 
@@ -419,6 +423,7 @@ const EventDetail: React.FC = () => {
         );
       if (upsertError) throw upsertError;
       setAttendanceStatus(status);
+      track('attendance_mark', { status, source: 'event' });
       if (status === 'going') void enableMomentNudges(user.id);
       return true;
     } catch (err: any) {

@@ -1,4 +1,6 @@
 import { Network, type ConnectionStatus } from '@capacitor/network';
+import { track as trackAnalytics } from '../features/analytics/analytics';
+import { uploadFailureReason, uploadFailureStatus } from '../features/analytics/props';
 import { getReuseConsent } from '../features/community/licence';
 import { supabase } from '../lib/supabase';
 import { getConfiguredMediaProvider } from './configured';
@@ -149,6 +151,8 @@ type QueueDeps = {
     songId: string | null;
     allowReuse: boolean;
   }) => Promise<string>;
+  /** Usage events (upload_start/done/failed/retry): kinds, reasons, counts and sizes only. */
+  track?: (name: string, props: Record<string, string | number | boolean | null>) => void;
 };
 
 const MAX_ATTEMPTS = 10;
@@ -343,6 +347,7 @@ export class UploadQueue {
       });
     }
     this.jobs = [...this.jobs, ...created];
+    for (const job of created) this.track('upload_start', { kind: job.kind, bytes: job.totalBytes || null, native: Boolean(job.nativePath) });
     this.emit();
     await Promise.all(created.map((job) => this.persist(job)));
     this.kick();
@@ -356,6 +361,7 @@ export class UploadQueue {
   retry(id: string) {
     const job = this.get(id);
     if (!job || job.status === 'done' || job.permanent) return;
+    this.track('upload_retry', { kind: job.kind, reason: 'manual', attempts: job.attempts });
     this.patch(id, { status: 'queued', attempts: 0, nextAttemptAt: 0, error: null }, true);
     this.kick();
   }
@@ -363,6 +369,7 @@ export class UploadQueue {
   retryAll() {
     for (const job of this.jobs) {
       if (job.status !== 'done' && !job.permanent) {
+        if (job.status === 'failed') this.track('upload_retry', { kind: job.kind, reason: 'manual', attempts: job.attempts });
         this.patch(job.id, { attempts: 0, nextAttemptAt: 0, error: null, status: 'queued' }, true);
       }
     }
@@ -570,6 +577,8 @@ export class UploadQueue {
         if (job.r2) void this.deps.provider().client.abort(job.r2.reservationId).catch(() => undefined);
         this.patch(id, { r2: null, provider: null, loadedBytes: 0 }, true);
       }
+      const reason = uploadFailureReason(error);
+      const status = uploadFailureStatus(error);
       if (failure.permanent || (attempts >= MAX_ATTEMPTS && !failure.longWait)) {
         this.patch(id, {
           status: 'failed',
@@ -577,7 +586,17 @@ export class UploadQueue {
           permanent: failure.permanent,
           error: failure.permanent ? failure.message : 'No se pudo subir tras varios intentos.',
         }, true);
+        this.track('upload_failed', {
+          kind: job.kind,
+          reason,
+          status,
+          attempts,
+          permanent: failure.permanent,
+          bytes: job.totalBytes || null,
+          provider: job.provider,
+        });
       } else {
+        this.track('upload_retry', { kind: job.kind, reason, status, attempts, provider: job.provider });
         this.patch(id, {
           status: 'retrying',
           attempts,
@@ -633,6 +652,22 @@ export class UploadQueue {
     // 4. Done: free the bytes, keep the record for the progress UI.
     await this.cleanupFiles(job);
     this.patch(id, { status: 'done', file: null, error: null, nextAttemptAt: 0 }, true);
+    this.track('upload_done', {
+      kind: job.kind,
+      attempts: job.attempts + 1,
+      bytes: job.totalBytes || null,
+      // From «Publicar» to the post, waits and retries included.
+      ms: Math.max(0, Date.now() - job.createdAt),
+      provider: job.provider,
+    });
+  }
+
+  private track(name: string, props: Record<string, string | number | boolean | null>) {
+    try {
+      this.deps.track?.(name, props);
+    } catch {
+      // Analytics never breaks an upload.
+    }
   }
 
   private async prepareVideo(job: UploadJob): Promise<UploadJob> {
@@ -852,6 +887,7 @@ export class UploadQueue {
 
 const defaultDeps: QueueDeps = {
   provider: getConfiguredMediaProvider,
+  track: trackAnalytics,
   currentUserId: async () => {
     const { data } = await supabase.auth.getSession();
     return data.session?.user.id ?? null;

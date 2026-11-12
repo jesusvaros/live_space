@@ -44,7 +44,10 @@ const fileOfSize = (name: string, type: string, size: number) => {
   return file;
 };
 
-const makeQueue = (overrides: { uploadToCloudinary?: () => Promise<{ reservationId: string }> } = {}) => {
+const makeQueue = (overrides: {
+  uploadToCloudinary?: () => Promise<{ reservationId: string }>;
+  track?: (name: string, props: Record<string, unknown>) => void;
+} = {}) => {
   const uploadToCloudinary = vi.fn(overrides.uploadToCloudinary ?? (async () => ({ reservationId: 'res-1' })));
   const provider = {
     startVideo: vi.fn(async () => ({ provider: 'cloudinary' as const })),
@@ -59,6 +62,7 @@ const makeQueue = (overrides: { uploadToCloudinary?: () => Promise<{ reservation
     waitForAsset: async () => 'asset-1',
     resolveSongId: async () => null,
     createPost: async () => 'post-1',
+    track: overrides.track,
   });
   return { queue, provider };
 };
@@ -162,5 +166,62 @@ describe('UploadQueue limits', () => {
     const job = await settled(queue, id, ['retrying']);
     expect(job.permanent).toBeFalsy();
     expect(job.attempts).toBe(1);
+  });
+});
+
+describe('UploadQueue usage events', () => {
+  const PRIVATE = /concierto|foto|IMG|event-1|user-1|post-1|asset-1|res-1/;
+  const noPrivateData = (track: ReturnType<typeof vi.fn>) => {
+    for (const [, props] of track.mock.calls) expect(JSON.stringify(props)).not.toMatch(PRIVATE);
+  };
+
+  it('start → done, with kind, size and time but no names or ids', async () => {
+    const track = vi.fn();
+    const { queue } = makeQueue({ track });
+    const [id] = await queue.enqueue([{ file: fileOfSize('foto.jpg', 'image/jpeg', 2 * MB), eventId: 'event-1' }]);
+    await settled(queue, id, ['done']);
+    await vi.waitFor(() => expect(track).toHaveBeenCalledWith('upload_done', expect.anything()));
+    expect(track.mock.calls.map(([name]) => name)).toEqual(['upload_start', 'upload_done']);
+    expect(track).toHaveBeenCalledWith('upload_start', { kind: 'image', bytes: 2 * MB, native: false });
+    expect(track).toHaveBeenCalledWith('upload_done', expect.objectContaining({ kind: 'image', attempts: 1, bytes: 2 * MB, ms: expect.any(Number) }));
+    noPrivateData(track);
+  });
+
+  it('a network failure → upload_retry with the reason and the status', async () => {
+    const track = vi.fn();
+    const { queue } = makeQueue({
+      track,
+      uploadToCloudinary: async () => {
+        throw new MediaUploadError('upload_failed', 'Bad gateway for foto.jpg', { status: 502 });
+      },
+    });
+    const [id] = await queue.enqueue([{ file: fileOfSize('foto.jpg', 'image/jpeg', 2 * MB), eventId: 'event-1' }]);
+    await settled(queue, id, ['retrying']);
+    expect(track).toHaveBeenCalledWith('upload_retry', expect.objectContaining({ kind: 'image', reason: 'upload_failed', status: 502, attempts: 1 }));
+    expect(track).not.toHaveBeenCalledWith('upload_failed', expect.anything());
+    noPrivateData(track);
+  });
+
+  it('a permanent failure → upload_failed { permanent: true }, and «Reintentar» counts nothing', async () => {
+    const track = vi.fn();
+    const { queue } = makeQueue({ track });
+    const [id] = await queue.enqueue([{ file: fileOfSize('concierto.mp4', 'video/mp4', 120 * MB), eventId: 'event-1' }]);
+    await settled(queue, id, ['failed']);
+    expect(track).toHaveBeenCalledWith('upload_failed', expect.objectContaining({
+      kind: 'video',
+      reason: 'file_too_large',
+      attempts: 1,
+      permanent: true,
+      bytes: 120 * MB,
+    }));
+    queue.retry(id);
+    expect(track).not.toHaveBeenCalledWith('upload_retry', expect.anything());
+    noPrivateData(track);
+  });
+
+  it('a failing tracker never breaks an upload', async () => {
+    const { queue } = makeQueue({ track: () => { throw new Error('analytics down'); } });
+    const [id] = await queue.enqueue([{ file: fileOfSize('foto.jpg', 'image/jpeg', 2 * MB), eventId: 'event-1' }]);
+    expect((await settled(queue, id, ['done', 'failed'])).status).toBe('done');
   });
 });
