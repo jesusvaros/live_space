@@ -186,6 +186,43 @@ describe('CloudinaryMediaProvider', () => {
     }
   });
 
+  it('retries once with an in-memory copy when the WebView refuses the file (ERR_UPLOAD_FILE_CHANGED)', async () => {
+    const calls: RequestInit[] = [];
+    const globals = globalThis as { CapacitorWebFetch?: typeof fetch };
+    globals.CapacitorWebFetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
+      calls.push(init ?? {});
+      if (calls.length === 1) throw new TypeError('Failed to fetch');
+      return jsonResponse({
+        public_id: 'asset-1',
+        secure_url: 'https://res.cloudinary.com/live-space/image/upload/asset-1.jpg',
+        resource_type: 'image',
+        version: 1,
+        width: 10,
+        height: 10,
+        bytes: 4,
+        format: 'jpg',
+      });
+    }) as typeof fetch;
+    try {
+      const provider = new CloudinaryMediaProvider({
+        edgeFunctionUrl: 'https://project.supabase.co/functions/v1/cloudinary-sign-upload',
+        getAccessToken: async () => 'user-access-token',
+        fetch: (async () => jsonResponse(authorization())) as typeof fetch,
+        now: () => NOW,
+      });
+      const result = await provider.upload({
+        file: new File(['test'], 'poster.jpg', { type: 'image/jpeg' }),
+        eventId: 'event-1',
+      });
+      expect(result.publicId).toBe('asset-1');
+      expect(calls).toHaveLength(2);
+      expect((calls[1].body as FormData).get('file')).toBeInstanceOf(Blob);
+      expect((calls[1].body as FormData).get('signature')).toBe('a'.repeat(40));
+    } finally {
+      delete globals.CapacitorWebFetch;
+    }
+  });
+
   it('reports a Cloudinary rejection from the WebView fetch instead of hanging', async () => {
     const globals = globalThis as { CapacitorWebFetch?: typeof fetch };
     globals.CapacitorWebFetch = (async () => jsonResponse({ error: { message: 'Invalid signature' } }, 401)) as typeof fetch;
