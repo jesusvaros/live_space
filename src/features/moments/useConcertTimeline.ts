@@ -11,7 +11,7 @@ import { buildConcertTimeline, type TimelineMoment } from './concertTimeline';
 // and size (media_assets), the like count (post_likes) and the view count
 // (post_views, through get_event_post_view_counts).
 
-const MOMENT_COLUMNS = [
+export const MOMENT_COLUMNS = [
   'id', 'user_id', 'event_id', 'media_type', 'media_url', 'thumbnail_url', 'caption', 'captured_at', 'created_at',
   'song_id', 'song_title', 'resolved_song_id', 'resolved_song_title', 'actor_name', 'actor_image_url', 'profiles',
   'source', 'external_url', 'external_id', 'external_author_handle', 'external_author_name',
@@ -144,7 +144,12 @@ export const useConcertMoments = (eventId: string) => {
     };
   }, [eventId]);
 
-  return { moments, loading, error };
+  // A moment its author just deleted leaves at once.
+  const removeMoment = useCallback((momentId: string) => {
+    setMoments(previous => previous.filter(moment => moment.id !== momentId));
+  }, []);
+
+  return { moments, loading, error, removeMoment };
 };
 
 /**

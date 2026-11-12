@@ -47,6 +47,7 @@ const TimelinePlayground = import.meta.env.DEV ? page(() => import('./pages/dev/
 const MerchPlayground = import.meta.env.DEV ? page(() => import('./pages/dev/MerchPlayground'), false) : null;
 const MerchOrder = page(() => import('./pages/MerchOrder'), false);
 const MerchOrders = page(() => import('./pages/MerchOrders'), false);
+const SavedPhotos = page(() => import('./pages/SavedPhotos'), false);
 const MerchManage = page(() => import('./pages/MerchManage'), false);
 const Profile = page(() => import('./pages/Profile'));
 const Discover = page(() => import('./pages/Discover'));
@@ -284,6 +285,7 @@ const AppRoutes = () => {
           <Route path="/reset" element={<ResetPassword />} />
           <Route path="/gestion/merch" element={<RequireAuth>{deferredPage(<MerchManage />)}</RequireAuth>} />
           <Route path="/pedidos" element={<RequireAuth>{deferredPage(<MerchOrders />)}</RequireAuth>} />
+          <Route path="/guardadas" element={<RequireAuth>{deferredPage(<SavedPhotos />)}</RequireAuth>} />
           <Route path="/pedidos/:id" element={<RequireAuth>{deferredPage(<MerchOrder />)}</RequireAuth>} />
           <Route path="/gestion/estadisticas" element={<RequireAuth>{deferredPage(<GestionEstadisticas />)}</RequireAuth>} />
           {/* Privacy policy, terms, account deletion, moments licence: bundled, no account needed. */}

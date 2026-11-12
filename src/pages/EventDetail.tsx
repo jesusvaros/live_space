@@ -7,12 +7,9 @@ import { eventService } from '../services/event.service';
 import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
 import ShareSheet from '../components/ShareSheet';
-import { IconBookmark, IconBookmarkFilled, IconFlag, IconPlus, IconShare } from '../components/icons';
+import { IconBookmark, IconBookmarkFilled, IconPlus, IconShare } from '../components/icons';
 import DetailHeader from '../components/ui/DetailHeader';
-import Avatar from '../components/ui/Avatar';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
-import CoverImage from '../components/ui/CoverImage';
-import { eventCoverSources } from '../lib/eventCover';
 import { fetchEventCardById } from '../data/eventQueries';
 import { eventCacheKey, readCache } from '../data/pageCache';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
@@ -29,6 +26,11 @@ import ConcertPlayer, { type SeekRequest } from '../features/moments/ConcertPlay
 import { useConcertMoments, useConcertTimeline } from '../features/moments/useConcertTimeline';
 import type { Clip, TimelineMoment } from '../features/moments/concertTimeline';
 import { useFirstContent } from '../lib/perfTiming';
+import EventHero from '../features/events/EventHero';
+import EventPhotos from '../features/photos/EventPhotos';
+import { useHiddenPostIds } from '../features/photos/postCollections';
+import { withoutHidden } from '../features/photos/photoAlbums';
+import { heroParallaxOffset, stageIsMostlyVisible } from '../features/moments/stageParallax';
 
 type EventDetailData = Event & {
   organizer?: Profile | null;
@@ -87,7 +89,15 @@ const EventDetail: React.FC = () => {
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [engagementError, setEngagementError] = useState('');
   const contentRef = useRef<HTMLElement | null>(null);
-  const { moments, loading: momentsLoading, error: momentsError } = useConcertMoments(id);
+  const { moments: loadedMoments, loading: momentsLoading, error: momentsError, removeMoment } = useConcertMoments(id);
+  // What this viewer hid («Ocultar» on a photo) leaves the player and the albums.
+  const hiddenIds = useHiddenPostIds();
+  const moments = useMemo(() => withoutHidden(loadedMoments, hiddenIds, moment => moment.id), [loadedMoments, hiddenIds]);
+  const heroRef = useRef<HTMLDivElement | null>(null);
+  const stageRef = useRef<HTMLElement | null>(null);
+  const [stageInView, setStageInView] = useState(false);
+  const [pageVisible, setPageVisible] = useState(() => typeof document === 'undefined' || document.visibilityState !== 'hidden');
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
   useFirstContent('concert', Boolean(event));
   const currentIdRef = useRef(id);
   currentIdRef.current = id;
@@ -240,9 +250,84 @@ const EventDetail: React.FC = () => {
     return map;
   }, [timeline]);
 
+  const hasStage = Boolean(timeline && timeline.clips.length > 0);
+
+  // The stage is exactly one screen of the page's scroller tall.
+  useEffect(() => {
+    const scroller = contentRef.current;
+    if (!scroller) return undefined;
+    const measure = () => setViewportHeight(scroller.clientHeight || null);
+    measure();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(measure);
+    observer.observe(scroller);
+    return () => observer.disconnect();
+  }, []);
+
+  // Plays only while most of the stage is on screen.
+  useEffect(() => {
+    const scroller = contentRef.current;
+    const stage = stageRef.current;
+    if (!hasStage || !scroller || !stage || typeof IntersectionObserver === 'undefined') {
+      setStageInView(false);
+      return undefined;
+    }
+    const observer = new IntersectionObserver(
+      entries => {
+        for (const entry of entries) setStageInView(stageIsMostlyVisible(entry.intersectionRatio));
+      },
+      { root: scroller, threshold: [0, 0.3, 0.6, 0.9, 1] },
+    );
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, [hasStage, event?.id, loading]);
+
+  // …and while the app is in front.
+  useEffect(() => {
+    const onVisibility = () => setPageVisible(document.visibilityState !== 'hidden');
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
+
+  // Half-speed hero while the stage slides over it.
+  useEffect(() => {
+    const scroller = contentRef.current;
+    const hero = heroRef.current;
+    if (!hasStage || !scroller || !hero) return undefined;
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    let frame = 0;
+    let last = -1;
+    const update = () => {
+      frame = 0;
+      const offset = heroParallaxOffset(scroller.scrollTop, hero.offsetHeight, { reducedMotion: Boolean(reduced?.matches) });
+      if (offset === last) return;
+      last = offset;
+      hero.style.transform = offset ? `translate3d(0, ${offset}px, 0)` : '';
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    update();
+    scroller.addEventListener('scroll', onScroll, { passive: true });
+    reduced?.addEventListener?.('change', update);
+    return () => {
+      scroller.removeEventListener('scroll', onScroll);
+      reduced?.removeEventListener?.('change', update);
+      if (frame) cancelAnimationFrame(frame);
+      hero.style.transform = '';
+    };
+  }, [hasStage, event?.id, loading]);
+
+  const scrollToStage = () => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    contentRef.current?.scrollTo({ top: stage.offsetTop, behavior: reduced ? 'auto' : 'smooth' });
+  };
+
   const playClip = (clip: Clip) => {
     setSeekRequest({ clipId: clip.id, nonce: Date.now() });
-    contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollToStage();
   };
 
   const onActiveSongChange = useCallback((songId: string | null) => setPlayingSongId(songId), []);
@@ -380,41 +465,73 @@ const EventDetail: React.FC = () => {
     </span>
   ) : null;
 
+  const kicker = eventStart ? kickerDate(eventStart) : null;
+
   return (
-    <AppShell headerProps={null} hideUploadPill={eventUploads.summary.state !== 'idle'} contentRef={contentRef} contentWrapperClassName={false} contentClassName="event-detail-content">
+    <AppShell
+      headerProps={null}
+      hideUploadPill={eventUploads.summary.state !== 'idle'}
+      contentRef={contentRef}
+      contentWrapperClassName={false}
+      // A gentle pull towards the stage when you stop near it; never forced.
+      contentClassName={`event-detail-content${hasStage ? ' snap-y snap-proximity' : ''}`}
+    >
       {loading && <DetailSkeleton />}
 
       {!loading && error && <div className="p-4"><p className="text-sm text-rose-400">{error}</p></div>}
 
       {!loading && event && (
         <>
-          <DetailHeader title={heroTitle} scrollRef={contentRef} actions={lived ? null : shareButton} />
+          <DetailHeader
+            title={heroTitle}
+            scrollRef={contentRef}
+            overlay={stageInView}
+            actions={stageInView ? null : shareButton}
+          />
 
           {lived ? (
             <div className="pb-[calc(96px+env(safe-area-inset-bottom,0px))]">
-              {momentsLoading && !timeline?.clips.length ? (
-                <div className="relative h-[min(50svh,560px)] min-h-[340px] animate-pulse bg-app-surface motion-reduce:animate-none" aria-label="Cargando momentos" />
-              ) : timeline && timeline.clips.length > 0 ? (
-                <ConcertPlayer
-                  timeline={timeline}
+              {/* The poster, as before the concert; it drifts at half speed
+                  while the stage below slides over it. */}
+              <div ref={heroRef} className="relative z-0 will-change-transform">
+                <EventHero
+                  event={event}
                   title={heroTitle}
-                  stageChip={stageChip}
-                  seekRequest={seekRequest}
-                  onActiveSongChange={onActiveSongChange}
-                  onDuration={reportDuration}
+                  tourName={tourName}
+                  kicker={kicker}
+                  artists={artists}
+                  venue={venue}
+                  festival={festival}
+                  isFollowing={isFollowing}
                 />
-              ) : (
-                <section className="relative flex h-[340px] flex-col justify-end overflow-hidden bg-black px-4 pb-5">
-                  <CoverImage
-                    sources={eventCoverSources(event, 'card')}
-                    eager
-                    className="absolute inset-0 h-full w-full object-cover opacity-60"
-                    fallback={<GeneratedPoster title={heroTitle} variant="hero" />}
+              </div>
+
+              {hasStage && timeline ? (
+                <section
+                  ref={stageRef}
+                  aria-label="El concierto, a pantalla completa"
+                  className="relative z-10 mt-5 snap-start overflow-hidden bg-black"
+                  style={{ height: viewportHeight ? `${viewportHeight}px` : '100dvh' }}
+                >
+                  <ConcertPlayer
+                    timeline={timeline}
+                    title={heroTitle}
+                    stageChip={stageChip}
+                    seekRequest={seekRequest}
+                    onActiveSongChange={onActiveSongChange}
+                    onDuration={reportDuration}
+                    inView={stageInView && pageVisible}
                   />
-                  <div className="absolute inset-0 bg-[linear-gradient(to_top,#0d0e12_8%,rgba(13,14,18,0.2)_60%,rgba(13,14,18,0.6))]" />
-                  <div className="relative">
-                    <p className="font-poster text-[40px] leading-[0.9] text-app-ink">{heroTitle}</p>
-                    <p className="mt-2 text-sm text-[#c9c5bd]">
+                </section>
+              ) : null}
+
+              <div className="relative z-10 bg-app-bg">
+                {hasStage ? null : momentsLoading ? (
+                  <div className="mx-4 mt-5 h-[120px] animate-pulse rounded-2xl bg-app-surface motion-reduce:animate-none" aria-label="Cargando momentos" />
+                ) : (
+                  <div className="px-4 pt-5">
+                    <p className="font-display text-xl font-bold text-app-ink">Sube lo que grabaste</p>
+                    <p className="mt-1 text-sm text-[#c9c5bd]">
                       {timeline && timeline.unplaced.length > 0
                         ? 'Los momentos de este concierto no tienen hora: están más abajo.'
                         : 'Aún no hay momentos. Lo que subáis se monta aquí como un solo vídeo, canción a canción.'}
@@ -427,224 +544,168 @@ const EventDetail: React.FC = () => {
                       ¿La grabaste? Sube el primero
                     </button>
                   </div>
-                </section>
-              )}
+                )}
 
-              {momentsError && <p className="px-4 pt-2 text-sm text-rose-400">{momentsError}</p>}
+                {momentsError && <p className="px-4 pt-2 text-sm text-rose-400">{momentsError}</p>}
 
-              {timeline && timeline.unplaced.length > 0 ? (
-                <div className="px-4 pt-5">
-                  <h2 className="font-display text-base font-bold text-app-ink">Sin hora exacta</h2>
-                  <p className="mt-0.5 text-[12px] text-white/50">
-                    No sabemos cuándo se grabaron, así que no están en la línea de tiempo.
+                <EventPhotos moments={moments} currentUserId={user?.id ?? null} onDeleted={removeMoment} />
+
+                {timeline && timeline.unplaced.length > 0 ? (
+                  <div className="px-4 pt-5">
+                    <h2 className="font-display text-base font-bold text-app-ink">Sin hora exacta</h2>
+                    <p className="mt-0.5 text-[12px] text-white/50">
+                      No sabemos cuándo se grabaron, así que no están en la línea de tiempo.
+                    </p>
+                    <div className="-mx-4 mt-2.5 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+                      {timeline.unplaced.map(moment => {
+                        const thumb = thumbOf(moment);
+                        return (
+                          <button
+                            key={moment.id}
+                            type="button"
+                            onClick={() => navigate(`/post/${moment.id}`)}
+                            aria-label={`Ver momento de @${moment.userName || 'anónimo'}`}
+                            className="relative h-[92px] w-[64px] shrink-0 overflow-hidden rounded-xl border border-app-line bg-app-surface"
+                          >
+                            {thumb ? (
+                              <img src={thumb} alt="" loading="lazy" className="h-full w-full object-cover" />
+                            ) : (
+                              <GeneratedPoster title={heroTitle} variant="thumb" />
+                            )}
+                            <span className="absolute inset-x-1 bottom-1 truncate text-left text-[10px] font-semibold text-white drop-shadow">
+                              @{moment.userName || 'anónimo'}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="px-4 pt-4 empty:hidden">
+                  <VenueFeedbackPrompt eventId={event.id} />
+                </div>
+
+                <div className="flex items-center justify-between px-4 pt-5">
+                  <h2 className="font-display text-xl font-bold text-app-ink">El concierto, canción a canción</h2>
+                  <button type="button" aria-label="Compartir" className="flex h-11 w-11 items-center justify-center text-white/70" onClick={() => setShowShare(true)}>
+                    <IconShare size={19} />
+                  </button>
+                </div>
+
+                {setlist.length === 0 ? (
+                  <p className="px-4 pt-1 text-sm text-white/60">
+                    Aún no hay setlist: los momentos van por orden de hora.
                   </p>
-                  <div className="-mx-4 mt-2.5 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
-                    {timeline.unplaced.map(moment => {
-                      const thumb = thumbOf(moment);
+                ) : (
+                  <ol className="mt-2.5 flex flex-col gap-1 px-4">
+                    {setlist.map((entry, index) => {
+                      const songClips = entry.song_id ? clipsBySong.get(entry.song_id) || [] : [];
+                      const current = Boolean(entry.song_id && entry.song_id === playingSongId);
+                      const last = index === setlist.length - 1;
                       return (
-                        <button
-                          key={moment.id}
-                          type="button"
-                          onClick={() => navigate(`/post/${moment.id}`)}
-                          aria-label={`Ver momento de @${moment.userName || 'anónimo'}`}
-                          className="relative h-[92px] w-[64px] shrink-0 overflow-hidden rounded-xl border border-app-line bg-app-surface"
+                        <li
+                          key={entry.ordinal}
+                          aria-current={current ? 'true' : undefined}
+                          className={`flex min-h-[60px] items-center gap-3 ${
+                            current
+                              ? '-mx-2.5 rounded-xl bg-app-accent/[0.12] px-2.5 py-2'
+                              : `py-2 ${last ? '' : 'border-b border-app-line'}`
+                          }`}
                         >
-                          {thumb ? (
-                            <img src={thumb} alt="" loading="lazy" className="h-full w-full object-cover" />
-                          ) : (
-                            <GeneratedPoster title={heroTitle} variant="thumb" />
-                          )}
-                          <span className="absolute inset-x-1 bottom-1 truncate text-left text-[10px] font-semibold text-white drop-shadow">
-                            @{moment.userName || 'anónimo'}
+                          <span className={`w-6 font-mono text-[12px] font-semibold ${current ? 'text-app-accent' : 'text-[#8f8b84]'}`}>
+                            {pad(entry.ordinal)}
                           </span>
-                        </button>
+                          <span className={`min-w-0 flex-1 truncate text-[15px] ${current ? 'font-bold text-app-accent' : 'font-semibold text-app-ink'}`}>
+                            {entry.song_title || 'Canción sin título'}
+                          </span>
+                          {songClips.length > 0 ? (
+                            <button
+                              type="button"
+                              className="flex min-h-11 items-center"
+                              aria-label={`Ver ${songClips.length} momentos de ${entry.song_title || 'esta canción'}`}
+                              onClick={() => playClip(songClips[0])}
+                            >
+                              {songClips.slice(0, 3).map((clip, thumbIndex) => {
+                                const thumb = thumbOf(clip.moment);
+                                return (
+                                  <span
+                                    key={clip.id}
+                                    className={`relative h-11 w-[34px] overflow-hidden rounded-md border-2 bg-app-surface ${
+                                      current && thumbIndex === 0 ? 'border-app-accent' : 'border-app-bg'
+                                    } ${thumbIndex > 0 ? '-ml-2.5' : ''}`}
+                                  >
+                                    {thumb ? (
+                                      <img src={thumb} alt="" loading="lazy" className="h-full w-full object-cover" />
+                                    ) : (
+                                      <GeneratedPoster title={entry.song_title || heroTitle} variant="thumb" />
+                                    )}
+                                  </span>
+                                );
+                              })}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => openUpload(entry.ordinal)}
+                              className="min-h-11 shrink-0 rounded-full border border-dashed border-app-line px-3 text-xs font-semibold text-[#c9c5bd]"
+                            >
+                              ¿La grabaste?
+                            </button>
+                          )}
+                        </li>
                       );
                     })}
+                  </ol>
+                )}
+                {setlist.some(entry => entry.source === 'setlistfm') && (
+                  <div className="px-4">
+                    <SetlistAttribution url={setlist.find(entry => entry.source_url)?.source_url} />
                   </div>
+                )}
+                <div className="px-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/importar')}
+                    className="flex min-h-[52px] w-full items-center gap-3 rounded-2xl border border-app-line bg-app-surface px-3.5 text-left"
+                  >
+                    <IconPlus size={18} className="shrink-0 text-app-accent" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[14px] font-semibold text-app-ink">¿Lo subiste a Instagram, TikTok o YouTube?</span>
+                      <span className="block text-[12px] text-white/50">Impórtalo y aparece en su sitio de la línea de tiempo</span>
+                    </span>
+                  </button>
                 </div>
-              ) : null}
-
-              <div className="px-4 pt-4 empty:hidden">
-                <VenueFeedbackPrompt eventId={event.id} />
-              </div>
-
-              <div className="flex items-center justify-between px-4 pt-5">
-                <h2 className="font-display text-xl font-bold text-app-ink">El concierto, canción a canción</h2>
-                <button type="button" aria-label="Compartir" className="flex h-11 w-11 items-center justify-center text-white/70" onClick={() => setShowShare(true)}>
-                  <IconShare size={19} />
-                </button>
-              </div>
-
-              {setlist.length === 0 ? (
-                <p className="px-4 pt-1 text-sm text-white/60">
-                  Aún no hay setlist: los momentos van por orden de hora.
-                </p>
-              ) : (
-                <ol className="mt-2.5 flex flex-col gap-1 px-4">
-                  {setlist.map((entry, index) => {
-                    const songClips = entry.song_id ? clipsBySong.get(entry.song_id) || [] : [];
-                    const current = Boolean(entry.song_id && entry.song_id === playingSongId);
-                    const last = index === setlist.length - 1;
-                    return (
-                      <li
-                        key={entry.ordinal}
-                        aria-current={current ? 'true' : undefined}
-                        className={`flex min-h-[60px] items-center gap-3 ${
-                          current
-                            ? '-mx-2.5 rounded-xl bg-app-accent/[0.12] px-2.5 py-2'
-                            : `py-2 ${last ? '' : 'border-b border-app-line'}`
-                        }`}
-                      >
-                        <span className={`w-6 font-mono text-[12px] font-semibold ${current ? 'text-app-accent' : 'text-[#8f8b84]'}`}>
-                          {pad(entry.ordinal)}
-                        </span>
-                        <span className={`min-w-0 flex-1 truncate text-[15px] ${current ? 'font-bold text-app-accent' : 'font-semibold text-app-ink'}`}>
-                          {entry.song_title || 'Canción sin título'}
-                        </span>
-                        {songClips.length > 0 ? (
-                          <button
-                            type="button"
-                            className="flex min-h-11 items-center"
-                            aria-label={`Ver ${songClips.length} momentos de ${entry.song_title || 'esta canción'}`}
-                            onClick={() => playClip(songClips[0])}
-                          >
-                            {songClips.slice(0, 3).map((clip, thumbIndex) => {
-                              const thumb = thumbOf(clip.moment);
-                              return (
-                                <span
-                                  key={clip.id}
-                                  className={`relative h-11 w-[34px] overflow-hidden rounded-md border-2 bg-app-surface ${
-                                    current && thumbIndex === 0 ? 'border-app-accent' : 'border-app-bg'
-                                  } ${thumbIndex > 0 ? '-ml-2.5' : ''}`}
-                                >
-                                  {thumb ? (
-                                    <img src={thumb} alt="" loading="lazy" className="h-full w-full object-cover" />
-                                  ) : (
-                                    <GeneratedPoster title={entry.song_title || heroTitle} variant="thumb" />
-                                  )}
-                                </span>
-                              );
-                            })}
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => openUpload(entry.ordinal)}
-                            className="min-h-11 shrink-0 rounded-full border border-dashed border-app-line px-3 text-xs font-semibold text-[#c9c5bd]"
-                          >
-                            ¿La grabaste?
-                          </button>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ol>
-              )}
-              {setlist.some(entry => entry.source === 'setlistfm') && (
-                <div className="px-4">
-                  <SetlistAttribution url={setlist.find(entry => entry.source_url)?.source_url} />
+                {engagementError && <p className="px-4 pt-3 text-sm text-rose-400">{engagementError}</p>}
+                <div className="px-4 pt-5 empty:hidden">
+                  <EventMerchSection
+                    eventId={event.id}
+                    startsAt={event.starts_at}
+                    endsAt={event.ends_at}
+                    venueName={venue?.name ?? null}
+                    attending={attendanceStatus !== null}
+                    onAttend={markGoingForMerch}
+                  />
                 </div>
-              )}
-              <div className="px-4 pt-4">
-                <button
-                  type="button"
-                  onClick={() => navigate('/importar')}
-                  className="flex min-h-[52px] w-full items-center gap-3 rounded-2xl border border-app-line bg-app-surface px-3.5 text-left"
-                >
-                  <IconPlus size={18} className="shrink-0 text-app-accent" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[14px] font-semibold text-app-ink">¿Lo subiste a Instagram, TikTok o YouTube?</span>
-                    <span className="block text-[12px] text-white/50">Impórtalo y aparece en su sitio de la línea de tiempo</span>
-                  </span>
-                </button>
-              </div>
-              {engagementError && <p className="px-4 pt-3 text-sm text-rose-400">{engagementError}</p>}
-              <div className="px-4 pt-5 empty:hidden">
-                <EventMerchSection
-                  eventId={event.id}
-                  startsAt={event.starts_at}
-                  endsAt={event.ends_at}
-                  venueName={venue?.name ?? null}
-                  attending={attendanceStatus !== null}
-                  onAttend={markGoingForMerch}
-                />
-              </div>
-              <div className="px-4 pt-5 empty:hidden">
-                <EventStatsCard eventId={event.id} />
+                <div className="px-4 pt-5 empty:hidden">
+                  <EventStatsCard eventId={event.id} />
+                </div>
               </div>
             </div>
           ) : (
             <div className="pb-[calc(96px+env(safe-area-inset-bottom,0px))]">
-              <section className="relative h-[380px] overflow-hidden">
-                <CoverImage
-                  sources={eventCoverSources(event, 'card')}
-                  eager
-                  className="absolute inset-0 h-full w-full object-cover"
-                  fallback={<GeneratedPoster title={heroTitle} variant="hero" />}
-                />
-                <div className="absolute inset-0 bg-[linear-gradient(to_top,#0d0e12_4%,rgba(13,14,18,0.3)_55%,rgba(13,14,18,0.55))]" />
-                <div className="absolute inset-x-4 bottom-1.5">
-                  {eventStart ? (
-                    <p className="font-mono text-[12px] font-semibold tracking-[0.06em] text-app-accent">{kickerDate(eventStart)}</p>
-                  ) : null}
-                  <h1 className={`mt-1.5 font-poster leading-[0.86] text-app-ink ${heroTitle.length > 14 ? 'text-[46px]' : 'text-[64px]'}`}>
-                    {heroTitle}
-                  </h1>
-                  {tourName ? <p className="mt-1.5 text-[15px] text-[#e4e0d8] line-clamp-2">{tourName}</p> : null}
-                </div>
-              </section>
+              <EventHero
+                event={event}
+                title={heroTitle}
+                tourName={tourName}
+                kicker={kicker}
+                artists={artists}
+                venue={venue}
+                festival={festival}
+                isFollowing={isFollowing}
+              />
 
               <div className="flex flex-col gap-3 px-4 pt-3.5">
-                {festival ? (
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/tabs/festival/${festival.id}`)}
-                    className="flex min-h-[52px] items-center gap-2.5 rounded-2xl border border-app-accent/50 bg-app-accent/10 px-3.5 text-left"
-                  >
-                    <IconFlag size={18} className="text-app-accent" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-app-accent">Parte del festival</span>
-                      <span className="block truncate font-display text-[15px] font-bold text-app-ink">{festival.name}</span>
-                    </span>
-                  </button>
-                ) : null}
-                {venue || artists.length ? (
-                  <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-1 pt-1 [scrollbar-width:none]">
-                    {artists.map(artist => (
-                      <button
-                        key={artist.id}
-                        type="button"
-                        onClick={() => navigate(`/tabs/artist/${artist.id}`)}
-                        className="flex w-[84px] shrink-0 flex-col items-center gap-1.5 text-center"
-                      >
-                        <Avatar name={artist.name} src={artist.avatar_url} kind="artist" className="h-[76px] w-[76px] text-2xl" />
-                        <span className="line-clamp-2 text-[13px] font-semibold leading-tight text-app-ink">{artist.name}</span>
-                        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.06em] text-app-accent">
-                          {artist.subject_id && isFollowing(artist.subject_id) ? 'Lo sigues' : 'Artista'}
-                        </span>
-                      </button>
-                    ))}
-                    {venue ? (
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/tabs/venue/${venue.id}`)}
-                        className="flex w-[84px] shrink-0 flex-col items-center gap-1.5 text-center"
-                      >
-                        <Avatar
-                          name={venue.name}
-                          src={venue.cover_image_url || (venue.photos || [])[0]}
-                          kind="venue"
-                          className="h-[76px] w-[76px] text-2xl"
-                        />
-                        <span className="line-clamp-2 text-[13px] font-semibold leading-tight text-app-ink">{venue.name}</span>
-                        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.06em] text-[#a9a59d]">
-                          {venue.city || 'Sala'}
-                        </span>
-                      </button>
-                    ) : null}
-                  </div>
-                ) : null}
-
                 <div className="pt-1">
                   <span
                     className={`inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-[11px] font-bold tracking-[0.08em] ${

@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import type { EventSetlistEntry } from '../../lib/types';
 import ConcertPlayer from '../../features/moments/ConcertPlayer';
 import { buildConcertTimeline, type TimelineMoment } from '../../features/moments/concertTimeline';
+import EventPhotos from '../../features/photos/EventPhotos';
 
 // DEV ONLY (mounted under import.meta.env.DEV in App.tsx): the concert player
 // with invented moments — overlaps, gaps, photos, a moment placed by its song
@@ -93,16 +94,20 @@ const TimelinePlayground: React.FC = () => {
   );
   return (
     <div className="h-dvh overflow-y-auto bg-app-bg pb-32">
-      <ConcertPlayer
-        timeline={timeline}
-        title="Los Planetas"
-        onView={id => console.info('[dev] vista contada', id)}
-        stageChip={
-          <span className="block truncate rounded-full bg-black/55 px-2.5 py-1.5 font-mono text-[11px] font-semibold uppercase text-app-ink">
-            Los Planetas · Sala Mock · Ayer
-          </span>
-        }
-      />
+      {/* One screen tall, like the stage on the concert page. */}
+      <section className="relative h-dvh">
+        <ConcertPlayer
+          timeline={timeline}
+          title="Los Planetas"
+          onView={id => console.info('[dev] vista contada', id)}
+          stageChip={
+            <span className="block truncate rounded-full bg-black/55 px-2.5 py-1.5 font-mono text-[11px] font-semibold uppercase text-app-ink">
+              Los Planetas · Sala Mock · Ayer
+            </span>
+          }
+        />
+      </section>
+      <EventPhotos moments={moments} currentUserId="tu" onDeleted={id => console.info('[dev] eliminada', id)} />
       <p className="px-4 pt-4 font-mono text-[11px] text-white/40">
         Mock · {timeline.unplaced.length} sin hora: {timeline.unplaced.map(item => `@${item.userName}`).join(', ')}
       </p>

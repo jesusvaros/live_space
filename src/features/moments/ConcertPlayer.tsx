@@ -14,11 +14,14 @@ import {
   type ConcertTimeline,
   type Hold,
   type ManualChoice,
+  type TimelineMoment,
 } from './concertTimeline';
 import { recordPostView } from './postViews';
 
-// The concert as one long video: a vertical player that follows concert time
-// from clip to clip, over the multi-track timeline (one row per person).
+// The concert as one long video: a full-screen player that follows concert
+// time from clip to clip, with the multi-track timeline (one row per person)
+// laid over the bottom of the picture. It fills its parent (the concert
+// page's stage, one screen tall) and only plays while `inView`.
 //
 // Playback rules live in concertTimeline.ts; this component only drives the
 // clock. While a video plays, the video is the clock (buffering pauses the
@@ -46,6 +49,9 @@ type ConcertPlayerProps = {
   onDuration?: (momentId: string, seconds: number) => void;
   // A clip played VIEW_AFTER_MS (default: count it in post_views).
   onView?: (momentId: string) => void;
+  // Most of the stage on screen: playback runs only then (autoplay on
+  // arrival, pause on leaving; a pause by the viewer is kept).
+  inView?: boolean;
 };
 
 const clock = (t: number, seconds = true) =>
@@ -81,7 +87,7 @@ const PlayPauseIcon: React.FC<{ playing: boolean; size?: number }> = ({ playing,
   </svg>
 );
 
-const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChip, seekRequest, onActiveSongChange, onDuration, onView = recordPostView }) => {
+const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChip, seekRequest, onActiveSongChange, onDuration, onView = recordPostView, inView = true }) => {
   const tracksRef = useRef<ConcertTracksHandle | null>(null);
   const videosRef = useRef(new Map<string, HTMLVideoElement>());
   const timelineRef = useRef(timeline);
@@ -89,6 +95,7 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
   const activeRef = useRef<Clip | null>(null);
   const manualRef = useRef<ManualChoice>(null);
   const playingRef = useRef(true);
+  const visibleRef = useRef(inView);
   const mutedRef = useRef(true);
   const scrubbingRef = useRef(false);
   const wasPlayingRef = useRef(false);
@@ -110,6 +117,7 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
   const [following, setFollowing] = useState(true);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [displayTime, setDisplayTime] = useState(timeline.start);
+  const [shapes, setShapes] = useState<Record<string, boolean>>({});
 
   const active = useMemo(() => timeline.clips.find(clip => clip.id === activeId) ?? null, [timeline.clips, activeId]);
   const covering = useMemo(() => clipsAt(timeline, displayTime), [timeline, displayTime]);
@@ -144,7 +152,7 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
         // Not seekable yet: loadedmetadata seeks it.
       }
     }
-    if (playingRef.current && !scrubbingRef.current) {
+    if (playingRef.current && visibleRef.current && !scrubbingRef.current) {
       video.play().catch(() => {
         // Autoplay refused (power saving, no gesture yet): wait for a tap.
         playingRef.current = false;
@@ -226,7 +234,7 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
       frame = requestAnimationFrame(tick);
       const last = lastFrameRef.current;
       lastFrameRef.current = now;
-      if (!playingRef.current || scrubbingRef.current || last === null) return;
+      if (!playingRef.current || !visibleRef.current || scrubbingRef.current || last === null) return;
       const tl = timelineRef.current;
       const clip = activeRef.current;
       let t = tRef.current;
@@ -262,6 +270,13 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
   }, [activate, countPlayback, publishTime]);
+
+  // The stage scrolled in or out: start or stop the picture (the clock
+  // above stops by itself).
+  useEffect(() => {
+    visibleRef.current = inView;
+    syncVideo(activeRef.current);
+  }, [inView, syncVideo]);
 
   // A newly mounted <video> for the clip on screen gets its time and plays.
   useEffect(() => {
@@ -370,99 +385,133 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
   const videoClips = [active, upcoming].filter((clip, index, list): clip is Clip =>
     Boolean(clip && clip.kind === 'video' && list.findIndex(other => other?.id === clip.id) === index));
 
+  // Horizontal clips sit whole over the blurred backdrop; vertical ones fill
+  // the screen. Stored size first, the decoded video's size once known.
+  const isLandscape = (item: TimelineMoment) =>
+    shapes[item.id] ?? Boolean(item.width && item.height && item.width > item.height);
   const moment = active?.moment ?? null;
-  const landscape = Boolean(moment?.width && moment?.height && moment.width > moment.height);
+  const landscape = moment ? isLandscape(moment) : false;
   const backdrop = moment?.thumbnailUrl || (moment?.mediaType === 'image' ? moment.mediaUrl : null);
   const handle = active ? timeline.tracks.find(track => track.id === active.trackId)?.label ?? '' : '';
   const angleCount = covering.length;
 
   return (
-    <section className="flex flex-col" aria-label="Reproductor del concierto">
-      {/* Stage */}
-      <div className="relative h-[min(50svh,560px)] min-h-[340px] overflow-hidden bg-black">
-        {backdrop ? (
-          <img src={backdrop} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full scale-110 object-cover opacity-50 blur-2xl" />
-        ) : (
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(255,91,46,0.28),transparent_65%)]" />
-        )}
+    <section className="relative h-full w-full overflow-hidden bg-black" aria-label="Reproductor del concierto">
+      {/* Backdrop: a blurred, enlarged copy of the frame. A horizontal clip
+          sits over it at its own shape instead of between black bands. */}
+      {backdrop ? (
+        <img src={backdrop} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full scale-125 object-cover opacity-60 blur-2xl" />
+      ) : (
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(255,91,46,0.28),transparent_65%)]" />
+      )}
 
-        <div
-          className="relative mx-auto h-full max-w-full overflow-hidden bg-black sm:rounded-none"
-          style={{ aspectRatio: '9 / 16' }}
-          onClick={event => {
-            if (event.target === event.currentTarget || (event.target as HTMLElement).tagName === 'VIDEO' || (event.target as HTMLElement).tagName === 'IMG') togglePlay();
-          }}
+      {/* Picture: fills the screen; tapping it plays or pauses. */}
+      <div
+        className="absolute inset-0"
+        onClick={event => {
+          if (event.target === event.currentTarget || (event.target as HTMLElement).tagName === 'VIDEO' || (event.target as HTMLElement).tagName === 'IMG') togglePlay();
+        }}
+      >
+        {videoClips.map(clip => (
+          <video
+            key={clip.id}
+            ref={registerVideo(clip.id)}
+            src={clip.moment.mediaUrl}
+            poster={clip.moment.thumbnailUrl || undefined}
+            muted={muted}
+            playsInline
+            preload="auto"
+            aria-hidden={clip.id !== active?.id}
+            className={`absolute inset-0 h-full w-full ${isLandscape(clip.moment) ? 'object-contain' : 'object-cover'} ${
+              clip.id === active?.id ? 'opacity-100' : 'pointer-events-none opacity-0'
+            }`}
+            onLoadedMetadata={event => {
+              const video = event.currentTarget;
+              if (Number.isFinite(video.duration) && !clip.moment.durationSec) onDuration?.(clip.id, video.duration);
+              if (video.videoWidth && video.videoHeight) {
+                const wide = video.videoWidth > video.videoHeight;
+                setShapes(previous => (previous[clip.id] === wide ? previous : { ...previous, [clip.id]: wide }));
+              }
+              if (clip.id === activeRef.current?.id) syncVideo(activeRef.current);
+            }}
+            onWaiting={() => clip.id === activeRef.current?.id && setBuffering(true)}
+            onPlaying={() => clip.id === activeRef.current?.id && setBuffering(false)}
+            onError={() => {
+              // Broken file: skip to what comes after it.
+              if (clip.id === activeRef.current?.id) goTo(clip.end, null);
+            }}
+          />
+        ))}
+
+        {active?.kind === 'photo' && moment ? (
+          <img
+            key={active.id}
+            src={moment.mediaUrl}
+            alt={`Foto de ${handle}`}
+            className={`absolute inset-0 h-full w-full ${landscape ? 'object-contain' : 'object-cover'}`}
+          />
+        ) : null}
+
+        {active?.kind === 'external' && moment?.post ? (
+          // Playing the original pauses the concert clock: it is not ours to time.
+          <div key={active.id} className="absolute inset-0 mx-auto max-w-[480px]" onClickCapture={() => pause()}>
+            <ExternalMomentCard post={moment.post} variant="media" />
+          </div>
+        ) : null}
+      </div>
+
+      {/* Shade under the top bar and under the controls. */}
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.5)_0%,rgba(0,0,0,0)_18%,rgba(0,0,0,0)_42%,rgba(0,0,0,0.7)_62%,rgba(0,0,0,0.9)_100%)]" />
+
+      {buffering && playing ? (
+        <div className="pointer-events-none absolute left-1/2 top-[38%] h-10 w-10 -translate-x-1/2 -translate-y-1/2 animate-spin rounded-full border-2 border-white/25 border-t-white motion-reduce:animate-none" />
+      ) : null}
+
+      {!playing && active?.kind !== 'external' ? (
+        <button
+          type="button"
+          aria-label={ended ? 'Volver a ver desde el principio' : 'Reproducir'}
+          onClick={play}
+          className="absolute left-1/2 top-[38%] flex h-16 min-w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-2 rounded-full bg-app-ink/90 px-5 text-app-bg shadow-[0_8px_30px_rgba(0,0,0,0.45)]"
         >
-          {videoClips.map(clip => (
-            <video
-              key={clip.id}
-              ref={registerVideo(clip.id)}
-              src={clip.moment.mediaUrl}
-              poster={clip.moment.thumbnailUrl || undefined}
-              muted={muted}
-              playsInline
-              preload={clip.id === active?.id ? 'auto' : 'auto'}
-              aria-hidden={clip.id !== active?.id}
-              className={`absolute inset-0 h-full w-full ${
-                clip.moment.width && clip.moment.height && clip.moment.width > clip.moment.height ? 'object-contain' : 'object-cover'
-              } ${clip.id === active?.id ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
-              onLoadedMetadata={event => {
-                const video = event.currentTarget;
-                if (Number.isFinite(video.duration) && !clip.moment.durationSec) onDuration?.(clip.id, video.duration);
-                if (clip.id === activeRef.current?.id) syncVideo(activeRef.current);
-              }}
-              onWaiting={() => clip.id === activeRef.current?.id && setBuffering(true)}
-              onPlaying={() => clip.id === activeRef.current?.id && setBuffering(false)}
-              onError={() => {
-                // Broken file: skip to what comes after it.
-                if (clip.id === activeRef.current?.id) goTo(clip.end, null);
-              }}
-            />
-          ))}
+          <PlayPauseIcon playing={false} size={26} />
+          {ended ? <span className="text-sm font-bold">Volver a ver</span> : null}
+        </button>
+      ) : null}
 
-          {active?.kind === 'photo' && moment ? (
-            <img
-              key={active.id}
-              src={moment.mediaUrl}
-              alt={`Foto de ${handle}`}
-              className={`absolute inset-0 h-full w-full ${landscape ? 'object-contain' : 'object-cover'}`}
-            />
-          ) : null}
+      {stageChip ? (
+        <div className="pointer-events-none absolute right-3 top-[calc(14px+env(safe-area-inset-top,0px))] z-10 max-w-[64%]">
+          {stageChip}
+        </div>
+      ) : null}
 
-          {active?.kind === 'external' && moment?.post ? (
-            // Playing the original pauses the concert clock: it is not ours to time.
-            <div key={active.id} className="absolute inset-0" onClickCapture={() => pause()}>
-              <ExternalMomentCard post={moment.post} variant="media" />
-            </div>
-          ) : null}
+      {/* Sound: muted autoplay needs an obvious way to turn it on. */}
+      <button
+        type="button"
+        onClick={toggleMute}
+        aria-pressed={!muted}
+        aria-label={muted ? 'Activar sonido' : 'Silenciar'}
+        className={`absolute left-3 top-[calc(64px+env(safe-area-inset-top,0px))] z-10 flex h-11 items-center gap-2 rounded-full backdrop-blur-md ${
+          muted ? 'bg-white px-3.5 text-[#14151a] shadow-[0_6px_20px_rgba(0,0,0,0.35)]' : 'w-11 justify-center bg-black/45 text-white'
+        }`}
+      >
+        <SpeakerIcon muted={muted} />
+        {muted ? <span className="text-[13px] font-bold">Activar sonido</span> : null}
+      </button>
 
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0)_38%,rgba(0,0,0,0)_78%,rgba(0,0,0,0.45))]" />
-
-          {buffering && playing ? (
-            <div className="pointer-events-none absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 animate-spin rounded-full border-2 border-white/25 border-t-white motion-reduce:animate-none" />
-          ) : null}
-
-          {!playing && active?.kind !== 'external' ? (
-            <button
-              type="button"
-              aria-label={ended ? 'Volver a ver desde el principio' : 'Reproducir'}
-              onClick={play}
-              className="absolute left-1/2 top-1/2 flex h-16 min-w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-2 rounded-full bg-app-ink/90 px-5 text-app-bg shadow-[0_8px_30px_rgba(0,0,0,0.45)]"
-            >
-              <PlayPauseIcon playing={false} size={26} />
-              {ended ? <span className="text-sm font-bold">Volver a ver</span> : null}
-            </button>
-          ) : null}
-
+      {/* Controls over the bottom of the picture, clear of the page's
+          fixed upload bar. */}
+      <div className="absolute inset-x-0 bottom-0 z-10 px-3 pb-[calc(84px+env(safe-area-inset-bottom,0px))]">
+        <div className="flex items-end gap-2">
           {/* Caption */}
-          <div className="pointer-events-none absolute inset-x-3 bottom-3 pr-14">
+          <div className="pointer-events-none min-w-0 flex-1 pb-1">
             {segment ? (
               <p className="truncate font-mono text-[11px] font-semibold uppercase tracking-[0.06em] text-app-accent">
                 Suena · {String(segment.ordinal).padStart(2, '0')} {segment.title}
                 {segment.estimated ? ' ~' : ''}
               </p>
             ) : null}
-            <p className="mt-0.5 truncate font-display text-[19px] font-bold leading-tight text-white">
+            <p className="mt-0.5 truncate font-display text-[19px] font-bold leading-tight text-white drop-shadow">
               {moment ? handle : title}
               {moment ? <span className="font-mono text-[14px] font-semibold text-white/75"> · {clock(active!.start, false)}</span> : null}
             </p>
@@ -470,9 +519,8 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
               <p className="mt-0.5 text-[11px] text-white/60">Sin hora exacta: colocado en su canción</p>
             ) : null}
           </div>
-
           {/* Right column */}
-          <div className="absolute bottom-3 right-2 flex flex-col items-center gap-2">
+          <div className="flex shrink-0 flex-col items-center gap-2">
             {active && active.kind !== 'external' ? (
               <ReportMomentButton
                 postId={active.id}
@@ -497,78 +545,57 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
           </div>
         </div>
 
-        {stageChip ? (
-          <div className="pointer-events-none absolute right-3 top-[calc(14px+env(safe-area-inset-top,0px))] z-[1301] max-w-[64%]">
-            {stageChip}
+        {/* Transport */}
+        <div className="flex items-center gap-2 pb-2 pt-2.5">
+          <button
+            type="button"
+            onClick={togglePlay}
+            aria-label={playing ? 'Pausar' : 'Reproducir'}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-app-accent text-[#14151a]"
+          >
+            <PlayPauseIcon playing={playing} />
+          </button>
+          <div className="min-w-0 flex-1">
+            <p className="font-mono text-[15px] font-bold tabular-nums text-white" aria-live="off">{clock(displayTime)}</p>
+            <p className="truncate text-[11px] text-white/60">
+              {timeline.clips.length} momentos · {timeline.tracks.length} {timeline.tracks.length === 1 ? 'persona' : 'personas'}
+              {angleCount > 1 ? ` · ${angleCount} ángulos ahora` : ''}
+            </p>
           </div>
-        ) : null}
-
-        {/* Sound: muted autoplay needs an obvious way to turn it on. */}
-        <button
-          type="button"
-          onClick={toggleMute}
-          aria-pressed={!muted}
-          aria-label={muted ? 'Activar sonido' : 'Silenciar'}
-          className={`absolute left-3 top-[calc(64px+env(safe-area-inset-top,0px))] z-10 flex h-11 items-center gap-2 rounded-full backdrop-blur-md ${
-            muted ? 'bg-white px-3.5 text-[#14151a] shadow-[0_6px_20px_rgba(0,0,0,0.35)]' : 'w-11 justify-center bg-black/45 text-white'
-          }`}
-        >
-          <SpeakerIcon muted={muted} />
-          {muted ? <span className="text-[13px] font-bold">Activar sonido</span> : null}
-        </button>
-      </div>
-
-      {/* Transport */}
-      <div className="flex items-center gap-2 px-4 pb-2.5 pt-3">
-        <button
-          type="button"
-          onClick={togglePlay}
-          aria-label={playing ? 'Pausar' : 'Reproducir'}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-app-accent text-[#14151a]"
-        >
-          <PlayPauseIcon playing={playing} />
-        </button>
-        <div className="min-w-0 flex-1">
-          <p className="font-mono text-[15px] font-bold tabular-nums text-app-ink" aria-live="off">{clock(displayTime)}</p>
-          <p className="truncate text-[11px] text-white/50">
-            {timeline.clips.length} momentos · {timeline.tracks.length} {timeline.tracks.length === 1 ? 'persona' : 'personas'}
-            {angleCount > 1 ? ` · ${angleCount} ángulos ahora` : ''}
-          </p>
+          {!following ? (
+            <button
+              type="button"
+              onClick={backToNow}
+              className="h-11 shrink-0 rounded-full border border-app-accent/60 bg-black/40 px-3.5 text-[13px] font-bold text-app-accent backdrop-blur"
+            >
+              Volver al ahora
+            </button>
+          ) : null}
+          <div className="flex shrink-0 overflow-hidden rounded-full border border-white/20 bg-black/35 backdrop-blur">
+            <button
+              type="button"
+              aria-label="Alejar la línea de tiempo"
+              disabled={zoom === 0}
+              onClick={() => setZoom(value => Math.max(0, value - 1))}
+              className="flex h-11 w-11 items-center justify-center text-lg font-bold text-white disabled:text-white/25"
+            >
+              −
+            </button>
+            <button
+              type="button"
+              aria-label="Acercar la línea de tiempo"
+              disabled={zoom === ZOOMS.length - 1}
+              onClick={() => setZoom(value => Math.min(ZOOMS.length - 1, value + 1))}
+              className="flex h-11 w-11 items-center justify-center border-l border-white/20 text-lg font-bold text-white disabled:text-white/25"
+            >
+              +
+            </button>
+          </div>
         </div>
-        {!following ? (
-          <button
-            type="button"
-            onClick={backToNow}
-            className="h-11 shrink-0 rounded-full border border-app-accent/60 bg-app-accent/10 px-3.5 text-[13px] font-bold text-app-accent"
-          >
-            Volver al ahora
-          </button>
-        ) : null}
-        <div className="flex shrink-0 overflow-hidden rounded-full border border-app-line">
-          <button
-            type="button"
-            aria-label="Alejar la línea de tiempo"
-            disabled={zoom === 0}
-            onClick={() => setZoom(value => Math.max(0, value - 1))}
-            className="flex h-11 w-11 items-center justify-center text-lg font-bold text-app-ink disabled:text-white/25"
-          >
-            −
-          </button>
-          <button
-            type="button"
-            aria-label="Acercar la línea de tiempo"
-            disabled={zoom === ZOOMS.length - 1}
-            onClick={() => setZoom(value => Math.min(ZOOMS.length - 1, value + 1))}
-            className="flex h-11 w-11 items-center justify-center border-l border-app-line text-lg font-bold text-app-ink disabled:text-white/25"
-          >
-            +
-          </button>
-        </div>
-      </div>
 
-      <div className="px-4">
         <ConcertTracks
           ref={tracksRef}
+          overlay
           timeline={timeline}
           initialTime={tRef.current}
           activeClipId={activeId}
@@ -580,10 +607,6 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({ timeline, title, stageChi
           onScrubEnd={onScrubEnd}
           onPickClip={pickClip}
         />
-        <p className="mt-2 text-[11px] leading-snug text-white/40">
-          Toca una pista para cambiar de ángulo. Arrastra la regla para moverte por el concierto.
-          {timeline.segments.some(item => item.estimated) ? ' ~ hora de canción estimada.' : ''}
-        </p>
       </div>
     </section>
   );

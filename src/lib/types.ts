@@ -199,3 +199,10 @@ export interface AuthState {
   profile: Profile | null;
   loading: boolean;
 }
+
+/** hidden_posts: a moment the signed-in person hid from their own view. */
+export interface HiddenPost {
+  profile_id: string;
+  post_id: string;
+  created_at: string;
+}
