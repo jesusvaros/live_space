@@ -148,8 +148,8 @@ export const PrivacyPage: React.FC = () => {
         </SettingsItem>
       </SettingsGroup>
       <SettingsHelp>
-        Viene marcada en cada subida: el artista y la sala del concierto pueden reutilizar el momento citándote. Lo
-        cambias también en cada momento. <Link to={legalAppPath('licencia-momentos')} className="text-app-accent">Licencia</Link>
+        Al publicar, el artista y la sala del concierto pueden compartir el momento citándote. Si lo apagas, tus
+        próximas subidas no se podrán reutilizar; también lo cambias en cada momento. <Link to={legalAppPath('licencia-momentos')} className="text-app-accent">Licencia</Link>
       </SettingsHelp>
 
       <SettingsGroup label="Personas y mapa">

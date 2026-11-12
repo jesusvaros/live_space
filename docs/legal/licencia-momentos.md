@@ -9,8 +9,7 @@ Sigue siendo tuyo: subirlo no te quita ningún derecho sobre él.
 
 ## Qué permites al subir
 
-Al subir, la casilla «Permitir que el artista y la sala reutilicen este momento
-citándome» viene marcada. Mientras esté marcada, das permiso gratuito y no
+Al publicar un momento das permiso gratuito y no
 exclusivo a quienes gestionan en Live Space al artista y a la sala de ese
 concierto para:
 
@@ -31,8 +30,8 @@ archivo y, en las fotos, puede llevarlo también impreso en una esquina.
 
 ## Cambiar de opinión
 
-Puedes desmarcar la casilla antes de subir o desactivar la reutilización en
-cualquier momento desde el detalle de cada momento. Desde entonces nadie más
+Puedes desactivar la reutilización en cualquier momento desde el detalle de cada
+momento, o para todas tus próximas subidas en Ajustes → Privacidad. Desde entonces nadie más
 podrá descargarlo. Lo que ya se publicó antes de tu cambio puede seguir
 publicado; si quieres que se retire, pídelo al artista o a la sala o escríbenos
 y lo trasladamos.
