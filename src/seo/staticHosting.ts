@@ -33,6 +33,12 @@ export const toVercelSources = (pattern: RoutePattern): string[] => {
 
 export const buildVercelConfig = (input: { movedRoutes: RoutePattern[]; movedPage: string }) => ({
   $schema: 'https://openapi.vercel.sh/vercel.json',
+  // dist-site is already built: the project (linked from the repo root, so
+  // Vercel detected Vite) must not run `vite build` on it.
+  framework: null,
+  buildCommand: '',
+  installCommand: '',
+  outputDirectory: '.',
   // /x/index.html is served at /x/; /x.html and /x/index.html redirect there.
   cleanUrls: true,
   trailingSlash: true,

@@ -75,6 +75,11 @@ describe('resolvePublicSiteUrl', () => {
   it('uses the configured URL without trailing slash, or the default', () => {
     expect(resolvePublicSiteUrl(' https://livespace.example/ ')).toBe('https://livespace.example');
     expect(resolvePublicSiteUrl('')).toBe(DEFAULT_PUBLIC_SITE_URL);
-    expect(resolvePublicSiteUrl(undefined)).toBe('https://livespace.vercel.app');
+    expect(resolvePublicSiteUrl(undefined)).toBe('https://livespace-dusky.vercel.app');
+  });
+
+  it('deploys the prebuilt folder as is (no framework build)', () => {
+    const config = buildVercelConfig({ movedRoutes: [], movedPage: '/movido/index.html' });
+    expect(config).toMatchObject({ framework: null, buildCommand: '', installCommand: '', outputDirectory: '.' });
   });
 });
