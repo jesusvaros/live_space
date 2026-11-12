@@ -64,7 +64,8 @@ insert into public.user_blocks (blocker_id, blocked_id) values
   ('00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000b'),
   ('00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000a');
 insert into public.event_saves (event_id, profile_id) values ('30000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000a');
-insert into public.event_attendance (event_id, profile_id, status) values ('30000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000a', 'going');
+insert into public.event_attendance (event_id, profile_id, status) values ('30000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000a', 'going')
+  on conflict (event_id, profile_id) do nothing; -- posts above may have marked it already (20261112020100)
 
 -- A viewed B's moment; A manages the artist and once decided a claim.
 insert into public.post_views (post_id, viewer_key, profile_id)
