@@ -14,7 +14,7 @@ import { enqueueMomentUploads } from '../media';
 import { songAtTime } from '../lib/songAssignment';
 import { detectConcert, hasReliableTime, type DetectionReason } from '../lib/concertDetection';
 import { EventListItem } from '../features/events/types';
-import { ReuseConsentCheckbox } from '../features/community';
+import { ReuseNotice } from '../features/community';
 import { getEventCoverImage, getPrimaryArtistName } from '../features/events/utils';
 import { parseScannedUploadValue } from '../lib/uploadQr';
 import { eventManagementService } from '../services/eventManagement.service';
@@ -25,6 +25,7 @@ import { savePendingSelection, takePendingSelection } from '../media/pendingSele
 import { markOnboardingSeen } from '../app/onboarding';
 import { readStoredCity, sameCity } from '../features/agenda/agendaPrefs';
 import AttendanceSuggestion from '../features/events/AttendanceSuggestion';
+import { attendanceTargetFor, markAttendance } from '../features/events/attendance';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -178,7 +179,8 @@ const Upload: React.FC = () => {
   const presetToken = params.get('qr');
   // Scanned at the venue: welcome them to the concert and go straight to the
   // picker. The account is only asked for when they press «Publicar».
-  const fromQr = Boolean(presetToken);
+  // ?via=qr: scanned with the button on Inicio, whose QR only carried the id.
+  const fromQr = Boolean(presetToken) || params.get('via') === 'qr';
   const [tokenEventId, setTokenEventId] = useState<string | null>(null);
   const presetEventId = params.get('event') || tokenEventId;
   const presetSong = Number(params.get('song')) || null;
@@ -262,6 +264,18 @@ const Upload: React.FC = () => {
       cancelled = true;
     };
   }, [presetToken]);
+
+  // A scanned QR means they are at (or were at) that concert: mark «Voy» or
+  // «Fui» as soon as there is an account. Without one it waits for the login
+  // asked for at «Publicar».
+  const markedFromQr = useRef<string | null>(null);
+  useEffect(() => {
+    if (!fromQr || !user || !event || markedFromQr.current === event.id) return;
+    markedFromQr.current = event.id;
+    markAttendance(event.id, user.id, attendanceTargetFor(event.starts_at, event.ends_at ?? null)).catch(error =>
+      console.warn('[upload] could not mark attendance from QR', error),
+    );
+  }, [fromQr, user, event]);
 
   // Coming from a concert page ("¿La grabaste?", "Sube lo que grabaste").
   useEffect(() => {
@@ -565,21 +579,17 @@ const Upload: React.FC = () => {
                 Cada uno irá a su canción según la hora a la que lo grabaste.
               </span>
             </button>
-            <button
-              type="button"
-              onClick={() => setShowScanner(true)}
-              className="flex min-h-11 items-center justify-center gap-2 rounded-full border border-app-line text-sm font-semibold text-app-ink"
-            >
-              <IconQrCode size={18} />
-              Escanear el QR del concierto
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/importar')}
-              className="flex min-h-11 items-center justify-center gap-2 rounded-full border border-app-line px-4 text-sm font-semibold text-app-ink"
-            >
-              ¿Ya lo subiste a Instagram o TikTok?
-            </button>
+            {/* Opened from a concert, the concert is already known: no QR to scan. */}
+            {presetEventId ? null : (
+              <button
+                type="button"
+                onClick={() => setShowScanner(true)}
+                className="flex min-h-11 items-center justify-center gap-2 rounded-full border border-app-line text-sm font-semibold text-app-ink"
+              >
+                <IconQrCode size={18} />
+                Escanear el QR del concierto
+              </button>
+            )}
           </div>
         ) : (
           <>
@@ -669,7 +679,7 @@ const Upload: React.FC = () => {
 
       {showQrWelcome ? null : (
       <div className="fixed inset-x-0 bottom-0 z-[1300] border-t border-app-line bg-app-bg/95 px-4 pb-[calc(10px+env(safe-area-inset-bottom,0px))] pt-2.5 backdrop-blur-xl">
-        <ReuseConsentCheckbox className="mb-2" />
+        <ReuseNotice className="mb-2" />
         <button
           type="button"
           onClick={publish}

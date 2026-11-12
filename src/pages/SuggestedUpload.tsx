@@ -6,7 +6,7 @@ import GeneratedPoster from '../components/ui/GeneratedPoster';
 import CoverImage from '../components/ui/CoverImage';
 import { IconChevronDown } from '../components/icons';
 import { useAuth } from '../contexts/AuthContext';
-import { ReuseConsentCheckbox } from '../features/community';
+import { ReuseNotice } from '../features/community';
 import { eventWindow, matchMoments, VENUE_RADIUS_M, type MomentMatch } from '../features/moments/matchMoments';
 import { describeClips, markNudgeDone } from '../features/moments/momentNudge';
 import { fetchMomentEvent, type MomentEvent } from '../features/moments/momentsData';
@@ -360,7 +360,7 @@ const SuggestedUpload: React.FC = () => {
 
       {phase.kind === 'ready' && suggestions.length > 0 && (
         <div className="border-t border-app-line bg-app-bg/95 px-4 pb-[calc(16px+env(safe-area-inset-bottom,0px))] pt-3 backdrop-blur">
-          <ReuseConsentCheckbox className="mb-2" />
+          <ReuseNotice className="mb-2" />
           <Button block size="lg" disabled={chosen.length === 0 || submitting} onClick={() => void publish()}>
             {submitting ? <Spinner className="h-4 w-4" label="Subiendo" /> : null}
             {chosen.length === 0
