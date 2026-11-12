@@ -8,7 +8,9 @@ import { createClient } from '@supabase/supabase-js';
 import { FESTIVALS, festivalPath } from '../landing/festivals.js';
 import { eventJsonLd, itemListJsonLd, placeJsonLd, type SeoArtist, type SeoEvent, type SeoVenue } from '../seo/jsonLd.js';
 import { PUBLIC_CITIES, publicPath } from '../seo/slug.js';
+import { buildVercelConfig, redirectStub } from '../seo/staticHosting.js';
 import { fillLegalPlaceholders, legalBlocksToHtml, parseLegalMarkdown } from '../shared/legal/markdown.js';
+import { resolvePublicSiteUrl } from '../shared/siteUrl.js';
 
 // Prerenders the public website into dist-site/ after `npm run site:build`.
 // The site has no app: concert, venue, artist and city pages are plain static
@@ -17,8 +19,10 @@ import { fillLegalPlaceholders, legalBlocksToHtml, parseLegalMarkdown } from '..
 // Uses only the anon key; RLS limits it to published rows.
 
 const DIST = path.resolve(process.env.PUBLIC_SITE_DIST || 'dist-site');
-const SITE_URL = (process.env.PUBLIC_SITE_URL || 'https://livespace.pages.dev').replace(/\/+$/, '');
+const SITE_URL = resolvePublicSiteUrl(process.env.PUBLIC_SITE_URL);
 const TIME_ZONE = 'Europe/Madrid';
+// Where old app routes land: a noindex page that sends the visitor to "/".
+const MOVED_PAGE = '/movido/';
 
 const readEnv = (name: string) => {
   const value = process.env[name];
@@ -70,7 +74,7 @@ type Page = {
   jsonLd: unknown[];
 };
 
-// Vite emits the site entry as site.html; Cloudflare serves index.html at "/".
+// Vite emits the site entry as site.html; the host serves index.html at "/".
 if (existsSync(path.join(DIST, 'site.html'))) renameSync(path.join(DIST, 'site.html'), path.join(DIST, 'index.html'));
 const landingTemplate = readFileSync(path.join(DIST, 'index.html'), 'utf8');
 
@@ -227,8 +231,8 @@ const run = async () => {
   const publishedVenues = [...venues.values()].filter((venue) => venue.status === 'published');
   const publishedVenueIds = new Set(publishedVenues.map((venue) => venue.id));
 
-  // Directory-style paths with a trailing slash, as Cloudflare Pages serves
-  // them, so internal links never pay a redirect hop.
+  // Directory-style paths with a trailing slash, as the host serves them
+  // (trailingSlash in vercel.json), so internal links never pay a redirect hop.
   const eventPath = (event: SeoEvent) =>
     `${publicPath.event(`${event.name} ${event.venue.name} ${madridDay(event.starts_at)}`, event.id)}/`;
   const venuePath = (venue: SeoVenue) =>
@@ -249,7 +253,8 @@ const run = async () => {
     items.length > 0 ? `<ul>${items.map(eventItem).join('')}</ul>` : `<p>${escapeHtml(empty)}</p>`;
 
   const pages: Page[] = [];
-  const redirects: string[] = [];
+  // Legacy UUID URLs (old web app) → their static page.
+  const redirects: Array<{ from: string; to: string }> = [];
 
   for (const event of events) {
     const pagePath = eventPath(event);
@@ -295,7 +300,7 @@ const run = async () => {
         }),
       ],
     });
-    redirects.push(`/event/${event.id} ${pagePath} 301`);
+    redirects.push({ from: `/event/${event.id}/`, to: pagePath });
   }
 
   for (const venue of publishedVenues) {
@@ -317,7 +322,7 @@ const run = async () => {
       ].join(''),
       jsonLd: [{ '@context': 'https://schema.org', ...placeJsonLd(venue, `${SITE_URL}${pagePath}`) }],
     });
-    redirects.push(`/tabs/venue/${venue.id} ${pagePath} 301`, `/venue/${venue.id} ${pagePath} 301`);
+    redirects.push({ from: `/tabs/venue/${venue.id}/`, to: pagePath }, { from: `/venue/${venue.id}/`, to: pagePath });
   }
 
   for (const artist of artistsWithEvents.values()) {
@@ -348,7 +353,7 @@ const run = async () => {
         },
       ],
     });
-    redirects.push(`/tabs/artist/${artist.id} ${pagePath} 301`, `/artist/${artist.id} ${pagePath} 301`);
+    redirects.push({ from: `/tabs/artist/${artist.id}/`, to: pagePath }, { from: `/artist/${artist.id}/`, to: pagePath });
   }
 
   const today = madridDay(new Date());
@@ -432,9 +437,10 @@ const run = async () => {
     ].join('\n'),
   );
   writeFileSync(path.join(DIST, 'robots.txt'), ['User-agent: *', 'Allow: /', `Sitemap: ${SITE_URL}/sitemap.xml`, ''].join('\n'));
-  // Cloudflare Pages: legacy UUID URLs move to their static page; old app
-  // routes (the app is no longer on the web) go to the landing. Anything else
-  // gets 404.html. Festival landings are SPA routes of the site bundle.
+  // Legacy UUID URLs move to their static page; old app routes (the app is no
+  // longer on the web) go to the landing through /movido/. Anything else gets
+  // 404.html. Festival landings are prerendered pages of the site bundle.
+  // See src/seo/staticHosting.ts for why these are pages, not redirects.
   const appRoutes = ['/tabs/*', '/event/*', '/artist/*', '/venue/*', '/welcome', '/reset', '/create-event', '/profile/*', '/post/*', '/admin', '/admin/*', '/discover'];
   // /upload is where a concert QR lands when scanned with the phone camera:
   // the landing bundle hands it to the app or offers the download. noindex.
@@ -451,9 +457,11 @@ const run = async () => {
       .replace(/<title>[\s\S]*?<\/title>/, '<title>Vuelve a Live Space</title>')
       .replace('</head>', '<meta name="robots" content="noindex" />\n  </head>'),
   );
+  for (const redirect of redirects) writePage(redirect.from, redirectStub(redirect.to, `${SITE_URL}${redirect.to}`));
+  writePage(MOVED_PAGE, redirectStub('/', `${SITE_URL}/`, { noindex: true }));
   writeFileSync(
-    path.join(DIST, '_redirects'),
-    [...redirects, ...appRoutes.map((route) => `${route} / 302`), ''].join('\n'),
+    path.join(DIST, 'vercel.json'),
+    `${JSON.stringify(buildVercelConfig({ movedRoutes: appRoutes, movedPage: `${MOVED_PAGE}index.html` }), null, 2)}\n`,
   );
   writeFileSync(
     path.join(DIST, '404.html'),
@@ -463,17 +471,6 @@ const run = async () => {
       '<meta name="robots" content="noindex" />',
       '<main><h1>Esta página no existe.</h1><p><a href="/">Volver a Live Space</a></p></main>',
     ),
-  );
-  writeFileSync(
-    path.join(DIST, '_headers'),
-    [
-      '/assets/*',
-      '  Cache-Control: public, max-age=31536000, immutable',
-      '/*',
-      '  X-Content-Type-Options: nosniff',
-      '  Referrer-Policy: strict-origin-when-cross-origin',
-      '',
-    ].join('\n'),
   );
 
   console.log(

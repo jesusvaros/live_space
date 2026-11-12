@@ -156,7 +156,7 @@ sin actividad (ocurrió el 21-sep-2026: el scrape no corrió hasta el 25-oct).
 `active`. Al añadir un workflow con `schedule`, incluirlo en `WORKFLOWS`.
 Comprobación manual: `gh api repos/jesusvaros/live_space/actions/workflows`.
 
-## Web pública (Cloudflare Pages)
+## Web pública en Vercel
 
 La web pública no contiene la app (ver [Web pública y landings](./landing.md)).
 `npm run web:prerender` construye el sitio (`site:build`) y genera en `dist-site/` una página
@@ -165,23 +165,45 @@ estática por concierto futuro (`/concierto/<slug>-<uuid>/`), sala publicada
 `/{madrid,barcelona}/conciertos/{,hoy/,esta-semana/}` y `/festival/<slug>/`. Cada página lleva title,
 description, canonical, Open Graph y JSON-LD (`MusicEvent`, `MusicVenue`,
 `MusicGroup`, `ItemList`). También genera `sitemap.xml`, `robots.txt`,
-`_redirects` (301 desde las URL con UUID, 302 de las rutas antiguas de la app a
-`/`), `404.html` y `_headers`. Solo usa la clave anon. Las fichas son HTML sin
+`404.html`, `vercel.json` (barra final, caché de `/assets/`, cabeceras) y
+páginas de redirección: las URL antiguas con UUID (`/event/<uuid>/`,
+`/venue/…`, `/artist/…`, `/tabs/…`) son páginas que mandan al instante a su
+ficha (canonical + `meta refresh`), y el resto de rutas de la app antigua van a
+`/movido/`, que manda a `/`. No son redirecciones de `vercel.json` porque
+Vercel admite 2048 y ya hay más URL antiguas (ver
+`src/seo/staticHosting.ts`). Solo usa la clave anon. Las fichas son HTML sin
 JavaScript; solo la landing y las de festival cargan el bundle del sitio.
 Capacitor sigue usando `dist/` y no cambia.
 
-`publish-web.yml` publica tras cada scrape y a las 23:05 UTC; se salta si faltan
-los secretos. Alta, una sola vez:
+`publish-web.yml` publica tras cada scrape, a las 23:05 UTC y a mano
+(`gh workflow run publish-web.yml`): construye `dist-site/` en GitHub Actions y
+lo sube ya hecho con la CLI de Vercel (versión fijada en el workflow); Vercel no
+compila nada. Si faltan secretos no publica y deja un aviso (`::warning::`) en
+la ejecución. Alta, una sola vez, desde la raíz del repo:
 
-1. Cloudflare → Workers & Pages → crear el proyecto Pages `livespace` (direct upload).
-2. Token API con permiso «Cloudflare Pages: Edit».
-3. Secretos del repo `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID`
-   (`VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` ya existen). Con dominio
-   propio, variable `PUBLIC_SITE_URL`.
-4. Supabase → Auth → URL Configuration: añadir el dominio.
-5. Search Console: dar de alta el dominio y enviar `sitemap.xml`. Fijar el
+1. `npx vercel@65.3.1 login`.
+2. `npx vercel@65.3.1 link`: crear el proyecto `livespace`. Framework «Other»,
+   sin comando de build, de instalación ni directorio de salida (se despliega
+   la salida estática ya construida). Si el nombre está cogido, usar otro y
+   fijar `PUBLIC_SITE_URL` (paso 5).
+3. Leer `orgId` y `projectId` en `.vercel/project.json`. Esa carpeta no se sube
+   (está en `.gitignore`).
+4. Crear un token en <https://vercel.com/account/tokens> y guardar los secretos:
+   `gh secret set VERCEL_TOKEN`, `gh secret set VERCEL_ORG_ID` y
+   `gh secret set VERCEL_PROJECT_ID` (`VITE_SUPABASE_URL` y
+   `VITE_SUPABASE_ANON_KEY` ya existen).
+5. Opcional: `gh variable set PUBLIC_SITE_URL --body https://<dominio>` si la
+   web no queda en `https://livespace.vercel.app` (el valor por defecto, en
+   `src/shared/siteUrl.ts`) o con dominio propio. La misma URL va en
+   `VITE_PUBLIC_SITE_URL` del `.env` del build de la app y en el secret
+   `PUBLIC_SITE_URL` de las funciones de Supabase (merch, `/vuelta`).
+   **Es la URL de los QR de concierto: fijarla antes de imprimir ninguno.** Un
+   QR impreso con otro dominio deja de funcionar si ese dominio cambia.
+6. `gh workflow run publish-web.yml` y comprobar la URL.
+7. Supabase → Auth → URL Configuration: añadir el dominio.
+8. Search Console: dar de alta el dominio y enviar `sitemap.xml`. Fijar el
    dominio definitivo antes, para no perder la indexación.
-6. Opcionales: variables del repo `VITE_CONTACT_EMAIL` (botón «Pide tu QR») y,
+9. Opcionales: variables del repo `VITE_CONTACT_EMAIL` (botón «Pide tu QR») y,
    cuando la app esté publicada, `VITE_ANDROID_URL` y `VITE_IOS_URL`.
 
 ## QR de concierto: abrir la app desde la cámara (paso humano)
@@ -204,7 +226,7 @@ alta los enlaces verificados una vez fijado el dominio definitivo:
    `adb shell pm get-app-links com.livespace.app`.
 2. **iOS Universal Links.** Publicar
    `site-public/.well-known/apple-app-site-association` (sin extensión, JSON,
-   `Content-Type: application/json`, añadir la regla en `_headers`) con
+   `Content-Type: application/json`, ya puesto en `vercel.json`) con
    `applinks.details[].appIDs = ["<TEAMID>.com.livespace.app"]` y
    `components: [{ "/": "/upload*" }]`. En Xcode → Signing & Capabilities →
    Associated Domains: `applinks:<dominio>`. Requiere la cuenta de Apple

@@ -112,7 +112,9 @@ El pago en el puesto no necesita nada de esto. Activar pagos en la app requiere 
    - `STRIPE_WEBHOOK_SECRET` y, si los eventos de Connect llegan por otro
      endpoint, `STRIPE_CONNECT_WEBHOOK_SECRET`;
    - `MERCH_FEE_BPS` (opcional, 800 = 8 %);
-   - `PUBLIC_SITE_URL` (opcional, por defecto `https://livespace.pages.dev`).
+   - `PUBLIC_SITE_URL` (opcional, por defecto `https://livespace.vercel.app`;
+     el mismo valor que la variable del repo, ver
+     [Runbooks](./runbooks.md#web-publica-en-vercel)).
 3. Webhook en Stripe a
    `https://<proyecto>.supabase.co/functions/v1/merch-stripe-webhook` con
    `checkout.session.completed`, `checkout.session.async_payment_succeeded`,

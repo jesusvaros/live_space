@@ -4,14 +4,23 @@
 // link (/event/:id). Without a token (migration not applied) it falls back to
 // ?event=<id>, which is public anyway.
 
+import { resolvePublicSiteUrl } from '../shared/siteUrl';
+
 const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env ?? {};
-const DEFAULT_SITE_URL = 'https://livespace.pages.dev';
 
 export const publicAppBaseUrl = () => {
   const configured = env.VITE_PUBLIC_SITE_URL?.trim();
-  if (configured) return configured.replace(/\/+$/, '');
-  if (typeof window !== 'undefined' && /^https?:$/.test(window.location.protocol)) return window.location.origin;
-  return DEFAULT_SITE_URL;
+  if (configured) return resolvePublicSiteUrl(configured);
+  // A web origin other than localhost: inside the Android app the origin is
+  // https://localhost, which must never end up in a printed QR.
+  if (
+    typeof window !== 'undefined' &&
+    /^https?:$/.test(window.location.protocol) &&
+    window.location.hostname !== 'localhost'
+  ) {
+    return window.location.origin;
+  }
+  return resolvePublicSiteUrl();
 };
 
 export const buildUploadQrUrl = (input: { token: string | null; eventId: string }) => {
