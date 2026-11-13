@@ -1,21 +1,18 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Avatar from '../components/ui/Avatar';
 import { Spinner } from '../components/ui/AppPrimitives';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Event, PostWithSetlist } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import AppShell from '../components/AppShell';
-import ConcertRow from '../components/ui/ConcertRow';
-import MomentGrid from '../components/ui/MomentGrid';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
 import CoverImage from '../components/ui/CoverImage';
 import { eventCoverSources } from '../lib/eventCover';
 import { NAV_CLEARANCE } from '../components/BottomNav';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { useFollowedEntities } from '../hooks/useFollowedEntities';
-import { IconSettings } from '../components/icons';
+import { IconCalendar, IconChevronRight, IconHeart, IconSettings } from '../components/icons';
 import { useAppResume } from '../shared/hooks/useAppResume';
 import { fetchQuery, getQuerySnapshot, serializeQueryKey, type QueryPersistOptions } from '../lib/queryClient';
 import { PERSIST_MAX_AGE } from '../lib/persistentCache';
@@ -23,16 +20,34 @@ import { useFirstContent } from '../lib/perfTiming';
 import { fetchEventCards } from '../data/eventQueries';
 import { fetchPostCards } from '../data/postQueries';
 import ConcertHistorySection from '../features/agenda/ConcertHistorySection';
+import { readStoredCity } from '../features/agenda/agendaPrefs';
+import type { EventListItem } from '../features/events/types';
+import ConcertPosters from '../features/profile/ConcertPosters';
+import FollowingGrid from '../features/profile/FollowingGrid';
+import MomentsByConcert from '../features/profile/MomentsByConcert';
+import ProfileMerchSection from '../features/profile/ProfileMerchSection';
+import { UPCOMING_GRACE_MS, type ProfileMoment } from '../features/profile/profileLayout';
 
 // How far back a managed artist's or venue's concert list goes.
 const MANAGED_HISTORY_DAYS = 180;
 
+// How many of the user's own moments the gallery reads (a managed artist's
+// or venue's, the latest ones only).
+const OWN_MOMENTS_MAX = 200;
+const MANAGED_MOMENTS_MAX = 60;
+
 type ProfileConcerts = {
-  liked: Event[];
-  attended: Event[];
-  artistEvents: Event[];
-  venueEvents: Event[];
+  liked: EventListItem[];
+  attended: EventListItem[];
+  artistEvents: EventListItem[];
+  venueEvents: EventListItem[];
+  /** Concerts marked «Voy» (the rest of `attended` were attended). */
+  going?: string[];
 };
+
+// The moments and the cards of their concerts (lineup and poster for the
+// group headers).
+type ProfileMoments = { posts: ProfileMoment[]; cards: EventListItem[] };
 
 // One set of lists per account and acting entity, kept across restarts under
 // that account only.
@@ -40,7 +55,7 @@ const profileQueryKeys = (userId: string, isManagementMode: boolean, entitySubje
   const loadContext = `${userId}-${isManagementMode}-${entitySubjectId || 'none'}-${role || 'user'}`;
   const persist: QueryPersistOptions = { maxAgeMs: PERSIST_MAX_AGE.user, userId };
   return {
-    posts: ['profile:data', 'posts', loadContext] as const,
+    moments: ['profile:data', 'moments', loadContext] as const,
     concerts: ['profile:data', 'concerts', loadContext] as const,
     persist,
   };
@@ -65,23 +80,24 @@ const Profile: React.FC = () => {
   // What was saved last time (this session or a previous one) paints on the
   // first render; the requests below refresh it.
   const [initialData] = useState(() => {
-    if (!user?.id) return { posts: undefined, concerts: undefined };
+    if (!user?.id) return { moments: undefined, concerts: undefined };
     const keys = profileQueryKeys(user.id, isManagementMode, activeEntity?.subject_id, profile?.role);
     return {
-      posts: getQuerySnapshot<PostWithSetlist[]>(serializeQueryKey(keys.posts), keys.persist).data,
+      moments: getQuerySnapshot<ProfileMoments>(serializeQueryKey(keys.moments), keys.persist).data,
       concerts: getQuerySnapshot<ProfileConcerts>(serializeQueryKey(keys.concerts), keys.persist).data,
     };
   });
-  const [posts, setPosts] = useState<PostWithSetlist[]>(initialData.posts ?? []);
-  const [likedEvents, setLikedEvents] = useState<Event[]>(initialData.concerts?.liked ?? []);
-  const [attendedEvents, setAttendedEvents] = useState<Event[]>(
+  const [moments, setMoments] = useState<ProfileMoments>(initialData.moments ?? { posts: [], cards: [] });
+  const [likedEvents, setLikedEvents] = useState<EventListItem[]>(initialData.concerts?.liked ?? []);
+  const [attendedEvents, setAttendedEvents] = useState<EventListItem[]>(
     initialData.concerts ? [...initialData.concerts.attended, ...initialData.concerts.artistEvents] : [],
   );
-  const [artistEvents, setArtistEvents] = useState<Event[]>(initialData.concerts?.artistEvents ?? []);
-  const [venueEvents, setVenueEvents] = useState<Event[]>(initialData.concerts?.venueEvents ?? []);
+  const [goingIds, setGoingIds] = useState<string[]>(initialData.concerts?.going ?? []);
+  const [artistEvents, setArtistEvents] = useState<EventListItem[]>(initialData.concerts?.artistEvents ?? []);
+  const [venueEvents, setVenueEvents] = useState<EventListItem[]>(initialData.concerts?.venueEvents ?? []);
   // The moments grid and the concerts load separately: each tab shows as soon
   // as its own data is there.
-  const [postsLoading, setPostsLoading] = useState(!initialData.posts);
+  const [postsLoading, setPostsLoading] = useState(!initialData.moments);
   const [concertsLoading, setConcertsLoading] = useState(!initialData.concerts);
 
   const [error, setError] = useState('');
@@ -110,6 +126,7 @@ const Profile: React.FC = () => {
   }, [activeEntity, location.pathname, navigate]);
 
   const applyConcerts = (data: ProfileConcerts) => {
+    setGoingIds(data.going ?? []);
     setLikedEvents(data.liked);
     setAttendedEvents([...data.attended, ...data.artistEvents]);
     setArtistEvents(data.artistEvents);
@@ -119,7 +136,7 @@ const Profile: React.FC = () => {
   const loadProfileData = async (isManualRefresh = false) => {
     if (!user?.id) return;
     const userId = user.id;
-    const { posts: postsKey, concerts: concertsKey, persist } = profileQueryKeys(
+    const { moments: momentsKey, concerts: concertsKey, persist } = profileQueryKeys(
       userId,
       isManagementMode,
       activeEntity?.subject_id,
@@ -127,9 +144,9 @@ const Profile: React.FC = () => {
     );
 
     // What we already have shows at once; the spinner is only for a first visit.
-    const cachedPosts = getQuerySnapshot<PostWithSetlist[]>(serializeQueryKey(postsKey), persist).data;
+    const cachedPosts = getQuerySnapshot<ProfileMoments>(serializeQueryKey(momentsKey), persist).data;
     const cachedConcerts = getQuerySnapshot<ProfileConcerts>(serializeQueryKey(concertsKey), persist).data;
-    if (cachedPosts) setPosts(cachedPosts);
+    if (cachedPosts) setMoments(cachedPosts);
     setPostsLoading(!cachedPosts);
     if (cachedConcerts) applyConcerts(cachedConcerts);
     setConcertsLoading(!cachedConcerts);
@@ -154,22 +171,30 @@ const Profile: React.FC = () => {
       : Promise.resolve([] as { event_id: string; events: { starts_at: string } | null }[]);
     artistEventRows.catch(() => undefined);
 
-    const postsRequest = fetchQuery<PostWithSetlist[]>(
-      postsKey,
+    const postsRequest = fetchQuery<ProfileMoments>(
+      momentsKey,
       async () => {
-        // Only the 12 the grid shows.
-        if (!isManagementMode) return (await fetchPostCards({ authorId: userId, from: 0, to: 11 })) as PostWithSetlist[];
-        if (artistEntityId) {
-          const allIds = (await artistEventRows).map(row => row.event_id);
-          return (await fetchPostCards({ eventIds: allIds, from: 0, to: 11 })).slice(0, 12) as PostWithSetlist[];
-        }
-        if (venuePlaceId) return (await fetchPostCards({ venueId: venuePlaceId, from: 0, to: 11 })).slice(0, 12) as PostWithSetlist[];
-        return [];
+        const readPosts = async (): Promise<ProfileMoment[]> => {
+          if (!isManagementMode) return fetchPostCards({ authorId: userId, from: 0, to: OWN_MOMENTS_MAX - 1 });
+          if (artistEntityId) {
+            const allIds = (await artistEventRows).map(row => row.event_id);
+            return fetchPostCards({ eventIds: allIds, from: 0, to: MANAGED_MOMENTS_MAX - 1 });
+          }
+          if (venuePlaceId) return fetchPostCards({ venueId: venuePlaceId, from: 0, to: MANAGED_MOMENTS_MAX - 1 });
+          return [];
+        };
+        const posts = await readPosts();
+        // The headers need the lineup and the poster; without them they still
+        // show from the moment's own concert.
+        const cards = await fetchEventCards({ eventIds: [...new Set(posts.map(post => post.event_id))] }).catch(
+          () => [] as EventListItem[],
+        );
+        return { posts, cards };
       },
       { ttlMs: 60_000, force: isManualRefresh, persist },
     )
       .then(data => {
-        setPosts(data);
+        setMoments(data);
         return true;
       })
       .catch(() => false)
@@ -190,16 +215,17 @@ const Profile: React.FC = () => {
                   startIso: historyStartIso,
                 }),
               )
-            : Promise.resolve([] as Event[]),
-          venuePlaceId ? fetchEventCards({ venueId: venuePlaceId, startIso: historyStartIso }) : Promise.resolve([] as Event[]),
+            : Promise.resolve([] as EventListItem[]),
+          venuePlaceId ? fetchEventCards({ venueId: venuePlaceId, startIso: historyStartIso }) : Promise.resolve([] as EventListItem[]),
         ]);
         const likedIds = (likedRes.data || []).map(row => row.event_id).filter(Boolean);
         const attendedIds = (attendedRes.data || []).map(row => row.event_id).filter(Boolean);
+        const going = (attendedRes.data || []).filter(row => row.status === 'going').map(row => String(row.event_id));
         const [liked, attended] = await Promise.all([
           fetchEventCards({ eventIds: likedIds }),
           fetchEventCards({ eventIds: attendedIds }),
         ]);
-        return { liked, attended, artistEvents, venueEvents };
+        return { liked, attended, artistEvents, venueEvents, going };
       },
       { ttlMs: 60_000, force: isManualRefresh, persist },
     )
@@ -229,29 +255,55 @@ const Profile: React.FC = () => {
   const { followedSubjectIds } = useFollowedSubjects();
   const { entities: followedEntities } = useFollowedEntities(followedSubjectIds);
 
-  const renderEmpty = (title: string, description: string) => (
-    <div className="mx-4 rounded-2xl border border-dashed border-app-line p-5">
+  const renderEmpty = (title: string, description: string, action?: { label: string; onSelect: () => void }) => (
+    <div className="mx-4 flex flex-col items-center rounded-2xl bg-app-surface px-5 py-7 text-center">
       <p className="font-display text-base font-bold text-app-ink">{title}</p>
-      <p className="mt-1 text-sm text-white/60">{description}</p>
+      <p className="mt-1 max-w-[260px] text-sm text-white/60">{description}</p>
+      {action ? (
+        <button
+          type="button"
+          onClick={action.onSelect}
+          className="mt-4 min-h-10 rounded-full bg-app-accent px-4 text-sm font-semibold text-[#14151a]"
+        >
+          {action.label}
+        </button>
+      ) : null}
     </div>
   );
 
-  // Saved and attended concerts, newest first, without repeats.
-  const concerts = (() => {
+  // Saved and attended concerts (or the managed entity's), without repeats.
+  const concerts = useMemo(() => {
     const own = isManagementMode ? [...artistEvents, ...venueEvents] : [...attendedEvents, ...likedEvents];
     const seen = new Set<string>();
-    return own
-      .filter(event => (seen.has(event.id) ? false : (seen.add(event.id), true)))
-      .sort((left, right) => right.starts_at.localeCompare(left.starts_at));
-  })();
+    return own.filter(event => (seen.has(event.id) ? false : (seen.add(event.id), true)));
+  }, [artistEvents, attendedEvents, isManagementMode, likedEvents, venueEvents]);
+
+  const goingSet = useMemo(() => new Set(goingIds), [goingIds]);
+  const likedSet = useMemo(() => new Set(likedEvents.map(event => event.id)), [likedEvents]);
+  const momentCards = useMemo(() => new Map(moments.cards.map(card => [card.id, card])), [moments.cards]);
+
+  // Upcoming concerts the user is going to: their merch leads the merch section.
+  const upcomingGoingIds = useMemo(() => {
+    const from = Date.now() - UPCOMING_GRACE_MS;
+    return attendedEvents.filter(event => goingSet.has(event.id) && Date.parse(event.starts_at) >= from).map(event => event.id);
+  }, [attendedEvents, goingSet]);
 
   // The next concert the user is going to or saved, up to a few hours after doors.
   const nextConcert = (() => {
-    const from = Date.now() - 4 * 60 * 60 * 1000;
+    const from = Date.now() - UPCOMING_GRACE_MS;
     return [...attendedEvents, ...likedEvents]
       .filter(event => new Date(event.starts_at).getTime() >= from)
       .sort((left, right) => left.starts_at.localeCompare(right.starts_at))[0] || null;
   })();
+
+  // Opened from «Lo que sigues · Gestionar»: bring the following wall into view.
+  const tabsRef = useRef<HTMLDivElement | null>(null);
+  const openedOnFollowing = useRef(selectedTab === 'following');
+  useEffect(() => {
+    if (!openedOnFollowing.current) return;
+    openedOnFollowing.current = false;
+    tabsRef.current?.scrollIntoView?.({ block: 'start' });
+  }, []);
 
   const renderTabContent = () => {
     if (loading) {
@@ -267,61 +319,32 @@ const Profile: React.FC = () => {
     }
 
     if (selectedTab === 'following') {
-      return followedEntities.length === 0 ? (
-        renderEmpty('Aún no sigues a nadie', 'Sigue artistas y salas para ver cuándo tocan en Inicio.')
-      ) : (
-        <ul className="mx-4 divide-y divide-app-line overflow-hidden rounded-2xl border border-app-line bg-app-surface">
-          {followedEntities.map(entity => (
-            <li key={entity.subjectId}>
-              <button
-                type="button"
-                onClick={() => navigate(`/tabs/${entity.kind}/${entity.id}`)}
-                className="flex w-full items-center gap-3 px-3 py-2.5 text-left"
-              >
-                <Avatar name={entity.name} src={entity.imageUrl} kind={entity.kind} badge className="h-11 w-11 text-[15px]" />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-display text-[15px] font-bold text-app-ink">{entity.name}</span>
-                  <span className="block truncate text-xs text-[#8f8b84]">
-                    {[entity.kind === 'artist' ? 'Artista' : entity.kind === 'festival' ? 'Festival' : 'Sala', entity.city].filter(Boolean).join(' · ')}
-                  </span>
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      );
+      return followedEntities.length === 0
+        ? renderEmpty('Aún no sigues a nadie', 'Sigue artistas y salas para ver cuándo tocan en Inicio.', {
+            label: 'Descubrir artistas',
+            onSelect: () => navigate('/tabs/discover'),
+          })
+        : <FollowingGrid entities={followedEntities} />;
     }
 
     if (selectedTab === 'concerts') {
-      return concerts.length === 0 ? (
-        renderEmpty('Aún no hay conciertos', 'Marca «Voy» o guarda un concierto y aparecerá aquí.')
-      ) : (
-        <div className="flex flex-col gap-2 px-4">
-          {concerts.map(event => {
-            const card = event as Event & { venue_place?: { name?: string | null } | null };
-            return (
-              <ConcertRow
-                key={event.id}
-                startsAt={event.starts_at}
-                title={card.name}
-                subtitle={card.venue_place?.name || event.city}
-                onSelect={() => navigate(`/event/${event.id}`)}
-              />
-            );
-          })}
-        </div>
-      );
+      return concerts.length === 0
+        ? renderEmpty('Aún no hay conciertos', 'Marca «Voy» o guarda un concierto y aparecerá aquí.')
+        : (
+          <ConcertPosters
+            events={concerts}
+            badgeFor={
+              isManagementMode
+                ? undefined
+                : event => (goingSet.has(event.id) ? 'Voy' : likedSet.has(event.id) ? 'Guardado' : null)
+            }
+          />
+        );
     }
 
-    return posts.length === 0 ? (
-      renderEmpty('Aún no hay momentos', 'Sube lo que grabes en tu próximo concierto y aparecerá aquí.')
-    ) : (
-      <MomentGrid
-        moments={posts}
-        columns={3}
-        label={index => (posts[index] as any)?.events?.venue_place?.name || (posts[index] as any)?.events?.city}
-      />
-    );
+    return moments.posts.length === 0
+      ? renderEmpty('Aún no hay momentos', 'Sube lo que grabes en tu próximo concierto y aparecerá aquí.')
+      : <MomentsByConcert moments={moments.posts} cards={momentCards} />;
   };
 
   const headerName = isManagementMode && activeEntity
@@ -333,40 +356,62 @@ const Profile: React.FC = () => {
   const subline = isManagementMode && activeEntity
     ? activeEntity.type === 'artist' ? 'Artista que gestionas' : 'Sala que gestionas'
     : [profile?.primary_city, profile?.username ? `@${profile.username}` : null].filter(Boolean).join(' · ');
+  // The user's area for «merch near you»: the city picked on Inicio, else the profile's.
+  const area = readStoredCity() || profile?.primary_city || null;
 
-  const tabs: { key: typeof selectedTab; label: string }[] = [
-    { key: 'moments', label: isManagementMode ? 'Momentos' : 'Mis momentos' },
-    { key: 'concerts', label: 'Conciertos' },
-    { key: 'following', label: 'Siguiendo' },
+  const tabs: { key: typeof selectedTab; label: string; count: number | null }[] = [
+    { key: 'moments', label: isManagementMode ? 'Momentos' : 'Mis momentos', count: postsLoading ? null : moments.posts.length },
+    { key: 'concerts', label: 'Conciertos', count: concertsLoading ? null : concerts.length },
+    { key: 'following', label: 'Siguiendo', count: followedEntities.length },
+  ];
+
+  const quickLinks = [
+    { key: 'saved', label: 'Guardadas', hint: 'Fotos con ♥', icon: <IconHeart size={20} />, onSelect: () => navigate('/guardadas') },
+    {
+      key: 'agenda',
+      label: 'Tu agenda',
+      hint: 'Ciudad · gustos · seguir',
+      icon: <IconCalendar size={20} />,
+      onSelect: () => navigate('/empezar', { state: { returnTo: '/tabs/profile' } }),
+    },
   ];
 
   return (
     <AppShell headerProps={null}>
       <div className={`flex flex-col ${NAV_CLEARANCE}`}>
-        <header className="flex items-center gap-3.5 px-4 pt-[calc(18px+env(safe-area-inset-top,0px))]">
-          {avatarUrl ? (
-            <Avatar name={headerName} src={avatarUrl} className="h-[72px] w-[72px]" />
-          ) : (
-            <span className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-full bg-app-accent font-poster text-[28px] text-[#14151a]">
-              {isManagementMode ? headerName.slice(0, 2) : 'Tú'}
-            </span>
-          )}
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate font-display text-[22px] font-bold text-app-ink">{headerName}</h1>
-            <p className="mt-0.5 truncate text-sm text-[#c9c5bd]">{subline || 'Añade tu ciudad en ajustes'}</p>
+        <header className="relative overflow-hidden px-4 pb-5 pt-[calc(18px+env(safe-area-inset-top,0px))]">
+          {/* A warm stage light behind the avatar. */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -top-24 left-1/2 h-64 w-[130%] -translate-x-1/2 rounded-[50%] bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--app-accent)_32%,transparent),transparent)]"
+          />
+          <div className="relative flex justify-end">
+            <button
+              type="button"
+              aria-label="Ajustes"
+              onClick={() => navigate('/ajustes')}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-app-line bg-app-surface/80 text-app-ink backdrop-blur"
+            >
+              <IconSettings size={20} />
+            </button>
           </div>
-          <button
-            type="button"
-            aria-label="Ajustes"
-            onClick={() => navigate('/ajustes')}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-app-line bg-app-surface text-app-ink"
-          >
-            <IconSettings size={20} />
-          </button>
+          <div className="relative -mt-6 flex flex-col items-center text-center">
+            <span className="rounded-full p-[3px] ring-2 ring-app-accent">
+              {avatarUrl ? (
+                <Avatar name={headerName} src={avatarUrl} className="h-[92px] w-[92px] text-[30px]" />
+              ) : (
+                <span className="flex h-[92px] w-[92px] shrink-0 items-center justify-center rounded-full bg-app-accent font-poster text-[34px] text-[#14151a]">
+                  {isManagementMode ? headerName.slice(0, 2) : 'Tú'}
+                </span>
+              )}
+            </span>
+            <h1 className="mt-3 max-w-full truncate font-display text-[26px] font-bold leading-tight text-app-ink">{headerName}</h1>
+            <p className="mt-0.5 max-w-full truncate text-sm text-[#c9c5bd]">{subline || 'Añade tu ciudad en ajustes'}</p>
+          </div>
         </header>
 
         {isManagementMode && managedEntities.length > 1 && (
-          <div className="flex gap-2 overflow-x-auto px-4 pt-3">
+          <div className="flex gap-2 overflow-x-auto px-4 pb-1">
             {managedEntities.map(ent => (
               <button
                 key={ent.subject_id}
@@ -386,7 +431,7 @@ const Profile: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('/gestion')}
-            className="mx-4 mt-3.5 flex min-h-12 items-center justify-between rounded-[14px] border border-app-line bg-app-surface px-3.5 text-left text-sm font-semibold text-app-ink"
+            className="mx-4 mt-2 flex min-h-12 items-center justify-between rounded-2xl border border-app-line bg-app-surface px-4 text-left text-sm font-semibold text-app-ink"
           >
             <span>Panel de gestión</span>
             <span className="font-mono text-[11px] font-semibold uppercase text-app-accent">Eventos · setlist · QR</span>
@@ -394,36 +439,24 @@ const Profile: React.FC = () => {
         ) : null}
 
         {!isManagementMode ? (
-          <button
-            type="button"
-            onClick={() => navigate('/pedidos')}
-            className="mx-4 mt-3.5 flex min-h-12 items-center justify-between rounded-[14px] border border-app-line bg-app-surface px-3.5 text-left text-sm font-semibold text-app-ink"
-          >
-            <span>Mis pedidos de merch</span>
-            <span className="font-mono text-[11px] font-semibold uppercase text-app-accent">Recoger · recuerdos</span>
-          </button>
-        ) : null}
-
-        {!isManagementMode ? (
-          <button
-            type="button"
-            onClick={() => navigate('/guardadas')}
-            className="mx-4 mt-2 flex min-h-12 items-center justify-between rounded-[14px] border border-app-line bg-app-surface px-3.5 text-left text-sm font-semibold text-app-ink"
-          >
-            <span>Guardadas</span>
-            <span className="font-mono text-[11px] font-semibold uppercase text-app-accent">Fotos con ♥</span>
-          </button>
-        ) : null}
-
-        {!isManagementMode ? (
-          <button
-            type="button"
-            onClick={() => navigate('/empezar', { state: { returnTo: '/tabs/profile' } })}
-            className="mx-4 mt-2 flex min-h-12 items-center justify-between rounded-[14px] border border-app-line bg-app-surface px-3.5 text-left text-sm font-semibold text-app-ink"
-          >
-            <span>Tu agenda</span>
-            <span className="font-mono text-[11px] font-semibold uppercase text-app-accent">Ciudad · gustos · seguir</span>
-          </button>
+          <div className="mx-4 mt-2 grid grid-cols-2 gap-2">
+            {quickLinks.map(link => (
+              <button
+                key={link.key}
+                type="button"
+                onClick={link.onSelect}
+                className="flex min-h-[64px] items-center gap-3 rounded-2xl border border-app-line bg-app-surface px-3 text-left"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-app-accent/15 text-app-accent">
+                  {link.icon}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-app-ink">{link.label}</span>
+                  <span className="block truncate font-mono text-[10px] font-semibold uppercase text-white/50">{link.hint}</span>
+                </span>
+              </button>
+            ))}
+          </div>
         ) : null}
 
         {!isManagementMode && nextConcert ? (
@@ -431,9 +464,9 @@ const Profile: React.FC = () => {
             type="button"
             aria-label="Tu próximo concierto"
             onClick={() => navigate(`/event/${nextConcert.id}`)}
-            className="mx-4 mt-[18px] flex items-center gap-3 rounded-[18px] border border-app-line bg-app-surface p-3.5 text-left"
+            className="relative mx-4 mt-5 flex items-center gap-3.5 overflow-hidden rounded-2xl border border-app-line bg-app-surface p-3 text-left"
           >
-            <span className="relative h-[68px] w-[54px] shrink-0 overflow-hidden rounded-[10px]">
+            <span className="relative h-[92px] w-[74px] shrink-0 overflow-hidden rounded-xl">
               <CoverImage
                 sources={eventCoverSources(nextConcert, 'thumb')}
                 className="h-full w-full object-cover"
@@ -450,18 +483,28 @@ const Profile: React.FC = () => {
                     : `Próximo · ${date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/[.,]/g, '')} · ${time}`;
                 })()}
               </span>
-              <span className="block truncate font-display text-base font-bold text-app-ink">
+              <span className="mt-0.5 block font-display text-[17px] font-bold leading-tight text-app-ink line-clamp-2">
                 {nextConcert.name}
-                {(nextConcert as any).venue_place?.name ? ` · ${(nextConcert as any).venue_place.name}` : ''}
               </span>
-              <span className="block text-[13px] text-[#c9c5bd]">Cuando acabe, sube lo que grabes.</span>
+              {nextConcert.venue_place?.name ? (
+                <span className="block truncate text-[13px] text-[#c9c5bd]">{nextConcert.venue_place.name}</span>
+              ) : null}
+              <span className="mt-1 block text-[12px] text-white/50">Cuando acabe, sube lo que grabes.</span>
             </span>
+            <IconChevronRight size={18} className="shrink-0 text-white/40" />
           </button>
         ) : null}
 
+        {!isManagementMode && user ? <ProfileMerchSection userId={user.id} city={area} goingEventIds={upcomingGoingIds} /> : null}
+
         {!isManagementMode && user ? <ConcertHistorySection userId={user.id} /> : null}
 
-        <div role="tablist" aria-label="Secciones del perfil" className="flex gap-1.5 overflow-x-auto px-4 pb-3 pt-[18px]">
+        <div
+          ref={tabsRef}
+          role="tablist"
+          aria-label="Secciones del perfil"
+          className="mx-4 mb-4 mt-7 grid scroll-mt-4 grid-cols-3 gap-1 rounded-full border border-app-line bg-app-surface p-1"
+        >
           {tabs.map(tab => (
             <button
               key={tab.key}
@@ -469,19 +512,20 @@ const Profile: React.FC = () => {
               role="tab"
               aria-selected={selectedTab === tab.key}
               onClick={() => setSelectedTab(tab.key)}
-              className={`min-h-10 shrink-0 rounded-full px-3.5 text-sm font-semibold ${
-                selectedTab === tab.key ? 'bg-app-ink text-app-bg' : 'border border-app-line text-[#c9c5bd]'
+              className={`flex min-h-10 min-w-0 items-center justify-center gap-1 rounded-full px-2 text-[13px] font-semibold ${
+                selectedTab === tab.key ? 'bg-app-ink text-app-bg' : 'text-[#c9c5bd]'
               }`}
             >
-              {tab.label}
+              <span className="truncate">{tab.label}</span>
+              {tab.count ? (
+                <span className={`font-mono text-[11px] ${selectedTab === tab.key ? 'text-app-bg/60' : 'text-white/40'}`}>{tab.count}</span>
+              ) : null}
             </button>
           ))}
         </div>
 
         {renderTabContent()}
-
       </div>
-
     </AppShell>
   );
 };

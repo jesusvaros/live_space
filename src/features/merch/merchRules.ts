@@ -197,3 +197,40 @@ export const fitWithin = (width: number, height: number, max: number) => {
   const scale = max / Math.max(width, height);
   return { width: Math.round(width * scale), height: Math.round(height * scale) };
 };
+
+// --- Profile -----------------------------------------------------------------
+
+export type MerchStandRow = { eventId: string; sellerSubjectId: string; paymentMethod: PaymentMethod };
+
+/**
+ * Concerts with merch someone can actually reserve, in the order given: the
+ * same filter as the concert page (a stand with active items, and either pay
+ * at the stand or a seller who can take card payments).
+ */
+export const eventsWithReservableMerch = (
+  stands: MerchStandRow[],
+  canCharge: ReadonlySet<string>,
+  sellersWithItems: ReadonlySet<string>,
+) => {
+  const ids: string[] = [];
+  for (const stand of stands) {
+    if (!sellersWithItems.has(stand.sellerSubjectId)) continue;
+    if (stand.paymentMethod !== 'at_stand' && !canCharge.has(stand.sellerSubjectId)) continue;
+    if (!ids.includes(stand.eventId)) ids.push(stand.eventId);
+  }
+  return ids;
+};
+
+/**
+ * An order still waiting at the stand: paid or reserved, not expired, and its
+ * concert not long over (the same window a reservation lives).
+ */
+export const isOrderToCollect = (
+  order: { status: string; expiresAt: string | null; event: { startsAt: string; endsAt: string | null } | null },
+  now = Date.now(),
+) => {
+  if (order.status !== 'paid' && order.status !== 'reserved') return false;
+  if (order.expiresAt && Date.parse(order.expiresAt) < now) return false;
+  if (!order.event) return order.status === 'paid';
+  return now <= reservationExpiresAt(order.event.startsAt, order.event.endsAt).getTime();
+};
