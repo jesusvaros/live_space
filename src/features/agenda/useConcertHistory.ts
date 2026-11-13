@@ -54,7 +54,13 @@ export const useConcertHistory = (userId: string | null) => {
       for (const event of events) {
         const venue = event.venue_place;
         if (venue?.id) {
-          const current = venues.get(venue.id) || { kind: 'venue' as const, id: venue.id, name: venue.name, imageUrl: null, count: 0 };
+          const current = venues.get(venue.id) || {
+            kind: 'venue' as const,
+            id: venue.id,
+            name: venue.name,
+            imageUrl: venue.cover_image_url ?? null,
+            count: 0,
+          };
           current.count += 1;
           venues.set(venue.id, current);
         }

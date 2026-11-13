@@ -8,6 +8,8 @@ import {
   changeQuantity,
   draftToItem,
   emptyItemDraft,
+  eventsWithReservableMerch,
+  isOrderToCollect,
   fitWithin,
   itemStock,
   itemToDraft,
@@ -191,5 +193,33 @@ describe('photo resize', () => {
     expect(fitWithin(4032, 3024, 1200)).toEqual({ width: 1200, height: 900 });
     expect(fitWithin(3000, 4000, 1200)).toEqual({ width: 900, height: 1200 });
     expect(fitWithin(800, 600, 1200)).toEqual({ width: 800, height: 600 });
+  });
+});
+
+describe('profile merch', () => {
+  it('keeps concerts whose stand can actually sell, once each, in order', () => {
+    const stands = [
+      { eventId: 'e1', sellerSubjectId: 'card-ok', paymentMethod: 'in_app' as const },
+      { eventId: 'e2', sellerSubjectId: 'no-card', paymentMethod: 'in_app' as const },
+      { eventId: 'e3', sellerSubjectId: 'no-card', paymentMethod: 'at_stand' as const },
+      { eventId: 'e4', sellerSubjectId: 'no-items', paymentMethod: 'at_stand' as const },
+      { eventId: 'e1', sellerSubjectId: 'no-card', paymentMethod: 'at_stand' as const },
+    ];
+    const canCharge = new Set(['card-ok']);
+    const withItems = new Set(['card-ok', 'no-card']);
+    expect(eventsWithReservableMerch(stands, canCharge, withItems)).toEqual(['e1', 'e3']);
+  });
+
+  it('counts paid or reserved orders as to collect until the reservation window ends', () => {
+    const startsAt = '2026-11-20T20:00:00Z';
+    const event = { startsAt, endsAt: null };
+    const during = Date.parse('2026-11-20T21:00:00Z');
+    const dayAfter = Date.parse('2026-11-21T20:00:00Z');
+    expect(isOrderToCollect({ status: 'paid', expiresAt: null, event }, during)).toBe(true);
+    expect(isOrderToCollect({ status: 'reserved', expiresAt: '2026-11-21T02:00:00Z', event }, during)).toBe(true);
+    expect(isOrderToCollect({ status: 'paid', expiresAt: null, event }, dayAfter)).toBe(false);
+    expect(isOrderToCollect({ status: 'reserved', expiresAt: '2026-11-20T20:30:00Z', event }, during)).toBe(false);
+    expect(isOrderToCollect({ status: 'collected', expiresAt: null, event }, during)).toBe(false);
+    expect(isOrderToCollect({ status: 'pending', expiresAt: null, event }, during)).toBe(false);
   });
 });

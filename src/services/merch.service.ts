@@ -3,7 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { supabase } from '../api';
 import { isMissingRelation } from './claims.service';
 import { compressProductPhoto } from '../features/merch/compressImage';
-import type { PaymentMethod } from '../features/merch/merchRules';
+import { eventsWithReservableMerch, type MerchStandRow, type PaymentMethod } from '../features/merch/merchRules';
 
 export type { PaymentMethod } from '../features/merch/merchRules';
 
@@ -203,7 +203,62 @@ const releaseExpired = async (eventId: string | null) => {
   }
 };
 
+const escapeLike = (value: string) => value.replace(/[\\%_]/g, match => `\\${match}`);
+
 export const merchService = {
+  /**
+   * Upcoming concerts (from `fromIso`) with merch that can be reserved, in a
+   * city and/or among some concerts (the ones the user is going to). Ids only,
+   * in no particular order; read-only and public under RLS.
+   */
+  async upcomingEventIdsWithMerch(options: { fromIso: string; city?: string | null; eventIds?: string[] }): Promise<string[]> {
+    const city = options.city?.trim() || null;
+    const eventIds = options.eventIds ?? [];
+    if (!city && eventIds.length === 0) return [];
+
+    const standsIn = (scope: 'city' | 'ids') =>
+      withAtStandColumns<any[]>(withMethod => {
+        let query = supabase
+          .from('event_merch')
+          .select(`event_id,seller_subject_id${withMethod ? ',payment_method' : ''},event:events!inner(starts_at,city,status)`)
+          .gte('event.starts_at', options.fromIso)
+          .eq('event.status', 'published')
+          .limit(200);
+        query = scope === 'city' ? query.ilike('event.city', escapeLike(city!)) : query.in('event_id', eventIds);
+        return query;
+      });
+
+    const results = await Promise.all([
+      city ? standsIn('city') : Promise.resolve({ data: [] as any[], error: null, atStand: true }),
+      eventIds.length ? standsIn('ids') : Promise.resolve({ data: [] as any[], error: null, atStand: true }),
+    ]);
+    for (const result of results) {
+      if (result.error) {
+        if (isMissingRelation(result.error)) return [];
+        throw result.error;
+      }
+    }
+    const stands: MerchStandRow[] = results.flatMap(result =>
+      (result.data || []).map((row: any) => ({
+        eventId: String(row.event_id),
+        sellerSubjectId: String(row.seller_subject_id),
+        paymentMethod: result.atStand && row.payment_method === 'at_stand' ? ('at_stand' as const) : ('in_app' as const),
+      })),
+    );
+    const sellerIds = [...new Set(stands.map(stand => stand.sellerSubjectId))];
+    if (sellerIds.length === 0) return [];
+
+    const [sellers, items] = await Promise.all([
+      supabase.from('merch_sellers').select('subject_id,charges_enabled').in('subject_id', sellerIds),
+      supabase.from('merch_items').select('seller_subject_id').in('seller_subject_id', sellerIds).eq('active', true),
+    ]);
+    if (sellers.error) throw sellers.error;
+    if (items.error) throw items.error;
+    const canCharge = new Set((sellers.data || []).filter((row: any) => row.charges_enabled).map((row: any) => String(row.subject_id)));
+    const withItems = new Set((items.data || []).map((row: any) => String(row.seller_subject_id)));
+    return eventsWithReservableMerch(stands, canCharge, withItems);
+  },
+
   // Stands with something to sell at this concert. Empty until the migration runs.
   async forEvent(eventId: string): Promise<EventMerchStand[]> {
     await releaseExpired(eventId);

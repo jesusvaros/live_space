@@ -7,6 +7,8 @@ import { socialService } from '../services/social.service';
 import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
 import EventPosterTile from '../features/events/components/EventPosterTile';
+import MomentsByConcert from '../features/profile/MomentsByConcert';
+import type { EventListItem } from '../features/events/types';
 import { mapProfile } from '../data/canonicalMappers';
 import { fetchEventCards } from '../data/eventQueries';
 import { fetchPostCards } from '../data/postQueries';
@@ -71,7 +73,7 @@ const ProfileDetail: React.FC = () => {
           setIsFollowing(following);
         }
 
-        const authoredMoments = (await fetchPostCards({ authorId: profileData.id })).slice(0, 18);
+        const authoredMoments = await fetchPostCards({ authorId: profileData.id, from: 0, to: 59 });
         const eventIds = [...new Set(authoredMoments.map(moment => moment.event_id))];
         setMoments(authoredMoments as PostWithSetlist[]);
         setEvents((await fetchEventCards({ eventIds })) as ProfileEvent[]);
@@ -110,6 +112,8 @@ const ProfileDetail: React.FC = () => {
       setFollowLoading(false);
     }
   };
+
+  const eventCards = useMemo(() => new Map(events.map(event => [event.id, event as EventListItem])), [events]);
 
   const externalLinks = useMemo(() => {
     const links = (profile?.external_links || {}) as Record<string, string>;
@@ -253,32 +257,13 @@ const ProfileDetail: React.FC = () => {
                 {isBlocked ? null : <section className="space-y-3">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">Momentos</p>
-                    <p className="mt-1 text-sm text-white/55">Lo último subido en sus eventos.</p>
+                    <p className="mt-1 text-sm text-white/55">Lo que ha subido, concierto a concierto.</p>
                   </div>
                   {moments.length === 0 ? (
                     <p className="text-sm text-white/55">Aún no hay momentos.</p>
                   ) : (
-                    <div className="-mx-4 grid grid-cols-3 gap-1">
-                      {moments.map(moment => (
-                        <button
-                          key={moment.id}
-                          type="button"
-                          onClick={() => navigate(`/post/${moment.id}`)}
-                          className="aspect-square overflow-hidden bg-white/5 transition-opacity hover:opacity-90"
-                        >
-                          {moment.media_type === 'video' ? (
-                            <video className="h-full w-full object-cover" muted playsInline preload="metadata" poster={moment.thumbnail_url || undefined}>
-                              <source src={moment.media_url} />
-                            </video>
-                          ) : (
-                            <img
-                              src={moment.media_url}
-                              alt={moment.caption || 'Momento'}
-                              className="h-full w-full object-cover"
-                            />
-                          )}
-                        </button>
-                      ))}
+                    <div className="-mx-4">
+                      <MomentsByConcert moments={moments} cards={eventCards} />
                     </div>
                   )}
                 </section>}
