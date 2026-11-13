@@ -15,7 +15,8 @@ import { eventService } from '../services/event.service';
 import { enqueueMomentUploads, isNativeMediaAvailable, pickMomentMedia } from '../media';
 import { deleteNativeFile } from '../media/native';
 import { distanceToConcert, songAtTime } from '../lib/songAssignment';
-import { detectConcert, hasReliableTime, type DetectionReason } from '../lib/concertDetection';
+import { hasReliableTime, rankConcerts, type DetectionReason } from '../lib/concertDetection';
+import { SuggestConcertSheet } from '../features/suggestions/SuggestConcert';
 import { EventListItem } from '../features/events/types';
 import { ReuseNotice } from '../features/community';
 import { getEventCoverImage, getPrimaryArtistName } from '../features/events/utils';
@@ -82,8 +83,10 @@ const venueOf = (event: EventListItem) => {
 // The concert that fits the media's capture times and, when the files carry
 // it, where they were taken (lib/concertDetection.ts). The locations are only
 // compared in memory here; they are never uploaded or stored.
-const detectEvent = (items: MomentItem[], events: EventListItem[], city: string | null) =>
-  detectConcert(
+// Every concert that fits, best first (several when two gigs share the night
+// and the place).
+const rankEvents = (items: MomentItem[], events: EventListItem[], city: string | null) =>
+  rankConcerts(
     items,
     events.map(event => ({
       event,
@@ -215,6 +218,9 @@ const Upload: React.FC = () => {
   const [event, setEvent] = useState<EventListItem | null>(null);
   const [choice, setChoice] = useState<EventChoice>('chosen');
   const [detectedBy, setDetectedBy] = useState<DetectionReason | null>(null);
+  // The other concerts that also fit the media, to choose from.
+  const [matches, setMatches] = useState<{ event: EventListItem; reason: DetectionReason }[]>([]);
+  const [suggestOpen, setSuggestOpen] = useState(false);
   // Signed in when the concert was recognised: «¿Marcamos que fuiste?» is
   // offered here. Otherwise it is offered on the concert page after publishing.
   const [detectedSignedIn, setDetectedSignedIn] = useState(false);
@@ -464,7 +470,9 @@ const Upload: React.FC = () => {
     setDetecting(true);
     try {
       const list = await loadCandidates(next);
-      const found = detectEvent(next, list, userCity);
+      const ranked = rankEvents(next, list, userCity);
+      setMatches(ranked.map(match => ({ event: match.event, reason: match.reason })));
+      const found = ranked[0];
       if (found) {
         setEvent(found.event);
         setChoice('detected');
@@ -495,6 +503,22 @@ const Upload: React.FC = () => {
       return setlist.find(entry => entry.ordinal === presetSong) || null;
     }
     return event ? songAtTime(setlist, item.captureAt, event.starts_at, event.ends_at) : null;
+  };
+
+  // One of the detected concerts, picked from the «¿En cuál estabas?» list.
+  const pickMatch = (match: { event: EventListItem; reason: DetectionReason }) => {
+    setEvent(match.event);
+    setChoice('detected');
+    setDetectedBy(match.reason);
+    setSongOverrides({});
+    completeEvent(match.event);
+  };
+
+  // «No está aquí»: the concert is not in Live Space yet; ask for its link.
+  const openNotListed = () => {
+    setPickerOpen(false);
+    setSuggestOpen(true);
+    track('concert_not_listed', { from: 'upload', matches: matches.length });
   };
 
   const selectEvent = (selected: EventListItem, complete = false) => {
@@ -694,6 +718,56 @@ const Upload: React.FC = () => {
             {event ? 'Cambiar' : 'Elegir'}
           </button>
         </section>
+
+        {event && choice === 'detected' && !detecting && matches.length > 1 ? (
+          <section className="mx-4 mt-2.5 rounded-2xl border border-app-line bg-app-surface p-3">
+            <p id="upload-matches" className="m-0 px-1 text-sm font-semibold text-app-ink">
+              {matches.length} conciertos encajan con tus {mediaNoun(items)}. ¿En cuál estabas?
+            </p>
+            <ul role="radiogroup" aria-labelledby="upload-matches" className="m-0 mt-2 flex list-none flex-col gap-1 p-0">
+              {matches.map(match => {
+                const selected = match.event.id === event.id;
+                return (
+                  <li key={match.event.id}>
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => pickMatch(match)}
+                      className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-2 py-2 text-left ${selected ? 'bg-app-accent/[0.12]' : ''}`}
+                    >
+                      <span
+                        aria-hidden
+                        className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 ${selected ? 'border-app-accent' : 'border-white/35'}`}
+                      >
+                        {selected ? <span className="h-2.5 w-2.5 rounded-full bg-app-accent" /> : null}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-display text-[15px] font-bold text-app-ink">{eventTitle(match.event)}</span>
+                        <span className="block truncate text-[13px] text-[#c9c5bd]">
+                          {[match.event.venue_place?.name, eventWhen(match.event.starts_at)].filter(Boolean).join(' · ')}
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+              <li>
+                <button
+                  type="button"
+                  onClick={openNotListed}
+                  className="flex min-h-12 w-full items-center gap-3 rounded-xl px-2 py-2 text-left"
+                >
+                  <span aria-hidden className="h-5 w-5 shrink-0 rounded-full border-2 border-dashed border-white/35" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[15px] font-semibold text-app-ink">No está aquí</span>
+                    <span className="block text-[13px] text-[#c9c5bd]">Pásanos el link de las entradas y lo añadimos</span>
+                  </span>
+                </button>
+              </li>
+            </ul>
+          </section>
+        ) : null}
 
         {event && choice === 'detected' && detectedSignedIn && !detecting ? (
           <AttendanceSuggestion
@@ -934,8 +1008,18 @@ const Upload: React.FC = () => {
               ))
             )}
           </ul>
+          <button
+            type="button"
+            onClick={openNotListed}
+            className="mt-2 flex min-h-12 shrink-0 flex-col items-start justify-center rounded-xl border border-dashed border-app-line px-3 py-2 text-left"
+          >
+            <span className="text-sm font-semibold text-app-ink">¿No está aquí?</span>
+            <span className="text-[13px] text-[#c9c5bd]">Pásanos el link de las entradas y lo añadimos</span>
+          </button>
         </div>
       </Modal>
+
+      <SuggestConcertSheet isOpen={suggestOpen} onOpen={() => setSuggestOpen(true)} onClose={() => setSuggestOpen(false)} />
 
       <Modal isOpen={Boolean(pickingSongFor)} onDidDismiss={() => setSongPickerFor(null)} initialBreakpoint={0.7} title="Elegir canción">
         <div className="flex max-h-[80dvh] flex-col px-4 pb-[calc(16px+env(safe-area-inset-bottom,0px))] pt-3">

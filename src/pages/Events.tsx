@@ -19,6 +19,7 @@ import { useUserConcertHero } from '../features/events/hooks/useUserConcertHero'
 import TimelineHeroSection from '../features/events/sections/TimelineHeroSection';
 import GoingSection from '../features/events/sections/GoingSection';
 import ScanConcertFab from '../features/events/ScanConcertFab';
+import WrappedCard from '../features/wrapped/WrappedCard';
 import { HomeCustomizer, HomeSectionKey, useHomeLayout } from '../features/events/homeLayout';
 import ForYouSection from '../features/events/sections/ForYouSection';
 import { clearCity, isSetupDone, nearestCity as nearestOf, persistCity, readStoredCity, readTastes, sameCity } from '../features/agenda/agendaPrefs';
@@ -211,6 +212,8 @@ const Events: React.FC = () => {
         featured={featured}
         onDismissPendingMoments={hero.kind === 'just_attended' ? dismissPendingMoments : undefined}
       />
+
+      <WrappedCard className="mx-4 mt-[22px]" />
 
       {layout.order
         .filter(key => !layout.hidden.includes(key))

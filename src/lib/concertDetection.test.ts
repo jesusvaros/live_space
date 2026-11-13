@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectConcert, hasReliableTime, type DetectionCandidate, type DetectionMedia } from './concertDetection';
+import { detectConcert, hasReliableTime, rankConcerts, type DetectionCandidate, type DetectionMedia } from './concertDetection';
 
 // Two Madrid venues ~1.3 km apart and one in Barcelona.
 const RIVIERA = { lat: 40.4133, lng: -3.7265 };
@@ -125,5 +125,29 @@ describe('detectConcert', () => {
   it('returns nothing when no concert fits', () => {
     expect(detectConcert([shot('2026-11-08T21:30:00Z')], [concert('later', '2026-11-09T21:00:00Z', RIVIERA)])).toBeNull();
     expect(detectConcert([], [concert('riviera', '2026-11-08T21:00:00Z', RIVIERA)])).toBeNull();
+  });
+});
+
+describe('rankConcerts', () => {
+  it('lists every concert that fits, best first, so the user can pick another', () => {
+    const ranked = rankConcerts(
+      [shot('2026-11-08T21:30:00Z', LARIVIERA_DOOR)],
+      [
+        concert('wizink', '2026-11-08T21:00:00Z', WIZINK),
+        concert('riviera-late', '2026-11-08T23:00:00Z', RIVIERA),
+        concert('riviera', '2026-11-08T21:00:00Z', RIVIERA),
+        concert('razz', '2026-11-08T21:00:00Z', RAZZ),
+      ],
+    );
+    // Both Riviera gigs fit (a real tie: the user picks); the far venue comes last; Barcelona never.
+    const events = ranked.map(match => match.event);
+    expect(events).toHaveLength(3);
+    expect(events.slice(0, 2).sort()).toEqual(['riviera', 'riviera-late']);
+    expect(events[2]).toBe('wizink');
+    expect(ranked[0].reason).toBe('time-place');
+  });
+
+  it('is empty when nothing fits', () => {
+    expect(rankConcerts([shot('2026-11-08T21:30:00Z', RAZZ)], [concert('riviera', '2026-11-08T21:00:00Z', RIVIERA)])).toEqual([]);
   });
 });

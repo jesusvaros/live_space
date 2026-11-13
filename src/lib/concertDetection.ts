@@ -94,10 +94,13 @@ const compare = <T,>(left: Scored<T>, right: Scored<T>, count: number) =>
   || left.distance - right.distance
   || left.meters - right.meters;
 
-export const detectConcert = <T,>(
+// Every concert that fits, best first: the upload screen suggests the first
+// and lets the user pick another when several fit (two gigs the same night in
+// the same venue, or nearby).
+export const rankConcerts = <T,>(
   media: DetectionMedia[],
   candidates: DetectionCandidate<T>[],
-): Detection<T> | null => {
+): Detection<T>[] => {
   const located = media.map(item => item.location).filter((point): point is LatLng => Boolean(point));
   const reliable = hasReliableTime(media);
   const times = media
@@ -108,18 +111,22 @@ export const detectConcert = <T,>(
   // concert there within a day: suggest it, less sure.
   if (!reliable && located.length > 0 && times.length > 0) {
     const reference = new Date(median(times.map(time => time.getTime())));
-    let best: { candidate: DetectionCandidate<T>; away: number } | null = null;
+    const byPlace: { candidate: DetectionCandidate<T>; away: number }[] = [];
     for (const candidate of candidates) {
       if (placeOf(located, candidate.venue).fit !== 'strong') continue;
       const away = distanceToConcert(reference, candidate.startsAt, candidate.endsAt);
       if (away > PLACE_ONLY_WINDOW_MS) continue;
-      if (!best || away < best.away) best = { candidate, away };
+      byPlace.push({ candidate, away });
     }
-    if (best) return { event: best.candidate.event, reason: 'place', confidence: 'low' };
+    if (byPlace.length > 0) {
+      return byPlace
+        .sort((left, right) => left.away - right.away)
+        .map(({ candidate }) => ({ event: candidate.event, reason: 'place' as const, confidence: 'low' as const }));
+    }
   }
 
-  if (times.length === 0) return null;
-  let best: Scored<T> | null = null;
+  if (times.length === 0) return [];
+  const scored: Scored<T>[] = [];
   for (const candidate of candidates) {
     const { fit, meters } = placeOf(located, candidate.venue);
     // Taken in another city: time alone must not pick this concert.
@@ -133,14 +140,21 @@ export const detectConcert = <T,>(
     }
     const distance = total / times.length;
     if (hits === 0 && distance > TIME_TOLERANCE_MS) continue;
-    const scored: Scored<T> = { candidate, place: fit, meters, hits, distance };
-    if (!best || compare(scored, best, times.length) < 0) best = scored;
+    scored.push({ candidate, place: fit, meters, hits, distance });
   }
-  if (!best) return null;
-  const placed = best.place === 'strong' || best.place === 'weak';
-  return {
-    event: best.candidate.event,
-    reason: placed ? 'time-place' : 'time',
-    confidence: reliable && (best.hits > 0 || best.place === 'strong') ? 'high' : 'low',
-  };
+  return scored
+    .sort((left, right) => compare(left, right, times.length))
+    .map(best => {
+      const placed = best.place === 'strong' || best.place === 'weak';
+      return {
+        event: best.candidate.event,
+        reason: placed ? ('time-place' as const) : ('time' as const),
+        confidence: reliable && (best.hits > 0 || best.place === 'strong') ? ('high' as const) : ('low' as const),
+      };
+    });
 };
+
+export const detectConcert = <T,>(
+  media: DetectionMedia[],
+  candidates: DetectionCandidate<T>[],
+): Detection<T> | null => rankConcerts(media, candidates)[0] ?? null;

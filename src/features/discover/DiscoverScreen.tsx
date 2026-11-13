@@ -13,7 +13,6 @@ import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useDiscoverResults } from './hooks/useDiscoverResults';
 import { useStoredLocation } from '../../shared/hooks/useStoredLocation';
 import { useFollowedSubjects } from '../../hooks/useFollowedSubjects';
-import WrappedCard from '../wrapped/WrappedCard';
 import { SuggestConcertCard, SuggestConcertSheet } from '../suggestions/SuggestConcert';
 
 type RouteState = { initialTab?: DiscoverTabKey } | undefined;
@@ -151,8 +150,6 @@ const DiscoverScreen: React.FC = () => {
           })}
         </div>
       ) : null}
-
-      {tab === 'artists' && !query.trim() && !selectedShelf ? <WrappedCard /> : null}
 
       <div className="flex flex-col gap-[22px] pt-2">
         {loading && <DiscoverSkeletonList rows={6} />}
