@@ -385,17 +385,16 @@ const Profile: React.FC = () => {
             aria-hidden
             className="pointer-events-none absolute -top-24 left-1/2 h-64 w-[130%] -translate-x-1/2 rounded-[50%] bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--app-accent)_32%,transparent),transparent)]"
           />
-          <div className="relative flex justify-end">
-            <button
-              type="button"
-              aria-label="Ajustes"
-              onClick={() => navigate('/ajustes')}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-app-line bg-app-surface/80 text-app-ink backdrop-blur"
-            >
-              <IconSettings size={20} />
-            </button>
-          </div>
-          <div className="relative -mt-6 flex flex-col items-center text-center">
+          {/* Its own layer above the centred block, so nothing covers the tap. */}
+          <button
+            type="button"
+            aria-label="Ajustes"
+            onClick={() => navigate('/ajustes')}
+            className="absolute right-4 top-[calc(14px+env(safe-area-inset-top,0px))] z-10 flex h-11 w-11 items-center justify-center rounded-full border border-app-line bg-app-surface/80 text-app-ink backdrop-blur"
+          >
+            <IconSettings size={20} />
+          </button>
+          <div className="relative flex flex-col items-center px-12 text-center">
             <span className="rounded-full p-[3px] ring-2 ring-app-accent">
               {avatarUrl ? (
                 <Avatar name={headerName} src={avatarUrl} className="h-[92px] w-[92px] text-[30px]" />
