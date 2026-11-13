@@ -277,8 +277,8 @@ begin
   select * into r from analytics.weekly_report(today) where metric = 'mau';
   if r.this_week <> 2 then raise exception 'weekly mau: %', r; end if;
 
-  -- list_metrics: 7 core + 6 Live Space.
-  if (select count(*) from analytics.list_metrics()) <> 13 then raise exception 'list_metrics: %', (select count(*) from analytics.list_metrics()); end if;
+  -- list_metrics: 10 core (7 + people, user_breakdown, set_team) + 6 Live Space.
+  if (select count(*) from analytics.list_metrics()) <> 16 then raise exception 'list_metrics: %', (select count(*) from analytics.list_metrics()); end if;
   if exists (select 1 from analytics.list_metrics() where description = '') then raise exception 'undocumented function'; end if;
 
   -- upload_health
