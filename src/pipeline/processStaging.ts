@@ -214,6 +214,8 @@ export const processPendingStaging = async (
             normalized_payload: normalizedEvent,
             confidence: normalizedEvent.confidence,
             review_status: decision.reviewStatus,
+            // Why it stays pending or was rejected (shown in the admin dashboard).
+            decision_reasons: decision.reasons,
             processing_error: null,
           })
           .eq('id', row.id);
@@ -241,7 +243,7 @@ export const processPendingStaging = async (
       if (decision.reviewStatus === 'rejected') {
         await supabase
           .from('staging_events')
-          .update({ review_status: 'rejected', processing_error: null })
+          .update({ review_status: 'rejected', decision_reasons: decision.reasons, processing_error: null })
           .eq('id', row.id);
         incrementMetrics(metricsByRun, row.scrape_run_id, { rejectedCount: 1 });
         rejectedCount += 1;
