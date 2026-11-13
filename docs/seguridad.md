@@ -88,7 +88,9 @@ La función:
    bloqueos, reportes que envió, etiquetas de sala, ocultos del mapa, reservas) o
    queda a `null` (`created_by`, `reviewed_by`, `merch_orders.buyer_id`).
    `moderation_actions.actor_id` pasa a admitir `null` con `ON DELETE SET NULL`:
-   la auditoría se conserva sin la persona.
+   la auditoría se conserva sin la persona. Sus eventos de uso
+   (`analytics_events`) se quedan sin cuenta (`user_id = null`; migración
+   `20261113000200`).
 
 Artistas, salas y festivales no se borran. El paso «Delete media of deleted
 accounts» de `scrape-weekly.yml` (`npm run media:drain-deletions -- --apply`,
@@ -98,9 +100,27 @@ secretos `R2_*` y, si existen `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` y
 esperan. Solo acepta claves `v/<aaaa>/<mm>/<uuid>.<ext>` en R2, reintenta hasta 8
 veces y nunca registra a quién pertenecía el archivo.
 
-Prueba local: `supabase/tests/delete_my_account.sql` y
-`supabase/tests/event_link_suggestions.sql` contra una base desechable con todas
-las migraciones (instrucciones en el propio archivo).
+Prueba local: `supabase/tests/delete_my_account.sql`,
+`supabase/tests/event_link_suggestions.sql` y `supabase/tests/analytics.sql`
+contra una base desechable con todas las migraciones (instrucciones en el propio
+archivo).
+
+## Analíticas
+
+- `public.analytics_events` tiene RLS sin políticas y sin permisos para `anon` ni
+  `authenticated`: la app solo escribe con `track_events()` (máximo 100 eventos
+  por llamada, fechas limitadas a 30 días, `props` < 2 KB) y la cuenta sale del
+  token, nunca del dispositivo. Retención de 13 meses (job `purge-analytics` de
+  `backup-weekly.yml`).
+- El rol `analytics_reader` nace sin login y solo tiene `USAGE` en el esquema
+  `analytics` y `EXECUTE` en sus funciones de informes (`SECURITY DEFINER`,
+  `search_path ''`, solo agregados o filas seudónimas con claves de `props` en
+  lista blanca). No lee tablas ni vistas de `public`, `auth`, `storage` ni
+  `analytics`. `anon` y `authenticated` no tienen nada en `analytics`, que
+  tampoco se expone por la API.
+- La contraseña del lector la pone el propietario a mano en el SQL Editor y solo
+  vive en las variables de entorno del panel y del MCP; conexión por el session
+  pooler con TLS. Ver [Analíticas](./analiticas.md).
 
 ## Backups y datos heredados
 

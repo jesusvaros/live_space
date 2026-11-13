@@ -1,4 +1,4 @@
-# Analítica
+# Analítica en la app y la web
 
 Dos cosas distintas:
 
@@ -70,7 +70,7 @@ error, nunca el mensaje), `notificationType`.
 | `share_link` | `kind` (`event`, `post`, `wrapped`, `qr_poster`), `method` (`share`, `copy`, `download`) | ShareSheet, Wrapped, EventQr |
 
 La tabla `public.analytics_events`, la RPC, la purga a 13 meses y las funciones
-`analytics.*` del panel van en su propia migración.
+`analytics.*` del panel: [Analíticas](/analiticas).
 
 ## Web pública: Vercel Web Analytics
 

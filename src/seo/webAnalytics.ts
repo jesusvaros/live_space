@@ -1,4 +1,4 @@
-// Vercel Web Analytics on the public site (docs/analitica.md): the plain-HTML
+// Vercel Web Analytics on the public site (docs/analitica-app.md): the plain-HTML
 // snippet from vercel.com/docs/analytics/quickstart, no npm package. No
 // cookies; Vercel only counts aggregated visits. It needs Web Analytics enabled
 // in the Vercel project («livespace» → Analytics → Enable); until then the

@@ -2,7 +2,7 @@ import { screenName } from '@jesusvaros/app-kit/analytics';
 
 // Pure builders for event props. Props never carry personal data: no emails,
 // names, coordinates, file names, URLs or free text — only enums, counts and
-// sizes. docs/analitica.md lists every event.
+// sizes. docs/analitica-app.md lists every event.
 
 // Routes whose second segment is an id or a slug (a concert, a venue, an
 // artist, an order…): grouped so «screen» counts screens, not pages.

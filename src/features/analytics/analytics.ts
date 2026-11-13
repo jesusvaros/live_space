@@ -5,7 +5,7 @@ import { supabase, supabaseConfig } from '../../lib/supabase';
 import { appScreenName } from './props';
 import { getAnalyticsSharing, saveAnalyticsSharing } from './settings';
 
-// First-party usage analytics (docs/analitica.md): events queue on the device
+// First-party usage analytics (docs/analitica-app.md): events queue on the device
 // (localStorage, like the rest of the app's device state) and go in batches to
 // the track_events RPC of our own Supabase. Until that RPC exists, or while
 // offline, they simply stay queued (the newest 2000).
