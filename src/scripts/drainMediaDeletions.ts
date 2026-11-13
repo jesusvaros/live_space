@@ -26,6 +26,7 @@ import {
   type QueueRow,
 } from '../pipeline/mediaDeletion.js';
 import { createR2Uploader, readR2Config } from '../pipeline/r2Storage.js';
+import { coverKeyFor, optimizedKeyFor } from '../pipeline/videoOptimize.js';
 import { Logger } from '../utils/logger.js';
 
 const logger = new Logger(env.logLevel, { script: 'drainMediaDeletions' });
@@ -63,7 +64,13 @@ const run = async () => {
   const r2 = readR2Config();
   if (r2) {
     const client = createR2Uploader(r2);
-    deleters.r2 = (row) => client.remove(row.object_key);
+    deleters.r2 = async (row) => {
+      await client.remove(row.object_key);
+      // optimizeVideos keeps a light copy and a cover next to the original.
+      for (const extra of [optimizedKeyFor(row.object_key), coverKeyFor(row.object_key)]) {
+        if (extra) await client.remove(extra);
+      }
+    };
   } else {
     logger.warn('R2 secrets are not set; R2 files stay queued');
   }
