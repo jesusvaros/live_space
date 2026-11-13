@@ -39,7 +39,11 @@ export const useEventUploadBar = (eventId: string, userId: string | null) => {
   // waits too, so it never shows a button that then disappears.
   const visible = inProgress || failed || uploaded === 0;
 
-  return { summary, retryAll, clearFailed, inProgress, failed, visible };
+  // Whether they already have moments here (null until known): the stage's
+  // compact «+ Subir» turns into a discreet «+ Subir más».
+  const alreadyUploaded = uploaded === null ? null : uploaded > 0;
+
+  return { summary, retryAll, clearFailed, inProgress, failed, visible, alreadyUploaded };
 };
 
 export type EventUploadBarState = ReturnType<typeof useEventUploadBar>;

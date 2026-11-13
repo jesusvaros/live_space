@@ -17,6 +17,9 @@ type PhotoViewerProps = PhotoActionHandlers & {
   onClose: () => void;
   // Extra link under the credit (e.g. «Ver concierto» in Guardadas).
   renderExtra?: (photo: TimelineMoment) => React.ReactNode;
+  // Rendered in place instead of on document.body: inside a sheet (a modal
+  // dialog), anything outside it can't be tapped and would close it.
+  inline?: boolean;
 };
 
 const MAX_SCALE = 5;
@@ -185,6 +188,7 @@ const PhotoViewer: React.FC<PhotoViewerProps> = ({
   albumLabel,
   onClose,
   renderExtra,
+  inline = false,
   ...actions
 }) => {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
@@ -265,7 +269,7 @@ const PhotoViewer: React.FC<PhotoViewerProps> = ({
 
   const mounted = new Set(neighbourIndexes(index, photos.length, 1));
 
-  return createPortal(
+  const viewer = (
     <div className="fixed inset-0 z-[3000] bg-black" role="dialog" aria-modal="true" aria-label={albumLabel ? `Fotos: ${albumLabel}` : 'Fotos'}>
       <div ref={shellRef} className="absolute inset-0">
         <div
@@ -323,9 +327,9 @@ const PhotoViewer: React.FC<PhotoViewerProps> = ({
           />
         </div>
       ) : null}
-    </div>,
-    document.body,
+    </div>
   );
+  return inline ? viewer : createPortal(viewer, document.body);
 };
 
 export default PhotoViewer;

@@ -77,3 +77,26 @@ export const videoSlots = <T extends { id: string; kind: string }>(
   };
   return slots.slice(0, 2).sort((left, right) => rank(left) - rank(right));
 };
+
+/** The clip on screen counts as buffered after playing this long (or on canplaythrough). */
+export const WARM_AFTER_MS = 2000;
+
+/**
+ * preload for a mounted <video>. The clip on screen and the outgoing one of a
+ * handoff load fully. The next clip only fetches its metadata (enough to seek
+ * it to where the cut enters it) until the one on screen has buffered enough
+ * to play (`activeWarm`): on mobile data the two would otherwise download in
+ * parallel and the first picture would take twice as long. Then it loads
+ * fully too, so the cut stays seamless. A photo or imported clip on screen
+ * downloads nothing of ours: the next video may load at once.
+ */
+export const videoPreload = (options: {
+  isActive: boolean;
+  isHandoff: boolean;
+  activeIsVideo: boolean;
+  activeWarm: boolean;
+}): 'auto' | 'metadata' => {
+  const { isActive, isHandoff, activeIsVideo, activeWarm } = options;
+  if (isActive || isHandoff) return 'auto';
+  return !activeIsVideo || activeWarm ? 'auto' : 'metadata';
+};
