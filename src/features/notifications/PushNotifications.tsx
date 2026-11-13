@@ -7,6 +7,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { EXPLAINER_COPY, setExplainerPresenter, type NotificationTrigger } from './offer';
 import { push, pushRoute } from './pushClient';
 import { setPushUser } from './pushDevice';
+import { track } from '../analytics/analytics';
+import { notificationType } from '../analytics/props';
 
 // Mounted once inside the router:
 // - keeps this device's token saved for whoever is signed in;
@@ -75,6 +77,7 @@ const PushNotifications: React.FC = () => {
   useEffect(() => {
     if (!push.isSupported()) return undefined;
     const stopTaps = push.onTapped(message => {
+      track('notification_tapped', { type: notificationType(message.data), source: 'push' });
       const route = pushRoute(message.data);
       if (route) navigate(route);
     });

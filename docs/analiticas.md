@@ -60,8 +60,8 @@ Vocabulario: `app_open`, `screen{path}`, `onboarding_step`, `onboarding_done`,
 `notification_tapped{type}`, `error{message≤200, where}`, `share_link`; y en
 Live Space `upload_start`/`upload_done`/`upload_failed`/`upload_retry {kind,
 reason, attempts, permanent, bytes, ms}`, `attendance_mark{status}`, `follow`,
-`suggestion_sent`, `merch_order_start`, `qr_scan`, `setlist_proposed`. (El
-cliente que los envía llega en otro cambio.)
+`suggestion_sent`, `merch_order_start`, `qr_scan`, `setlist_proposed`. Qué envía el
+cliente, desde dónde y con qué props: [Analítica en la app y la web](/analitica-app).
 
 **Retención:** `public.purge_analytics_events(p_keep interval default '13 months')`
 borra los eventos más antiguos (nunca menos de 30 días). La lanza cada domingo el

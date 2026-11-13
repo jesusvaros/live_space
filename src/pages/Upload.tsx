@@ -39,6 +39,7 @@ import {
   type GalleryPermission,
 } from '../media/native/gallery';
 import type { MomentUploadItem } from '../media';
+import { track } from '../features/analytics/analytics';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -205,6 +206,8 @@ const Upload: React.FC = () => {
   // picker. The account is only asked for when they press «Publicar».
   // ?via=qr: scanned with the button on Inicio, whose QR only carried the id.
   const fromQr = Boolean(presetToken) || params.get('via') === 'qr';
+  // Scanned with the button on Inicio: qr_scan was counted there.
+  const qrCounted = Boolean((location.state as { qrCounted?: boolean } | null)?.qrCounted);
   const [tokenEventId, setTokenEventId] = useState<string | null>(null);
   const presetEventId = params.get('event') || tokenEventId;
   const presetSong = Number(params.get('song')) || null;
@@ -285,6 +288,7 @@ const Upload: React.FC = () => {
       .resolveUploadToken(presetToken)
       .then(eventId => {
         if (cancelled) return;
+        if (!qrCounted) track('qr_scan', { source: 'link', valid: Boolean(eventId) });
         if (eventId) setTokenEventId(eventId);
         else setError('Este QR ya no es válido. Elige el concierto a mano.');
       })
@@ -303,7 +307,7 @@ const Upload: React.FC = () => {
   useEffect(() => {
     if (!fromQr || !user || !event || markedFromQr.current === event.id) return;
     markedFromQr.current = event.id;
-    markAttendance(event.id, user.id, attendanceTargetFor(event.starts_at, event.ends_at ?? null)).catch(error =>
+    markAttendance(event.id, user.id, attendanceTargetFor(event.starts_at, event.ends_at ?? null), 'qr').catch(error =>
       console.warn('[upload] could not mark attendance from QR', error),
     );
   }, [fromQr, user, event]);
@@ -505,6 +509,7 @@ const Upload: React.FC = () => {
   const handleQrDetected = async (value: string) => {
     const target = parseScannedUploadValue(value);
     setShowScanner(false);
+    track('qr_scan', { source: 'upload_button', valid: Boolean(target) });
     if (!target) {
       setError('Código QR no válido.');
       return;

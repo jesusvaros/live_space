@@ -26,6 +26,7 @@ import DeleteAccountSection from '../account/DeleteAccountSection';
 import { legalAppPath } from '../legal/paths';
 import { LEGAL_CONTACT_EMAIL } from '../legal/config';
 import PushTokenDevPanel, { enableDevMode, isDevMode } from '../notifications/PushTokenDevPanel';
+import AnalyticsSharingSetting from '../analytics/AnalyticsSharingSetting';
 import { SettingsGroup, SettingsHelp, SettingsItem, SettingsRow, Switch } from './SettingsList';
 
 const PROVIDER_LABELS: Record<string, string> = { email: 'Email y contraseña', google: 'Google', apple: 'Apple' };
@@ -151,6 +152,10 @@ export const PrivacyPage: React.FC = () => {
         Al publicar, el artista y la sala del concierto pueden compartir el momento citándote. Si lo apagas, tus
         próximas subidas no se podrán reutilizar; también lo cambias en cada momento. <Link to={legalAppPath('licencia-momentos')} className="text-app-accent">Licencia</Link>
       </SettingsHelp>
+
+      <AnalyticsSharingSetting
+        privacyLink={<Link to={legalAppPath('privacidad')} className="text-app-accent">Privacidad</Link>}
+      />
 
       <SettingsGroup label="Personas y mapa">
         <SettingsRow to="/ajustes/bloqueados" icon={<IconBlock size={18} />} title="Usuarios bloqueados" value={String(blocked.size)} />

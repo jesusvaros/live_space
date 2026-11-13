@@ -1,7 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { createNativeSignIn } from '@jesusvaros/app-kit/auth';
-import { createSupabaseAuth, type CallbackResult } from '@jesusvaros/app-kit/auth/supabase';
+import { createSupabaseAuth, type CallbackResult, type SignInOutcome } from '@jesusvaros/app-kit/auth/supabase';
 import { supabase } from '../lib/supabase';
 
 // Login with Google / Apple through the shared kit (github.com/jesusvaros/app-kit,
@@ -39,12 +39,12 @@ export const authRedirectUrl = (webPath: string) =>
 export const signInWithProvider = async (
   provider: OAuthProvider,
   webReturnPath = '/welcome',
-): Promise<{ error: Error | null }> => {
+): Promise<{ error: Error | null; outcome: SignInOutcome | null }> => {
   try {
-    await auth.signIn(provider, { returnPath: webReturnPath });
-    return { error: null };
+    const outcome = await auth.signIn(provider, { returnPath: webReturnPath });
+    return { error: null, outcome };
   } catch (error) {
-    return { error: error instanceof Error ? error : new Error(String(error)) };
+    return { error: error instanceof Error ? error : new Error(String(error)), outcome: null };
   }
 };
 

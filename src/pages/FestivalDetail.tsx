@@ -18,6 +18,7 @@ import type { PostWithSetlist } from '../lib/types';
 import { Festival, festivalDateRange, festivalService } from '../services/festival.service';
 import { socialService } from '../services/social.service';
 import { NAV_CLEARANCE } from '../components/BottomNav';
+import { track } from '../features/analytics/analytics';
 
 const madridDay = (iso: string) => new Date(iso).toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
 const madridTime = (iso: string) =>
@@ -126,9 +127,12 @@ const FestivalDetail: React.FC = () => {
     }
     setFollowLoading(true);
     try {
-      if (isFollowing) await socialService.unfollow(profile.subject_id, festival.subjectId);
-      else {
+      if (isFollowing) {
+        await socialService.unfollow(profile.subject_id, festival.subjectId);
+        track('unfollow', { kind: 'festival' });
+      } else {
         await socialService.follow(profile.subject_id, festival.subjectId);
+        track('follow', { kind: 'festival' });
         void enableConcertAlerts();
       }
       setIsFollowing(!isFollowing);

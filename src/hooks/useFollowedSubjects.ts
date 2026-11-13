@@ -5,6 +5,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { cached, setCached } from '../lib/requestCache';
 import { enableConcertAlerts } from '../features/alerts/concertAlerts';
 import { PERSIST_MAX_AGE, readPersisted, writePersisted } from '../lib/persistentCache';
+import { track } from '../features/analytics/analytics';
+
+/** What is followed, for the `follow` event. */
+export type FollowKind = 'artist' | 'venue' | 'festival' | 'profile' | 'subject';
 
 // Who someone follows is kept across restarts under their account: «Lo que
 // sigues» and the follow buttons are right on the first paint.
@@ -80,7 +84,7 @@ export const useFollowedSubjects = () => {
   );
 
   const toggleFollowSubject = useCallback(
-    async (targetSubjectId: string) => {
+    async (targetSubjectId: string, kind: FollowKind = 'subject') => {
       if (!user || !followerSubjectId) return { ok: false as const, reason: 'not-authenticated' as const };
       if (!targetSubjectId) return { ok: false as const, reason: 'invalid-target' as const };
 
@@ -93,9 +97,12 @@ export const useFollowedSubjects = () => {
       setTogglingIds(prev => new Set(prev).add(targetSubjectId));
 
       try {
-        if (wasFollowing) await socialService.unfollow(followerSubjectId, targetSubjectId);
-        else {
+        if (wasFollowing) {
+          await socialService.unfollow(followerSubjectId, targetSubjectId);
+          track('unfollow', { kind });
+        } else {
           await socialService.follow(followerSubjectId, targetSubjectId);
+          track('follow', { kind });
           void enableConcertAlerts();
         }
 
@@ -130,6 +137,7 @@ export const useFollowedSubjects = () => {
       setTogglingIds(prev => new Set([...prev, ...targets]));
       try {
         await socialService.followMany(followerSubjectId, targets);
+        track('follow', { kind: 'artist', count: targets.length, source: 'bulk' });
         const next = new Set([...followedSubjectIds, ...targets]);
         setFollowedSubjectIds(next);
         setCached(`follows:${followerSubjectId}`, Array.from(next), { ttlMs: 10_000 });

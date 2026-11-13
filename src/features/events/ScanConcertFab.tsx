@@ -4,6 +4,7 @@ import { Content, Modal } from '../../components/ui/AppPrimitives';
 import QrScanner from '../../components/QrScanner';
 import { IconQrCode } from '../../components/icons';
 import { parseScannedUploadValue } from '../../lib/uploadQr';
+import { track } from '../analytics/analytics';
 
 /**
  * Floating «Escanear QR» on Inicio. The concert's uploader does the rest:
@@ -16,6 +17,7 @@ const ScanConcertFab: React.FC = () => {
 
   const onDetected = (value: string) => {
     const target = parseScannedUploadValue(value);
+    track('qr_scan', { source: 'home_button', valid: Boolean(target) });
     if (!target) {
       setError('Este QR no es de ningún concierto de Live Space.');
       return;
@@ -23,7 +25,8 @@ const ScanConcertFab: React.FC = () => {
     setOpen(false);
     setError('');
     const query = 'token' in target ? `qr=${encodeURIComponent(target.token)}` : `event=${encodeURIComponent(target.eventId)}&via=qr`;
-    navigate(`/tabs/upload?${query}`);
+    // Already counted: the uploader only counts QR links opened from outside.
+    navigate(`/tabs/upload?${query}`, { state: { qrCounted: true } });
   };
 
   return (

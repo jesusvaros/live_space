@@ -46,6 +46,7 @@ export default defineConfig({
           { text: 'Importar el Wrapped', link: '/wrapped' },
           { text: 'Notificaciones', link: '/notificaciones' },
           { text: 'Analíticas', link: '/analiticas' },
+          { text: 'Analítica en la app y la web', link: '/analitica-app' },
           { text: 'Runbooks', link: '/runbooks' },
         ],
       },

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AuthPanel, { type AuthPanelResult } from '../auth/AuthPanel';
 import { markOnboardingSeen } from '../app/onboarding';
 import { useAuth } from '../contexts/AuthContext';
+import { track } from '../features/analytics/analytics';
 
 // First open of the app without an account: three photo screens that tell
 // what Live Space is for, then the account (Apple, Google or email). Always
@@ -36,20 +37,42 @@ const Onboarding: React.FC = () => {
   const startX = useRef<number | null>(null);
   const onAccount = step === SLIDES.length;
 
+  const finished = useRef(false);
+  const done = (result: 'skipped' | 'signed_up' | 'signed_in') => {
+    if (finished.current) return;
+    finished.current = true;
+    track('onboarding_done', { flow: 'intro', result, step });
+  };
+
   useEffect(() => {
     markOnboardingSeen();
   }, []);
 
+  // Slides 0..2, then 3 = the account.
+  useEffect(() => {
+    track('onboarding_step', { flow: 'intro', step });
+  }, [step]);
+
   // Google/Apple come back through a deep link: leave once the session lands.
   useEffect(() => {
-    if (user) navigate('/tabs/events', { replace: true });
+    if (!user) return;
+    done('signed_in');
+    navigate('/tabs/events', { replace: true });
   }, [user, navigate]);
 
-  const skip = () => navigate('/tabs/events', { replace: true });
+  const skip = () => {
+    done('skipped');
+    navigate('/tabs/events', { replace: true });
+  };
 
   const handleDone = (result: AuthPanelResult) => {
-    if (result === 'signed-up') navigate('/empezar', { replace: true, state: { returnTo: '/tabs/events' } });
-    else if (result === 'signed-in') navigate('/tabs/events', { replace: true });
+    if (result === 'signed-up') {
+      done('signed_up');
+      navigate('/empezar', { replace: true, state: { returnTo: '/tabs/events' } });
+    } else if (result === 'signed-in') {
+      done('signed_in');
+      navigate('/tabs/events', { replace: true });
+    }
   };
 
   const onTouchEnd = (event: React.TouchEvent) => {

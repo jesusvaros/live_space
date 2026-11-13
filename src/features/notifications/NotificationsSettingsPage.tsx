@@ -10,6 +10,7 @@ import {
 } from '../../shared/notifications/prefs';
 import { SettingsGroup, SettingsHelp, SettingsItem, Switch } from '../settings/SettingsList';
 import { askPolicy, push } from './pushClient';
+import { track } from '../analytics/analytics';
 import { registerIfGranted } from './pushDevice';
 import { canOpenNotificationSettings, openNotificationSettings } from './systemSettings';
 import { useNotificationSettings } from './useNotificationSettings';
@@ -106,7 +107,13 @@ const NotificationsSettingsPage: React.FC = () => {
     setAsking(true);
     try {
       askPolicy.reset();
-      if ((await push.requestPermissionWhenUseful()) === 'granted') void registerIfGranted();
+      track('push_prompt', { trigger: 'settings', step: 'system' });
+      if ((await push.requestPermissionWhenUseful()) === 'granted') {
+        track('push_granted', { trigger: 'settings' });
+        void registerIfGranted();
+      } else {
+        track('push_denied', { trigger: 'settings', step: 'system' });
+      }
     } finally {
       setAsking(false);
       refreshPermission();

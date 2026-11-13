@@ -1,6 +1,7 @@
 import { supabase } from '../../lib/supabase';
 import type { AttendanceStatus } from '../../lib/types';
 import { enableMomentNudges } from '../moments/momentNudge';
+import { track } from '../analytics/analytics';
 
 // «Voy» / «Fui» for the signed-in user (event_attendance, one row per event and
 // profile, RLS: own rows only).
@@ -24,10 +25,16 @@ export const attendanceTargetFor = (startsAt: string, endsAt: string | null, now
   return now.getTime() > end ? 'attended' : 'going';
 };
 
-export const markAttendance = async (eventId: string, profileId: string, status: AttendanceStatus) => {
+export const markAttendance = async (
+  eventId: string,
+  profileId: string,
+  status: AttendanceStatus,
+  source: 'suggestion' | 'qr' | 'upload' = 'suggestion',
+) => {
   const { error } = await supabase
     .from('event_attendance')
     .upsert({ event_id: eventId, profile_id: profileId, status }, { onConflict: 'event_id,profile_id' });
   if (error) throw error;
+  track('attendance_mark', { status, source });
   if (status === 'going') void enableMomentNudges(profileId);
 };

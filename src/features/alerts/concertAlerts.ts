@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { isNotificationTypeOn } from '../../shared/notifications/prefs';
 import { isServerPushActive } from '../../shared/notifications/serverPush';
 import { offerNotifications } from '../notifications/offer';
+import { track } from '../analytics/analytics';
 
 // "Nuevo concierto de X": when a followed artist, venue or festival gets a
 // concert announced (scraped or added by hand), the follower hears about it.
@@ -196,6 +197,7 @@ export const listenForAlertTaps = (open: (path: string) => void) => {
   const handle = LocalNotifications.addListener('localNotificationActionPerformed', action => {
     const extra = action.notification.extra;
     if (extra?.kind !== ALERT_KIND || typeof extra.path !== 'string') return;
+    track('notification_tapped', { type: 'concert_alert', source: 'local' });
     open(extra.path);
   });
   return () => {

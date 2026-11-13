@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { Content, Modal } from './ui/AppPrimitives';
 import { IconCopy, IconShare } from './icons';
+import { track } from '../features/analytics/analytics';
 
 type ShareSheetProps = {
   isOpen: boolean;
   onClose: () => void;
   link: string;
+  /** What is shared, for the `share_link` event. */
+  kind?: 'event' | 'post';
 };
 
-const ShareSheet: React.FC<ShareSheetProps> = ({ isOpen, onClose, link }) => {
+const ShareSheet: React.FC<ShareSheetProps> = ({ isOpen, onClose, link, kind = 'event' }) => {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
@@ -21,6 +24,7 @@ const ShareSheet: React.FC<ShareSheetProps> = ({ isOpen, onClose, link }) => {
     if (!link) return;
     try {
       await navigator.clipboard.writeText(link);
+      track('share_link', { kind, method: 'copy' });
       setMessage('Enlace copiado.');
     } catch {
       setMessage('No se pudo copiar. Mantén pulsado para copiarlo.');
@@ -32,6 +36,7 @@ const ShareSheet: React.FC<ShareSheetProps> = ({ isOpen, onClose, link }) => {
     if (navigator.share) {
       try {
         await navigator.share({ url: link, title: 'Evento en Live Space' });
+        track('share_link', { kind, method: 'share' });
         return;
       } catch {
         // Fall back to copy.

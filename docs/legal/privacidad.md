@@ -1,6 +1,6 @@
 # Política de privacidad
 
-> **Pendiente de revisión legal.** Borrador de producto que describe lo que la app hace hoy. Última actualización: 10 de noviembre de 2026.
+> **Pendiente de revisión legal.** Borrador de producto que describe lo que la app hace hoy. Última actualización: 13 de noviembre de 2026.
 
 Live Space es una app para subir y ver las fotos y vídeos que el público graba en los conciertos, ordenados por canción. Aquí explicamos qué datos usamos, para qué, con quién los compartimos y cómo puedes borrarlos.
 
@@ -51,9 +51,24 @@ El responsable del tratamiento es **{{TITULAR}}**. Para cualquier cosa sobre tus
 - **Cómo desactivarlas:** en Perfil → Ajustes → Notificaciones puedes apagarlas todas o por tipo y elegir tus horas de silencio; también puedes quitarle el permiso a Live Space en los ajustes del sistema. Al cerrar sesión borramos el token de ese dispositivo.
 - Si borras la cuenta, el token, tus preferencias y el registro de avisos se borran con ella.
 
+### Cómo se usa la app (analítica propia)
+
+Para saber qué funciona y qué falla (por ejemplo, si las subidas terminan o en qué paso se queda la gente al crear la cuenta) la app registra **eventos de uso** y los guarda en nuestra propia base de datos (Supabase, en la Unión Europea). No usamos herramientas de analítica de terceros para esto.
+
+- **Qué se registra:** el nombre del evento (abrir la app, abrir una pantalla, tocar «Entrar con Google», marcar «Voy», empezar o terminar una subida, aceptar las notificaciones, un error de la app…), la hora, la pantalla (sin identificadores: «/concierto/:id», no qué concierto) y algunos datos técnicos sin texto libre: tipo de archivo (foto o vídeo), tamaño, duración de la subida, motivo del fallo, número de intentos. También la versión de la app, el sistema (Android, iOS o web), el idioma del móvil y un identificador de sesión.
+- **A quién va ligado:** a un identificador aleatorio que la app crea en tu móvil (no es el de publicidad ni el del dispositivo) y, si has entrado en tu cuenta, a tu cuenta. Es información seudónima: no incluye tu nombre, tu email, tu ubicación, el nombre de tus archivos, tus fotos ni lo que escribes.
+- **Para qué:** solo para mejorar la app y arreglar errores, mirando totales y tendencias. No lo vendemos, no lo compartimos con terceros y no lo usamos para publicidad.
+- **Cuánto tiempo:** 13 meses; después se borra.
+- **Cómo desactivarlo:** en Perfil → Ajustes → Privacidad, apaga **Compartir cómo usas la app**. Desde ese momento ese móvil no registra ni envía nada y borra los eventos que tenía pendientes de enviar. Está activado por defecto.
+- Si borras la cuenta, los eventos dejan de estar ligados a ella (quedan solo con el identificador aleatorio del móvil) y se borran igualmente al cumplir 13 meses.
+
+### La web pública
+
+La web (las páginas públicas de conciertos, salas y artistas) usa **Vercel Web Analytics** para contar visitas de forma agregada: qué páginas se ven, desde qué página se llega, el país y el tipo de dispositivo y navegador. No usa cookies ni guarda nada en tu navegador, no te sigue entre webs y no sabemos quién eres: Vercel identifica la visita con un valor calculado que se descarta cada 24 horas. Solo vemos totales.
+
 ### Lo que no hacemos
 
-- No usamos herramientas de analítica, publicidad ni seguimiento, ni informes de errores de terceros.
+- No usamos herramientas de publicidad ni de seguimiento entre apps o webs, ni informes de errores de terceros.
 - No vendemos tus datos ni hacemos perfiles para publicidad.
 
 ## Para qué y con qué base legal
@@ -61,13 +76,15 @@ El responsable del tratamiento es **{{TITULAR}}**. Para cualquier cosa sobre tus
 - **Darte el servicio que pides** (crear la cuenta, publicar, seguir, guardar, comprar merch): ejecución del contrato que aceptas con las [Condiciones de uso](/condiciones).
 - **Ubicación, galería, notificaciones y licencia de reutilización:** tu consentimiento, que puedes retirar en cualquier momento.
 - **Seguridad y moderación** (reportes, bloqueos, ocultar contenido reportado, límites de subida, evitar abusos) y **contar visualizaciones**: nuestro interés legítimo en mantener la app segura y útil.
+- **Eventos de uso de la app y estadísticas de visitas de la web:** nuestro interés legítimo en saber qué funciona y arreglar lo que falla. En la app puedes oponerte en cualquier momento con el interruptor de Ajustes → Privacidad.
 - **Cumplir la ley** (por ejemplo, retirar contenido ilícito cuando nos avisan, o conservar datos de pagos): obligación legal.
 
 ## Con quién los compartimos
 
 Usamos proveedores que tratan los datos por encargo nuestro y solo para esto:
 
-- **Supabase** (base de datos, cuentas y funciones del servidor), en la Unión Europea (París).
+- **Supabase** (base de datos, cuentas, funciones del servidor y eventos de uso de la app), en la Unión Europea (París).
+- **Vercel**: aloja la web pública y cuenta sus visitas (Vercel Web Analytics, sin cookies). Recibe tu dirección IP al visitar la web.
 - **Cloudflare** (R2): almacenamiento y entrega de los vídeos y de las portadas de conciertos.
 - **Cloudinary**: almacenamiento y entrega de las fotos y miniaturas.
 - **Google** y **Apple**: si entras con ellos y para entregar las notificaciones push (Firebase Cloud Messaging; Apple Push Notification service en iPhone).
@@ -82,11 +99,12 @@ Lo que publicas es visible para cualquiera. Si permites la reutilización, el ar
 
 ## Transferencias fuera de la Unión Europea
 
-Cloudflare, Cloudinary, Google, Apple, Stripe, GitHub y Meta son empresas con sede o servidores en Estados Unidos. Cuando tus datos salen del Espacio Económico Europeo lo hacen con las garantías del RGPD: el Marco de Privacidad de Datos UE-EE. UU. cuando la empresa está adherida, o cláusulas contractuales tipo de la Comisión Europea.
+Cloudflare, Cloudinary, Vercel, Google, Apple, Stripe, GitHub y Meta son empresas con sede o servidores en Estados Unidos. Cuando tus datos salen del Espacio Económico Europeo lo hacen con las garantías del RGPD: el Marco de Privacidad de Datos UE-EE. UU. cuando la empresa está adherida, o cláusulas contractuales tipo de la Comisión Europea.
 
 ## Cuánto tiempo los guardamos
 
 - Mientras tengas la cuenta.
+- Los eventos de uso de la app, 13 meses.
 - Si borras la cuenta, todo lo anterior se borra en el momento; los archivos de tus fotos y vídeos se eliminan de los servidores en los días siguientes, y las copias de seguridad cifradas desaparecen en un máximo de 14 días.
 - Se quedan solo datos que ya no te identifican: el total de visualizaciones de los momentos de otras personas, los pedidos de merch sin tu nombre (los datos del pago los conserva Stripe según sus obligaciones legales) y el registro de decisiones de moderación sin tu nombre.
 - Lo que ocurre en la [página de borrado de cuenta](/borrar-cuenta) lo explicamos con más detalle allí.
@@ -107,7 +125,7 @@ Live Space es para mayores de 14 años, la edad a partir de la cual la ley espa�
 
 ## Datos guardados en tu móvil
 
-La app guarda en el propio móvil tu sesión, tus preferencias (ciudad, gustos, última ubicación, vista del mapa, elección de licencia), la cola de subidas pendientes y el identificador aleatorio de visualizaciones. La web pública no usa cookies.
+La app guarda en el propio móvil tu sesión, tus preferencias (ciudad, gustos, última ubicación, vista del mapa, elección de licencia), la cola de subidas pendientes, el identificador aleatorio de visualizaciones y, si compartes cómo usas la app, su identificador aleatorio y los eventos pendientes de enviar. La web pública no usa cookies.
 
 ## Cambios
 

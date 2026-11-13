@@ -22,6 +22,7 @@ import MomentNudges from './features/moments/MomentNudges';
 import ConcertAlertsListener from './features/alerts/ConcertAlertsListener';
 import PushNotifications from './features/notifications/PushNotifications';
 import ShareTargetListener from './features/socialImport/ShareTargetListener';
+import { useAppAnalytics } from './features/analytics/useAppAnalytics';
 import Welcome from './pages/Welcome';
 import Events from './pages/Events';
 import { lazyPage, registerRoutePreload } from './app/lazyPage';
@@ -230,6 +231,7 @@ const AppRoutes = () => {
   const isArtistWorkspace = activeWorkspace?.type === 'artist';
   const mainTabHref = '/tabs/events';
   const { pathname } = useLocation();
+  useAppAnalytics();
   const { profile } = useAuth();
   const pathnameRef = useRef(pathname);
   pathnameRef.current = pathname;

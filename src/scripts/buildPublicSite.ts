@@ -9,6 +9,7 @@ import { FESTIVALS, festivalPath } from '../landing/festivals.js';
 import { eventJsonLd, itemListJsonLd, placeJsonLd, type SeoArtist, type SeoEvent, type SeoVenue } from '../seo/jsonLd.js';
 import { PUBLIC_CITIES, publicPath } from '../seo/slug.js';
 import { buildVercelConfig, redirectStub } from '../seo/staticHosting.js';
+import { WEB_ANALYTICS_TAGS, withWebAnalytics } from '../seo/webAnalytics.js';
 import { fillLegalPlaceholders, legalBlocksToHtml, parseLegalMarkdown } from '../shared/legal/markdown.js';
 import { resolvePublicSiteUrl } from '../shared/siteUrl.js';
 
@@ -76,7 +77,10 @@ type Page = {
 
 // Vite emits the site entry as site.html; the host serves index.html at "/".
 if (existsSync(path.join(DIST, 'site.html'))) renameSync(path.join(DIST, 'site.html'), path.join(DIST, 'index.html'));
-const landingTemplate = readFileSync(path.join(DIST, 'index.html'), 'utf8');
+// Every page built from the landing (the landing itself, /upload, /vuelta,
+// festival landings) carries Vercel Web Analytics.
+const landingTemplate = withWebAnalytics(readFileSync(path.join(DIST, 'index.html'), 'utf8'));
+writeFileSync(path.join(DIST, 'index.html'), landingTemplate);
 
 // CC0 photos from site-public/landing, picked per page so fichas are not bare text.
 const FICHA_PHOTOS = [
@@ -130,6 +134,7 @@ const staticShell = (title: string, description: string, head: string, inner: st
     <meta name="description" content="${escapeHtml(description)}" />
     <link rel="stylesheet" href="/landing/fichas.css" />
     ${head}
+    ${WEB_ANALYTICS_TAGS}
   </head>
   <body>
     <header class="bar">

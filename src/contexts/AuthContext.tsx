@@ -9,6 +9,8 @@ import { mapProfile } from '../data/canonicalMappers';
 import { readStoredSessionUser } from '../app/bootCache';
 import { clearUserPersisted, readPersisted, setPersistViewer, writePersisted } from '../lib/persistentCache';
 import { runBeforeSignOut } from '../lib/signOutTasks';
+import { flushAnalytics, track } from '../features/analytics/analytics';
+import { completePendingSignIn } from '../features/analytics/signInEvents';
 
 // The signed-in person's profile is kept across restarts (per user), so the
 // app opens straight into their account instead of waiting for two requests.
@@ -209,6 +211,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           async (event, session) => {
             if (!mounted) return;
 
+            if (event === 'SIGNED_IN' && session?.user) completePendingSignIn();
             if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
               if (session?.user) {
                 await loadProfile(session.user.id, session.user, mounted);
@@ -320,6 +323,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       // Still signed in: e.g. this device's push token row goes first.
       await runBeforeSignOut();
+      // Send what is queued while the session still attributes it.
+      track('sign_out');
+      await flushAnalytics();
       const { error } = await supabase.auth.signOut();
       if (error) {
         await supabase.auth.signOut({ scope: 'local' });
