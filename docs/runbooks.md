@@ -373,3 +373,59 @@ Si el enlace de confirmación se abre en otro dispositivo, la cuenta queda
 confirmada igualmente: la app deja el formulario en «Entrar» con el email
 puesto y, al entrar, vuelve a donde estaba la persona (por ejemplo, el concierto
 del QR).
+
+## Tiendas privadas (Play prueba interna y TestFlight)
+
+`.github/workflows/release-mobile.yml` compila la app en cada merge a `main`
+que toca la app y la sube a Google Play «Prueba interna» y a TestFlight. Cada
+plataforma solo corre si tiene sus secretos; si faltan, lo dice en el resumen
+del run y sale en verde. Los números de build salen del número de run (el
+primero manual es 1). Todo lo de abajo son cuentas, pagos y secretos: lo hace
+una persona.
+
+### Android (una vez)
+
+1. Crear la cuenta de Google Play Console (25 $, verificación de identidad).
+2. `scripts/release/android-upload-key.sh`: crea la clave de subida en
+   `~/.live-space/upload-keystore.jks` (copia de seguridad fuera del portátil),
+   escribe `android/keystore.properties` (ignorado por git), enseña su SHA-1 y,
+   si se acepta, guarda los secretos `ANDROID_*`, `GOOGLE_SERVICES_JSON_BASE64`
+   y las variables `VITE_GOOGLE_*` en GitHub.
+3. Play Console → Crear aplicación «Live Space» (`com.livespace.app`), gratis.
+   Rellenar lo mínimo que pide para pruebas internas (política de privacidad:
+   `https://<web>/privacidad`, acceso a la app, anuncios, clasificación,
+   público objetivo, seguridad de los datos).
+4. `npm run android:bundle` y subir a mano
+   `android/app/build/outputs/bundle/release/app-release.aab` en Prueba
+   interna → Crear versión (Play activa la firma de apps de Google). Añadir los
+   testers por email (lista de correos) y abrir el enlace de inscripción en el
+   móvil. Desinstalar antes el APK de depuración (otra firma).
+5. Google Cloud → IAM → cuenta de servicio sin roles, con clave JSON; Play
+   Console → Usuarios y permisos → invitar su email con «Publicar en pistas de
+   prueba» para la app. `gh secret set PLAY_SERVICE_ACCOUNT_JSON < clave.json`
+   y borrar el fichero.
+6. Login con Google: añadir clientes OAuth Android con el SHA-1 de la clave de
+   subida (paso 2) y el de Play Console → Integridad de la app → firma de apps
+   (ver «Login nativo en la app»), y sus IDs en Supabase → Authorized Client IDs.
+7. Mientras la app esté en borrador en Play, la subida solo acepta
+   `status: draft`: `gh variable set PLAY_RELEASE_STATUS --body draft` y
+   publicar el borrador desde la consola; cuando ya haya una versión, borrar la
+   variable y las siguientes salen solas.
+
+### iOS (una vez)
+
+1. Apple Developer Program (99 $/año, 1–2 días de alta).
+2. App Store Connect → Apps → Nueva app: iOS, bundle `com.livespace.app`
+   (si no aparece, crear el identificador en developer.apple.com →
+   Identifiers con «Sign in with Apple» activado).
+3. App Store Connect → Usuarios y acceso → Integraciones → Claves de API del
+   equipo: clave con rol **Admin** (deja a Xcode crear el certificado y el
+   perfil en la nube). Guardar:
+   `gh secret set ASC_KEY_ID`, `gh secret set ASC_ISSUER_ID`,
+   `base64 < AuthKey_XXXX.p8 | gh secret set ASC_KEY_P8_BASE64`, y
+   `gh variable set APPLE_TEAM_ID --body <Team ID>` (developer.apple.com →
+   Membership). Borrar el .p8 local o guardarlo en el gestor.
+4. TestFlight → Pruebas internas: crear un grupo con las cuentas del equipo e
+   instalar la app TestFlight en el iPhone.
+5. Lanzar el workflow a mano (`gh workflow run release-mobile.yml -f
+   platform=ios`) y revisar el resumen del run.

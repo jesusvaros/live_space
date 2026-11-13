@@ -1,0 +1,197 @@
+name: Release mobile (private tracks)
+
+# Each merge to main that touches the app builds it and sends it to the
+# private test tracks: Google Play «Prueba interna» and TestFlight. The team
+# installs from Play / TestFlight and gets updates there instead of APKs.
+# Each platform runs only when its secrets exist (setup: docs/runbooks.md,
+# «Tiendas privadas»); otherwise it logs what is missing and exits 0.
+# Build numbers come from the run number, so every upload is higher.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'android/**'
+      - 'ios/**'
+      - 'capacitor.config.*'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.*'
+      - '.github/workflows/release-mobile.yml'
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'android, ios or both'
+        required: false
+        default: 'both'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-mobile
+  cancel-in-progress: false
+
+env:
+  VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+  VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+  VITE_MAP_STYLE_URL: https://tiles.openfreemap.org/styles/liberty
+  VITE_PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL }}
+  VITE_LEGAL_OWNER: ${{ vars.VITE_LEGAL_OWNER }}
+  VITE_CONTACT_EMAIL: ${{ vars.VITE_CONTACT_EMAIL }}
+  VITE_GOOGLE_WEB_CLIENT_ID: ${{ vars.VITE_GOOGLE_WEB_CLIENT_ID }}
+  VITE_GOOGLE_IOS_CLIENT_ID: ${{ vars.VITE_GOOGLE_IOS_CLIENT_ID }}
+  # First manual upload is build 1; CI continues from 2.
+  BUILD_NUMBER: ${{ github.run_number }}
+  VERSION_NAME: '1.0'
+
+jobs:
+  android:
+    if: github.event_name == 'push' || github.event.inputs.platform != 'ios'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+      PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+    steps:
+      - name: Check Play configuration
+        id: configured
+        shell: bash
+        run: |
+          missing=""
+          for name in VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS GOOGLE_SERVICES_JSON_BASE64 PLAY_SERVICE_ACCOUNT_JSON; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -z "$missing" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Android no publicado::Faltan secretos:$missing. Ver docs/runbooks.md (Tiendas privadas)."
+            echo "### Android no publicado" >> "$GITHUB_STEP_SUMMARY"
+            echo "Faltan secretos:$missing. Ver docs/runbooks.md (Tiendas privadas)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.configured.outputs.ready == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.configured.outputs.ready == 'true'
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        if: steps.configured.outputs.ready == 'true'
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Build web and sync Android
+        if: steps.configured.outputs.ready == 'true'
+        run: |
+          npm ci
+          npm run build
+          npx cap sync android
+
+      - name: Build signed bundle
+        if: steps.configured.outputs.ready == 'true'
+        shell: bash
+        run: |
+          echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 -d > android/app/google-services.json
+          export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/upload-keystore.jks"
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$ANDROID_KEYSTORE_PATH"
+          export VERSION_CODE=$(( BUILD_NUMBER + 1 ))
+          cd android && ./gradlew --no-daemon bundleRelease
+          rm -f "$ANDROID_KEYSTORE_PATH"
+          echo "Android versionCode $VERSION_CODE" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload to Play internal testing
+        if: steps.configured.outputs.ready == 'true'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.livespace.app
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          track: internal
+          # 'draft' until the app has its first release reviewed in Play Console
+          # (Play refuses 'completed' on a draft app); then set the variable to completed.
+          status: ${{ vars.PLAY_RELEASE_STATUS || 'completed' }}
+
+  ios:
+    if: github.event_name == 'push' || github.event.inputs.platform != 'android'
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+    steps:
+      - name: Check App Store Connect configuration
+        id: configured
+        shell: bash
+        run: |
+          missing=""
+          for name in VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY APPLE_TEAM_ID ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8_BASE64; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -z "$missing" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=iOS no publicado::Faltan secretos o variables:$missing. Ver docs/runbooks.md (Tiendas privadas)."
+            echo "### iOS no publicado" >> "$GITHUB_STEP_SUMMARY"
+            echo "Faltan secretos o variables:$missing. Ver docs/runbooks.md (Tiendas privadas)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.configured.outputs.ready == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.configured.outputs.ready == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Build web and sync iOS
+        if: steps.configured.outputs.ready == 'true'
+        run: |
+          npm ci
+          npm run build
+          npx cap sync ios
+
+      # Automatic signing in the cloud with the App Store Connect API key
+      # (role Admin, so Xcode can create the distribution certificate and
+      # profile). The export uploads straight to TestFlight.
+      - name: Archive and upload to TestFlight
+        if: steps.configured.outputs.ready == 'true'
+        shell: bash
+        run: |
+          KEY="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          echo "$ASC_KEY_P8_BASE64" | base64 -d > "$KEY"
+          AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+          BUILD=$(( BUILD_NUMBER + 1 ))
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            "${AUTH[@]}" DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic \
+            CURRENT_PROJECT_VERSION="$BUILD" MARKETING_VERSION="$VERSION_NAME" archive | tail -40
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyLists-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>${APPLE_TEAM_ID}</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export" "${AUTH[@]}" | tail -40
+          rm -f "$KEY"
+          echo "iOS build $BUILD enviado a TestFlight" >> "$GITHUB_STEP_SUMMARY"
