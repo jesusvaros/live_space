@@ -1,0 +1,53 @@
+name: Optimize videos
+
+# Fan videos too heavy for phones, or that cannot start before they are fully
+# downloaded, get a light copy next to the original (720p, ~2.5 Mbps, index
+# first; the original is kept) and a cover; the app then plays the light copy.
+# Uploads from the native picker are already compressed; this is the safety
+# net for everything else. Logs show asset id prefixes and sizes only.
+# Without the R2_* secrets it logs and exits 0.
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Max videos this run'
+        required: false
+        default: '20'
+
+concurrency:
+  group: optimize-media
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null
+      - name: Optimize videos
+        run: npm run media:optimize -- --apply --limit "${LIMIT}"
+        env:
+          LIMIT: ${{ github.event.inputs.limit || '20' }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
+          R2_JURISDICTION: ${{ secrets.R2_JURISDICTION }}
