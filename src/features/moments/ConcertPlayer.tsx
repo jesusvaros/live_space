@@ -28,7 +28,9 @@ import {
   HANDOFF_TIMEOUT_MS,
   handoffSource,
   SEEK_TOLERANCE_SEC,
+  videoPreload,
   videoSlots,
+  WARM_AFTER_MS,
 } from './videoHandoff';
 
 // The concert as one long video: a full-screen player that follows concert
@@ -50,6 +52,13 @@ import {
 // incoming one has shown a frame at the right time, then the new one fades in
 // over it. During that handoff the outgoing one takes the second slot and the
 // clip after next waits to preload.
+//
+// The next clip only fetches its metadata (and is seeked to its cut) until
+// the one on screen has buffered enough to play — canplaythrough, or
+// WARM_AFTER_MS of real playback — so on mobile data the two never compete
+// for the first picture (videoPreload). Until the clip on screen shows its
+// first frame the stage says so («Cargando el concierto…») over the same
+// chrome, instead of a black screen.
 //
 // ♥ (post_likes, the same set as «Guardar» in the photos) for the clip on
 // screen: the button on the right or a double tap on the picture. A single
@@ -79,6 +88,9 @@ type ConcertPlayerProps = {
   // Space the page keeps over the bottom of the stage (its fixed bottom nav
   // and action bar): the controls and tracks sit right above it.
   bottomClearance?: string;
+  // The page's own controls (setlist, photos, upload…): a row of small
+  // pills at the very bottom, under the tracks.
+  actions?: React.ReactNode;
 };
 
 const clock = (t: number, seconds = true) =>
@@ -124,6 +136,7 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
   onView = recordPostView,
   inView = true,
   bottomClearance = 'calc(84px + env(safe-area-inset-bottom, 0px))',
+  actions,
 }) => {
   const tracksRef = useRef<ConcertTracksHandle | null>(null);
   const videosRef = useRef(new Map<string, HTMLVideoElement>());
@@ -155,6 +168,10 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
   const slotOrderRef = useRef<string[]>([]);
   const upcomingRef = useRef<{ clip: Clip; at: number } | null>(null);
   const tapRef = useRef({ at: 0, timer: 0 });
+  // The clip on screen that has buffered enough for the next one to preload
+  // fully, and the one that has shown its first frame (no more «Cargando»).
+  const warmRef = useRef<string | null>(null);
+  const framedRef = useRef<string | null>(null);
   const burstTimerRef = useRef(0);
 
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -170,6 +187,8 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
   const [revealedId, setRevealedId] = useState<string | null>(null);
   const [handoffId, setHandoffIdState] = useState<string | null>(null);
   const [burst, setBurst] = useState(0);
+  const [warmId, setWarmId] = useState<string | null>(null);
+  const [framedId, setFramedId] = useState<string | null>(null);
   const { likedIds, ready: likesReady, setLiked } = usePostLikes();
   // Liked or not when the like counts were loaded (once the set is known).
   const [likedAtLoad, setLikedAtLoad] = useState<Record<string, boolean>>({});
@@ -261,8 +280,20 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
   const markPresented = useCallback((clipId: string, video: HTMLVideoElement) => {
     if (video.seeking || video.readyState < 2) return;
     presentedRef.current.set(clipId, true);
-    if (clipId === activeRef.current?.id) checkReveal();
+    if (clipId !== activeRef.current?.id) return;
+    if (framedRef.current !== clipId) {
+      framedRef.current = clipId;
+      setFramedId(clipId);
+    }
+    checkReveal();
   }, [checkReveal]);
+
+  /** The clip on screen can play on its own: the next one may load fully. */
+  const markWarm = useCallback((clipId: string) => {
+    if (warmRef.current === clipId || clipId !== activeRef.current?.id) return;
+    warmRef.current = clipId;
+    setWarmId(clipId);
+  }, []);
 
   const watchFrame = useCallback((clipId: string, video: HTMLVideoElement) => {
     const rvfc = (video as RvfcVideo).requestVideoFrameCallback;
@@ -407,13 +438,16 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
         return;
       }
       tRef.current = resolved.t;
-      if (clip && resolved.clip?.id === clip.id) countPlayback(clip, resolved.t - previous);
+      if (clip && resolved.clip?.id === clip.id) {
+        countPlayback(clip, resolved.t - previous);
+        if (clip.kind === 'video' && playedRef.current.ms >= WARM_AFTER_MS) markWarm(clip.id);
+      }
       if (resolved.clip?.id !== clip?.id) activate(resolved.clip);
       publishTime(resolved.t);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [activate, countPlayback, publishTime]);
+  }, [activate, countPlayback, markWarm, publishTime]);
 
   // The stage scrolled in or out: start or stop the picture (the clock
   // above stops by itself).
@@ -600,6 +634,14 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
   const backdrop = moment?.thumbnailUrl || (moment?.mediaType === 'image' ? moment.mediaUrl : null);
   const handle = active ? timeline.tracks.find(track => track.id === active.trackId)?.label ?? '' : '';
   const angleCount = covering.length;
+  // Nothing of the clip on screen yet (its first video frame is still
+  // downloading, and no outgoing picture stands in): say it is loading.
+  const pictureLoading =
+    !ended
+    && (!active
+      || (active.kind === 'video'
+        && framedId !== active.id
+        && !(handoffId !== null && revealedId !== active.id)));
 
   return (
     <section className="relative h-full w-full overflow-hidden bg-black" aria-label="Reproductor del concierto">
@@ -633,7 +675,12 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
               poster={videoPoster(clip.moment.thumbnailUrl)}
               muted={muted}
               playsInline
-              preload="auto"
+              preload={videoPreload({
+                isActive,
+                isHandoff: clip.id === handoffId,
+                activeIsVideo: active?.kind === 'video',
+                activeWarm: Boolean(active && warmId === active.id),
+              })}
               aria-hidden={!isActive}
               style={isActive ? { transitionDuration: `${CROSSFADE_MS}ms` } : undefined}
               className={`absolute inset-0 h-full w-full ${isLandscape(clip.moment) ? 'object-contain' : 'object-cover'} ${layer}`}
@@ -654,6 +701,7 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
               onLoadedData={event => markPresented(clip.id, event.currentTarget)}
               onSeeked={event => markPresented(clip.id, event.currentTarget)}
               onTimeUpdate={event => markPresented(clip.id, event.currentTarget)}
+              onCanPlayThrough={() => markWarm(clip.id)}
               onWaiting={() => clip.id === activeRef.current?.id && setBuffering(true)}
               onPlaying={event => {
                 if (clip.id === activeRef.current?.id) setBuffering(false);
@@ -687,8 +735,17 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
       {/* Shade under the top bar and under the controls. */}
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.5)_0%,rgba(0,0,0,0)_18%,rgba(0,0,0,0)_42%,rgba(0,0,0,0.7)_62%,rgba(0,0,0,0.9)_100%)]" />
 
-      {buffering && playing ? (
+      {(buffering || pictureLoading) && playing ? (
         <div className="pointer-events-none absolute left-1/2 top-[38%] h-10 w-10 -translate-x-1/2 -translate-y-1/2 animate-spin rounded-full border-2 border-white/25 border-t-white motion-reduce:animate-none" />
+      ) : null}
+
+      {pictureLoading ? (
+        <p
+          role="status"
+          className="pointer-events-none absolute left-1/2 top-[calc(38%+44px)] -translate-x-1/2 whitespace-nowrap rounded-full bg-black/45 px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.06em] text-white/85 backdrop-blur"
+        >
+          Cargando el concierto…
+        </p>
       ) : null}
 
       {!playing && active?.kind !== 'external' ? (
@@ -862,6 +919,8 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
           onScrubEnd={onScrubEnd}
           onPickClip={pickClip}
         />
+
+        {actions ? <div className="flex items-center gap-2 pt-2.5">{actions}</div> : null}
       </div>
     </section>
   );

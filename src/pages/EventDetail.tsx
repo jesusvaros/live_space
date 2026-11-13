@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DetailSkeleton } from '../components/ui/AppPrimitives';
+import { DetailSkeleton, Modal } from '../components/ui/AppPrimitives';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Event, Profile, VenuePlace, EventSetlistEntry, Artist } from '../lib/types';
@@ -8,32 +8,30 @@ import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
 import { NAV_CLEARANCE } from '../components/BottomNav';
 import ShareSheet from '../components/ShareSheet';
-import { IconBookmark, IconBookmarkFilled, IconPlus, IconShare } from '../components/icons';
+import { IconBookmark, IconBookmarkFilled, IconShare } from '../components/icons';
 import DetailHeader from '../components/ui/DetailHeader';
-import GeneratedPoster from '../components/ui/GeneratedPoster';
 import { fetchEventCardById } from '../data/eventQueries';
 import { eventCacheKey, readCache } from '../data/pageCache';
 import { useRouteEntityId } from '../hooks/useRouteEntityId';
 import { useEventUploads } from '../media/useUploadQueue';
-import SetlistAttribution from '../components/event/SetlistAttribution';
-import SetlistProposalAction from '../features/setlist/SetlistProposalAction';
-import SetlistCredit from '../features/setlist/SetlistCredit';
 import { enableMomentNudges } from '../features/moments/momentNudge';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { EventStatsCard, VenueFeedbackPrompt } from '../features/community';
 import { festivalService } from '../services/festival.service';
 import EventMerchSection from '../features/merch/EventMerchSection';
+import { useEventMerchStands } from '../features/merch/useEventMerchStands';
 import AttendanceSuggestion from '../features/events/AttendanceSuggestion';
 import EventUploadButton from '../features/events/EventUploadButton';
 import { useEventUploadBar } from '../features/events/useEventUploadBar';
 import ConcertPlayer, { type SeekRequest } from '../features/moments/ConcertPlayer';
 import { useConcertMoments, useConcertTimeline } from '../features/moments/useConcertTimeline';
-import type { Clip, TimelineMoment } from '../features/moments/concertTimeline';
+import type { Clip } from '../features/moments/concertTimeline';
+import EventSetlist, { UnplacedMoments } from '../features/events/EventSetlist';
 import { useFirstContent } from '../lib/perfTiming';
 import EventHero from '../features/events/EventHero';
 import EventPhotos from '../features/photos/EventPhotos';
 import { useHiddenPostIds } from '../features/photos/postCollections';
-import { withoutHidden } from '../features/photos/photoAlbums';
+import { groupPhotoAlbums, withoutHidden } from '../features/photos/photoAlbums';
 import { heroParallaxOffset, stageIsMostlyVisible } from '../features/moments/stageParallax';
 import { track } from '../features/analytics/analytics';
 
@@ -50,8 +48,6 @@ type EventDetailData = Event & {
   venue_place?: VenuePlace | null;
   event_artists?: { artist: Artist | null }[];
 };
-
-const pad = (value: number) => value.toString().padStart(2, '0');
 
 const sameDay = (left: Date, right: Date) => left.toDateString() === right.toDateString();
 
@@ -75,8 +71,12 @@ const kickerDate = (date: Date) => {
   return [dayWord(date), full, time].filter(Boolean).join(' · ').toUpperCase();
 };
 
-const thumbOf = (moment: TimelineMoment) =>
-  moment.thumbnailUrl || (moment.mediaType === 'image' ? moment.mediaUrl : null);
+// The player's own controls: small dark pills, mono labels (like the
+// stage chip), clearly apart from the per-clip ♥ / report buttons.
+const STAGE_PILL =
+  'flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-white/20 bg-black/45 px-3 font-mono text-[11px] font-semibold uppercase tracking-[0.06em] text-white backdrop-blur';
+
+type StageSheet = 'setlist' | 'photos' | 'merch';
 
 const EventDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -97,6 +97,7 @@ const EventDetail: React.FC = () => {
   const [seekRequest, setSeekRequest] = useState<SeekRequest>(null);
   const [playingSongId, setPlayingSongId] = useState<string | null>(null);
   const [showShare, setShowShare] = useState(false);
+  const [sheet, setSheet] = useState<StageSheet | null>(null);
   const [followed, setFollowed] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [attendanceStatus, setAttendanceStatus] = useState<'going' | 'attended' | null>(null);
@@ -343,8 +344,10 @@ const EventDetail: React.FC = () => {
     contentRef.current?.scrollTo({ top: stage.offsetTop, behavior: reduced ? 'auto' : 'smooth' });
   };
 
+  // A song tapped in the setlist sheet: play it, back on the stage.
   const playClip = (clip: Clip) => {
     setSeekRequest({ clipId: clip.id, nonce: Date.now() });
+    setSheet(null);
     scrollToStage();
   };
 
@@ -450,12 +453,23 @@ const EventDetail: React.FC = () => {
   const lived = hasStarted && (setlist.length > 0 || moments.length > 0);
   const attendanceTarget: 'going' | 'attended' = isPastEvent ? 'attended' : 'going';
   const attendanceActive = attendanceStatus === attendanceTarget;
+  // With something to play the page ends with the full-screen stage: nothing
+  // below it, and its controls (setlist, photos, merch, «+ Subir») live in
+  // the player.
+  const stageMode = lived && hasStage;
   // After the concert the bottom bar is only «Sube lo que grabaste» (or its
-  // progress / Reintentar): gone for someone who already uploaded here.
+  // progress / Reintentar): gone for someone who already uploaded here, and
+  // on the stage, where «+ Subir» is one of the player's controls.
   const uploadMode = isPastEvent || lived;
-  const showBottomBar = !uploadMode || uploadBar.visible;
+  const showBottomBar = !uploadMode || (uploadBar.visible && !stageMode);
   const bottomClearance = showBottomBar ? CLEAR_NAV_AND_BAR : CLEAR_NAV;
-  const pagePadding = showBottomBar ? 'pb-[calc(156px+env(safe-area-inset-bottom,0px))]' : NAV_CLEARANCE;
+  const pagePadding = stageMode
+    ? ''
+    : showBottomBar
+      ? 'pb-[calc(156px+env(safe-area-inset-bottom,0px))]'
+      : NAV_CLEARANCE;
+  const merchStands = useEventMerchStands(id, event?.starts_at ?? null, stageMode);
+  const hasPhotos = useMemo(() => groupPhotoAlbums(moments, user?.id ?? null).length > 0, [moments, user?.id]);
 
   const handleFollowClick = () => {
     if (!user) {
@@ -495,14 +509,30 @@ const EventDetail: React.FC = () => {
 
   const kicker = eventStart ? kickerDate(eventStart) : null;
 
+  const setlistContent = event ? (
+    <EventSetlist
+      eventId={event.id}
+      startsAt={event.starts_at}
+      setlist={setlist}
+      clipsBySong={clipsBySong}
+      playingSongId={playingSongId}
+      fallbackTitle={heroTitle}
+      attendance={attendanceStatus}
+      onPlayClip={playClip}
+      onUpload={openUpload}
+      onSetlistApplied={reloadSetlist}
+    />
+  ) : null;
+
   return (
     <AppShell
       headerProps={null}
       hideUploadPill={eventUploads.summary.state !== 'idle'}
       contentRef={contentRef}
       contentWrapperClassName={false}
-      // A gentle pull towards the stage when you stop near it; never forced.
-      contentClassName={`event-detail-content${hasStage ? ' snap-y snap-proximity' : ''}`}
+      // No scroll snapping: the stage is the end of the page, reached by
+      // scrolling down, never pulled back to.
+      contentClassName="event-detail-content"
     >
       {loading && <DetailSkeleton />}
 
@@ -534,11 +564,11 @@ const EventDetail: React.FC = () => {
                 />
               </div>
 
-              {hasStage && timeline ? (
+              {stageMode && timeline ? (
                 <section
                   ref={stageRef}
                   aria-label="El concierto, a pantalla completa"
-                  className="relative z-10 mt-5 snap-start overflow-hidden bg-black"
+                  className="relative z-10 mt-5 overflow-hidden bg-black"
                   style={{ height: viewportHeight ? `${viewportHeight}px` : '100dvh' }}
                 >
                   <ConcertPlayer
@@ -550,185 +580,81 @@ const EventDetail: React.FC = () => {
                     onDuration={reportDuration}
                     inView={stageInView && pageVisible}
                     bottomClearance={bottomClearance}
+                    actions={
+                      <>
+                        <button type="button" aria-haspopup="dialog" onClick={() => setSheet('setlist')} className={STAGE_PILL}>
+                          Setlist
+                          {setlist.length > 0 ? <span className="text-white/55">{setlist.length}</span> : null}
+                        </button>
+                        {hasPhotos ? (
+                          <button type="button" aria-haspopup="dialog" onClick={() => setSheet('photos')} className={STAGE_PILL}>
+                            Fotos
+                          </button>
+                        ) : null}
+                        {merchStands.length > 0 ? (
+                          <button type="button" aria-haspopup="dialog" onClick={() => setSheet('merch')} className={STAGE_PILL}>
+                            Merch
+                          </button>
+                        ) : null}
+                        <span className="min-w-0 flex-1" />
+                        <EventUploadButton variant="pill" bar={uploadBar} onUpload={() => openUpload()} />
+                      </>
+                    }
                   />
                 </section>
-              ) : null}
+              ) : (
+                // Nothing to play yet: the setlist and the rest below the poster.
+                <div className="relative z-10 bg-app-bg">
+                  {momentsLoading ? (
+                    <div className="mx-4 mt-5 h-[120px] animate-pulse rounded-2xl bg-app-surface motion-reduce:animate-none" aria-label="Cargando momentos" />
+                  ) : (
+                    <div className="px-4 pt-5">
+                      <p className="font-display text-xl font-bold text-app-ink">Sube lo que grabaste</p>
+                      <p className="mt-1 text-sm text-[#c9c5bd]">
+                        {timeline && timeline.unplaced.length > 0
+                          ? 'Los momentos de este concierto no tienen hora: están más abajo.'
+                          : 'Aún no hay momentos. Lo que subáis se monta aquí como un solo vídeo, canción a canción.'}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => openUpload()}
+                        className="mt-3 min-h-11 rounded-full bg-app-accent px-4 text-sm font-bold text-[#14151a]"
+                      >
+                        ¿La grabaste? Sube el primero
+                      </button>
+                    </div>
+                  )}
 
-              <div className="relative z-10 bg-app-bg">
-                {hasStage ? null : momentsLoading ? (
-                  <div className="mx-4 mt-5 h-[120px] animate-pulse rounded-2xl bg-app-surface motion-reduce:animate-none" aria-label="Cargando momentos" />
-                ) : (
-                  <div className="px-4 pt-5">
-                    <p className="font-display text-xl font-bold text-app-ink">Sube lo que grabaste</p>
-                    <p className="mt-1 text-sm text-[#c9c5bd]">
-                      {timeline && timeline.unplaced.length > 0
-                        ? 'Los momentos de este concierto no tienen hora: están más abajo.'
-                        : 'Aún no hay momentos. Lo que subáis se monta aquí como un solo vídeo, canción a canción.'}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => openUpload()}
-                      className="mt-3 min-h-11 rounded-full bg-app-accent px-4 text-sm font-bold text-[#14151a]"
-                    >
-                      ¿La grabaste? Sube el primero
+                  {momentsError && <p className="px-4 pt-2 text-sm text-rose-400">{momentsError}</p>}
+
+                  <EventPhotos moments={moments} currentUserId={user?.id ?? null} onDeleted={removeMoment} />
+
+                  <UnplacedMoments moments={timeline?.unplaced ?? []} fallbackTitle={heroTitle} />
+
+                  <div className="px-4 pt-4 empty:hidden">
+                    <VenueFeedbackPrompt eventId={event.id} />
+                  </div>
+
+                  <div className="flex items-center justify-between px-4 pt-5">
+                    <h2 className="font-display text-xl font-bold text-app-ink">El concierto, canción a canción</h2>
+                    <button type="button" aria-label="Compartir" className="flex h-11 w-11 items-center justify-center text-white/70" onClick={() => setShowShare(true)}>
+                      <IconShare size={19} />
                     </button>
                   </div>
-                )}
-
-                {momentsError && <p className="px-4 pt-2 text-sm text-rose-400">{momentsError}</p>}
-
-                <EventPhotos moments={moments} currentUserId={user?.id ?? null} onDeleted={removeMoment} />
-
-                {timeline && timeline.unplaced.length > 0 ? (
-                  <div className="px-4 pt-5">
-                    <h2 className="font-display text-base font-bold text-app-ink">Sin hora exacta</h2>
-                    <p className="mt-0.5 text-[12px] text-white/50">
-                      No sabemos cuándo se grabaron, así que no están en la línea de tiempo.
-                    </p>
-                    <div className="-mx-4 mt-2.5 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
-                      {timeline.unplaced.map(moment => {
-                        const thumb = thumbOf(moment);
-                        return (
-                          <button
-                            key={moment.id}
-                            type="button"
-                            onClick={() => navigate(`/post/${moment.id}`)}
-                            aria-label={`Ver momento de @${moment.userName || 'anónimo'}`}
-                            className="relative h-[92px] w-[64px] shrink-0 overflow-hidden rounded-xl border border-app-line bg-app-surface"
-                          >
-                            {thumb ? (
-                              <img src={thumb} alt="" loading="lazy" className="h-full w-full object-cover" />
-                            ) : (
-                              <GeneratedPoster title={heroTitle} variant="thumb" />
-                            )}
-                            <span className="absolute inset-x-1 bottom-1 truncate text-left text-[10px] font-semibold text-white drop-shadow">
-                              @{moment.userName || 'anónimo'}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
+                  {setlistContent}
+                  {engagementError && <p className="px-4 pt-3 text-sm text-rose-400">{engagementError}</p>}
+                  <div className="px-4 pt-5 empty:hidden">
+                    <EventMerchSection
+                      eventId={event.id}
+                      startsAt={event.starts_at}
+                      endsAt={event.ends_at}
+                      venueName={venue?.name ?? null}
+                      attending={attendanceStatus !== null}
+                      onAttend={markGoingForMerch}
+                    />
                   </div>
-                ) : null}
-
-                <div className="px-4 pt-4 empty:hidden">
-                  <VenueFeedbackPrompt eventId={event.id} />
                 </div>
-
-                <div className="flex items-center justify-between px-4 pt-5">
-                  <h2 className="font-display text-xl font-bold text-app-ink">El concierto, canción a canción</h2>
-                  <button type="button" aria-label="Compartir" className="flex h-11 w-11 items-center justify-center text-white/70" onClick={() => setShowShare(true)}>
-                    <IconShare size={19} />
-                  </button>
-                </div>
-
-                {setlist.length === 0 ? (
-                  <p className="px-4 pt-1 text-sm text-white/60">
-                    Aún no hay setlist: los momentos van por orden de hora.
-                  </p>
-                ) : (
-                  <ol className="mt-2.5 flex flex-col gap-1 px-4">
-                    {setlist.map((entry, index) => {
-                      const songClips = entry.song_id ? clipsBySong.get(entry.song_id) || [] : [];
-                      const current = Boolean(entry.song_id && entry.song_id === playingSongId);
-                      const last = index === setlist.length - 1;
-                      return (
-                        <li
-                          key={entry.ordinal}
-                          aria-current={current ? 'true' : undefined}
-                          className={`flex min-h-[60px] items-center gap-3 ${
-                            current
-                              ? '-mx-2.5 rounded-xl bg-app-accent/[0.12] px-2.5 py-2'
-                              : `py-2 ${last ? '' : 'border-b border-app-line'}`
-                          }`}
-                        >
-                          <span className={`w-6 font-mono text-[12px] font-semibold ${current ? 'text-app-accent' : 'text-[#8f8b84]'}`}>
-                            {pad(entry.ordinal)}
-                          </span>
-                          <span className={`min-w-0 flex-1 truncate text-[15px] ${current ? 'font-bold text-app-accent' : 'font-semibold text-app-ink'}`}>
-                            {entry.song_title || 'Canción sin título'}
-                          </span>
-                          {songClips.length > 0 ? (
-                            <button
-                              type="button"
-                              className="flex min-h-11 items-center"
-                              aria-label={`Ver ${songClips.length} momentos de ${entry.song_title || 'esta canción'}`}
-                              onClick={() => playClip(songClips[0])}
-                            >
-                              {songClips.slice(0, 3).map((clip, thumbIndex) => {
-                                const thumb = thumbOf(clip.moment);
-                                return (
-                                  <span
-                                    key={clip.id}
-                                    className={`relative h-11 w-[34px] overflow-hidden rounded-md border-2 bg-app-surface ${
-                                      current && thumbIndex === 0 ? 'border-app-accent' : 'border-app-bg'
-                                    } ${thumbIndex > 0 ? '-ml-2.5' : ''}`}
-                                  >
-                                    {thumb ? (
-                                      <img src={thumb} alt="" loading="lazy" className="h-full w-full object-cover" />
-                                    ) : (
-                                      <GeneratedPoster title={entry.song_title || heroTitle} variant="thumb" />
-                                    )}
-                                  </span>
-                                );
-                              })}
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => openUpload(entry.ordinal)}
-                              className="min-h-11 shrink-0 rounded-full border border-dashed border-app-line px-3 text-xs font-semibold text-[#c9c5bd]"
-                            >
-                              ¿La grabaste?
-                            </button>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ol>
-                )}
-                {setlist.some(entry => entry.source === 'setlistfm') && (
-                  <div className="px-4">
-                    <SetlistAttribution url={setlist.find(entry => entry.source_url)?.source_url} />
-                  </div>
-                )}
-                <SetlistCredit setlist={setlist} className="px-4" />
-                <SetlistProposalAction
-                  eventId={event.id}
-                  startsAt={event.starts_at}
-                  setlist={setlist}
-                  attendance={attendanceStatus}
-                  onApplied={reloadSetlist}
-                  className="px-4 pt-3"
-                />
-                <div className="px-4 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => navigate('/importar')}
-                    className="flex min-h-[52px] w-full items-center gap-3 rounded-2xl border border-app-line bg-app-surface px-3.5 text-left"
-                  >
-                    <IconPlus size={18} className="shrink-0 text-app-accent" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[14px] font-semibold text-app-ink">¿Lo subiste a Instagram, TikTok o YouTube?</span>
-                      <span className="block text-[12px] text-white/50">Impórtalo y aparece en su sitio de la línea de tiempo</span>
-                    </span>
-                  </button>
-                </div>
-                {engagementError && <p className="px-4 pt-3 text-sm text-rose-400">{engagementError}</p>}
-                <div className="px-4 pt-5 empty:hidden">
-                  <EventMerchSection
-                    eventId={event.id}
-                    startsAt={event.starts_at}
-                    endsAt={event.ends_at}
-                    venueName={venue?.name ?? null}
-                    attending={attendanceStatus !== null}
-                    onAttend={markGoingForMerch}
-                  />
-                </div>
-                <div className="px-4 pt-5 empty:hidden">
-                  <EventStatsCard eventId={event.id} />
-                </div>
-              </div>
+              )}
             </div>
           ) : (
             <div className={pagePadding}>
@@ -848,6 +774,45 @@ const EventDetail: React.FC = () => {
           ) : null}
         </>
       )}
+
+      {stageMode && event ? (
+        <>
+          <Modal isOpen={sheet === 'setlist'} onDidDismiss={() => setSheet(null)} initialBreakpoint={0.8} title="Setlist">
+            <div className="max-h-[85dvh] overflow-y-auto pb-[calc(20px+env(safe-area-inset-bottom,0px))] pt-3">
+              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20" aria-hidden />
+              <h3 className="px-4 font-display text-lg font-bold text-app-ink">El concierto, canción a canción</h3>
+              {setlistContent}
+              <UnplacedMoments moments={timeline?.unplaced ?? []} fallbackTitle={heroTitle} />
+              <div className="px-4 pt-4 empty:hidden">
+                <VenueFeedbackPrompt eventId={event.id} />
+              </div>
+            </div>
+          </Modal>
+
+          <Modal isOpen={sheet === 'photos'} onDidDismiss={() => setSheet(null)} initialBreakpoint={0.9} title="Fotos">
+            <div className="max-h-[90dvh] overflow-y-auto pb-[calc(20px+env(safe-area-inset-bottom,0px))] pt-3">
+              <div className="mx-auto h-1 w-10 rounded-full bg-white/20" aria-hidden />
+              <EventPhotos moments={moments} currentUserId={user?.id ?? null} onDeleted={removeMoment} inSheet />
+            </div>
+          </Modal>
+
+          <Modal isOpen={sheet === 'merch'} onDidDismiss={() => setSheet(null)} initialBreakpoint={0.9} title="Merch del concierto">
+            <div className="max-h-[90dvh] overflow-y-auto px-4 pb-[calc(20px+env(safe-area-inset-bottom,0px))] pt-3">
+              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20" aria-hidden />
+              <EventMerchSection
+                eventId={event.id}
+                startsAt={event.starts_at}
+                endsAt={event.ends_at}
+                venueName={venue?.name ?? null}
+                attending={attendanceStatus !== null}
+                onAttend={markGoingForMerch}
+                initialStands={merchStands}
+              />
+              {engagementError && <p className="pt-3 text-sm text-rose-400">{engagementError}</p>}
+            </div>
+          </Modal>
+        </>
+      ) : null}
 
       <ShareSheet isOpen={showShare} onClose={() => setShowShare(false)} link={shareUrl} />
     </AppShell>

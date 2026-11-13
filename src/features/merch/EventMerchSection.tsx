@@ -18,16 +18,19 @@ type EventMerchSectionProps = {
   attending: boolean;
   /** Marks the user as going; resolves false if it failed. */
   onAttend: () => Promise<boolean>;
+  /** Stands already fetched by the page (useEventMerchStands): no second fetch. */
+  initialStands?: EventMerchStand[];
 };
 
 // «Merch del concierto». Anyone sees it; only people going to the concert
 // reserve. Pickup is always at the stand; each seller picks how to pay
 // (in the app or at the stand). Hidden when nobody sells or reservations closed.
-const EventMerchSection: React.FC<EventMerchSectionProps> = ({ eventId, startsAt, endsAt, venueName, attending, onAttend }) => {
+const EventMerchSection: React.FC<EventMerchSectionProps> = ({ eventId, startsAt, endsAt, venueName, attending, onAttend, initialStands }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const [stands, setStands] = useState<EventMerchStand[]>([]);
+  const [stands, setStands] = useState<EventMerchStand[]>(() => initialStands ?? []);
+  const prefetched = initialStands !== undefined;
   const [cart, setCart] = useState<Cart>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<{ stand: string; message: string } | null>(null);
@@ -37,7 +40,7 @@ const EventMerchSection: React.FC<EventMerchSectionProps> = ({ eventId, startsAt
   const closed = reservationsClosed(startsAt);
 
   useEffect(() => {
-    if (closed) return undefined;
+    if (closed || prefetched) return undefined;
     let cancelled = false;
     merchService
       .forEvent(eventId)
@@ -48,7 +51,7 @@ const EventMerchSection: React.FC<EventMerchSectionProps> = ({ eventId, startsAt
     return () => {
       cancelled = true;
     };
-  }, [eventId, closed]);
+  }, [eventId, closed, prefetched]);
 
   // Signed in from the sheet: close it and carry on (the «Voy» step shows
   // only if the user is not going yet; the cart is kept).

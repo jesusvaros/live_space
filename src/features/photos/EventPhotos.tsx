@@ -14,6 +14,8 @@ type EventPhotosProps = {
   moments: TimelineMoment[];
   currentUserId: string | null;
   onDeleted: (postId: string) => void;
+  // Shown inside a sheet: the viewer opens within it (PhotoViewer inline).
+  inSheet?: boolean;
 };
 
 const Mosaic: React.FC<{ album: PhotoAlbum }> = ({ album }) => {
@@ -34,7 +36,7 @@ const Mosaic: React.FC<{ album: PhotoAlbum }> = ({ album }) => {
   );
 };
 
-const EventPhotos: React.FC<EventPhotosProps> = ({ moments, currentUserId, onDeleted }) => {
+const EventPhotos: React.FC<EventPhotosProps> = ({ moments, currentUserId, onDeleted, inSheet = false }) => {
   const albums = useMemo(() => groupPhotoAlbums(moments, currentUserId), [moments, currentUserId]);
   const [albumId, setAlbumId] = useState(ALL_ALBUM_ID);
   const [viewerAt, setViewerAt] = useState<number | null>(null);
@@ -100,6 +102,7 @@ const EventPhotos: React.FC<EventPhotosProps> = ({ moments, currentUserId, onDel
           startIndex={viewerAt}
           albumLabel={album.label}
           onClose={() => setViewerAt(null)}
+          inline={inSheet}
           {...handlers}
         />
       ) : null}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { frameReadyAt, handoffSource, videoSlots } from './videoHandoff';
+import { frameReadyAt, handoffSource, videoPreload, videoSlots } from './videoHandoff';
 
 describe('frameReadyAt', () => {
   const ready = { readyState: 4, seeking: false, currentTime: 12.1, presented: true };
@@ -61,5 +61,23 @@ describe('videoSlots', () => {
   it('keeps mounted elements in place (moving a <video> pauses it)', () => {
     expect(videoSlots(video('b'), video('c'), null, ['a', 'b']).map(clip => clip.id)).toEqual(['b', 'c']);
     expect(videoSlots(video('a'), video('b'), null, ['b', 'a']).map(clip => clip.id)).toEqual(['b', 'a']);
+  });
+});
+
+describe('videoPreload', () => {
+  const base = { isActive: false, isHandoff: false, activeIsVideo: true, activeWarm: false };
+
+  it('loads the clip on screen and the outgoing one fully', () => {
+    expect(videoPreload({ ...base, isActive: true })).toBe('auto');
+    expect(videoPreload({ ...base, isHandoff: true })).toBe('auto');
+  });
+
+  it('keeps the next clip to its metadata until the one on screen has buffered', () => {
+    expect(videoPreload(base)).toBe('metadata');
+    expect(videoPreload({ ...base, activeWarm: true })).toBe('auto');
+  });
+
+  it('lets the next video load at once after a photo or an imported clip', () => {
+    expect(videoPreload({ ...base, activeIsVideo: false })).toBe('auto');
   });
 });
