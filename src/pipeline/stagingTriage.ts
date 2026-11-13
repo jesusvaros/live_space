@@ -168,7 +168,7 @@ export const runStagingTriage = async ({
   for (let from = 0; from < merged.length; from += 200) {
     const { error } = await supabase
       .from('staging_events')
-      .update({ review_status: 'merged', processing_error: null })
+      .update({ review_status: 'merged', decision_reasons: ['triage-duplicate'], processing_error: null })
       .in('id', merged.slice(from, from + 200))
       .eq('review_status', 'pending');
     if (error) throw error;
@@ -178,6 +178,7 @@ export const runStagingTriage = async ({
       .from('staging_events')
       .update({
         review_status: action.reviewStatus,
+        ...(action.rule ? { decision_reasons: [`triage-${action.rule}`] } : {}),
         ...(action.normalizedEvent
           ? { normalized_payload: action.normalizedEvent, confidence: action.normalizedEvent.confidence }
           : {}),
