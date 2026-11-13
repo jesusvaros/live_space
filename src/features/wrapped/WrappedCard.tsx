@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { IconChevronRight } from '../../components/icons';
 import { track } from '../analytics/analytics';
 import { WRAPPED_PATH } from './sharedImage';
 
@@ -42,25 +43,37 @@ const WrappedCard: React.FC<{ className?: string }> = ({ className = '' }) => {
     <div className={`relative ${className}`}>
       <Link
         to={WRAPPED_PATH}
-        className="flex items-center gap-4 rounded-2xl border border-app-accent/40 bg-app-accent/10 p-4 pr-12 text-left transition hover:border-app-accent"
+        aria-label={`Importa tu Spotify Wrapped ${season}`}
+        className="flex min-h-16 items-center gap-3 overflow-hidden rounded-2xl border border-[#1ed760]/25 bg-[linear-gradient(110deg,rgba(30,215,96,0.16),rgba(30,215,96,0.03)_60%)] py-2.5 pl-3 pr-12 text-left transition hover:border-[#1ed760]/50"
       >
-        <div className="min-w-0 flex-1 space-y-1">
-          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-app-accent">Spotify Wrapped {season}</p>
-          <p className="font-display text-[17px] font-bold leading-tight text-app-ink">Importa tu Wrapped</p>
-          <p className="text-[13px] leading-snug text-app-ink/65">Sigue a tus artistas del año de un toque y entérate antes de sus conciertos.</p>
-        </div>
-        <span aria-hidden className="font-poster text-[40px] leading-none text-app-accent">→</span>
+        <SpotifyGlyph />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-display text-[16px] font-bold leading-tight text-app-ink">Tu Wrapped {season}</span>
+          <span className="block truncate text-[13px] text-app-ink/60">Sigue a tus artistas del año</span>
+        </span>
+        <IconChevronRight size={18} className="shrink-0 text-[#1ed760]" />
       </Link>
       <button
         type="button"
         aria-label="Cerrar Spotify Wrapped"
         onClick={dismiss}
-        className="absolute right-1 top-1 flex h-11 w-11 items-center justify-center rounded-full text-xl leading-none text-app-ink/60 hover:text-app-ink"
+        className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-lg leading-none text-app-ink/40 hover:text-app-ink"
       >
         ×
       </button>
     </div>
   );
 };
+
+// Spotify's mark as a simple glyph: green disc with the three sound arcs.
+const SpotifyGlyph: React.FC = () => (
+  <span aria-hidden className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1ed760]">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0b0b0b" strokeLinecap="round">
+      <path d="M5 9.2c4.6-1.5 9.8-1.1 14 1.2" strokeWidth="2.2" />
+      <path d="M6 12.7c3.9-1.1 8.1-.8 11.6 1" strokeWidth="1.9" />
+      <path d="M7 16c3.1-.8 6.3-.6 9.1.8" strokeWidth="1.6" />
+    </svg>
+  </span>
+);
 
 export default WrappedCard;
