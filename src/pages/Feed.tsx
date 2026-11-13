@@ -121,7 +121,7 @@ const MomentSlide: React.FC<SlideProps> = ({ post, songNumber, group, liked, onL
       )}
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.55),rgba(0,0,0,0)_22%,rgba(0,0,0,0)_50%,rgba(0,0,0,0.9)_88%)]" />
 
-      <div className="absolute bottom-[calc(200px+env(safe-area-inset-bottom,0px))] right-3 flex flex-col items-center gap-3.5">
+      <div className="absolute bottom-[calc(196px+env(safe-area-inset-bottom,0px))] right-3 flex flex-col items-center gap-3.5">
         <button
           type="button"
           aria-label={liked ? 'Quitar me gusta' : 'Me gusta'}
@@ -382,21 +382,31 @@ const Feed: React.FC = () => {
 
   return (
     <div className="relative h-full bg-black">
-      <div className="pointer-events-none absolute inset-x-4 top-[calc(14px+env(safe-area-inset-top,0px))] z-20 flex items-center justify-between">
+      <div className="pointer-events-none absolute inset-x-4 top-[calc(14px+env(safe-area-inset-top,0px))] z-20 flex items-center">
         <div role="tablist" aria-label="Qué momentos ver" className="pointer-events-auto flex gap-1.5">
           {scopeButton('all', 'Todo')}
           {city ? scopeButton('city', city) : null}
           {scopeButton('following', 'Siguiendo')}
         </div>
+      </div>
+
+      {/* Upload sits bottom-right, where the thumb is, fixed over the feed: it
+          belongs to the screen, not to the moment, so it is orange, bigger and
+          labelled, and kept apart from the moment's like/share column above.
+          The empty state has its own big «Subir» call. */}
+      {!loading && posts.length > 0 ? (
         <button
           type="button"
           aria-label="Subir un momento"
           onClick={() => navigate('/tabs/upload')}
-          className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full bg-app-accent text-[#14151a]"
+          className="absolute bottom-[calc(92px+env(safe-area-inset-bottom,0px))] right-2.5 z-30 flex w-[60px] flex-col items-center gap-1"
         >
-          <IconPlus size={22} />
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-app-accent text-[#14151a] shadow-[0_6px_20px_rgba(0,0,0,0.55)] ring-2 ring-black/30">
+            <IconPlus size={26} />
+          </span>
+          <span className="font-mono text-[10px] font-bold uppercase tracking-wide text-app-accent [text-shadow:0_1px_3px_rgba(0,0,0,0.8)]">Subir</span>
         </button>
-      </div>
+      ) : null}
 
       {loading ? (
         <div className="flex h-full items-center justify-center text-white">
