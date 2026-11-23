@@ -14,11 +14,15 @@ export const POSTER_BOX = { width: 44, height: 56 };
 /** Active poster footprint in px. */
 export const ACTIVE_POSTER_BOX = { width: 60, height: 76 };
 
+/** The map's deepest zoom (Map.tsx sets it). */
+export const MAP_MAX_ZOOM = 19;
 /** From this zoom the posters start to grow… */
 export const POSTER_GROW_FROM_ZOOM = 15;
-/** …until here, where they are POSTER_MAX_SCALE times their idle size. */
-export const POSTER_GROW_TO_ZOOM = 17.5;
-export const POSTER_MAX_SCALE = 2.2;
+/** …to this size two levels before the maximum… */
+export const POSTER_STREET_ZOOM = MAP_MAX_ZOOM - 2;
+export const POSTER_STREET_SCALE = 2.2;
+/** …and keep growing over the last two levels, up to this at the maximum. */
+export const POSTER_MAX_SCALE = 3.6;
 
 /**
  * How big the posters are at this zoom. At city and neighbourhood zoom they
@@ -27,9 +31,12 @@ export const POSTER_MAX_SCALE = 2.2;
  * Rounded to 0.1 so tiny zoom changes do not repaint every pin.
  */
 export const posterScale = (zoom: number) => {
-  const t = (zoom - POSTER_GROW_FROM_ZOOM) / (POSTER_GROW_TO_ZOOM - POSTER_GROW_FROM_ZOOM);
-  const clamped = Math.min(1, Math.max(0, t));
-  return Math.round((1 + clamped * (POSTER_MAX_SCALE - 1)) * 10) / 10;
+  const ramp = (from: number, to: number) => Math.min(1, Math.max(0, (zoom - from) / (to - from)));
+  const scale =
+    zoom <= POSTER_STREET_ZOOM
+      ? 1 + ramp(POSTER_GROW_FROM_ZOOM, POSTER_STREET_ZOOM) * (POSTER_STREET_SCALE - 1)
+      : POSTER_STREET_SCALE + ramp(POSTER_STREET_ZOOM, MAP_MAX_ZOOM) * (POSTER_MAX_SCALE - POSTER_STREET_SCALE);
+  return Math.round(scale * 10) / 10;
 };
 
 export const scaleBox = (box: { width: number; height: number }, scale: number) => ({

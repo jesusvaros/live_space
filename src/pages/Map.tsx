@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AttributionControl, LngLatBounds, Map as MapLibreMap, Marker, setWorkerUrl } from 'maplibre-gl';
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { MAP_MAX_ZOOM } from '../components/map/pinLayout';
 import { useLocation } from 'react-router-dom';
 import { Page } from '../components/ui/AppPrimitives';
 import MapMarkers from '../components/map/MapMarkers';
@@ -141,6 +142,8 @@ const Map: React.FC = () => {
         style: MAP_STYLE_URL,
         center: [lng, lat],
         zoom: initialView?.zoom ?? defaultZoom,
+        // Street level; the posters reach their largest size here (pinLayout).
+        maxZoom: MAP_MAX_ZOOM,
         attributionControl: false,
         // A flat street map: no rotation or tilt gestures.
         dragRotate: false,
