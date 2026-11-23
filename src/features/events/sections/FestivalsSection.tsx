@@ -4,7 +4,7 @@ import GeneratedPoster from '../../../components/ui/GeneratedPoster';
 import { Festival, festivalDateRange, festivalService } from '../../../services/festival.service';
 import { useQuery } from '../../../shared/hooks/useQuery';
 import { PERSIST_MAX_AGE } from '../../../lib/persistentCache';
-import HomeSectionHeader, { HOME_SECTION_TONES } from './HomeSectionHeader';
+import HomeSectionHeader from './HomeSectionHeader';
 import { IconFlag } from '../../../components/icons';
 
 const EMPTY: Festival[] = [];
@@ -31,7 +31,6 @@ const FestivalsSection: React.FC = () => {
         id="festivales"
         title="Festivales"
         kicker="Temporada"
-        tone={HOME_SECTION_TONES.festivals}
         icon={<IconFlag size={20} />}
       />
       <div className="-mr-4 flex gap-3 overflow-x-auto pr-4">

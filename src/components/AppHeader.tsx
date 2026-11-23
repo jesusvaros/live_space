@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import AppBrand from './AppBrand';
 import WorkspaceSwitcher from './WorkspaceSwitcher';
@@ -18,12 +18,38 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, rightSlot, showBack }) => 
   const inAdminRoute = location.pathname.startsWith('/admin');
   void showBack;
 
+  // The bar adds little while you read, so it gets out of the way: see-through
+  // at the top of the page, hidden while you scroll down, back (lightly
+  // frosted) as soon as you scroll up.
+  const headerRef = useRef<HTMLElement | null>(null);
+  const [atTop, setAtTop] = useState(true);
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    const scroller = headerRef.current?.closest('main');
+    if (!scroller) return undefined;
+    let last = scroller.scrollTop;
+    const onScroll = () => {
+      const y = scroller.scrollTop;
+      setAtTop(y < 8);
+      if (Math.abs(y - last) < 6) return;
+      setHidden(y > last && y > 64);
+      last = y;
+    };
+    scroller.addEventListener('scroll', onScroll, { passive: true });
+    return () => scroller.removeEventListener('scroll', onScroll);
+  }, []);
+
   const handleBrandClick = () => {
     navigate('/');
   };
 
   return (
-    <header className="sticky top-0 z-[1200] bg-app-bg px-4 pb-2.5 pt-[calc(14px+env(safe-area-inset-top,0px))]">
+    <header
+      ref={headerRef}
+      className={`sticky top-0 z-[1200] px-4 pb-2.5 pt-[calc(14px+env(safe-area-inset-top,0px))] transition-[transform,background-color] duration-300 ease-out motion-reduce:transition-none ${
+        atTop ? 'bg-transparent' : 'bg-app-bg/55 backdrop-blur-md'
+      } ${hidden ? '-translate-y-full' : 'translate-y-0'}`}
+    >
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-1 items-center gap-2">
           {title ? (
