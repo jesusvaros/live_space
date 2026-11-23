@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* global process, console, setTimeout, fetch, AbortSignal, URL */
 // Looks for a contact e-mail on each venue's own website (home page and a
 // contact page if it links one) and writes a CSV to review by hand.
 // Read-only: it never writes to the database; the reviewed rows go to
