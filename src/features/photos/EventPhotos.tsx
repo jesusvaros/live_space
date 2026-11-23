@@ -56,7 +56,9 @@ const EventPhotos: React.FC<EventPhotosProps> = ({ moments, currentUserId, onDel
         </p>
       </div>
 
-      <div className="-mx-4 mt-3 flex gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none]" role="tablist" aria-label="Álbumes">
+      {/* pt-1/pb-1: the selected album's ring (2px + 2px offset) sits outside
+          the tile, and a scrolling row clips it on every side. */}
+      <div className="-mx-4 mt-2 flex gap-3 overflow-x-auto px-4 pb-1 pt-1 [scrollbar-width:none]" role="tablist" aria-label="Álbumes">
         {albums.map(item => {
           const selected = item.id === album.id;
           return (
