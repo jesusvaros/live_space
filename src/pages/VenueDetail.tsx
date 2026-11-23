@@ -26,6 +26,7 @@ import PastConcertsSection from '../features/events/PastConcertsSection';
 import { useFirstContent } from '../lib/perfTiming';
 import { NAV_CLEARANCE } from '../components/BottomNav';
 import { track } from '../features/analytics/analytics';
+import { askForAccount } from '../auth/askForAccount';
 
 const VENUE_TYPE_LABELS: Record<string, string> = {
   music_venue: 'Sala de conciertos',
@@ -268,7 +269,7 @@ const VenueDetail: React.FC = () => {
 
   const handleFollowToggle = async () => {
     if (!user || !currentUserProfile?.subject_id || !venue?.subject_id) {
-      if (!user) navigate('/welcome');
+      if (!user) askForAccount(navigate, `Crea tu cuenta para seguir ${venue?.name ?? 'esta sala'} y ver su agenda en Inicio.`);
       return;
     }
 
@@ -349,7 +350,11 @@ const VenueDetail: React.FC = () => {
               type="button"
               aria-pressed={isFollowing}
               disabled={followLoading}
-              onClick={user ? handleFollowToggle : () => navigate('/welcome')}
+              onClick={
+                user
+                  ? handleFollowToggle
+                  : () => askForAccount(navigate, `Crea tu cuenta para seguir ${venue?.name ?? 'esta sala'} y ver su agenda en Inicio.`)
+              }
               className={`inline-flex min-h-[46px] items-center gap-1.5 rounded-full px-[18px] text-[15px] font-bold transition disabled:opacity-60 ${
                 isFollowing ? 'border border-app-line bg-app-surface text-app-ink' : 'bg-app-accent text-[#14151a]'
               }`}

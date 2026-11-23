@@ -14,6 +14,7 @@ import { useDiscoverResults } from './hooks/useDiscoverResults';
 import { useStoredLocation } from '../../shared/hooks/useStoredLocation';
 import { useFollowedSubjects } from '../../hooks/useFollowedSubjects';
 import { SuggestConcertCard, SuggestConcertSheet } from '../suggestions/SuggestConcert';
+import { askForAccount } from '../../auth/askForAccount';
 
 type RouteState = { initialTab?: DiscoverTabKey } | undefined;
 
@@ -55,7 +56,7 @@ const DiscoverScreen: React.FC = () => {
 
   const onToggleFollow = async (subjectId: string, kind: 'artist' | 'venue') => {
     if (!canFollow) {
-      navigate('/welcome');
+      askForAccount(navigate, `Crea tu cuenta para seguir ${kind === 'artist' ? 'artistas' : 'salas'} y ver cuándo tocan en Inicio.`);
       return;
     }
     const result = await toggleFollowSubject(subjectId, kind);

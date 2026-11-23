@@ -5,6 +5,7 @@ import { useToast } from '../../components/ui/AppPrimitives';
 import type { TimelineMoment } from '../moments/concertTimeline';
 import { deleteMyPost, setPostHidden, setPostSaved, useSavedPostIds } from './postCollections';
 import type { PhotoActionHandlers } from './PhotoActions';
+import { askForAccount } from '../../auth/askForAccount';
 
 const UNDO_MS = 6000;
 
@@ -27,7 +28,7 @@ export const usePhotoActions = (options: { onDeleted?: (postId: string) => void 
 
   const onToggleSave = useCallback((photo: TimelineMoment) => {
     if (!userId) {
-      navigate('/welcome');
+      askForAccount(navigate, 'Crea tu cuenta para guardar las fotos que te gustan.');
       return;
     }
     setPostSaved(userId, photo.id, !savedIds.has(photo.id)).catch(() =>
@@ -36,7 +37,7 @@ export const usePhotoActions = (options: { onDeleted?: (postId: string) => void 
 
   const onHide = useCallback((photo: TimelineMoment) => {
     if (!userId) {
-      navigate('/welcome');
+      askForAccount(navigate, 'Crea tu cuenta para ocultar lo que no quieras ver.');
       return;
     }
     setPostHidden(userId, photo.id, true).catch(() =>

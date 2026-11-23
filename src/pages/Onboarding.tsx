@@ -117,9 +117,13 @@ const Onboarding: React.FC = () => {
             </svg>
             <span className="font-display text-lg font-bold">Live Space</span>
           </div>
-          <button type="button" onClick={skip} className="min-h-11 px-2 text-sm font-semibold text-white/70">
-            {onAccount ? 'Ahora no' : 'Saltar'}
-          </button>
+          {/* No skipping the short intro; only the account step can be put
+              off («Ahora no»), and it is asked for again when it matters. */}
+          {onAccount ? (
+            <button type="button" onClick={skip} className="min-h-11 px-2 text-sm font-semibold text-white/70">
+              Ahora no
+            </button>
+          ) : null}
         </div>
 
         {onAccount ? (

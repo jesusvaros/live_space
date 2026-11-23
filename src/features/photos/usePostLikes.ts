@@ -1,9 +1,9 @@
 import { useCallback } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { rememberReturnTo } from '../../auth/returnTo';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../components/ui/AppPrimitives';
 import { setPostSaved, useSavedPostIds, useSavedPostIdsReady } from './postCollections';
+import { askForAccount } from '../../auth/askForAccount';
 
 /**
  * ♥ on a moment (post_likes): the same shared set as «Guardar» in the photos,
@@ -13,7 +13,6 @@ import { setPostSaved, useSavedPostIds, useSavedPostIdsReady } from './postColle
 export const usePostLikes = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const { presentToast } = useToast();
   const likedIds = useSavedPostIds();
   // The set reflects the server (not a load still in flight).
@@ -23,14 +22,13 @@ export const usePostLikes = () => {
   /** Returns false when the person has to sign in first. */
   const setLiked = useCallback((postId: string, on: boolean) => {
     if (!userId) {
-      rememberReturnTo(`${location.pathname}${location.search}`);
-      navigate('/welcome');
+      askForAccount(navigate, 'Crea tu cuenta para dar ♥ a los momentos del concierto.');
       return false;
     }
     setPostSaved(userId, postId, on).catch(() =>
       presentToast({ message: 'No se ha podido guardar el me gusta. Inténtalo otra vez.', position: 'bottom' }));
     return true;
-  }, [userId, location.pathname, location.search, navigate, presentToast]);
+  }, [userId, navigate, presentToast]);
 
   return { likedIds, ready, signedIn: Boolean(userId), setLiked };
 };

@@ -13,6 +13,9 @@ const Welcome: React.FC = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const linkError = searchParams.get('error');
+  // Sent here from an action that needs an account (askForAccount): say why,
+  // and «Ahora no» goes back to that page instead of home.
+  const reason = (location.state as { reason?: string } | null)?.reason ?? null;
 
   const handleDone = (result: AuthPanelResult) => {
     if (result === 'confirmation-sent') return;
@@ -49,7 +52,7 @@ const Welcome: React.FC = () => {
             <br />
             <span style={{ color: ACCENT }}>Súbelo.</span>
           </h1>
-          <p className="m-0 text-base text-white/75">Tus fotos y vídeos del concierto, ordenados por canción.</p>
+          <p className="m-0 text-base text-white/75">{reason ?? 'Tus fotos y vídeos del concierto, ordenados por canción.'}</p>
         </div>
 
         <AuthPanel
@@ -61,10 +64,10 @@ const Welcome: React.FC = () => {
 
         <button
           type="button"
-          onClick={() => navigate('/tabs/events')}
+          onClick={() => (reason && window.history.length > 1 ? navigate(-1) : navigate('/tabs/events'))}
           className="mt-auto min-h-11 border-0 bg-transparent text-sm text-white/60"
         >
-          Seguir sin cuenta
+          {reason ? 'Ahora no' : 'Seguir sin cuenta'}
         </button>
       </main>
     </div>
