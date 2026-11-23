@@ -50,9 +50,11 @@ describe('posterScale', () => {
   it('keeps posters small up to street level and grows them near max zoom', () => {
     expect(posterScale(12)).toBe(1);
     expect(posterScale(15)).toBe(1);
-    expect(posterScale(16.25)).toBeGreaterThan(1);
-    expect(posterScale(17.5)).toBe(2.2);
-    expect(posterScale(20)).toBe(2.2);
+    expect(posterScale(16)).toBeGreaterThan(1);
+    expect(posterScale(17)).toBe(2.2);
+    expect(posterScale(18)).toBeGreaterThan(2.2);
+    expect(posterScale(19)).toBe(3.6);
+    expect(posterScale(22)).toBe(3.6);
   });
 
   it('makes bigger posters collide sooner', () => {
