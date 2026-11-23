@@ -20,7 +20,9 @@ const ConcertHistorySection: React.FC<{ userId: string }> = ({ userId }) => {
     entries.length === 0 ? null : (
       <div className="flex flex-col gap-2">
         <h3 className="px-4 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-white/55">{title}</h3>
-        <ol className="flex gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+        {/* A scrolling row also clips vertically: pt-2 keeps the rank badge
+            (-top-1) and the first place's ring (2px + 2px offset) inside it. */}
+        <ol className="flex gap-3 overflow-x-auto px-4 pb-1 pt-2 [scrollbar-width:none]">
           {entries.slice(0, TOP).map((entry, index) => (
             <li key={entry.id} className="shrink-0">
               <button
