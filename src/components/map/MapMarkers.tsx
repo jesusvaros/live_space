@@ -4,7 +4,7 @@ import type { MapVenueGroup } from '../../hooks/useMapFilters';
 import type { MapEvent } from '../../data/eventQueries';
 import { uniqueImageUrls } from '../../lib/eventCover';
 import { initials, pickPalette } from '../ui/generated';
-import { ACTIVE_POSTER_BOX, POSTER_BOX, POSTER_MIN_ZOOM, pickPosterVenues } from './pinLayout';
+import { ACTIVE_POSTER_BOX, POSTER_BOX, POSTER_MIN_ZOOM, pickPosterVenues, posterScale, scaleBox } from './pinLayout';
 
 type MapMarkersProps = {
   map: MapLibreMap | null;
@@ -26,9 +26,9 @@ const DOT_BASE =
 
 const POSTER_BASE =
   'relative box-border block overflow-visible rounded-[8px] border-2 bg-app-bg shadow-[0_6px_16px_rgba(0,0,0,0.6)]';
-const IDLE_POSTER = 'h-[56px] w-[44px] border-app-bg';
-const ACTIVE_POSTER =
-  'h-[76px] w-[60px] border-app-accent ring-4 ring-app-accent/30 shadow-[0_10px_26px_rgba(0,0,0,0.65)]';
+// Poster width and height are inline styles: they grow with the zoom.
+const IDLE_POSTER = 'border-app-bg';
+const ACTIVE_POSTER = 'border-app-accent ring-4 ring-app-accent/30 shadow-[0_10px_26px_rgba(0,0,0,0.65)]';
 const BADGE =
   'absolute -right-2 -top-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-app-bg bg-app-accent px-1 font-mono text-[11px] font-bold leading-none text-white';
 
@@ -108,12 +108,12 @@ const ensurePoster = (entry: PinEntry) => {
   return poster;
 };
 
-const paintPin = (entry: PinEntry, group: MapVenueGroup, mode: PinMode, active: boolean) => {
+const paintPin = (entry: PinEntry, group: MapVenueGroup, mode: PinMode, active: boolean, scale = 1) => {
   const count = group.events.length;
   const next = group.events[0];
   const urls = mode === 'poster' ? pinSources(next) : [];
   const imageKey = urls.join('\n');
-  const paintKey = `${mode}|${count}|${active ? 1 : 0}|${imageKey}|${group.name}`;
+  const paintKey = `${mode}|${count}|${active ? 1 : 0}|${imageKey}|${group.name}|${mode === 'poster' ? scale : 1}`;
   if (entry.paintKey === paintKey) return;
   entry.paintKey = paintKey;
 
@@ -134,7 +134,7 @@ const paintPin = (entry: PinEntry, group: MapVenueGroup, mode: PinMode, active: 
     return;
   }
 
-  const size = active ? ACTIVE_POSTER_BOX : POSTER_BOX;
+  const size = scaleBox(active ? ACTIVE_POSTER_BOX : POSTER_BOX, scale);
   root.style.width = `${Math.max(size.width, 44)}px`;
   root.style.height = `${Math.max(size.height, 44)}px`;
   // Posters above every dot; the selected one above everything.
@@ -143,6 +143,9 @@ const paintPin = (entry: PinEntry, group: MapVenueGroup, mode: PinMode, active: 
   const poster = ensurePoster(entry);
   poster.style.display = '';
   poster.className = `${POSTER_BASE} ${active ? ACTIVE_POSTER : IDLE_POSTER}`;
+  // The 2px border is inside (box-border), so the footprint is exactly `size`.
+  poster.style.width = `${size.width}px`;
+  poster.style.height = `${size.height}px`;
   const [frame, badge] = poster.children as unknown as [HTMLSpanElement, HTMLSpanElement];
   badge.textContent = countLabel(count);
   badge.style.display = count > 1 ? '' : 'none';
@@ -159,7 +162,9 @@ const paintPin = (entry: PinEntry, group: MapVenueGroup, mode: PinMode, active: 
  *
  * From POSTER_MIN_ZOOM up, venues on screen show a mini poster of their next
  * concert (pinLayout decides which, so they do not pile up); the rest, and
- * every venue below that zoom, show the compact orange count dot. The layout
+ * every venue below that zoom, show the compact orange count dot. Close to
+ * street level the posters grow (posterScale) so the cover reads without a
+ * tap. The layout
  * is recomputed when the map stops moving, not on every frame.
  */
 const MapMarkers = ({ map, groups, activeVenueId, onSelectVenue }: MapMarkersProps) => {
@@ -212,7 +217,9 @@ const MapMarkers = ({ map, groups, activeVenueId, onSelectVenue }: MapMarkersPro
       });
 
       let posters = new Set<string>();
-      const zoomedIn = map.getZoom() >= POSTER_MIN_ZOOM;
+      const zoom = map.getZoom();
+      const zoomedIn = zoom >= POSTER_MIN_ZOOM;
+      const scale = posterScale(zoom);
       if (zoomedIn) {
         const canvas = map.getCanvas();
         const width = canvas.clientWidth;
@@ -224,13 +231,13 @@ const MapMarkers = ({ map, groups, activeVenueId, onSelectVenue }: MapMarkersPro
             return { id: group.id, x: point.x, y: point.y };
           })
           .filter(pin => pin.x > -margin && pin.y > -margin && pin.x < width + margin && pin.y < height + margin);
-        posters = pickPosterVenues(candidates, { x: width / 2, y: height / 2 }, activeId);
+        posters = pickPosterVenues(candidates, { x: width / 2, y: height / 2 }, activeId, undefined, scale);
       }
 
       list.forEach(group => {
         const entry = current.get(group.id);
         if (!entry) return;
-        paintPin(entry, group, posters.has(group.id) ? 'poster' : zoomedIn ? 'small-dot' : 'dot', group.id === activeId);
+        paintPin(entry, group, posters.has(group.id) ? 'poster' : zoomedIn ? 'small-dot' : 'dot', group.id === activeId, scale);
       });
     };
 

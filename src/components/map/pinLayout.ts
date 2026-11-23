@@ -14,6 +14,29 @@ export const POSTER_BOX = { width: 44, height: 56 };
 /** Active poster footprint in px. */
 export const ACTIVE_POSTER_BOX = { width: 60, height: 76 };
 
+/** From this zoom the posters start to grow… */
+export const POSTER_GROW_FROM_ZOOM = 15;
+/** …until here, where they are POSTER_MAX_SCALE times their idle size. */
+export const POSTER_GROW_TO_ZOOM = 17.5;
+export const POSTER_MAX_SCALE = 2.2;
+
+/**
+ * How big the posters are at this zoom. At city and neighbourhood zoom they
+ * stay small so many fit; close to street level, where venues are far apart
+ * on screen, they grow so the concert's cover reads without tapping the pin.
+ * Rounded to 0.1 so tiny zoom changes do not repaint every pin.
+ */
+export const posterScale = (zoom: number) => {
+  const t = (zoom - POSTER_GROW_FROM_ZOOM) / (POSTER_GROW_TO_ZOOM - POSTER_GROW_FROM_ZOOM);
+  const clamped = Math.min(1, Math.max(0, t));
+  return Math.round((1 + clamped * (POSTER_MAX_SCALE - 1)) * 10) / 10;
+};
+
+export const scaleBox = (box: { width: number; height: number }, scale: number) => ({
+  width: Math.round(box.width * scale),
+  height: Math.round(box.height * scale),
+});
+
 export type PinCandidate = {
   id: string;
   /** Screen position of the venue, in px. */
@@ -36,6 +59,7 @@ export const pickPosterVenues = (
   center: { x: number; y: number },
   activeId: string | null,
   maxPosters = MAX_POSTERS,
+  scale = 1,
 ): Set<string> => {
   const chosen = new Set<string>();
   const placed: Box[] = [];
@@ -47,7 +71,7 @@ export const pickPosterVenues = (
   });
   for (const pin of ordered) {
     if (chosen.size >= maxPosters) break;
-    const size = pin.id === activeId ? ACTIVE_POSTER_BOX : POSTER_BOX;
+    const size = scaleBox(pin.id === activeId ? ACTIVE_POSTER_BOX : POSTER_BOX, scale);
     const box = { x: pin.x, y: pin.y, ...size };
     if (placed.some(other => overlaps(box, other))) continue;
     placed.push(box);
