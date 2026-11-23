@@ -7,6 +7,8 @@ import { eventCity, eventGenres, genreKey, sameCity } from '../../agenda/agendaP
 import { EventListItem } from '../types';
 import { getEventCoverSources, getPrimaryArtistName } from '../utils';
 import CoverImage from '../../../components/ui/CoverImage';
+import HomeSectionHeader, { HOME_SECTION_TONES } from './HomeSectionHeader';
+import { IconHeart } from '../../../components/icons';
 
 type ForYouSectionProps = {
   events: EventListItem[];
@@ -81,17 +83,23 @@ const ForYouSection: React.FC<ForYouSectionProps> = ({ events, city, entities, t
   }
 
   return (
-    <section aria-labelledby="para-ti" className="flex flex-col gap-3 px-4 pt-[22px]">
-      <div className="flex items-center justify-between">
-        <h2 id="para-ti" className="font-display text-2xl font-bold text-app-ink">Para ti</h2>
-        <Link
-          to="/empezar"
-          state={{ returnTo: '/tabs/events' }}
-          className="inline-flex min-h-11 items-center text-sm font-semibold text-app-accent"
-        >
-          {hasSignals ? 'Ajustar' : 'Configurar'}
-        </Link>
-      </div>
+    <section aria-labelledby="para-ti" className="flex flex-col gap-3.5 px-4 pt-8">
+      <HomeSectionHeader
+        id="para-ti"
+        title="Para ti"
+        kicker="Según tus gustos"
+        tone={HOME_SECTION_TONES.forYou}
+        icon={<IconHeart size={20} />}
+        action={
+          <Link
+            to="/empezar"
+            state={{ returnTo: '/tabs/events' }}
+            className="inline-flex min-h-11 shrink-0 items-center text-sm font-semibold text-app-accent"
+          >
+            {hasSignals ? 'Ajustar' : 'Configurar'}
+          </Link>
+        }
+      />
 
       {!hasSignals ? (
         <div className="rounded-2xl border border-dashed border-app-line p-5">

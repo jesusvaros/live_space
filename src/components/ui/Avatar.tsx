@@ -7,8 +7,9 @@ type AvatarProps = {
   src?: string | null;
   className?: string;
   rounded?: 'full' | 'xl';
-  // Artists are round and venues square everywhere; `kind` sets the shape
-  // and, with `badge`, adds a mic or pin so mixed lists read at a glance.
+  // Artists, venues and festivals are all square (people's profiles stay
+  // round). With `badge`, a mic or a pin tells artists from venues at a
+  // glance instead of a shape or a text label.
   kind?: 'artist' | 'venue' | 'festival';
   badge?: boolean;
 };
@@ -18,7 +19,7 @@ type AvatarProps = {
 const Avatar: React.FC<AvatarProps> = ({ name, src, className = 'h-12 w-12', rounded, kind, badge = false }) => {
   const [failed, setFailed] = useState<string | null>(null);
   const palette = pickPalette(name);
-  const shape = (rounded ?? (kind === 'artist' || !kind ? 'full' : 'xl')) === 'full' ? 'rounded-full' : 'rounded-xl';
+  const shape = (rounded ?? (kind ? 'xl' : 'full')) === 'full' ? 'rounded-full' : 'rounded-xl';
   const image = src && failed !== src ? (
     <img
       src={src}

@@ -4,6 +4,8 @@ import GeneratedPoster from '../../../components/ui/GeneratedPoster';
 import { Festival, festivalDateRange, festivalService } from '../../../services/festival.service';
 import { useQuery } from '../../../shared/hooks/useQuery';
 import { PERSIST_MAX_AGE } from '../../../lib/persistentCache';
+import HomeSectionHeader, { HOME_SECTION_TONES } from './HomeSectionHeader';
+import { IconFlag } from '../../../components/icons';
 
 const EMPTY: Festival[] = [];
 const FESTIVALS_KEY = ['home:festivals'] as const;
@@ -24,8 +26,14 @@ const FestivalsSection: React.FC = () => {
   if (festivals.length === 0) return null;
 
   return (
-    <section aria-labelledby="festivales" className="flex flex-col gap-3 px-4 pt-[22px]">
-      <h2 id="festivales" className="font-display text-2xl font-bold text-app-ink">Festivales</h2>
+    <section aria-labelledby="festivales" className="flex flex-col gap-3.5 px-4 pt-8">
+      <HomeSectionHeader
+        id="festivales"
+        title="Festivales"
+        kicker="Temporada"
+        tone={HOME_SECTION_TONES.festivals}
+        icon={<IconFlag size={20} />}
+      />
       <div className="-mr-4 flex gap-3 overflow-x-auto pr-4">
         {festivals.map(festival => (
           <button
