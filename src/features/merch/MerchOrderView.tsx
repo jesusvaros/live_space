@@ -36,7 +36,7 @@ const MerchOrderView: React.FC<MerchOrderViewProps> = ({ order, qr, onCancel, ca
         </Link>
       ) : null}
 
-      <p className="font-mono text-[12px] font-semibold uppercase text-white/60">{orderStatusLabel(order)}</p>
+      {showCode ? null : <p className="font-mono text-[12px] font-semibold uppercase text-white/60">{orderStatusLabel(order)}</p>}
 
       {order.status === 'pending' ? (
         <p className="rounded-2xl border border-app-line bg-app-surface p-4 text-sm text-white/70">
@@ -46,7 +46,7 @@ const MerchOrderView: React.FC<MerchOrderViewProps> = ({ order, qr, onCancel, ca
 
       {showCode ? (
         <div className="flex flex-col items-center gap-3 rounded-3xl bg-white p-5 text-[#14151a]">
-          <p className="text-sm font-semibold">{atStand ? 'Reservado. Enséñalo en el puesto' : 'Pagado. Enséñalo en el puesto'}</p>
+          <p className="text-sm font-semibold">{atStand ? 'Reservado' : 'Pagado'}</p>
           {qr ? (
             <div className="h-44 w-44 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: qr }} />
           ) : (
@@ -55,11 +55,6 @@ const MerchOrderView: React.FC<MerchOrderViewProps> = ({ order, qr, onCancel, ca
           <p className="font-mono text-4xl font-bold tracking-[0.2em]" aria-label={`Código ${order.pickupCode.split('').join(' ')}`}>
             {order.pickupCode}
           </p>
-          {atStand ? (
-            <p className="rounded-full bg-[#14151a] px-3 py-1 text-[13px] font-bold text-white">
-              Pagas {formatEuros(order.totalCents)} al recoger
-            </p>
-          ) : null}
         </div>
       ) : null}
 
@@ -82,10 +77,6 @@ const MerchOrderView: React.FC<MerchOrderViewProps> = ({ order, qr, onCancel, ca
           paymentMethod={order.paymentMethod}
           startsAt={order.event.startsAt}
           endsAt={order.event.endsAt}
-          venueName={order.event.venueName}
-          amountDueCents={atStand ? order.totalCents : null}
-          hasCode
-          reserved
         />
       ) : null}
 
@@ -117,11 +108,7 @@ const MerchOrderView: React.FC<MerchOrderViewProps> = ({ order, qr, onCancel, ca
         </button>
       ) : null}
 
-      <p className="text-xs text-white/45">
-        {atStand
-          ? 'Vende el artista o la sala; Live Space solo guarda tu reserva. Para cambios o devoluciones, habla con ellos en el puesto.'
-          : 'El cobro lo hace el artista o la sala a través de Live Space. Para devoluciones, habla con ellos en el puesto.'}
-      </p>
+      <p className="text-xs text-white/45">Cambios y devoluciones, en el puesto.</p>
     </>
   );
 };

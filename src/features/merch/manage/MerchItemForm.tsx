@@ -155,7 +155,7 @@ const MerchItemForm: React.FC<MerchItemFormProps> = ({ initial, uploadPhoto, onS
           role="switch"
           checked={draft.hasSizes}
           onChange={e => set({ hasSizes: e.target.checked })}
-          className="h-6 w-11 cursor-pointer appearance-none rounded-full bg-white/20 transition before:block before:h-5 before:w-5 before:translate-x-0.5 before:rounded-full before:bg-white before:transition checked:bg-app-accent checked:before:translate-x-[22px]"
+          className="relative h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full bg-white/20 transition before:absolute before:left-0.5 before:top-0.5 before:h-5 before:w-5 before:rounded-full before:bg-white before:transition-transform checked:bg-app-accent checked:before:translate-x-5"
         />
       </label>
 
