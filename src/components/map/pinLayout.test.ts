@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pickPosterVenues } from './pinLayout';
+import { pickPosterVenues, posterScale } from './pinLayout';
 
 const center = { x: 200, y: 400 };
 
@@ -43,5 +43,24 @@ describe('pickPosterVenues', () => {
   it('caps the number of posters', () => {
     const many = Array.from({ length: 10 }, (_, index) => ({ id: `v${index}`, x: index * 100, y: 0 }));
     expect(pickPosterVenues(many, center, null, 3).size).toBe(3);
+  });
+});
+
+describe('posterScale', () => {
+  it('keeps posters small up to street level and grows them near max zoom', () => {
+    expect(posterScale(12)).toBe(1);
+    expect(posterScale(15)).toBe(1);
+    expect(posterScale(16.25)).toBeGreaterThan(1);
+    expect(posterScale(17.5)).toBe(2.2);
+    expect(posterScale(20)).toBe(2.2);
+  });
+
+  it('makes bigger posters collide sooner', () => {
+    const pins = [
+      { id: 'a', x: 200, y: 400 },
+      { id: 'b', x: 270, y: 400 },
+    ];
+    expect(pickPosterVenues(pins, center, null).size).toBe(2);
+    expect(pickPosterVenues(pins, center, null, undefined, 2.2).size).toBe(1);
   });
 });
