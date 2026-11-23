@@ -37,7 +37,8 @@ const SectionTitle: React.FC<{ children: React.ReactNode; action?: React.ReactNo
 
 // «Merch» on the profile. With orders: what is waiting at the stand and a way
 // to all of them. Without: the upcoming concerts nearby (or that the user is
-// going to) where merch can be reserved and picked up. Never an empty box.
+// going to) where merch can be reserved and picked up. With nothing to show
+// the section is not rendered: no text-only empty box on the profile.
 const ProfileMerchSection: React.FC<ProfileMerchSectionProps> = ({ userId, city, goingEventIds }) => {
   const navigate = useNavigate();
   const goingKey = [...goingEventIds].sort().join(',');
@@ -71,6 +72,7 @@ const ProfileMerchSection: React.FC<ProfileMerchSectionProps> = ({ userId, city,
 
   // Nothing to say yet: no flash of an empty state while the orders load.
   if (ordersLoading && allOrders.length === 0 && !nearby) return null;
+  if (toCollect.length === 0 && nearbyEvents.length === 0 && allOrders.length === 0) return null;
 
   const ordersLink =
     allOrders.length > 0 ? (
@@ -152,13 +154,6 @@ const ProfileMerchSection: React.FC<ProfileMerchSectionProps> = ({ userId, city,
         </>
       ) : null}
 
-      {toCollect.length === 0 && nearbyEvents.length === 0 ? (
-        <p className="px-4 text-[13px] text-white/60">
-          {city
-            ? `Ahora mismo no hay merch para recoger en conciertos de ${city}. Cuando lo haya, lo verás aquí.`
-            : 'Cuando un concierto de tu ciudad venda merch, lo verás aquí para reservarlo y recogerlo allí.'}
-        </p>
-      ) : null}
     </section>
   );
 };

@@ -46,6 +46,7 @@ const Feed = page(() => import('./pages/Feed'));
 // Dev-only playground for the concert player (mock moments); not in builds.
 const TimelinePlayground = import.meta.env.DEV ? page(() => import('./pages/dev/TimelinePlayground'), false) : null;
 const MerchPlayground = import.meta.env.DEV ? page(() => import('./pages/dev/MerchPlayground'), false) : null;
+const ProfilePlayground = import.meta.env.DEV ? page(() => import('./pages/dev/ProfilePlayground'), false) : null;
 const MerchOrder = page(() => import('./pages/MerchOrder'), false);
 const MerchOrders = page(() => import('./pages/MerchOrders'), false);
 const SavedPhotos = page(() => import('./pages/SavedPhotos'), false);
@@ -304,6 +305,7 @@ const AppRoutes = () => {
           <Route path="/wrapped" element={deferredPage(<Wrapped />)} />
           {TimelinePlayground ? <Route path="/dev/linea-de-tiempo" element={deferredPage(<TimelinePlayground />)} /> : null}
           {MerchPlayground ? <Route path="/dev/merch" element={deferredPage(<MerchPlayground />)} /> : null}
+          {ProfilePlayground ? <Route path="/dev/perfil" element={deferredPage(<ProfilePlayground />)} /> : null}
           <Route
             path="/tabs"
             element={(

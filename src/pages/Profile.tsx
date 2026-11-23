@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import Avatar from '../components/ui/Avatar';
 import { Spinner } from '../components/ui/AppPrimitives';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -12,7 +11,7 @@ import { eventCoverSources } from '../lib/eventCover';
 import { NAV_CLEARANCE } from '../components/BottomNav';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { useFollowedEntities } from '../hooks/useFollowedEntities';
-import { IconCalendar, IconChevronRight, IconHeart, IconSettings } from '../components/icons';
+import { IconCalendar, IconChevronRight, IconHeart } from '../components/icons';
 import { useAppResume } from '../shared/hooks/useAppResume';
 import { fetchQuery, getQuerySnapshot, serializeQueryKey, type QueryPersistOptions } from '../lib/queryClient';
 import { PERSIST_MAX_AGE } from '../lib/persistentCache';
@@ -20,11 +19,13 @@ import { useFirstContent } from '../lib/perfTiming';
 import { fetchEventCards } from '../data/eventQueries';
 import { fetchPostCards } from '../data/postQueries';
 import ConcertHistorySection from '../features/agenda/ConcertHistorySection';
+import { useConcertHistory } from '../features/agenda/useConcertHistory';
 import { readStoredCity } from '../features/agenda/agendaPrefs';
 import type { EventListItem } from '../features/events/types';
 import ConcertPosters from '../features/profile/ConcertPosters';
 import FollowingGrid from '../features/profile/FollowingGrid';
 import MomentsByConcert from '../features/profile/MomentsByConcert';
+import PassportHeader from '../features/profile/PassportHeader';
 import ProfileMerchSection from '../features/profile/ProfileMerchSection';
 import { UPCOMING_GRACE_MS, type ProfileMoment } from '../features/profile/profileLayout';
 
@@ -302,6 +303,10 @@ const Profile: React.FC = () => {
       .sort((left, right) => left.starts_at.localeCompare(right.starts_at))[0] || null;
   })();
 
+  // The passport numbers up top (concerts, venues, artists): the same history
+  // the «Conciertos» tab ranks.
+  const { history } = useConcertHistory(!isManagementMode && user ? user.id : null);
+
   // Opened from «Lo que sigues · Gestionar»: bring the following wall into view.
   const tabsRef = useRef<HTMLDivElement | null>(null);
   const openedOnFollowing = useRef(selectedTab === 'following');
@@ -337,14 +342,19 @@ const Profile: React.FC = () => {
       return concerts.length === 0
         ? renderEmpty('Aún no hay conciertos', 'Marca «Voy» o guarda un concierto y aparecerá aquí.')
         : (
-          <ConcertPosters
-            events={concerts}
-            badgeFor={
-              isManagementMode
-                ? undefined
-                : event => (goingSet.has(event.id) ? 'Voy' : likedSet.has(event.id) ? 'Guardado' : null)
-            }
-          />
+          <div className="flex flex-col gap-6">
+            {/* The stamps of the passport: where the user goes most and who
+                they have seen most. */}
+            {!isManagementMode && user ? <ConcertHistorySection userId={user.id} /> : null}
+            <ConcertPosters
+              events={concerts}
+              badgeFor={
+                isManagementMode
+                  ? undefined
+                  : event => (goingSet.has(event.id) ? 'Voy' : likedSet.has(event.id) ? 'Guardado' : null)
+              }
+            />
+          </div>
         );
     }
 
@@ -381,12 +391,11 @@ const Profile: React.FC = () => {
   };
 
   const quickLinks = [
-    { key: 'saved', label: 'Guardadas', hint: 'Fotos con ♥', icon: <IconHeart size={20} />, onSelect: () => navigate('/guardadas') },
+    { key: 'saved', label: 'Guardadas', icon: <IconHeart size={16} />, onSelect: () => navigate('/guardadas') },
     {
       key: 'agenda',
       label: 'Tu agenda',
-      hint: 'Ciudad · gustos · seguir',
-      icon: <IconCalendar size={20} />,
+      icon: <IconCalendar size={16} />,
       onSelect: () => navigate('/empezar', { state: { returnTo: '/tabs/profile' } }),
     },
   ];
@@ -394,35 +403,19 @@ const Profile: React.FC = () => {
   return (
     <AppShell headerProps={null}>
       <div className={`flex flex-col ${NAV_CLEARANCE}`}>
-        <header className="relative overflow-hidden px-4 pb-5 pt-[calc(18px+env(safe-area-inset-top,0px))]">
-          {/* A warm stage light behind the avatar. */}
-          <span
-            aria-hidden
-            className="pointer-events-none absolute -top-24 left-1/2 h-64 w-[130%] -translate-x-1/2 rounded-[50%] bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--app-accent)_32%,transparent),transparent)]"
-          />
-          {/* Its own layer above the centred block, so nothing covers the tap. */}
-          <button
-            type="button"
-            aria-label="Ajustes"
-            onClick={() => navigate('/ajustes')}
-            className="absolute right-4 top-[calc(14px+env(safe-area-inset-top,0px))] z-10 flex h-11 w-11 items-center justify-center rounded-full border border-app-line bg-app-surface/80 text-app-ink backdrop-blur"
-          >
-            <IconSettings size={20} />
-          </button>
-          <div className="relative flex flex-col items-center px-12 text-center">
-            <span className="rounded-full p-[3px] ring-2 ring-app-accent">
-              {avatarUrl ? (
-                <Avatar name={headerName} src={avatarUrl} className="h-[92px] w-[92px] text-[30px]" />
-              ) : (
-                <span className="flex h-[92px] w-[92px] shrink-0 items-center justify-center rounded-full bg-app-accent font-poster text-[34px] text-[#14151a]">
-                  {isManagementMode ? headerName.slice(0, 2) : 'Tú'}
-                </span>
-              )}
-            </span>
-            <h1 className="mt-3 max-w-full truncate font-display text-[26px] font-bold leading-tight text-app-ink">{headerName}</h1>
-            <p className="mt-0.5 max-w-full truncate text-sm text-[#c9c5bd]">{subline || 'Añade tu ciudad en ajustes'}</p>
-          </div>
-        </header>
+        <PassportHeader
+          name={headerName}
+          subline={subline || 'Añade tu ciudad en ajustes'}
+          avatarUrl={avatarUrl}
+          entityKind={isManagementMode && activeEntity ? (activeEntity.type === 'artist' ? 'artist' : 'venue') : null}
+          stats={isManagementMode ? null : { concerts: history.concerts, venues: history.venues.length, artists: history.artists.length }}
+          links={isManagementMode ? [] : quickLinks}
+          onSettings={() => navigate('/ajustes')}
+          onStatSelect={() => {
+            selectTab('concerts');
+            tabsRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+          }}
+        />
 
         {isManagementMode && managedEntities.length > 1 && (
           <div className="flex gap-2 overflow-x-auto px-4 pb-1">
@@ -448,76 +441,56 @@ const Profile: React.FC = () => {
             className="mx-4 mt-2 flex min-h-12 items-center justify-between rounded-2xl border border-app-line bg-app-surface px-4 text-left text-sm font-semibold text-app-ink"
           >
             <span>Panel de gestión</span>
-            <span className="font-mono text-[11px] font-semibold uppercase text-app-accent">Eventos · setlist · QR</span>
+            <IconChevronRight size={18} className="text-white/40" />
           </button>
         ) : null}
 
-        {!isManagementMode ? (
-          <div className="mx-4 mt-2 grid grid-cols-2 gap-2">
-            {quickLinks.map(link => (
-              <button
-                key={link.key}
-                type="button"
-                onClick={link.onSelect}
-                className="flex min-h-[64px] items-center gap-3 rounded-2xl border border-app-line bg-app-surface px-3 text-left"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-app-accent/15 text-app-accent">
-                  {link.icon}
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold text-app-ink">{link.label}</span>
-                  <span className="block truncate font-mono text-[10px] font-semibold uppercase text-white/50">{link.hint}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-        ) : null}
-
         {!isManagementMode && nextConcert ? (
+          // A ticket stub: poster, a perforated edge, then the date and venue.
           <button
             type="button"
             aria-label="Tu próximo concierto"
             onClick={() => navigate(`/event/${nextConcert.id}`)}
-            className="relative mx-4 mt-5 flex items-center gap-3.5 overflow-hidden rounded-2xl border border-app-line bg-app-surface p-3 text-left"
+            className="mx-4 mt-4 flex items-stretch overflow-hidden rounded-2xl border border-app-line bg-app-surface text-left transition-transform active:scale-[0.98] motion-reduce:transition-none"
           >
-            <span className="relative h-[92px] w-[74px] shrink-0 overflow-hidden rounded-xl">
+            <span className="relative w-[76px] shrink-0 overflow-hidden">
               <CoverImage
                 sources={eventCoverSources(nextConcert, 'thumb')}
-                className="h-full w-full object-cover"
+                className="absolute inset-0 h-full w-full object-cover"
                 fallback={<GeneratedPoster title={nextConcert.name} variant="thumb" />}
               />
             </span>
-            <span className="min-w-0 flex-1">
-              <span className="block font-mono text-[11px] font-semibold uppercase text-app-accent">
-                {(() => {
-                  const date = new Date(nextConcert.starts_at);
-                  const time = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-                  return date.toDateString() === new Date().toDateString()
-                    ? `Vas hoy · ${time}`
-                    : `Próximo · ${date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/[.,]/g, '')} · ${time}`;
-                })()}
+            <span aria-hidden className="w-0 border-l-2 border-dashed border-app-line" />
+            <span className="flex min-w-0 flex-1 items-center gap-2 px-3.5 py-3">
+              <span className="min-w-0 flex-1">
+                <span className="block font-mono text-[11px] font-semibold uppercase text-app-accent">
+                  {(() => {
+                    const date = new Date(nextConcert.starts_at);
+                    const time = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                    return date.toDateString() === new Date().toDateString()
+                      ? `Hoy · ${time}`
+                      : `${date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/[.,]/g, '')} · ${time}`;
+                  })()}
+                </span>
+                <span className="mt-0.5 block font-display text-[17px] font-bold leading-tight text-app-ink line-clamp-2">
+                  {nextConcert.name}
+                </span>
+                {nextConcert.venue_place?.name ? (
+                  <span className="block truncate text-[13px] text-white/55">{nextConcert.venue_place.name}</span>
+                ) : null}
               </span>
-              <span className="mt-0.5 block font-display text-[17px] font-bold leading-tight text-app-ink line-clamp-2">
-                {nextConcert.name}
-              </span>
-              {nextConcert.venue_place?.name ? (
-                <span className="block truncate text-[13px] text-[#c9c5bd]">{nextConcert.venue_place.name}</span>
-              ) : null}
-              <span className="mt-1 block text-[12px] text-white/50">Cuando acabe, sube lo que grabes.</span>
+              <IconChevronRight size={18} className="shrink-0 text-white/40" />
             </span>
-            <IconChevronRight size={18} className="shrink-0 text-white/40" />
           </button>
         ) : null}
 
         {!isManagementMode && user ? <ProfileMerchSection userId={user.id} city={area} goingEventIds={upcomingGoingIds} /> : null}
 
-        {!isManagementMode && user ? <ConcertHistorySection userId={user.id} /> : null}
-
         <div
           ref={tabsRef}
           role="tablist"
           aria-label="Secciones del perfil"
-          className="relative mx-4 mb-4 mt-7 grid scroll-mt-4 grid-cols-3 gap-1 rounded-full border border-app-line bg-app-surface p-1"
+          className="relative mx-4 mb-4 mt-6 grid scroll-mt-4 grid-cols-3 gap-1 rounded-full border border-app-line bg-app-surface p-1"
         >
           {/* The pill slides under the chosen tab; it stays inside the bar's
               padding, nothing is clipped. */}
