@@ -39,6 +39,15 @@ export default {
           '0%': { opacity: '0', transform: 'translateY(6px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        // Profile tabs: the new content slides in from the side of its tab.
+        'tab-in-right': {
+          '0%': { opacity: '0', transform: 'translateX(28px) scale(0.98)' },
+          '100%': { opacity: '1', transform: 'translateX(0) scale(1)' },
+        },
+        'tab-in-left': {
+          '0%': { opacity: '0', transform: 'translateX(-28px) scale(0.98)' },
+          '100%': { opacity: '1', transform: 'translateX(0) scale(1)' },
+        },
         // The ♥ that pops on the concert player after a double tap.
         'like-burst': {
           '0%': { opacity: '0', transform: 'scale(0.6)' },
@@ -51,6 +60,8 @@ export default {
         'fade-up': 'fade-up 0.6s ease-out both',
         'timeline-fade': 'timeline-fade 0.35s ease',
         'like-burst': 'like-burst 0.7s ease-out both',
+        'tab-in-right': 'tab-in-right 0.38s cubic-bezier(0.22, 1, 0.36, 1) both',
+        'tab-in-left': 'tab-in-left 0.38s cubic-bezier(0.22, 1, 0.36, 1) both',
       },
     },
   },

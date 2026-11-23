@@ -104,6 +104,12 @@ const Profile: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState<'moments' | 'concerts' | 'following'>(
     (location.state as { profileTab?: string } | null)?.profileTab === 'following' ? 'following' : 'moments'
   );
+  // Which side the new tab's content slides in from, and the tallest the
+  // panel has been: switching to a shorter tab never shrinks the page, so it
+  // does not jump while you are scrolled down to the tabs.
+  const [slideFrom, setSlideFrom] = useState<'left' | 'right' | null>(null);
+  const [panelMinHeight, setPanelMinHeight] = useState(0);
+  const panelRef = useRef<HTMLDivElement | null>(null);
   const resumeTick = useAppResume();
   const loading = selectedTab === 'moments' ? postsLoading : selectedTab === 'concerts' ? concertsLoading : false;
   useFirstContent('profile', !postsLoading);
@@ -360,10 +366,19 @@ const Profile: React.FC = () => {
   const area = readStoredCity() || profile?.primary_city || null;
 
   const tabs: { key: typeof selectedTab; label: string; count: number | null }[] = [
-    { key: 'moments', label: isManagementMode ? 'Momentos' : 'Mis momentos', count: postsLoading ? null : moments.posts.length },
+    { key: 'moments', label: 'Momentos', count: postsLoading ? null : moments.posts.length },
     { key: 'concerts', label: 'Conciertos', count: concertsLoading ? null : concerts.length },
     { key: 'following', label: 'Siguiendo', count: followedEntities.length },
   ];
+
+  const selectedIndex = Math.max(0, tabs.findIndex(tab => tab.key === selectedTab));
+  const selectTab = (key: typeof selectedTab) => {
+    if (key === selectedTab) return;
+    const nextIndex = tabs.findIndex(tab => tab.key === key);
+    setSlideFrom(nextIndex > selectedIndex ? 'right' : 'left');
+    setPanelMinHeight(height => Math.max(height, panelRef.current?.offsetHeight ?? 0));
+    setSelectedTab(key);
+  };
 
   const quickLinks = [
     { key: 'saved', label: 'Guardadas', hint: 'Fotos con ♥', icon: <IconHeart size={20} />, onSelect: () => navigate('/guardadas') },
@@ -502,28 +517,51 @@ const Profile: React.FC = () => {
           ref={tabsRef}
           role="tablist"
           aria-label="Secciones del perfil"
-          className="mx-4 mb-4 mt-7 grid scroll-mt-4 grid-cols-3 gap-1 rounded-full border border-app-line bg-app-surface p-1"
+          className="relative mx-4 mb-4 mt-7 grid scroll-mt-4 grid-cols-3 gap-1 rounded-full border border-app-line bg-app-surface p-1"
         >
+          {/* The pill slides under the chosen tab; it stays inside the bar's
+              padding, nothing is clipped. */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute bottom-1 left-1 top-1 rounded-full bg-app-ink transition-transform duration-300 ease-[cubic-bezier(0.34,1.4,0.64,1)] motion-reduce:transition-none"
+            style={{
+              width: 'calc((100% - 1rem) / 3)',
+              transform: `translateX(calc(${selectedIndex} * (100% + 0.25rem)))`,
+            }}
+          />
           {tabs.map(tab => (
             <button
               key={tab.key}
               type="button"
               role="tab"
               aria-selected={selectedTab === tab.key}
-              onClick={() => setSelectedTab(tab.key)}
-              className={`flex min-h-10 min-w-0 items-center justify-center gap-1 rounded-full px-2 text-[13px] font-semibold ${
-                selectedTab === tab.key ? 'bg-app-ink text-app-bg' : 'text-[#c9c5bd]'
+              onClick={() => selectTab(tab.key)}
+              className={`relative flex min-h-10 min-w-0 items-center justify-center gap-1 rounded-full px-2 text-[13px] font-semibold transition-[color,transform] duration-200 active:scale-95 motion-reduce:transition-none ${
+                selectedTab === tab.key ? 'text-app-bg' : 'text-[#c9c5bd]'
               }`}
             >
               <span className="truncate">{tab.label}</span>
               {tab.count ? (
-                <span className={`font-mono text-[11px] ${selectedTab === tab.key ? 'text-app-bg/60' : 'text-white/40'}`}>{tab.count}</span>
+                <span className={`font-mono text-[11px] transition-colors duration-200 ${selectedTab === tab.key ? 'text-app-bg/60' : 'text-white/40'}`}>{tab.count}</span>
               ) : null}
             </button>
           ))}
         </div>
 
-        {renderTabContent()}
+        <div ref={panelRef} role="tabpanel" className="overflow-x-clip" style={{ minHeight: panelMinHeight || undefined }}>
+          <div
+            key={selectedTab}
+            className={
+              slideFrom === 'right'
+                ? 'animate-tab-in-right motion-reduce:animate-none'
+                : slideFrom === 'left'
+                  ? 'animate-tab-in-left motion-reduce:animate-none'
+                  : undefined
+            }
+          >
+            {renderTabContent()}
+          </div>
+        </div>
       </div>
     </AppShell>
   );
