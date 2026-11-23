@@ -125,7 +125,6 @@ const MerchPlayground: React.FC = () => {
         <section className="flex flex-col gap-3">
           <div>
             <h2 className="font-display text-xl font-bold text-app-ink">Merch del concierto</h2>
-            <p className="text-sm text-[#c9c5bd]">Resérvalo ahora y recógelo esa noche en el puesto, sin colas ni agotados.</p>
           </div>
           <MerchStandView
             stand={stand}

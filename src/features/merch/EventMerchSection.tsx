@@ -120,7 +120,6 @@ const EventMerchSection: React.FC<EventMerchSectionProps> = ({ eventId, startsAt
         <h2 id="merch" className="font-display text-xl font-bold text-app-ink">
           Merch del concierto
         </h2>
-        <p className="text-sm text-[#c9c5bd]">Resérvalo ahora y recógelo esa noche en el puesto, sin colas ni agotados.</p>
       </div>
 
       {stands.map(stand => (

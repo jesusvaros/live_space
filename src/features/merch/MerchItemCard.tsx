@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { formatEuros, MerchItem } from '../../services/merch.service';
-import { itemStock, SINGLE_VARIANT_LABEL, stockLabel } from './merchRules';
+import { SINGLE_VARIANT_LABEL, stockLabel } from './merchRules';
 
 type MerchItemCardProps = {
   item: MerchItem;
@@ -10,122 +10,115 @@ type MerchItemCardProps = {
   disabled?: boolean;
 };
 
-const stepperButton =
-  'flex h-10 w-10 items-center justify-center rounded-full border border-app-line text-lg font-bold text-app-ink disabled:opacity-35';
+const round = 'flex h-9 w-9 items-center justify-center rounded-full text-lg font-bold leading-none disabled:opacity-35';
 
-// A product on the concert page: photo, name, price, sizes and how many.
+// A product the way fashion shops show it: a tall photo, the name small and
+// in capitals, the price under it, no boxes. «+» on the photo adds it; with
+// sizes it first opens the sizes over the bottom of the photo. Every control
+// sits inside the photo's bounds, so nothing gets clipped.
 const MerchItemCard: React.FC<MerchItemCardProps> = ({ item, quantities, onChange, disabled }) => {
   const single = item.variants.length === 1 && item.variants[0].label === SINGLE_VARIANT_LABEL;
-  const firstAvailable = item.variants.find(variant => variant.stock !== 0) ?? item.variants[0];
   const [selectedId, setSelectedId] = useState<string | null>(
     single ? (item.variants[0]?.id ?? null) : (item.variants.find(variant => (quantities[variant.id] || 0) > 0)?.id ?? null),
   );
-  const selected = item.variants.find(variant => variant.id === selectedId) ?? (single ? item.variants[0] : null);
+  const [picking, setPicking] = useState(false);
+  const selected = item.variants.find(variant => variant.id === selectedId) ?? null;
   const soldOut = item.variants.every(variant => variant.stock === 0);
-  const totalLeft = itemStock(item.variants);
-  const itemLabel = soldOut ? 'Agotado' : stockLabel(single ? (item.variants[0]?.stock ?? null) : totalLeft);
   const quantity = selected ? quantities[selected.id] || 0 : 0;
-  const inCart = item.variants.reduce((sum, variant) => sum + (quantities[variant.id] || 0), 0);
+  const low = stockLabel(selected?.stock ?? (single ? (item.variants[0]?.stock ?? null) : null));
+  const atMax = Boolean(selected && selected.stock !== null && quantity >= selected.stock);
+
+  const add = () => {
+    if (!selected) {
+      setPicking(true);
+      return;
+    }
+    onChange(selected.id, 1, selected.stock);
+  };
+
+  const pick = (variantId: string) => {
+    const variant = item.variants.find(entry => entry.id === variantId);
+    setSelectedId(variantId);
+    setPicking(false);
+    if (variant && (quantities[variant.id] || 0) === 0) onChange(variant.id, 1, variant.stock);
+  };
 
   return (
-    <li className={`overflow-hidden rounded-2xl border bg-app-surface ${inCart > 0 ? 'border-app-accent' : 'border-app-line'}`}>
-      <div className="flex gap-3 p-2.5">
-        <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-white/[0.06]">
-          {item.imageUrl ? (
-            <img src={item.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
-          ) : (
-            <span className="flex h-full w-full items-center justify-center font-display text-3xl font-bold text-white/25">
-              {item.name.slice(0, 1).toUpperCase()}
-            </span>
-          )}
-          {soldOut ? (
-            <span className="absolute inset-0 flex items-center justify-center bg-black/60 font-mono text-[11px] font-bold uppercase text-white">
-              Agotado
-            </span>
-          ) : null}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="font-display text-[15px] font-bold leading-snug text-app-ink">{item.name}</p>
-          <div className="flex items-baseline gap-2">
-            <p className="font-mono text-[15px] font-semibold text-app-accent">{formatEuros(item.priceCents)}</p>
-            {itemLabel && !soldOut ? <p className="text-[12px] font-semibold text-amber-300">{itemLabel}</p> : null}
-          </div>
-          {!single ? (
-            <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label={`Tallas de ${item.name}`}>
-              {item.variants.map(variant => {
-                const out = variant.stock === 0;
-                const count = quantities[variant.id] || 0;
-                const active = selected?.id === variant.id;
-                return (
-                  <button
-                    key={variant.id}
-                    type="button"
-                    disabled={out || disabled}
-                    aria-pressed={active}
-                    aria-label={out ? `${variant.label} agotada` : `Talla ${variant.label}`}
-                    onClick={() => setSelectedId(variant.id)}
-                    className={`relative min-h-10 min-w-10 rounded-full border px-3 text-[13px] font-bold transition ${
-                      active ? 'border-app-accent bg-app-accent text-[#14151a]' : 'border-app-line text-app-ink'
-                    } ${out ? 'line-through opacity-35' : ''}`}
-                  >
-                    {variant.label}
-                    {count > 0 ? (
-                      <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 font-mono text-[10px] text-[#14151a]">
-                        {count}
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
-        </div>
-      </div>
+    <li className="min-w-0">
+      <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-white/[0.06]">
+        {item.imageUrl ? (
+          <img src={item.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+        ) : (
+          <span className="flex h-full w-full items-center justify-center font-display text-4xl font-bold text-white/25">
+            {item.name.slice(0, 1).toUpperCase()}
+          </span>
+        )}
 
-      {!soldOut ? (
-        <div className="flex items-center gap-3 border-t border-app-line px-3 py-2">
-          {selected ? (
-            <>
-              <span className="min-w-0 flex-1 text-[13px] text-white/70">
-                {single ? 'Unidades' : `Talla ${selected.label}`}
-                {!single && stockLabel(selected.stock) ? (
-                  <span className="text-amber-300"> · {stockLabel(selected.stock)}</span>
-                ) : null}
-              </span>
-              <button
-                type="button"
-                aria-label={`Quitar una ${single ? 'unidad' : selected.label}`}
-                disabled={disabled || quantity === 0}
-                onClick={() => onChange(selected.id, -1, selected.stock)}
-                className={stepperButton}
-              >
-                −
-              </button>
-              <span className="w-6 text-center font-mono text-[15px] font-bold text-app-ink" aria-live="polite">
-                {quantity}
-              </span>
-              <button
-                type="button"
-                aria-label={`Añadir una ${single ? 'unidad' : selected.label}`}
-                disabled={disabled || (selected.stock !== null && quantity >= selected.stock)}
-                onClick={() => onChange(selected.id, 1, selected.stock)}
-                className={`${stepperButton} border-app-accent text-app-accent`}
-              >
-                +
-              </button>
-            </>
-          ) : (
+        {soldOut ? (
+          <span className="absolute inset-0 flex items-center justify-center bg-black/55 font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-white">
+            Agotado
+          </span>
+        ) : picking ? (
+          <div className="absolute inset-x-0 bottom-0 flex flex-wrap justify-center gap-1.5 bg-black/75 p-2.5 backdrop-blur" role="group" aria-label={`Tallas de ${item.name}`}>
+            {item.variants.map(variant => {
+              const out = variant.stock === 0;
+              return (
+                <button
+                  key={variant.id}
+                  type="button"
+                  disabled={out || disabled}
+                  aria-label={out ? `${variant.label} agotada` : `Talla ${variant.label}`}
+                  onClick={() => pick(variant.id)}
+                  className={`min-h-9 min-w-9 rounded-full px-2.5 text-[13px] font-bold text-white ${
+                    variant.id === selectedId ? 'bg-white text-[#14151a]' : 'bg-white/10'
+                  } ${out ? 'line-through opacity-35' : ''}`}
+                >
+                  {variant.label}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="absolute bottom-2 right-2 flex items-center gap-0.5 rounded-full bg-white/90 p-0.5 text-[#14151a] backdrop-blur">
+            {quantity > 0 && selected ? (
+              <>
+                <button
+                  type="button"
+                  aria-label={`Quitar ${item.name}${single ? '' : ` ${selected.label}`}`}
+                  disabled={disabled}
+                  onClick={() => onChange(selected.id, -1, selected.stock)}
+                  className={round}
+                >
+                  −
+                </button>
+                <span className="w-5 text-center font-mono text-[14px] font-bold" aria-live="polite">
+                  {quantity}
+                </span>
+              </>
+            ) : null}
             <button
               type="button"
-              disabled={disabled}
-              onClick={() => setSelectedId(firstAvailable?.id ?? null)}
-              className="min-h-10 text-[13px] font-semibold text-white/60"
+              aria-label={`Añadir ${item.name}${selected && !single ? ` ${selected.label}` : ''}`}
+              disabled={disabled || atMax}
+              onClick={add}
+              className={round}
             >
-              Elige talla
+              +
             </button>
-          )}
-        </div>
-      ) : null}
+          </div>
+        )}
+      </div>
+
+      <p className="mt-2 truncate text-[12px] font-semibold uppercase tracking-[0.06em] text-app-ink">{item.name}</p>
+      <p className="mt-0.5 flex items-center gap-2 text-[13px] text-white/70">
+        {formatEuros(item.priceCents)}
+        {!single && selected && !soldOut ? (
+          <button type="button" onClick={() => setPicking(true)} className="font-semibold text-app-ink underline-offset-2 hover:underline">
+            Talla {selected.label}
+          </button>
+        ) : null}
+        {low && !soldOut ? <span className="text-app-accent">{low}</span> : null}
+      </p>
     </li>
   );
 };
