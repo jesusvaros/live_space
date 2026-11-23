@@ -7,7 +7,7 @@ import { eventCity, eventGenres, genreKey, sameCity } from '../../agenda/agendaP
 import { EventListItem } from '../types';
 import { getEventCoverSources, getPrimaryArtistName } from '../utils';
 import CoverImage from '../../../components/ui/CoverImage';
-import HomeSectionHeader, { HOME_SECTION_TONES } from './HomeSectionHeader';
+import HomeSectionHeader from './HomeSectionHeader';
 import { IconHeart } from '../../../components/icons';
 
 type ForYouSectionProps = {
@@ -88,7 +88,6 @@ const ForYouSection: React.FC<ForYouSectionProps> = ({ events, city, entities, t
         id="para-ti"
         title="Para ti"
         kicker="Según tus gustos"
-        tone={HOME_SECTION_TONES.forYou}
         icon={<IconHeart size={20} />}
         action={
           <Link

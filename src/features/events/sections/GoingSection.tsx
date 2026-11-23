@@ -7,7 +7,7 @@ import EventPosterTile from '../components/EventPosterTile';
 import { getEventCoverImage } from '../utils';
 import { EventListItem } from '../types';
 import { PERSIST_MAX_AGE } from '../../../lib/persistentCache';
-import HomeSectionHeader, { HOME_SECTION_TONES } from './HomeSectionHeader';
+import HomeSectionHeader from './HomeSectionHeader';
 import { IconTicket } from '../../../components/icons';
 
 type GoingSectionProps = { userId: string | null };
@@ -58,7 +58,7 @@ const GoingSection: React.FC<GoingSectionProps> = ({ userId }) => {
 
   return (
     <section aria-labelledby="voy" className="flex flex-col gap-3.5 px-4 pt-8">
-      <HomeSectionHeader id="voy" title="Voy" kicker="Tus planes" tone={HOME_SECTION_TONES.going} icon={<IconTicket size={20} />} />
+      <HomeSectionHeader id="voy" title="Voy" kicker="Tus planes" icon={<IconTicket size={20} />} />
       <div className="-mr-4 flex gap-3 overflow-x-auto pr-4">
         {plans.map(({ event, going }) => (
           <EventPosterTile

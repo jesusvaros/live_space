@@ -5,7 +5,7 @@ import { IconBell, IconPlus } from '../../../components/icons';
 import { FollowedEntity } from '../../../hooks/useFollowedEntities';
 import { EventListItem } from '../types';
 import { getPrimaryArtistName } from '../utils';
-import HomeSectionHeader, { HOME_SECTION_TONES } from './HomeSectionHeader';
+import HomeSectionHeader from './HomeSectionHeader';
 
 type FollowingSectionProps = {
   events: EventListItem[];
@@ -88,7 +88,6 @@ const FollowingSection: React.FC<FollowingSectionProps> = ({ events, entities, s
         id="lo-que-sigues"
         title="Lo que sigues"
         kicker="Artistas y salas"
-        tone={HOME_SECTION_TONES.following}
         icon={<IconBell size={20} />}
         action={
           <Link
