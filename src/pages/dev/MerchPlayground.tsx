@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import MerchItemForm from '../../features/merch/manage/MerchItemForm';
 import MerchStandView from '../../features/merch/MerchStandView';
+import { MERCH_INTRO } from '../../features/merch/EventMerchSection';
+import SectionIntro from '../../components/ui/SectionIntro';
 import MerchOrderView from '../../features/merch/MerchOrderView';
 import { Cart, changeQuantity, emptyItemDraft } from '../../features/merch/merchRules';
 import { qrSvg } from '../../lib/qrPoster';
@@ -123,8 +125,9 @@ const MerchPlayground: React.FC = () => {
         </div>
       ) : (
         <section className="flex flex-col gap-3">
-          <div>
+          <div className="flex items-center justify-between gap-2">
             <h2 className="font-display text-xl font-bold text-app-ink">Merch del concierto</h2>
+            <SectionIntro id="merch-dev" title="Reserva el merch de tu concierto" steps={MERCH_INTRO} />
           </div>
           <MerchStandView
             stand={stand}
