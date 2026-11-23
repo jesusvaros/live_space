@@ -8,6 +8,8 @@ import { offerNotifications } from '../notifications/offer';
 import MerchStandView from './MerchStandView';
 import { Cart, cartLines, changeQuantity, reservationsClosed } from './merchRules';
 import { track } from '../analytics/analytics';
+import { IconMap, IconQrCode, IconTicket } from '../../components/icons';
+import SectionIntro, { type IntroStep } from '../../components/ui/SectionIntro';
 
 type EventMerchSectionProps = {
   eventId: string;
@@ -25,6 +27,13 @@ type EventMerchSectionProps = {
 // «Merch del concierto». Anyone sees it; only people going to the concert
 // reserve. Pickup is always at the stand; each seller picks how to pay
 // (in the app or at the stand). Hidden when nobody sells or reservations closed.
+// Shown once before the first shop, then behind the «i» by the title.
+export const MERCH_INTRO: IntroStep[] = [
+  { icon: <IconTicket size={24} />, text: 'Elige y reserva sin pagar' },
+  { icon: <IconQrCode size={24} />, text: 'Te damos un código' },
+  { icon: <IconMap size={24} />, text: 'Lo recoges esa noche en el puesto' },
+];
+
 const EventMerchSection: React.FC<EventMerchSectionProps> = ({ eventId, startsAt, endsAt, venueName, attending, onAttend, initialStands }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -116,10 +125,11 @@ const EventMerchSection: React.FC<EventMerchSectionProps> = ({ eventId, startsAt
 
   return (
     <section aria-labelledby="merch" className="flex flex-col gap-3">
-      <div>
+      <div className="flex items-center justify-between gap-2">
         <h2 id="merch" className="font-display text-xl font-bold text-app-ink">
           Merch del concierto
         </h2>
+        <SectionIntro id="merch" title="Reserva el merch de tu concierto" steps={MERCH_INTRO} />
       </div>
 
       {stands.map(stand => (
