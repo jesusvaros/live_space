@@ -11,7 +11,12 @@ import { concertDateLabel, groupMomentsByConcert, lineupLabel, type MomentConcer
 // A group shows two rows until it is opened.
 const COLLAPSED = 6;
 
-const MomentTile: React.FC<{ moment: ProfileMoment; onSelect: () => void }> = ({ moment, onSelect }) => {
+type MomentTileProps = { moment: ProfileMoment; onSelect: () => void; featured?: 'big' | 'wide' | false; order: number };
+
+// `featured`: the concert's first moment opens it big — 2×2 when three or
+// more follow (the small tiles set the row height), two columns wide when it
+// is the only one. Tiles fade up one after another.
+const MomentTile: React.FC<MomentTileProps> = ({ moment, onSelect, featured = false, order }) => {
   const isVideo = moment.media_type === 'video';
   const still = moment.thumbnail_url || (!isVideo ? moment.media_url : null);
   const label = moment.caption || (isVideo ? 'Vídeo' : 'Foto');
@@ -19,7 +24,10 @@ const MomentTile: React.FC<{ moment: ProfileMoment; onSelect: () => void }> = ({
     <button
       type="button"
       onClick={onSelect}
-      className="relative aspect-[3/4] overflow-hidden rounded-xl bg-app-surface"
+      className={`relative overflow-hidden rounded-xl bg-app-surface animate-timeline-fade motion-reduce:animate-none ${
+        featured === 'big' ? 'col-span-2 row-span-2' : featured === 'wide' ? 'col-span-2 aspect-[4/5]' : 'aspect-[3/4]'
+      }`}
+      style={{ animationDelay: `${Math.min(order, 8) * 45}ms` }}
     >
       {still ? (
         <img src={still} alt={label} loading="lazy" className="h-full w-full object-cover" />
@@ -27,8 +35,11 @@ const MomentTile: React.FC<{ moment: ProfileMoment; onSelect: () => void }> = ({
         <VideoThumb src={moment.media_url} label={label} />
       )}
       {isVideo ? (
-        <span aria-hidden className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white">
-          <IconPlay size={12} />
+        <span
+          aria-hidden
+          className={`absolute right-1.5 top-1.5 flex items-center justify-center rounded-full bg-black/60 text-white ${featured ? 'h-8 w-8' : 'h-6 w-6'}`}
+        >
+          <IconPlay size={featured ? 15 : 12} />
         </span>
       ) : null}
     </button>
@@ -55,8 +66,8 @@ const ConcertHeader: React.FC<{ concert: MomentConcert; count: number; onSelect:
           </span>
         ) : null}
       </span>
-      <span className="flex shrink-0 items-center gap-0.5 text-xs text-white/55">
-        {count} {count === 1 ? 'momento' : 'momentos'}
+      <span className="flex shrink-0 items-center gap-0.5 font-mono text-xs font-semibold text-white/55" aria-label={`${count} ${count === 1 ? 'momento' : 'momentos'}`}>
+        {count}
         <IconChevronRight size={16} />
       </span>
     </button>
@@ -89,8 +100,14 @@ const MomentsByConcert: React.FC<MomentsByConcertProps> = ({ moments, cards }) =
               onSelect={() => navigate(`/event/${group.concert.id}`)}
             />
             <div className="grid grid-cols-3 gap-1.5">
-              {shown.map(moment => (
-                <MomentTile key={moment.id} moment={moment} onSelect={() => navigate(`/post/${moment.id}`)} />
+              {shown.map((moment, index) => (
+                <MomentTile
+                  key={moment.id}
+                  moment={moment}
+                  order={index}
+                  featured={index !== 0 ? false : shown.length >= 3 ? 'big' : shown.length === 1 ? 'wide' : false}
+                  onSelect={() => navigate(`/post/${moment.id}`)}
+                />
               ))}
             </div>
             {hidden > 0 || expanded ? (
