@@ -1,9 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { initials, pickPalette } from '../../components/ui/generated';
+import { IconFlag, IconMap, IconMic } from '../../components/icons';
 import type { FollowedEntity } from '../../hooks/useFollowedEntities';
 
-const KIND_LABEL: Record<FollowedEntity['kind'], string> = { artist: 'Artista', venue: 'Sala', festival: 'Festival' };
+const KIND_ICON: Record<FollowedEntity['kind'], React.ReactNode> = {
+  artist: <IconMic size={13} />,
+  venue: <IconMap size={13} />,
+  festival: <IconFlag size={13} />,
+};
+const KIND_NAME: Record<FollowedEntity['kind'], string> = { artist: 'Artista', venue: 'Sala', festival: 'Festival' };
 
 // One followed artist, venue or festival as a photo card; initials on the
 // name's poster colours when there is no photo (or it fails to load).
@@ -33,12 +39,18 @@ const FollowCard: React.FC<{ entity: FollowedEntity; onSelect: () => void }> = (
             {initials(entity.name)}
           </span>
         )}
-        <span className="absolute left-1.5 top-1.5 rounded-full bg-black/65 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.06em] text-white">
-          {KIND_LABEL[entity.kind]}
+        {/* Mic or pin instead of a text label; it sits inside the card. */}
+        <span
+          role="img"
+          aria-label={KIND_NAME[entity.kind]}
+          className="absolute left-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/65 text-white"
+        >
+          {KIND_ICON[entity.kind]}
         </span>
       </span>
       <span className="mt-1.5 block truncate font-display text-[14px] font-bold leading-tight text-app-ink">{entity.name}</span>
-      {entity.city ? <span className="block truncate text-[12px] text-white/55">{entity.city}</span> : null}
+      {/* Always two lines, so cards without a city stay level with the rest. */}
+      <span className="block truncate text-[12px] text-white/55">{entity.city || '\u00a0'}</span>
     </button>
   );
 };
