@@ -191,7 +191,7 @@ const Events: React.FC = () => {
     following: <FollowingSection events={followedEvents} entities={followedEntities} signedIn={Boolean(user)} />,
     festivals: <FestivalsSection />,
     listings: (
-      <div className="px-4 pt-[22px]">
+      <div className="px-4 pt-8">
         <CityListingSection
           events={events}
           cities={cities}

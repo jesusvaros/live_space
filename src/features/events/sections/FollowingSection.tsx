@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Avatar from '../../../components/ui/Avatar';
-import { IconPlus } from '../../../components/icons';
+import { IconBell, IconPlus } from '../../../components/icons';
 import { FollowedEntity } from '../../../hooks/useFollowedEntities';
 import { EventListItem } from '../types';
 import { getPrimaryArtistName } from '../utils';
+import HomeSectionHeader, { HOME_SECTION_TONES } from './HomeSectionHeader';
 
 type FollowingSectionProps = {
   events: EventListItem[];
@@ -82,17 +83,23 @@ const FollowingSection: React.FC<FollowingSectionProps> = ({ events, entities, s
   const today = new Date();
 
   return (
-    <section aria-labelledby="lo-que-sigues" className="flex flex-col gap-3 px-4 pt-[22px]">
-      <div className="flex items-center justify-between">
-        <h2 id="lo-que-sigues" className="font-display text-2xl font-bold text-app-ink">Lo que sigues</h2>
-        <Link
-          to="/tabs/profile"
-          state={{ profileTab: 'following' }}
-          className="inline-flex min-h-11 items-center text-sm font-semibold text-app-accent"
-        >
-          Gestionar
-        </Link>
-      </div>
+    <section aria-labelledby="lo-que-sigues" className="flex flex-col gap-3.5 px-4 pt-8">
+      <HomeSectionHeader
+        id="lo-que-sigues"
+        title="Lo que sigues"
+        kicker="Artistas y salas"
+        tone={HOME_SECTION_TONES.following}
+        icon={<IconBell size={20} />}
+        action={
+          <Link
+            to="/tabs/profile"
+            state={{ profileTab: 'following' }}
+            className="inline-flex min-h-11 shrink-0 items-center text-sm font-semibold text-app-accent"
+          >
+            Gestionar
+          </Link>
+        }
+      />
 
       <div className="-mr-4 flex gap-3.5 overflow-x-auto pr-4">
         {ordered.map(entity => {

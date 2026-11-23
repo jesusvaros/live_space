@@ -6,6 +6,8 @@ import CoverImage from '../../../components/ui/CoverImage';
 import GeneratedPoster from '../../../components/ui/GeneratedPoster';
 import { Modal } from '../../../components/ui/AppPrimitives';
 import EventPosterTile from '../components/EventPosterTile';
+import HomeSectionHeader, { HOME_SECTION_TONES } from './HomeSectionHeader';
+import { IconCalendar } from '../../../components/icons';
 
 const eventCity = (event: EventListItem) => (event.city || event.venue_place?.city || '').trim();
 
@@ -99,20 +101,25 @@ const CityListingSection: React.FC<CityListingSectionProps> = ({ events, cities,
 
   return (
     <section className="flex flex-col gap-3.5">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="font-display text-2xl font-bold text-app-ink">Cartelera</h2>
-        <button
-          type="button"
-          aria-haspopup="dialog"
-          aria-label={`Ciudad: ${city}. Cambiar`}
-          onClick={() => setPickerOpen(true)}
-          className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-app-line bg-app-surface pl-3.5 pr-3 text-sm font-semibold text-app-ink"
-        >
-          <PinIcon />
-          {city}
-          <ChevronDown />
-        </button>
-      </div>
+      <HomeSectionHeader
+        title="Cartelera"
+        kicker="En tu ciudad"
+        tone={HOME_SECTION_TONES.listings}
+        icon={<IconCalendar size={20} />}
+        action={
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            aria-label={`Ciudad: ${city}. Cambiar`}
+            onClick={() => setPickerOpen(true)}
+            className="inline-flex min-h-10 max-w-[45%] shrink-0 items-center gap-1.5 rounded-full border border-app-line bg-app-surface pl-3.5 pr-3 text-sm font-semibold text-app-ink"
+          >
+            <PinIcon />
+            <span className="truncate">{city}</span>
+            <ChevronDown />
+          </button>
+        }
+      />
 
       <div className="-mx-4 flex gap-2 overflow-x-auto px-4" role="tablist" aria-label="Día">
         {days.map((day, index) => {
