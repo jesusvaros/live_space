@@ -204,3 +204,26 @@ export const listenForAlertTaps = (open: (path: string) => void) => {
     void handle.then(listener => listener.remove());
   };
 };
+
+/**
+ * One local notification that opens `path` when tapped (handled by
+ * listenForAlertTaps). Scheduling the same key again replaces it. Does not
+ * ask for permission: without it, nothing is scheduled.
+ */
+export const scheduleOpenNotification = async (input: { key: string; title: string; body: string; at: Date; path: string }) => {
+  if (!isNativeNotifications() || input.at.getTime() <= Date.now()) return;
+  const { display } = await LocalNotifications.checkPermissions();
+  if (display !== 'granted') return;
+  await LocalNotifications.schedule({
+    notifications: [
+      {
+        id: alertId(input.key),
+        title: input.title,
+        body: input.body,
+        schedule: { at: input.at },
+        extra: { kind: ALERT_KIND, path: input.path },
+      },
+    ],
+  });
+};
+
