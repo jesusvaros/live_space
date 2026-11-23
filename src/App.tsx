@@ -11,6 +11,7 @@ import {
   useNavigate,
 } from 'react-router-dom';
 import BottomNav, { hidesBottomNav } from './components/BottomNav';
+import ConcertDock from './features/live/ConcertDock';
 import { Spinner } from './components/ui/AppPrimitives';
 import { useAuth } from './contexts/AuthContext';
 import { useWorkspace } from './contexts/WorkspaceContext';
@@ -211,6 +212,7 @@ const TabsLayout: React.FC<TabsLayoutProps> = ({
       <div className="min-h-0 flex-1 overflow-hidden">
         {deferredPage(<Outlet />)}
       </div>
+      {showNav ? <ConcertDock /> : null}
       {showNav ? <BottomNav mainTabHref={mainTabHref} profileTabHref={profileTabHref} /> : null}
     </div>
   );
