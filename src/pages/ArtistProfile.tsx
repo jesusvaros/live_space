@@ -22,6 +22,7 @@ import ClaimProfileLink from '../components/pro/ClaimProfileLink';
 import PastConcertsSection from '../features/events/PastConcertsSection';
 import type { EventListItem } from '../features/events/types';
 import { NAV_CLEARANCE } from '../components/BottomNav';
+import { askForAccount } from '../auth/askForAccount';
 
 type ArtistTab = 'shows' | 'moments' | 'about';
 
@@ -205,7 +206,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
   const handleToggleFollow = async () => {
     if (!artist?.subject_id) return;
     if (!canFollow) {
-      navigate('/welcome');
+      askForAccount(navigate, `Crea tu cuenta para seguir a ${artist.name} y ver cuándo toca.`);
       return;
     }
     await toggleFollowSubject(artist.subject_id, 'artist');

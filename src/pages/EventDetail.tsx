@@ -34,6 +34,7 @@ import { useHiddenPostIds } from '../features/photos/postCollections';
 import { groupPhotoAlbums, withoutHidden } from '../features/photos/photoAlbums';
 import { heroParallaxOffset, stageIsMostlyVisible } from '../features/moments/stageParallax';
 import { track } from '../features/analytics/analytics';
+import { askForAccount } from '../auth/askForAccount';
 
 // Bottom of the screen, from the edge up: the app's floating nav (about 72 px
 // over the safe area), then this page's action bar (about 60 px) right above
@@ -353,11 +354,8 @@ const EventDetail: React.FC = () => {
 
   const onActiveSongChange = useCallback((songId: string | null) => setPlayingSongId(songId), []);
 
+  // No account needed to start an upload: it is asked for only on publishing.
   const openUpload = (songOrdinal?: number) => {
-    if (!user) {
-      navigate('/welcome');
-      return;
-    }
     const params = new URLSearchParams({ event: id });
     if (songOrdinal) params.set('song', String(songOrdinal));
     navigate(`/tabs/upload?${params.toString()}`);
@@ -473,7 +471,7 @@ const EventDetail: React.FC = () => {
 
   const handleFollowClick = () => {
     if (!user) {
-      navigate('/welcome');
+      askForAccount(navigate, 'Crea tu cuenta para guardar este concierto y tenerlo en tu agenda.');
       return;
     }
     toggleFollow();
@@ -481,7 +479,7 @@ const EventDetail: React.FC = () => {
 
   const handleAttendanceClick = () => {
     if (!user) {
-      navigate('/welcome');
+      askForAccount(navigate, 'Crea tu cuenta para marcar que vas y reservar merch del concierto.');
       return;
     }
     updateAttendance(attendanceTarget);
