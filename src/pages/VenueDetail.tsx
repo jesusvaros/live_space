@@ -83,7 +83,7 @@ const VenueDetail: React.FC = () => {
   const [moments, setMoments] = useState<PostWithSetlist[]>(initial?.moments ?? []);
   const [loading, setLoading] = useState(!initial);
   const [eventsLoading, setEventsLoading] = useState(!initial);
-  const [momentsLoading, setMomentsLoading] = useState(!initial);
+  const [, setMomentsLoading] = useState(!initial);
   useFirstContent('venue', Boolean(venue));
   const [error, setError] = useState('');
   
@@ -436,24 +436,17 @@ const VenueDetail: React.FC = () => {
             fetchPage={fetchPastPage}
             titleOf={getPrimaryArtistName}
             subtitleOf={event => (getPrimaryArtistName(event) !== event.name ? event.name : null)}
-            hideWhenEmpty={events.length === 0 && !eventsLoading}
+            hideWhenEmpty
             className="px-4 pt-5"
           />
 
-          <section className="px-4 pt-5">
-            <h2 className="mb-2.5 font-display text-xl font-bold text-app-ink">Grabado aquí</h2>
-            {moments.length === 0 && momentsLoading ? (
-              <div className="grid grid-cols-3 gap-1" aria-hidden>
-                {[0, 1, 2].map(index => (
-                  <span key={index} className="aspect-square animate-pulse rounded-lg bg-app-surface" />
-                ))}
-              </div>
-            ) : moments.length === 0 ? (
-              <p className="text-sm text-white/55">Nadie ha subido nada desde aquí todavía. Graba en tu próximo concierto.</p>
-            ) : (
+          {/* Only when something was recorded here: no empty section. */}
+          {moments.length > 0 ? (
+            <section className="px-4 pt-5">
+              <h2 className="mb-2.5 font-display text-xl font-bold text-app-ink">Grabado aquí</h2>
               <MomentGrid moments={moments} />
-            )}
-          </section>
+            </section>
+          ) : null}
           <ClaimProfileLink type="venue" entityId={venue.id} subjectId={venue.subject_id} className="px-4 pt-6" />
         </div>
       )}
