@@ -67,5 +67,14 @@ export const venueService = {
 
     if (error) throw error;
     return mapVenue(data);
+  },
+
+  /** A photo the manager picked: shown first and never replaced by the image enrichment. */
+  async setPhoto(id: string, imageUrl: string | null): Promise<void> {
+    const { error } = await supabase
+      .from('venue_places')
+      .update({ image_url: imageUrl, image_source: imageUrl ? 'manual' : null })
+      .eq('id', id);
+    if (error) throw error;
   }
 };

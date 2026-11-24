@@ -5,7 +5,7 @@ import Button from '../components/ui/Button';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
 import CoverImage from '../components/ui/CoverImage';
 import { Spinner } from '../components/ui/AppPrimitives';
-import { IconChevronLeft, IconLock } from '../components/icons';
+import { IconChevronLeft, IconEdit, IconLock, IconUser } from '../components/icons';
 import EventEditForm from '../components/pro/EventEditForm';
 import SetlistEditor from '../components/pro/SetlistEditor';
 import ConcertProposals from '../components/pro/ConcertProposals';
@@ -223,6 +223,22 @@ const Management: React.FC = () => {
   } else {
     body = (
       <>
+        {/* The profile fans see and who manages it with you. */}
+        <nav aria-label="Tu perfil" className="mx-4 mt-3 grid grid-cols-2 gap-2">
+          {([
+            ['/gestion/perfil', 'Mi perfil', <IconEdit key="perfil" size={18} />],
+            ['/gestion/equipo', 'Equipo', <IconUser key="equipo" size={18} />],
+          ] as const).map(([to, label, icon]) => (
+            <Link
+              key={to}
+              to={to}
+              className="flex min-h-14 items-center gap-3 rounded-2xl border border-app-line bg-app-surface px-3.5 text-[15px] font-semibold text-app-ink"
+            >
+              <span aria-hidden className="flex h-8 w-8 items-center justify-center rounded-lg border border-app-line text-white/80">{icon}</span>
+              {label}
+            </Link>
+          ))}
+        </nav>
         <EntityStatsSummary key={entity.subject_id} subjectId={entity.subject_id} className="mx-4 mt-4" />
         {currentEntityId && entity.type === 'venue' ? (
           <ConcertProposals key={`venue-${currentEntityId}`} mode="venue" venueId={currentEntityId} onDecided={loadEvents} />

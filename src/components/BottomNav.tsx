@@ -62,7 +62,7 @@ const tabFromPath = (pathname: string, profileTabHref: string): TabKey | null =>
 // concert, management and claiming (/gestion, /reclamar) and onboarding.
 export const hidesBottomNav = (pathname: string) =>
   /^\/tabs\/(upload|create-event)\b/.test(pathname) ||
-  /^\/(subir|upload|create-event|gestion|reclamar|bienvenida|empezar|welcome)(\/|$)/.test(pathname);
+  /^\/(subir|upload|create-event|gestion|reclamar|equipo|bienvenida|empezar|welcome)(\/|$)/.test(pathname);
 
 // Bottom padding a scrolling page needs so its end is not hidden by the bar.
 export const NAV_CLEARANCE = 'pb-[calc(96px+env(safe-area-inset-bottom,0px))]';

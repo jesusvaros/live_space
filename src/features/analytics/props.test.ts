@@ -16,6 +16,8 @@ describe('appScreenName', () => {
   it('keeps fixed screens and drops query strings', () => {
     expect(appScreenName('/tabs/events')).toBe('/tabs/events');
     expect(appScreenName('/tabs/upload?qr=secret-token')).toBe('/tabs/upload');
+    expect(appScreenName('/equipo/unirse/Secret_Token_1234567890ab')).toBe('/equipo/unirse/:id');
+    expect(appScreenName('/reclamar/enlace/Secret_Token_1234567890ab')).toBe('/reclamar/enlace/:id');
     expect(appScreenName('/legal/privacidad')).toBe('/legal/privacidad');
     expect(appScreenName('')).toBe('/');
     expect(appScreenName('/')).toBe('/');

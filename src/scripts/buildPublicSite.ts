@@ -77,7 +77,7 @@ type Page = {
 
 // Vite emits the site entry as site.html; the host serves index.html at "/".
 if (existsSync(path.join(DIST, 'site.html'))) renameSync(path.join(DIST, 'site.html'), path.join(DIST, 'index.html'));
-// Every page built from the landing (the landing itself, /upload, /vuelta,
+// Every page built from the landing (the landing itself, /upload, /vuelta, /unirse,
 // festival landings) carries Vercel Web Analytics.
 const landingTemplate = withWebAnalytics(readFileSync(path.join(DIST, 'index.html'), 'utf8'));
 writeFileSync(path.join(DIST, 'index.html'), landingTemplate);
@@ -460,6 +460,14 @@ const run = async () => {
     '/vuelta/',
     landingTemplate
       .replace(/<title>[\s\S]*?<\/title>/, '<title>Vuelve a Live Space</title>')
+      .replace('</head>', '<meta name="robots" content="noindex" />\n  </head>'),
+  );
+  // /unirse: team invites (?equipo=) and personal claim links (?perfil=)
+  // shared by WhatsApp or mail; it hands the token to the app. noindex.
+  writePage(
+    '/unirse/',
+    landingTemplate
+      .replace(/<title>[\s\S]*?<\/title>/, '<title>Únete · Live Space</title>')
       .replace('</head>', '<meta name="robots" content="noindex" />\n  </head>'),
   );
   for (const redirect of redirects) writePage(redirect.from, redirectStub(redirect.to, `${SITE_URL}${redirect.to}`));
