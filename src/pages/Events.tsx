@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
-import { NAV_CLEARANCE } from '../components/BottomNav';
 import { useLastKnownLocation } from '../shared/hooks/useLastKnownLocation';
 import { readStoredLocation } from '../shared/hooks/useStoredLocation';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
@@ -221,7 +220,8 @@ const Events: React.FC = () => {
           <React.Fragment key={key}>{sections[key]}</React.Fragment>
         ))}
 
-      <div className={`flex justify-center px-4 pt-8 ${NAV_CLEARANCE}`}>
+      {/* Clears the tab bar and the floating «Escanear QR» above it (96 + 56 + gap). */}
+      <div className="flex justify-center px-4 pb-[calc(168px+env(safe-area-inset-bottom,0px))] pt-8">
         <button
           type="button"
           onClick={() => setCustomizing(true)}
