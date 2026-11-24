@@ -3,7 +3,10 @@ import { Spinner } from '../components/ui/AppPrimitives';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Event, Profile, VenuePlace, PostWithSetlist, Artist } from '../lib/types';
-import { socialService } from '../services/social.service';
+import { friendsService, groupByEvent, type Relation } from '../services/friends.service';
+import Avatar from '../components/ui/Avatar';
+import FollowPersonButton from '../features/friends/FollowPersonButton';
+import { getEventCoverImage } from '../features/events/utils';
 import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
 import EventPosterTile from '../features/events/components/EventPosterTile';
@@ -15,7 +18,6 @@ import { fetchPostCards } from '../data/postQueries';
 import BlockUserButton from '../features/blocks/BlockUserButton';
 import { blockTargetLabel } from '../features/blocks/blocking';
 import { useBlockedUserIds } from '../features/blocks/useBlockedUsers';
-import { track } from '../features/analytics/analytics';
 
 type ProfileEvent = Event & {
   organizer?: Profile | null;
@@ -35,9 +37,8 @@ const ProfileDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [followLoading, setFollowLoading] = useState(false);
-  const [followersCount, setFollowersCount] = useState(0);
+  const [relation, setRelation] = useState<Relation>({ iFollow: false, followsMe: false });
+  const [plans, setPlans] = useState<EventListItem[]>([]);
   const blocked = useBlockedUserIds();
   const isBlocked = Boolean(profile && blocked.has(profile.id));
 
@@ -62,15 +63,16 @@ const ProfileDetail: React.FC = () => {
         const profileData = mapProfile({ ...profileRow, subject_id: subjectData.id });
         setProfile(profileData);
 
-        if (profileData.subject_id) {
-          const [count, following] = await Promise.all([
-            socialService.getFollowersCount(profileData.subject_id),
-            user && currentUserProfile?.subject_id 
-              ? socialService.isFollowing(currentUserProfile.subject_id, profileData.subject_id)
-              : Promise.resolve(false)
-          ]);
-          setFollowersCount(count);
-          setIsFollowing(following);
+        if (profileData.subject_id && user && currentUserProfile?.subject_id && profileData.id !== user.id) {
+          const current = await friendsService.relation(currentUserProfile.subject_id, profileData.subject_id);
+          setRelation(current);
+          // Their upcoming concerts, only for friends (and only if they share them).
+          if (current.iFollow && current.followsMe) {
+            const groups = groupByEvent(await friendsService.going({ friendId: profileData.id }).catch(() => []));
+            setPlans(groups.length ? await fetchEventCards({ eventIds: groups.map(group => group.eventId) }) : []);
+          } else {
+            setPlans([]);
+          }
         }
 
         const authoredMoments = await fetchPostCards({ authorId: profileData.id, from: 0, to: 59 });
@@ -86,32 +88,6 @@ const ProfileDetail: React.FC = () => {
     };
     loadProfile();
   }, [id, user, currentUserProfile?.subject_id]);
-
-  const handleFollowToggle = async () => {
-    if (!user || !currentUserProfile?.subject_id || !profile?.subject_id) {
-      if (!user) navigate('/welcome');
-      return;
-    }
-
-    setFollowLoading(true);
-    try {
-      if (isFollowing) {
-        await socialService.unfollow(currentUserProfile.subject_id, profile.subject_id);
-        track('unfollow', { kind: 'profile' });
-        setIsFollowing(false);
-        setFollowersCount(prev => Math.max(0, prev - 1));
-      } else {
-        await socialService.follow(currentUserProfile.subject_id, profile.subject_id);
-        track('follow', { kind: 'profile' });
-        setIsFollowing(true);
-        setFollowersCount(prev => prev + 1);
-      }
-    } catch (err) {
-      console.error('Failed to toggle follow', err);
-    } finally {
-      setFollowLoading(false);
-    }
-  };
 
   const eventCards = useMemo(() => new Map(events.map(event => [event.id, event as EventListItem])), [events]);
 
@@ -134,37 +110,54 @@ const ProfileDetail: React.FC = () => {
 
       {!loading && profile && (
         <>
-          <section className="relative h-[340px] w-full overflow-hidden bg-black">
-            {profile.avatar_url ? (
-              <img src={profile.avatar_url} alt={profile.display_name || 'Perfil'} className="absolute inset-0 h-full w-full object-cover" />
-            ) : null}
-            <div className="absolute inset-x-0 bottom-0 bg-black/70 p-5">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/65">
-                {({ user: 'USUARIO', artist: 'ARTISTA', venue: 'SALA', label: 'SELLO', admin: 'ADMIN' } as Record<string, string>)[profile.role] || profile.role.toUpperCase()}
-              </p>
-              <h2 className="mt-2 font-display text-3xl font-bold text-white">
+          {/* A person: round face, name, @usuario and the follow button. */}
+          <header className="flex items-center gap-4 px-4 pt-4">
+            <Avatar
+              name={profile.display_name || profile.username || 'Perfil'}
+              src={profile.avatar_url}
+              className="h-[72px] w-[72px] text-[24px]"
+            />
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate font-display text-[24px] font-bold leading-tight text-app-ink">
                 {profile.display_name || profile.username || 'Desconocido'}
-              </h2>
-              {profile.primary_city && <p className="mt-2 text-sm text-white/70">{profile.primary_city}</p>}
-              <div className="mt-3 flex items-center gap-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
-                  {followersCount} seguidores
-                </p>
-                {user && profile.id !== user.id && (
-                      <button
-                        type="button"
-                        disabled={followLoading}
-                        onClick={handleFollowToggle}
-                        className={`px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] disabled:opacity-60 ${
-                          isFollowing ? 'bg-white/10 text-white/80' : 'bg-[#ff5b2e] text-white'
-                        }`}
-                      >
-                        {followLoading ? <Spinner /> : (isFollowing ? 'Siguiendo' : 'Seguir')}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </section>
+              </h1>
+              {profile.username ? <p className="truncate text-sm text-white/55">@{profile.username}</p> : null}
+              {relation.followsMe && !relation.iFollow ? <p className="text-[12px] text-white/45">Te sigue</p> : null}
+            </div>
+            {user && profile.id !== user.id && currentUserProfile?.subject_id && profile.subject_id ? (
+              <FollowPersonButton
+                mySubjectId={currentUserProfile.subject_id}
+                theirSubjectId={profile.subject_id}
+                relation={relation}
+                onChange={setRelation}
+              />
+            ) : null}
+            {!user ? (
+              <button
+                type="button"
+                onClick={() => navigate('/welcome')}
+                className="inline-flex min-h-10 items-center rounded-full bg-app-ink px-4 text-[13px] font-semibold text-app-bg"
+              >
+                Seguir
+              </button>
+            ) : null}
+          </header>
+
+          {plans.length ? (
+            <section aria-label="Sus planes" className="px-4 pt-6">
+              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-white/45">Va a</p>
+              <div className="-mr-4 mt-3 flex gap-3 overflow-x-auto pr-4 pt-1">
+                {plans.map(event => (
+                  <EventPosterTile
+                    key={event.id}
+                    className="w-[130px] shrink-0"
+                    event={{ ...event, cover_image_url: getEventCoverImage(event) }}
+                    onSelect={selected => navigate(`/event/${selected.id}`)}
+                  />
+                ))}
+              </div>
+            </section>
+          ) : null}
 
               <div className="flex flex-col gap-8 p-4 pb-[calc(32px+env(safe-area-inset-bottom,0px))]">
                 {isBlocked ? (

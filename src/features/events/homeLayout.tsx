@@ -2,17 +2,18 @@ import React, { useState } from 'react';
 import { Modal } from '../../components/ui/AppPrimitives';
 import { IconChevronDown, IconChevronUp } from '../../components/icons';
 
-export type HomeSectionKey = 'going' | 'forYou' | 'following' | 'festivals' | 'listings';
+export type HomeSectionKey = 'going' | 'friends' | 'forYou' | 'following' | 'festivals' | 'listings';
 
 export const HOME_SECTION_LABELS: Record<HomeSectionKey, string> = {
   going: 'Voy',
+  friends: 'Tus amigos van',
   forYou: 'Para ti',
   following: 'Lo que sigues',
   festivals: 'Festivales',
   listings: 'Cartelera de tu ciudad',
 };
 
-const DEFAULT_ORDER: HomeSectionKey[] = ['going', 'forYou', 'following', 'festivals', 'listings'];
+const DEFAULT_ORDER: HomeSectionKey[] = ['going', 'friends', 'forYou', 'following', 'festivals', 'listings'];
 const layoutKey = 'live_space.home.layout.v1';
 
 export type HomeLayout = { order: HomeSectionKey[]; hidden: HomeSectionKey[] };

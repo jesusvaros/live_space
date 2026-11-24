@@ -32,6 +32,8 @@ export interface Profile {
   primary_city: string | null;
   external_links: Record<string, string>;
   is_verified: boolean;
+  /** Who sees the concerts you mark «Voy»: your friends (default) or nobody. */
+  plans_visibility?: 'amigos' | 'nadie';
   created_at: string;
   updated_at: string;
 }

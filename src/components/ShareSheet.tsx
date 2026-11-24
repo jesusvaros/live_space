@@ -8,7 +8,7 @@ type ShareSheetProps = {
   onClose: () => void;
   link: string;
   /** What is shared, for the `share_link` event. */
-  kind?: 'event' | 'post';
+  kind?: 'event' | 'post' | 'profile';
 };
 
 const ShareSheet: React.FC<ShareSheetProps> = ({ isOpen, onClose, link, kind = 'event' }) => {

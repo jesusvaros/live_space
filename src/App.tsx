@@ -49,9 +49,11 @@ const TimelinePlayground = import.meta.env.DEV ? page(() => import('./pages/dev/
 const MerchPlayground = import.meta.env.DEV ? page(() => import('./pages/dev/MerchPlayground'), false) : null;
 const ProfilePlayground = import.meta.env.DEV ? page(() => import('./pages/dev/ProfilePlayground'), false) : null;
 const ProPlayground = import.meta.env.DEV ? page(() => import('./pages/dev/ProPlayground'), false) : null;
+const FriendsPlayground = import.meta.env.DEV ? page(() => import('./pages/dev/FriendsPlayground'), false) : null;
 const MerchOrder = page(() => import('./pages/MerchOrder'), false);
 const MerchOrders = page(() => import('./pages/MerchOrders'), false);
 const SavedPhotos = page(() => import('./pages/SavedPhotos'), false);
+const Friends = page(() => import('./pages/Friends'), false);
 const MerchManage = page(() => import('./pages/MerchManage'), false);
 const Profile = page(() => import('./pages/Profile'));
 const Discover = page(() => import('./pages/Discover'));
@@ -290,6 +292,7 @@ const AppRoutes = () => {
           <Route path="/gestion/merch" element={<RequireAuth>{deferredPage(<MerchManage />)}</RequireAuth>} />
           <Route path="/pedidos" element={<RequireAuth>{deferredPage(<MerchOrders />)}</RequireAuth>} />
           <Route path="/guardadas" element={<RequireAuth>{deferredPage(<SavedPhotos />)}</RequireAuth>} />
+          <Route path="/amigos" element={<RequireAuth>{deferredPage(<Friends />)}</RequireAuth>} />
           <Route path="/pedidos/:id" element={<RequireAuth>{deferredPage(<MerchOrder />)}</RequireAuth>} />
           <Route path="/gestion/estadisticas" element={<RequireAuth>{deferredPage(<GestionEstadisticas />)}</RequireAuth>} />
           <Route path="/gestion/pro" element={<RequireAuth>{deferredPage(<GestionPro />)}</RequireAuth>} />
@@ -312,6 +315,7 @@ const AppRoutes = () => {
           {MerchPlayground ? <Route path="/dev/merch" element={deferredPage(<MerchPlayground />)} /> : null}
           {ProfilePlayground ? <Route path="/dev/perfil" element={deferredPage(<ProfilePlayground />)} /> : null}
           {ProPlayground ? <Route path="/dev/pro" element={deferredPage(<ProPlayground />)} /> : null}
+          {FriendsPlayground ? <Route path="/dev/amigos" element={deferredPage(<FriendsPlayground />)} /> : null}
           <Route
             path="/tabs"
             element={(
