@@ -51,6 +51,7 @@ const ProfilePlayground = import.meta.env.DEV ? page(() => import('./pages/dev/P
 const ProPlayground = import.meta.env.DEV ? page(() => import('./pages/dev/ProPlayground'), false) : null;
 const FriendsPlayground = import.meta.env.DEV ? page(() => import('./pages/dev/FriendsPlayground'), false) : null;
 const TeamPlayground = import.meta.env.DEV ? page(() => import('./pages/dev/TeamPlayground'), false) : null;
+const SchedulePlayground = import.meta.env.DEV ? page(() => import('./pages/dev/SchedulePlayground'), false) : null;
 const MerchOrder = page(() => import('./pages/MerchOrder'), false);
 const MerchOrders = page(() => import('./pages/MerchOrders'), false);
 const SavedPhotos = page(() => import('./pages/SavedPhotos'), false);
@@ -316,6 +317,7 @@ const AppRoutes = () => {
           <Route path="/gestion/equipo" element={<RequireAuth>{deferredPage(<GestionEquipo />)}</RequireAuth>} />
           <Route path="/gestion/festival/:id" element={<RequireAuth>{deferredPage(<FestivalTimetable />)}</RequireAuth>} />
           <Route path="/gestion/evento/:id/qr" element={<RequireAuth>{deferredPage(<EventQr />)}</RequireAuth>} />
+          <Route path="/gestion/sala/:id/qr" element={<RequireAuth>{deferredPage(<EventQr />)}</RequireAuth>} />
           <Route path="/empezar" element={<RequireAuth>{deferredPage(<AgendaSetup />)}</RequireAuth>} />
           <Route path="/importar" element={deferredPage(<Import />)} />
           <Route path="/wrapped" element={deferredPage(<Wrapped />)} />
@@ -325,6 +327,7 @@ const AppRoutes = () => {
           {ProPlayground ? <Route path="/dev/pro" element={deferredPage(<ProPlayground />)} /> : null}
           {FriendsPlayground ? <Route path="/dev/amigos" element={deferredPage(<FriendsPlayground />)} /> : null}
           {TeamPlayground ? <Route path="/dev/gestion" element={deferredPage(<TeamPlayground />)} /> : null}
+          {SchedulePlayground ? <Route path="/dev/conciertos" element={deferredPage(<SchedulePlayground />)} /> : null}
           <Route
             path="/tabs"
             element={(

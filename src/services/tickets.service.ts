@@ -92,7 +92,7 @@ export const ticketsService = {
   async upcoming(userId: string, now = Date.now()): Promise<TicketEvent[]> {
     const folders = (await listFolder(userId)).filter(entry => !entry.id).map(entry => entry.name);
     if (folders.length === 0) return [];
-    const { data, error } = await supabase.from('events').select('id,name,starts_at').in('id', folders);
+    const { data, error } = await supabase.from('events').select('id,name,starts_at').in('id', folders).eq('status', 'published');
     if (error) throw error;
     const events = (data || []) as { id: string; name: string; starts_at: string }[];
     const over = events.filter(event => Date.parse(event.starts_at) + KEEP_AFTER_START_MS < now);

@@ -117,7 +117,9 @@ export const fetchEventCards = async (options: EventCardQuery): Promise<EventLis
       .select(
         options.bounds ? EVENT_CARD_SELECT_BY_VENUE : options.artistId ? EVENT_CARD_SELECT_BY_ARTIST : EVENT_CARD_SELECT,
       )
-      .eq('status', 'published');
+      // One concert by its id also opens when it was cancelled (its page says
+      // so); every list keeps only published ones.
+      .in('status', options.eventId ? ['published', 'cancelled'] : ['published']);
     if (options.startIso) query = query.gte('starts_at', options.startIso);
     if (options.endIso) query = query.lte('starts_at', options.endIso);
     if (options.eventId) query = query.eq('id', options.eventId);
