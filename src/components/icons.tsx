@@ -304,3 +304,10 @@ export const IconCamera: React.FC<IconProps> = ({ className, size = 20 }) => (
     <circle cx="12" cy="13.5" r="3.5" />
   </svg>
 );
+
+export const IconLock: React.FC<IconProps> = ({ className, size = 20 }) => (
+  <svg {...baseProps(size)} className={className}>
+    <rect x="5" y="11" width="14" height="10" rx="2" />
+    <path d="M8 11V8a4 4 0 018 0v3" />
+  </svg>
+);

@@ -1,8 +1,6 @@
 import React from 'react';
 import Avatar from '../../components/ui/Avatar';
-import { IconMap, IconMic, IconSettings, IconTicket } from '../../components/icons';
-
-export type PassportStats = { concerts: number; venues: number; artists: number };
+import { IconSettings } from '../../components/icons';
 
 export type PassportLink = { key: string; label: string; icon: React.ReactNode; onSelect: () => void };
 
@@ -10,36 +8,23 @@ type PassportHeaderProps = {
   name: string;
   subline: string;
   avatarUrl?: string | null;
-  /** A managed artist or venue: square photo with its mic/pin, no stats. */
+  /** A managed artist or venue: square photo with its mic/pin. */
   entityKind?: 'artist' | 'venue' | null;
-  /** The fan's collected concerts, venues and artists; hidden when null or 0. */
-  stats?: PassportStats | null;
   links?: PassportLink[];
   onSettings: () => void;
-  onStatSelect?: () => void;
 };
 
-// The top of the profile as a concert passport: who you are, then how many
-// concerts, venues and artists you have collected (ticket, pin, mic), then
-// two shortcuts. Flow layout; the stage light is decoration only.
+// The top of the profile: who you are and two shortcuts. No counters: the
+// concert history lives in the «Conciertos» tab. Flow layout; the stage light
+// is decoration only.
 const PassportHeader: React.FC<PassportHeaderProps> = ({
   name,
   subline,
   avatarUrl,
   entityKind = null,
-  stats = null,
   links = [],
   onSettings,
-  onStatSelect,
 }) => {
-  const statItems = stats
-    ? [
-        { key: 'concerts', value: stats.concerts, label: stats.concerts === 1 ? 'concierto' : 'conciertos', icon: <IconTicket size={16} /> },
-        { key: 'venues', value: stats.venues, label: stats.venues === 1 ? 'sala' : 'salas', icon: <IconMap size={16} /> },
-        { key: 'artists', value: stats.artists, label: stats.artists === 1 ? 'artista' : 'artistas', icon: <IconMic size={16} /> },
-      ]
-    : [];
-
   return (
     <header className="relative overflow-hidden px-4 pb-2 pt-[calc(16px+env(safe-area-inset-top,0px))]">
       <span
@@ -74,25 +59,9 @@ const PassportHeader: React.FC<PassportHeaderProps> = ({
         </button>
       </div>
 
-      {stats && stats.concerts > 0 ? (
-        <div className="relative mt-5 grid grid-cols-3 gap-2">
-          {statItems.map(stat => (
-            <button
-              key={stat.key}
-              type="button"
-              onClick={onStatSelect}
-              className="flex flex-col items-start rounded-2xl border border-app-line bg-app-surface/70 px-3 py-2.5 text-left transition-transform active:scale-95 motion-reduce:transition-none"
-            >
-              <span aria-hidden className="text-white/45">{stat.icon}</span>
-              <span className="mt-1.5 font-poster text-[30px] leading-none text-app-ink">{stat.value}</span>
-              <span className="mt-1 text-[11px] text-white/55">{stat.label}</span>
-            </button>
-          ))}
-        </div>
-      ) : null}
 
       {links.length > 0 ? (
-        <div className="relative mt-3 flex gap-2">
+        <div className="relative mt-4 flex gap-2">
           {links.map(link => (
             <button
               key={link.key}

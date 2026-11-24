@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isLive } from './ConcertDock';
+import { isLive, ticketIsLive } from './ConcertDock';
 
 const HOUR = 60 * 60 * 1000;
 const start = Date.parse('2026-11-24T21:00:00Z');
@@ -24,5 +24,16 @@ describe('isLive', () => {
 
   it('never floats an order without its concert', () => {
     expect(isLive({ expiresAt: null, event: null }, start)).toBe(false);
+  });
+});
+
+describe('ticketIsLive', () => {
+  const startsAt = '2026-12-01T21:00:00Z';
+  const at = (iso: string) => Date.parse(iso);
+  it('floats from 3 h before doors to 6 h after', () => {
+    expect(ticketIsLive({ startsAt }, at('2026-12-01T17:59:00Z'))).toBe(false);
+    expect(ticketIsLive({ startsAt }, at('2026-12-01T18:00:00Z'))).toBe(true);
+    expect(ticketIsLive({ startsAt }, at('2026-12-02T03:00:00Z'))).toBe(true);
+    expect(ticketIsLive({ startsAt }, at('2026-12-02T03:01:00Z'))).toBe(false);
   });
 });

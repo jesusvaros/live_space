@@ -19,6 +19,7 @@ import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { EventStatsCard, VenueFeedbackPrompt } from '../features/community';
 import { festivalService } from '../services/festival.service';
 import EventMerchSection from '../features/merch/EventMerchSection';
+import TicketSlot from '../features/tickets/TicketSlot';
 import { useEventMerchStands } from '../features/merch/useEventMerchStands';
 import AttendanceSuggestion from '../features/events/AttendanceSuggestion';
 import EventUploadButton from '../features/events/EventUploadButton';
@@ -689,6 +690,8 @@ const EventDetail: React.FC = () => {
                     Al subirlo lo colocamos en su canción, junto a lo que grabó el resto del público.
                   </p>
                 </div>
+
+                {!isPastEvent ? <TicketSlot eventId={event.id} eventName={heroTitle || event.name} /> : null}
 
                 <EventMerchSection
                   eventId={event.id}
