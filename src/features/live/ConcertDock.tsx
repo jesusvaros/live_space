@@ -202,7 +202,8 @@ const ConcertDock: React.FC = () => {
   if (hiddenOn(pathname)) return null;
 
   const liveOrder = orders.find(order => isLive(order, now));
-  const liveTicket = tickets.find(event => ticketIsLive(event, now));
+  // On Inicio the ticket already floats above «Escanear QR» (HomeTicketFab).
+  const liveTicket = pathname === '/tabs/events' ? undefined : tickets.find(event => ticketIsLive(event, now));
   const openTicket = async (event: TicketEvent) => {
     if (!user) return;
     const files = await ticketsService.list(user.id, event.id).catch(() => []);

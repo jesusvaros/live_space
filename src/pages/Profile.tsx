@@ -25,7 +25,6 @@ import ConcertPosters from '../features/profile/ConcertPosters';
 import FollowingGrid from '../features/profile/FollowingGrid';
 import MomentsByConcert from '../features/profile/MomentsByConcert';
 import PassportHeader from '../features/profile/PassportHeader';
-import TicketSlot from '../features/tickets/TicketSlot';
 import ProfileMerchSection from '../features/profile/ProfileMerchSection';
 import { UPCOMING_GRACE_MS, type ProfileMoment } from '../features/profile/profileLayout';
 
@@ -474,9 +473,6 @@ const Profile: React.FC = () => {
               <IconChevronRight size={18} className="shrink-0 text-white/40" />
             </span>
           </button>
-        ) : null}
-        {!isManagementMode && nextConcert ? (
-          <TicketSlot className="mx-4 mt-2" eventId={nextConcert.id} eventName={nextConcert.name} />
         ) : null}
 
         {!isManagementMode && user ? <ProfileMerchSection userId={user.id} city={area} goingEventIds={upcomingGoingIds} /> : null}

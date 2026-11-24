@@ -212,8 +212,8 @@ const Events: React.FC = () => {
           <React.Fragment key={key}>{sections[key]}</React.Fragment>
         ))}
 
-      {/* Clears the tab bar and the floating «Escanear QR» above it (96 + 56 + gap). */}
-      <div className="flex justify-center px-4 pb-[calc(168px+env(safe-area-inset-bottom,0px))] pt-8">
+      {/* Clears the tab bar and the floating «Tu entrada» + «Escanear QR» stack (96 + 56 + 12 + 56 + gap). */}
+      <div className="flex justify-center px-4 pb-[calc(236px+env(safe-area-inset-bottom,0px))] pt-8">
         <button
           type="button"
           onClick={() => setCustomizing(true)}
