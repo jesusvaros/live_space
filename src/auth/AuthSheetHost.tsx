@@ -50,16 +50,8 @@ const AuthSheetHost: React.FC = () => {
     <Modal isOpen={Boolean(request) && !user} onDidDismiss={dismiss} initialBreakpoint={0.7} title="Entra en Live Space">
       <div className="max-h-[85dvh] overflow-y-auto px-5 pb-[calc(20px+env(safe-area-inset-bottom,0px))] pt-3">
         <div className="mx-auto h-1 w-10 rounded-full bg-white/20" aria-hidden />
-        <div className="mt-4 flex items-start justify-between gap-3">
-          <p className="m-0 font-display text-[22px] font-bold leading-tight text-app-ink">{request?.reason}</p>
-          <button
-            type="button"
-            onClick={dismiss}
-            className="-mr-2 -mt-1 min-h-11 shrink-0 px-2 text-sm font-semibold text-white/60"
-          >
-            Ahora no
-          </button>
-        </div>
+        {/* Closes by tapping outside the sheet (or Back): no «Ahora no» button. */}
+        <p className="m-0 mt-4 font-display text-[22px] font-bold leading-tight text-app-ink text-balance">{request?.reason}</p>
         <div className="mt-5">
           <AuthPanel providerReturnPath={`${location.pathname}${location.search}`} />
         </div>
