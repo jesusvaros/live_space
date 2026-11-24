@@ -1,14 +1,18 @@
 #!/usr/bin/env node
 /* global process, console, setTimeout, fetch, AbortSignal, URL */
-// Looks for a contact e-mail on each venue's own website (home page and a
-// contact page if it links one) and writes a CSV to review by hand.
+// Looks for a contact e-mail on each venue's (or, with --artists, each
+// artist's) own website — home page and a contact page if it links one — and
+// writes a CSV to review by hand. Instagram is not read (it needs a login).
 // Read-only: it never writes to the database; the reviewed rows go to
 // public.contact_leads separately. Polite: one request at a time, a short
 // pause between sites, a clear user agent, and only pages the site links.
 //
 //   SUPABASE_URL=… SUPABASE_ANON_KEY=… node scripts/contacts/findVenueEmails.mjs out.csv
+//   … node scripts/contacts/findVenueEmails.mjs --artists artist-emails.csv
 
-const [, , out = 'venue-emails.csv'] = process.argv;
+const args = process.argv.slice(2);
+const artists = args.includes('--artists');
+const out = args.find(arg => !arg.startsWith('--')) ?? (artists ? 'artist-emails.csv' : 'venue-emails.csv');
 const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const key = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 if (!url || !key) {
@@ -16,11 +20,11 @@ if (!url || !key) {
   process.exit(1);
 }
 
-const UA = 'LiveSpaceContactFinder/1.0 (contacto manual con salas)';
+const UA = 'LiveSpaceContactFinder/1.0 (contacto manual con salas y artistas)';
 const EMAIL = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
-const JUNK = /(\.(png|jpe?g|gif|webp|svg)$)|example\.|exemple@|sentry|wixpress|godaddy|dominio\.com|domain\.com|correo\.com|email\.com|@2x|u00|curriculum|cv\+|talentclue|objetosperdidos|accessibilitat|accesibilidad|financiero|rrhh|jobs?@|empleo/i;
+const JUNK = /(\.(png|jpe?g|gif|webp|svg)$)|example\.|exemple@|sentry|wixpress|godaddy|dominio\.com|domain\.com|correo\.com|email\.com|@2x|u00|curriculum|cv\+|talentclue|objetosperdidos|accessibilitat|accesibilidad|financiero|rrhh|jobs?@|empleo|@mysite\.com|@company\.com|lorem@|ejemplo@|@linktr\.ee|tienda|shop|merch|customerservice|support@|licensing@|webmaster@|anwalt/i;
 // Best channel first: programming/booking, then general info.
-const RANK = [/programaci|booking|contrataci|management/i, /^(info|hola|contact|contacto|informacion|sala)@/i];
+const RANK = [/programaci|booking|contrataci|management|manager/i, /^(info|hola|contact|contacto|informacion|sala)@/i];
 const rank = email => {
   const index = RANK.findIndex(pattern => pattern.test(email));
   return index === -1 ? RANK.length : index;
@@ -60,13 +64,12 @@ const sameSite = (link, base) => {
   }
 };
 
-const venues = await (
-  await fetch(`${url}/rest/v1/venue_places?select=id,name,city,website_url&website_url=not.is.null&order=name`, {
-    headers: { apikey: key, authorization: `Bearer ${key}` },
-  })
-).json();
+const query = artists
+  ? 'artists?select=id,name,city,website_url:external_links->>website&external_links->>website=not.is.null&order=name'
+  : 'venue_places?select=id,name,city,website_url&website_url=not.is.null&order=name';
+const venues = await (await fetch(`${url}/rest/v1/${query}`, { headers: { apikey: key, authorization: `Bearer ${key}` } })).json();
 
-const rows = [['venue_place_id', 'sala', 'ciudad', 'email', 'fuente']];
+const rows = [[artists ? 'artist_id' : 'venue_place_id', artists ? 'artista' : 'sala', 'ciudad', 'email', 'fuente']];
 for (const venue of venues) {
   const site = venue.website_url?.trim();
   if (!site || !/^https?:\/\//i.test(site)) continue;
