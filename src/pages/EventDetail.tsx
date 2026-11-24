@@ -8,7 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
 import { NAV_CLEARANCE } from '../components/BottomNav';
 import ShareSheet from '../components/ShareSheet';
-import { IconBookmark, IconBookmarkFilled, IconShare } from '../components/icons';
+import { IconBookmark, IconBookmarkFilled, IconChevronRight, IconQrCode, IconShare } from '../components/icons';
 import DetailHeader from '../components/ui/DetailHeader';
 import { fetchEventCardById } from '../data/eventQueries';
 import { eventCacheKey, readCache } from '../data/pageCache';
@@ -21,6 +21,8 @@ import { festivalService } from '../services/festival.service';
 import EventMerchSection from '../features/merch/EventMerchSection';
 import TicketSlot from '../features/tickets/TicketSlot';
 import FriendsGoingRow from '../features/friends/FriendsGoingRow';
+import EventScheduleBanner from '../features/events/EventScheduleBanner';
+import { eventManagementService, scheduleState, type EventSchedule } from '../services/eventManagement.service';
 import { useEventMerchStands } from '../features/merch/useEventMerchStands';
 import AttendanceSuggestion from '../features/events/AttendanceSuggestion';
 import EventUploadButton from '../features/events/EventUploadButton';
@@ -106,6 +108,9 @@ const EventDetail: React.FC = () => {
   const [attendanceStatus, setAttendanceStatus] = useState<'going' | 'attended' | null>(null);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [engagementError, setEngagementError] = useState('');
+  // Cancelled / postponed by a manager, and whether this viewer manages it (QR).
+  const [schedule, setSchedule] = useState<EventSchedule | null>(null);
+  const [canManage, setCanManage] = useState(false);
   const contentRef = useRef<HTMLElement | null>(null);
   const { moments: loadedMoments, loading: momentsLoading, error: momentsError, removeMoment } = useConcertMoments(id);
   // What this viewer hid («Ocultar» on a photo) leaves the player and the albums.
@@ -123,6 +128,17 @@ const EventDetail: React.FC = () => {
   const scrollToTop = () => {
     document.querySelector<HTMLElement>('.event-detail-content')?.scrollTo({ top: 0, behavior: 'auto' });
   };
+
+  useEffect(() => {
+    let live = true;
+    setSchedule(null);
+    setCanManage(false);
+    eventManagementService.getSchedule(id).then(value => live && setSchedule(value)).catch(() => undefined);
+    if (user) eventManagementService.canManage(id).then(value => live && setCanManage(value)).catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [id, user]);
 
   const reloadSetlist = () => {
     const requestedId = id;
@@ -461,7 +477,8 @@ const EventDetail: React.FC = () => {
   // progress / Reintentar): gone for someone who already uploaded here, and
   // on the stage, where «+ Subir» is one of the player's controls.
   const uploadMode = isPastEvent || lived;
-  const showBottomBar = !uploadMode || (uploadBar.visible && !stageMode);
+  const cancelled = scheduleState(schedule) === 'cancelled';
+  const showBottomBar = !cancelled && (!uploadMode || (uploadBar.visible && !stageMode));
   const bottomClearance = showBottomBar ? CLEAR_NAV_AND_BAR : CLEAR_NAV;
   const pagePadding = stageMode
     ? ''
@@ -670,6 +687,22 @@ const EventDetail: React.FC = () => {
               />
 
               <div className="flex flex-col gap-3 px-4 pt-3.5">
+                <EventScheduleBanner schedule={schedule} startsAt={event.starts_at} />
+                {canManage && !cancelled ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/gestion/evento/${event.id}/qr`)}
+                    className="flex min-h-14 items-center gap-3 rounded-2xl border border-app-line bg-app-surface px-3.5 text-left"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-app-ink text-app-bg">
+                      <IconQrCode size={18} />
+                    </span>
+                    <span className="flex-1 text-[15px] font-bold text-app-ink">QR del concierto</span>
+                    <IconChevronRight size={18} className="text-white/40" />
+                  </button>
+                ) : null}
+                {cancelled ? null : (
+                <>
                 <div className="pt-1">
                   <span
                     className={`inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-[11px] font-bold tracking-[0.08em] ${
@@ -703,6 +736,8 @@ const EventDetail: React.FC = () => {
                   attending={attendanceStatus !== null}
                   onAttend={markGoingForMerch}
                 />
+                </>
+                )}
 
                 <EventStatsCard eventId={event.id} />
 

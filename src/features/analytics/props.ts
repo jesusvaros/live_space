@@ -7,7 +7,7 @@ import { screenName } from '@jesusvaros/app-kit/analytics';
 // Routes whose second segment is an id or a slug (a concert, a venue, an
 // artist, an order…): grouped so «screen» counts screens, not pages.
 const ENTITY_ROUTES =
-  /^\/(concierto|sala|artista|post|event|profile|pedidos|artist|venue|tabs\/artist|tabs\/venue|tabs\/festival|gestion\/festival|gestion\/evento|equipo\/unirse|reclamar\/[a-z]+)\/[^/]+/;
+  /^\/(concierto|sala|artista|post|event|profile|pedidos|artist|venue|tabs\/artist|tabs\/venue|tabs\/festival|gestion\/festival|gestion\/evento|gestion\/sala|equipo\/unirse|reclamar\/[a-z]+)\/[^/]+/;
 const CITY_LISTING = /^\/([a-z-]+)\/conciertos\/.+$/;
 
 /** A pathname as the `path` of a `screen` event: ids, slugs and handles out; ≤ 80 characters. */

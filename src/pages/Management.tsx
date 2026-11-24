@@ -7,6 +7,7 @@ import CoverImage from '../components/ui/CoverImage';
 import { Spinner } from '../components/ui/AppPrimitives';
 import { IconChevronLeft, IconEdit, IconLock, IconUser } from '../components/icons';
 import EventEditForm from '../components/pro/EventEditForm';
+import EventScheduleActions from '../components/pro/EventScheduleActions';
 import SetlistEditor from '../components/pro/SetlistEditor';
 import ConcertProposals from '../components/pro/ConcertProposals';
 import SetlistProposalsReview from '../features/setlist/SetlistProposalsReview';
@@ -15,7 +16,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import { ManagedEntity } from '../lib/types';
 import { claimsService } from '../services/claims.service';
-import { eventManagementService, ManagedEvent } from '../services/eventManagement.service';
+import { eventManagementService, ManagedEvent, scheduleState } from '../services/eventManagement.service';
 import { canGoBack } from '../app/useGoBack';
 import { useSubjectPlan } from '../features/pro/useSubjectPlan';
 
@@ -252,6 +253,15 @@ const Management: React.FC = () => {
         {currentEntityId && entity.type === 'artist' ? (
           <SetlistProposalsReview key={`setlists-artist-${currentEntityId}`} mode="artist" artistId={currentEntityId} />
         ) : null}
+        {currentEntityId && entity.type === 'venue' ? (
+          <Link
+            to={`/gestion/sala/${currentEntityId}/qr`}
+            className="mx-4 mt-4 flex min-h-12 items-center justify-between rounded-2xl border border-app-line bg-app-surface px-4 text-sm font-semibold text-app-ink"
+          >
+            <span>QR fijo de la sala</span>
+            <span aria-hidden className="text-white/40">›</span>
+          </Link>
+        ) : null}
         <div role="tablist" aria-label="Eventos" className="flex items-center gap-1.5 px-4 pt-4">
           {([
             ['upcoming', `Próximos${upcoming.length ? ` · ${upcoming.length}` : ''}`],
@@ -323,7 +333,13 @@ const Management: React.FC = () => {
                     ) : (
                       <p className="mt-0.5 truncate text-xs text-white/50">
                         {entity.type === 'artist' ? event.venue_name || event.city : event.headliner?.name || event.city}
-                        {event.status === 'review'
+                        {scheduleState(event.schedule) === 'cancelled' || event.status === 'cancelled'
+                          ? ' · Cancelado'
+                          : scheduleState(event.schedule) === 'tbc'
+                            ? ' · Aplazado, fecha por confirmar'
+                            : scheduleState(event.schedule) === 'postponed'
+                              ? ' · Aplazado'
+                              : event.status === 'review'
                           ? ' · Pendiente'
                           : event.status === 'archived'
                             ? ' · Archivado'
@@ -365,6 +381,7 @@ const Management: React.FC = () => {
                           subjectId={entity.subject_id}
                           onSaved={loadEvents}
                         />
+                        <EventScheduleActions event={event} onDone={loadEvents} />
                       </div>
                     ) : null}
                     {panel === 'stats' ? (

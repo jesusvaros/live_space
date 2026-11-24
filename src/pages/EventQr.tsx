@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import Button from '../components/ui/Button';
 import { Spinner } from '../components/ui/AppPrimitives';
@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { buildUploadQrUrl } from '../lib/uploadQr';
 import { POSTER_COLORS, PosterVariant, qrSvg, renderPosterPng } from '../lib/qrPoster';
 import { eventManagementService, ManagedEvent } from '../services/eventManagement.service';
+import { supabase } from '../api';
 import { canGoBack } from '../app/useGoBack';
 import { track } from '../features/analytics/analytics';
 
@@ -34,13 +35,30 @@ const BrandMark: React.FC<{ color: string }> = ({ color }) => (
   </svg>
 );
 
-// Printable QR poster for one concert. The QR opens Upload with the concert
-// already chosen, through the event's private upload token.
+/** Until when a concert QR works: 72 h after the concert ends (as the server checks). */
+export const qrValidUntil = (event: Pick<ManagedEvent, 'starts_at' | 'ends_at'>) => {
+  const end = event.ends_at ? Date.parse(event.ends_at) : Date.parse(event.starts_at) + 6 * 60 * 60 * 1000;
+  return new Date(end + 72 * 60 * 60 * 1000);
+};
+
+const validityText = (date: Date) =>
+  `Vale hasta el ${date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Madrid' })}`;
+
+// Printable QR poster for one concert (/gestion/evento/:id/qr) or for a venue
+// (/gestion/sala/:id/qr: a permanent QR that always opens that night's
+// concert there). The QR opens Upload with the concert already chosen,
+// through a private upload token that the manager can replace.
 const EventQr: React.FC = () => {
   const { id } = useParams();
+  const { pathname } = useLocation();
+  const isVenue = pathname.startsWith('/gestion/sala/');
   const navigate = useNavigate();
   const { user } = useAuth();
   const [event, setEvent] = useState<ManagedEvent | null>(null);
+  const [venueName, setVenueName] = useState<string | null>(null);
+  const [confirmRotate, setConfirmRotate] = useState(false);
+  const [rotating, setRotating] = useState(false);
+  const [rotated, setRotated] = useState(false);
   const [link, setLink] = useState('');
   const [svg, setSvg] = useState('');
   const [variant, setVariant] = useState<PosterVariant>('paper');
@@ -55,20 +73,30 @@ const EventQr: React.FC = () => {
       setLoading(true);
       setError('');
       try {
-        const found = await eventManagementService.getEvent(id);
-        if (!found) throw new Error('No encontramos este concierto.');
-        const token = await eventManagementService.getOrCreateUploadToken(id, user.id);
-        const url = buildUploadQrUrl({ token, eventId: id });
+        let url: string;
+        if (isVenue) {
+          const { data: venue } = await supabase.from('venue_places').select('name').eq('id', id).maybeSingle();
+          const token = await eventManagementService.getOrCreateVenueToken(id, user.id);
+          url = buildUploadQrUrl({ token, eventId: id });
+          if (cancelled) return;
+          setVenueName(venue?.name ?? 'Tu sala');
+        } else {
+          const found = await eventManagementService.getEvent(id);
+          if (!found) throw new Error('No encontramos este concierto.');
+          const token = await eventManagementService.getOrCreateUploadToken(id, user.id);
+          url = buildUploadQrUrl({ token, eventId: id });
+          if (cancelled) return;
+          setEvent(found);
+        }
         const markup = await qrSvg(url);
         if (cancelled) return;
-        setEvent(found);
         setLink(url);
         setSvg(markup);
       } catch (err: any) {
         if (cancelled) return;
         setError(
           err?.code === '42501'
-            ? 'Solo quien gestiona el artista o la sala puede sacar el QR de este concierto.'
+            ? 'Solo quien gestiona el artista o la sala puede sacar este QR.'
             : err?.message || 'No se ha podido generar el QR.',
         );
       } finally {
@@ -79,9 +107,31 @@ const EventQr: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [id, user?.id]);
+  }, [id, user?.id, isVenue]);
+
+  const rotate = async () => {
+    if (!id) return;
+    setRotating(true);
+    setError('');
+    try {
+      const token = isVenue ? await eventManagementService.rotateVenueToken(id) : await eventManagementService.rotateUploadToken(id);
+      const url = buildUploadQrUrl({ token, eventId: id });
+      setLink(url);
+      setSvg(await qrSvg(url));
+      setRotated(true);
+      setConfirmRotate(false);
+    } catch (err: any) {
+      setError(err?.message || 'No se ha podido cambiar el QR.');
+    } finally {
+      setRotating(false);
+    }
+  };
 
   const content = useMemo(() => {
+    if (isVenue) {
+      if (!venueName || !link) return null;
+      return { url: link, kicker: 'CADA NOCHE EN ESTA SALA', artist: venueName };
+    }
     if (!event) return null;
     const kicker = [event.venue_name, posterDate(event.starts_at)].filter(Boolean).join(' · ').toUpperCase();
     return {
@@ -89,7 +139,7 @@ const EventQr: React.FC = () => {
       kicker,
       artist: event.headliner?.name || event.name,
     };
-  }, [event, link]);
+  }, [event, link, isVenue, venueName]);
 
   const colors = POSTER_COLORS[variant];
 
@@ -137,7 +187,7 @@ const EventQr: React.FC = () => {
         >
           <IconChevronLeft size={22} />
         </button>
-        <h1 className="flex-1 font-display text-lg font-bold">QR para la sala</h1>
+        <h1 className="flex-1 font-display text-lg font-bold">{isVenue ? 'QR fijo de la sala' : 'QR del concierto'}</h1>
         <div role="radiogroup" aria-label="Estilo" className="flex rounded-full border border-app-line p-[3px]">
           {(['paper', 'dark'] as const).map(option => (
             <button
@@ -196,8 +246,30 @@ const EventQr: React.FC = () => {
               </div>
             </section>
             <p className="mx-6 mt-3.5 text-center text-[13px] text-white/70 print:hidden">
-              Al escanearlo se abre la subida con este concierto ya elegido.
+              {isVenue
+                ? 'Siempre abre el concierto de esa noche en tu sala.'
+                : event
+                  ? validityText(qrValidUntil(event))
+                  : null}
             </p>
+            <div className="mx-6 mt-3 flex flex-col items-center gap-2 print:hidden">
+              {rotated ? <p role="status" className="text-[13px] text-white/70">QR nuevo. Los impresos antes ya no valen.</p> : null}
+              {confirmRotate ? (
+                <div className="flex w-full gap-2">
+                  <Button variant="secondary" size="sm" className="flex-1" onClick={() => setConfirmRotate(false)} disabled={rotating}>
+                    Volver
+                  </Button>
+                  <Button size="sm" className="flex-1 font-bold" onClick={rotate} disabled={rotating}>
+                    {rotating ? <Spinner className="h-4 w-4" /> : null}
+                    Sí, cambiar
+                  </Button>
+                </div>
+              ) : (
+                <button type="button" onClick={() => setConfirmRotate(true)} className="min-h-11 px-3 text-[13px] font-semibold text-white/60 underline">
+                  Cambiar QR (anula los impresos)
+                </button>
+              )}
+            </div>
           </>
         )}
       </main>

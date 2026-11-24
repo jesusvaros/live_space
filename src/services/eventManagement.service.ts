@@ -20,6 +20,38 @@ export type ManagedEvent = {
   // Null when the migration that adds the column is not applied yet.
   manager_locked_fields: string[] | null;
   headliner: { id: string; name: string } | null;
+  /** Cancelled / postponed state; null before the 20261124000300 migration. */
+  schedule: EventSchedule | null;
+};
+
+/** What a manager did to the concert's date (cancel_event / postpone_event). */
+export type EventSchedule = {
+  cancelledAt: string | null;
+  cancelReason: string | null;
+  postponedFrom: string | null;
+  dateTbc: boolean;
+};
+
+export type ScheduleState = 'cancelled' | 'postponed' | 'tbc' | null;
+
+export const scheduleState = (schedule: EventSchedule | null | undefined): ScheduleState => {
+  if (!schedule) return null;
+  if (schedule.cancelledAt) return 'cancelled';
+  if (schedule.dateTbc) return 'tbc';
+  if (schedule.postponedFrom) return 'postponed';
+  return null;
+};
+
+const SCHEDULE_COLUMNS = 'cancelled_at,cancel_reason,postponed_from,date_tbc';
+
+export const mapSchedule = (row: Record<string, unknown> | null | undefined): EventSchedule | null => {
+  if (!row || !('date_tbc' in row)) return null;
+  return {
+    cancelledAt: typeof row.cancelled_at === 'string' ? row.cancelled_at : null,
+    cancelReason: typeof row.cancel_reason === 'string' ? row.cancel_reason : null,
+    postponedFrom: typeof row.postponed_from === 'string' ? row.postponed_from : null,
+    dateTbc: row.date_tbc === true,
+  };
 };
 
 export type SetlistSong = {
@@ -31,8 +63,12 @@ export type SetlistSong = {
 const BASE_COLUMNS =
   'id,name,starts_at,ends_at,ticket_url,image_url,poster_thumb_url,image_source,status,city,venue_place_id,venue:venue_places(name),lineup:event_artists(artist_id,is_headliner,billing_order,artist:artists(id,name))';
 
-type EventRowWithJoins = Omit<ManagedEvent, 'venue_name' | 'headliner' | 'manager_locked_fields'> & {
+type EventRowWithJoins = Omit<ManagedEvent, 'venue_name' | 'headliner' | 'manager_locked_fields' | 'schedule'> & {
   manager_locked_fields?: string[] | null;
+  cancelled_at?: string | null;
+  cancel_reason?: string | null;
+  postponed_from?: string | null;
+  date_tbc?: boolean;
   venue?: { name: string | null } | null;
   lineup?: Array<{ artist_id: string; is_headliner: boolean; billing_order: number; artist: { id: string; name: string } | null }>;
 };
@@ -56,12 +92,16 @@ const mapEvent = (row: EventRowWithJoins): ManagedEvent => {
     venue_name: row.venue?.name ?? null,
     manager_locked_fields: Array.isArray(row.manager_locked_fields) ? row.manager_locked_fields : null,
     headliner: lineup[0]?.artist ?? null,
+    schedule: mapSchedule(row as unknown as Record<string, unknown>),
   };
 };
 
 // Reads events with manager_locked_fields, falling back to the columns that
 // exist before the 20261028000200 migration.
 const selectEvents = async (build: (columns: string) => PromiseLike<{ data: unknown; error: any }>) => {
+  const withSchedule = await build(`${BASE_COLUMNS},manager_locked_fields,${SCHEDULE_COLUMNS}`);
+  if (!withSchedule.error) return (withSchedule.data || []) as EventRowWithJoins[];
+  if (!isMissingRelation(withSchedule.error)) throw withSchedule.error;
   const withLocks = await build(`${BASE_COLUMNS},manager_locked_fields`);
   if (!withLocks.error) return (withLocks.data || []) as EventRowWithJoins[];
   if (!isMissingRelation(withLocks.error)) throw withLocks.error;
@@ -204,6 +244,66 @@ export const eventManagementService = {
       throw insertError;
     }
     return created.token as string;
+  },
+
+  /** Cancels the concert: off the lists, CANCELADO on its page, merch reservations released. */
+  async cancelEvent(eventId: string, reason: string | null): Promise<{ releasedOrders: number; paidOrders: number }> {
+    const { data, error } = await supabase.rpc('cancel_event', { p_event_id: eventId, p_reason: reason });
+    if (error) throw error;
+    const result = (data || {}) as { released_orders?: number; paid_orders?: number };
+    return { releasedOrders: result.released_orders ?? 0, paidOrders: result.paid_orders ?? 0 };
+  },
+
+  /** New date, or null for «fecha por confirmar». */
+  async postponeEvent(eventId: string, startsAt: string | null, reason: string | null): Promise<void> {
+    const { error } = await supabase.rpc('postpone_event', { p_event_id: eventId, p_starts_at: startsAt, p_reason: reason });
+    if (error && /date_in_past/.test(error.message || '')) throw new Error('La nueva fecha tiene que ser futura.');
+    if (error) throw error;
+  },
+
+  /** A new token: QRs printed before stop working. */
+  async rotateUploadToken(eventId: string): Promise<string> {
+    const { data, error } = await supabase.rpc('rotate_event_upload_token', { p_event_id: eventId });
+    if (error) throw error;
+    return data as string;
+  },
+
+  /** The venue's permanent QR: always opens tonight's concert there. */
+  async getOrCreateVenueToken(venueId: string, userId: string): Promise<string> {
+    const { data, error } = await supabase
+      .from('venue_upload_tokens')
+      .select('token')
+      .eq('venue_place_id', venueId)
+      .maybeSingle();
+    if (error) throw error;
+    if (data?.token) return data.token as string;
+    const { data: created, error: insertError } = await supabase
+      .from('venue_upload_tokens')
+      .insert({ venue_place_id: venueId, created_by: userId })
+      .select('token')
+      .single();
+    if (insertError) throw insertError;
+    return created.token as string;
+  },
+
+  async rotateVenueToken(venueId: string): Promise<string> {
+    const { data, error } = await supabase.rpc('rotate_venue_upload_token', { p_venue_place_id: venueId });
+    if (error) throw error;
+    return data as string;
+  },
+
+  /** Cancelled / postponed state of any concert (public). Null before the migration. */
+  async getSchedule(eventId: string): Promise<EventSchedule | null> {
+    const { data, error } = await supabase.from('events').select(SCHEDULE_COLUMNS).eq('id', eventId).maybeSingle();
+    if (error) return null;
+    return mapSchedule(data as Record<string, unknown> | null);
+  },
+
+  /** Can the signed-in user manage this concert (artist or venue member, admin)? */
+  async canManage(eventId: string): Promise<boolean> {
+    const { data, error } = await supabase.rpc('can_manage_event', { p_event_id: eventId });
+    if (error) return false;
+    return data === true;
   },
 
   async resolveUploadToken(token: string): Promise<string | null> {
