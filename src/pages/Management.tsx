@@ -5,7 +5,7 @@ import Button from '../components/ui/Button';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
 import CoverImage from '../components/ui/CoverImage';
 import { Spinner } from '../components/ui/AppPrimitives';
-import { IconChevronLeft } from '../components/icons';
+import { IconChevronLeft, IconLock } from '../components/icons';
 import EventEditForm from '../components/pro/EventEditForm';
 import SetlistEditor from '../components/pro/SetlistEditor';
 import ConcertProposals from '../components/pro/ConcertProposals';
@@ -17,6 +17,7 @@ import { ManagedEntity } from '../lib/types';
 import { claimsService } from '../services/claims.service';
 import { eventManagementService, ManagedEvent } from '../services/eventManagement.service';
 import { canGoBack } from '../app/useGoBack';
+import { useSubjectPlan } from '../features/pro/useSubjectPlan';
 
 type Panel = 'edit' | 'setlist' | 'stats';
 // An event counts as upcoming until six hours after it starts.
@@ -42,6 +43,7 @@ const Management: React.FC = () => {
 
   const entity = activeWorkspace && activeWorkspace.type !== 'user' ? activeWorkspace : null;
   const currentEntityId = entity ? entityId(entity) : null;
+  const { isPro } = useSubjectPlan(entity?.subject_id);
 
   const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
   const [events, setEvents] = useState<ManagedEvent[]>([]);
@@ -136,6 +138,16 @@ const Management: React.FC = () => {
             className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-app-line px-3.5 text-[13px] font-semibold text-app-ink"
           >
             Merch
+          </Link>
+          <Link
+            to="/gestion/pro"
+            aria-label={isPro ? 'Tu plan: Pro' : 'Tu plan: gratis. Ver Pro'}
+            className={`inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full border px-3.5 font-mono text-[12px] font-bold uppercase ${
+              isPro ? 'border-app-ink bg-app-ink text-app-bg' : 'border-dashed border-white/40 text-app-ink'
+            }`}
+          >
+            {isPro ? null : <IconLock size={12} />}
+            Pro
           </Link>
           {entityChoices.length > 1 ? (
             <label className="relative">

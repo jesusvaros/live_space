@@ -3,6 +3,8 @@ import Button from '../../../components/ui/Button';
 import type { ManagedEvent } from '../../../services/eventManagement.service';
 import type { MerchStandSettings } from '../../../services/merch.service';
 import { PaymentMethod } from '../merchRules';
+import ProLockChip from '../../pro/ProLockChip';
+import { merchFeeLabel } from '../../pro/planRules';
 import { concertDateLabel, fieldClass, labelClass } from './fields';
 
 type MerchStandEditorProps = {
@@ -11,6 +13,8 @@ type MerchStandEditorProps = {
   current: MerchStandSettings | null;
   chargesEnabled: boolean;
   atStandAvailable: boolean;
+  /** Paying inside the app is a Pro perk. */
+  isPro: boolean;
   onSave: (settings: MerchStandSettings) => Promise<void>;
   onStop: () => Promise<void>;
   onClose: () => void;
@@ -21,18 +25,20 @@ const Choice: React.FC<{
   disabled?: boolean;
   title: string;
   detail: string;
+  aside?: React.ReactNode;
   onSelect: () => void;
-}> = ({ checked, disabled, title, detail, onSelect }) => (
+}> = ({ checked, disabled, title, detail, aside, onSelect }) => (
   <label
     className={`flex cursor-pointer gap-3 rounded-2xl border p-3.5 ${checked ? 'border-app-accent bg-app-accent/10' : 'border-app-line bg-app-surface'} ${
       disabled ? 'cursor-not-allowed opacity-45' : ''
     }`}
   >
     <input type="radio" name="payment" checked={checked} disabled={disabled} onChange={onSelect} className="mt-1 h-5 w-5 accent-[#ff5b2e]" />
-    <span className="min-w-0">
+    <span className="min-w-0 flex-1">
       <span className="block font-semibold text-app-ink">{title}</span>
       <span className="block text-[13px] text-white/60">{detail}</span>
     </span>
+    {aside}
   </label>
 );
 
@@ -42,16 +48,18 @@ const MerchStandEditor: React.FC<MerchStandEditorProps> = ({
   current,
   chargesEnabled,
   atStandAvailable,
+  isPro,
   onSave,
   onStop,
   onClose,
 }) => {
-  const defaultMethod: PaymentMethod = current?.paymentMethod ?? (atStandAvailable ? 'at_stand' : 'in_app');
+  const inAppAllowed = isPro && chargesEnabled;
+  const defaultMethod: PaymentMethod = current?.paymentMethod ?? (atStandAvailable || !inAppAllowed ? 'at_stand' : 'in_app');
   const [pickupPoint, setPickupPoint] = useState(current?.pickupPoint ?? '');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(defaultMethod);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const canSave = paymentMethod === 'at_stand' ? atStandAvailable : chargesEnabled;
+  const canSave = paymentMethod === 'at_stand' ? atStandAvailable : inAppAllowed;
 
   const run = async (task: () => Promise<void>) => {
     setBusy(true);
@@ -101,13 +109,16 @@ const MerchStandEditor: React.FC<MerchStandEditorProps> = ({
         />
         <Choice
           checked={paymentMethod === 'in_app'}
-          disabled={!chargesEnabled}
+          disabled={!inAppAllowed}
           title="Pago en la app"
           detail={
-            chargesEnabled
-              ? 'Pagan al reservar con tarjeta. El dinero llega a tu cuenta de Stripe, menos la comisión de Live Space.'
-              : 'Necesita una cuenta de cobros con Stripe (abajo, en «Cobros en la app»).'
+            !isPro
+              ? 'Pagan al reservar, con tarjeta.'
+              : chargesEnabled
+                ? `Pagan al reservar. Te llega a Stripe, menos el ${merchFeeLabel()}.`
+                : 'Necesita una cuenta de cobros con Stripe (abajo).'
           }
+          aside={isPro ? null : <ProLockChip />}
           onSelect={() => setPaymentMethod('in_app')}
         />
       </fieldset>

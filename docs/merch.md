@@ -111,7 +111,7 @@ El pago en el puesto no necesita nada de esto. Activar pagos en la app requiere 
    - `STRIPE_SECRET_KEY` (empezar con la de prueba, `sk_test_…`);
    - `STRIPE_WEBHOOK_SECRET` y, si los eventos de Connect llegan por otro
      endpoint, `STRIPE_CONNECT_WEBHOOK_SECRET`;
-   - `MERCH_FEE_BPS` (opcional, 800 = 8 %);
+   - `MERCH_FEE_BPS` (opcional, 500 = 5 % por defecto; el pago en la app es solo para perfiles Pro);
    - `PUBLIC_SITE_URL` (opcional, por defecto `https://livespace-dusky.vercel.app`;
      el mismo valor que la variable del repo, ver
      [Runbooks](./runbooks.md#web-publica-en-vercel)).
