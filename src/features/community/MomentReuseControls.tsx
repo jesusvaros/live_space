@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import Button from '../../components/ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
+import { useWorkspace } from '../../contexts/WorkspaceContext';
+import ProLockChip from '../pro/ProLockChip';
+import { isProActive } from '../pro/planRules';
+import { useSubjectPlans } from '../pro/useSubjectPlan';
 import { fetchMomentLicence, setMomentAllowReuse, type MomentLicence } from './api';
 import { downloadMoment, LICENCE_TERMS_PATH, momentFileName } from './licence';
 
@@ -12,7 +16,8 @@ type MomentReuseControlsProps = {
 /**
  * Licence row on a moment:
  *  - its author sees a switch to allow or stop reuse;
- *  - members of the event's artist or venue see "Descargar" while reuse is on;
+ *  - members of the event's artist or venue see "Descargar" while reuse is on
+ *    (a Pro perk: on the free plan they see a «Pro» lock instead);
  *  - everybody else sees nothing.
  */
 const MomentReuseControls: React.FC<MomentReuseControlsProps> = ({ postId, className = '' }) => {
@@ -23,6 +28,10 @@ const MomentReuseControls: React.FC<MomentReuseControlsProps> = ({ postId, class
   const [downloading, setDownloading] = useState(false);
   const [withCredit, setWithCredit] = useState(true);
   const [message, setMessage] = useState('');
+  const { managedEntities } = useWorkspace();
+  const managedIds = managedEntities.filter(entity => entity.type === 'artist' || entity.type === 'venue').map(entity => entity.subject_id);
+  const { loading: plansLoading, plans } = useSubjectPlans(managedIds);
+  const canDownloadPro = [...plans.values()].some(plan => isProActive(plan));
 
   useEffect(() => {
     let cancelled = false;
@@ -125,9 +134,16 @@ const MomentReuseControls: React.FC<MomentReuseControlsProps> = ({ postId, class
               Añadir «{licence.credit} vía Live Space» sobre la foto
             </label>
           )}
-          <Button className="mt-2" block disabled={downloading} onClick={download}>
-            {downloading ? 'Descargando…' : 'Descargar'}
-          </Button>
+          {canDownloadPro ? (
+            <Button className="mt-2" block disabled={downloading} onClick={download}>
+              {downloading ? 'Descargando…' : 'Descargar'}
+            </Button>
+          ) : plansLoading ? null : (
+            <div className="mt-2 flex min-h-11 items-center justify-between gap-3 rounded-xl border border-dashed border-white/25 px-3">
+              <span className="text-sm font-semibold text-app-ink">Descargar</span>
+              <ProLockChip />
+            </div>
+          )}
         </div>
       ) : null}
 

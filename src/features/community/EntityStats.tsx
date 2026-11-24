@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Spinner } from '../../components/ui/AppPrimitives';
 import { fetchEntityAudienceStats, isForbidden, type EntityAudienceStats } from './api';
 import { formatCount, HBar, Legend, PrivacyNote, SERIES, StatTile, TrendChart } from './components/charts';
+import ProLockChip from '../pro/ProLockChip';
 
 type LoadState =
   | { status: 'loading' }
@@ -59,8 +60,20 @@ const StatusBlock: React.FC<{ state: LoadState }> = ({ state }) => {
   return <p className="text-sm text-white/60">No se pudieron cargar las estadísticas. Inténtalo de nuevo más tarde.</p>;
 };
 
-/** Full statistics for one artist or venue (the /gestion/estadisticas body). */
-export const EntityStatsPanel: React.FC<{ subjectId: string }> = ({ subjectId }) => {
+/** A Pro-only block on the free plan: its title, the dashed shape and a lock chip. */
+const LockedStat: React.FC<{ title: string }> = ({ title }) => (
+  <section className="flex min-h-16 items-center gap-3 rounded-2xl border border-dashed border-white/25 px-3.5">
+    <h2 className="m-0 min-w-0 flex-1 text-sm font-semibold text-app-ink">{title}</h2>
+    <ProLockChip />
+  </section>
+);
+
+/**
+ * Full statistics for one artist or venue (the /gestion/estadisticas body).
+ * On the free plan (`locked`) only the totals and the upcoming concerts show;
+ * the trend, cities and past concerts are Pro.
+ */
+export const EntityStatsPanel: React.FC<{ subjectId: string; locked?: boolean }> = ({ subjectId, locked = false }) => {
   const navigate = useNavigate();
   const state = useEntityAudienceStats(subjectId);
   if (state.status !== 'ready') return <StatusBlock state={state} />;
@@ -107,34 +120,43 @@ export const EntityStatsPanel: React.FC<{ subjectId: string }> = ({ subjectId })
         <p className="m-0 mt-2 text-xs text-[#8f8b84]">Conciertos de los últimos 60 días y los próximos.</p>
       </section>
 
-      <section aria-labelledby="stats-trend" className="rounded-2xl border border-app-line bg-app-surface p-3.5">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 id="stats-trend" className="m-0 text-sm font-semibold text-app-ink">Interés, últimos 30 días</h2>
-          <Legend keys={['saves', 'going']} />
-        </div>
-        <TrendChart points={stats.trend} height={150} />
-      </section>
+      {locked ? (
+        <>
+          <LockedStat title="Interés, últimos 30 días" />
+          <LockedStat title="De dónde son tus seguidores" />
+        </>
+      ) : (
+        <>
+          <section aria-labelledby="stats-trend" className="rounded-2xl border border-app-line bg-app-surface p-3.5">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h2 id="stats-trend" className="m-0 text-sm font-semibold text-app-ink">Interés, últimos 30 días</h2>
+              <Legend keys={['saves', 'going']} />
+            </div>
+            <TrendChart points={stats.trend} height={150} />
+          </section>
 
-      <section aria-labelledby="stats-cities" className="rounded-2xl border border-app-line bg-app-surface p-3.5">
-        <div className="mb-2.5 flex items-baseline justify-between gap-2">
-          <h2 id="stats-cities" className="m-0 text-sm font-semibold text-app-ink">De dónde son tus seguidores</h2>
-          <span className="font-mono text-[11px] text-[#8f8b84]">{formatCount(stats.followers)} en total</span>
-        </div>
-        <ol className="m-0 flex list-none flex-col gap-2 p-0 text-[13px]">
-          {stats.cities.map(city => (
-            <li key={city.city} className="grid grid-cols-[104px_1fr] items-center gap-2.5">
-              <span className="truncate text-app-ink">{city.city}</span>
-              <HBar value={city.followers} max={cityMax} color="#ff5b2e" label={city.city} />
-            </li>
-          ))}
-          {hasOtherCities && (
-            <li className="grid grid-cols-[104px_1fr] items-center gap-2.5 text-[#8f8b84]">
-              <span>{stats.cities.length ? 'Otras' : 'Todas'}</span>
-              <span>menos de {stats.k} personas por ciudad</span>
-            </li>
-          )}
-        </ol>
-      </section>
+          <section aria-labelledby="stats-cities" className="rounded-2xl border border-app-line bg-app-surface p-3.5">
+            <div className="mb-2.5 flex items-baseline justify-between gap-2">
+              <h2 id="stats-cities" className="m-0 text-sm font-semibold text-app-ink">De dónde son tus seguidores</h2>
+              <span className="font-mono text-[11px] text-[#8f8b84]">{formatCount(stats.followers)} en total</span>
+            </div>
+            <ol className="m-0 flex list-none flex-col gap-2 p-0 text-[13px]">
+              {stats.cities.map(city => (
+                <li key={city.city} className="grid grid-cols-[104px_1fr] items-center gap-2.5">
+                  <span className="truncate text-app-ink">{city.city}</span>
+                  <HBar value={city.followers} max={cityMax} color="#ff5b2e" label={city.city} />
+                </li>
+              ))}
+              {hasOtherCities && (
+                <li className="grid grid-cols-[104px_1fr] items-center gap-2.5 text-[#8f8b84]">
+                  <span>{stats.cities.length ? 'Otras' : 'Todas'}</span>
+                  <span>menos de {stats.k} personas por ciudad</span>
+                </li>
+              )}
+            </ol>
+          </section>
+        </>
+      )}
 
       <section aria-label="Próximos conciertos" className="mt-4">
         <SectionTitle aside={<Legend keys={['saves', 'going']} />}>Próximos conciertos</SectionTitle>
@@ -145,7 +167,9 @@ export const EntityStatsPanel: React.FC<{ subjectId: string }> = ({ subjectId })
         )}
       </section>
 
-      {past.length > 0 && (
+      {locked && past.length > 0 ? <div className="mt-4"><LockedStat title="Conciertos recientes" /></div> : null}
+
+      {!locked && past.length > 0 && (
         <section aria-label="Conciertos recientes" className="mt-4">
           <SectionTitle aside={<Legend keys={['saves', 'attended']} />}>Recientes</SectionTitle>
           <ul className="m-0 flex list-none flex-col gap-2 p-0">{past.map(event => renderEvent(event, ['saves', 'attended']))}</ul>
