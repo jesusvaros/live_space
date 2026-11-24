@@ -2,9 +2,7 @@ import React, { useState } from 'react';
 import Button from '../../../components/ui/Button';
 import type { ManagedEvent } from '../../../services/eventManagement.service';
 import type { MerchStandSettings } from '../../../services/merch.service';
-import { PaymentMethod } from '../merchRules';
-import ProLockChip from '../../pro/ProLockChip';
-import { merchFeeLabel } from '../../pro/planRules';
+import { PaymentMethod, merchFeeLabel } from '../merchRules';
 import { concertDateLabel, fieldClass, labelClass } from './fields';
 
 type MerchStandEditorProps = {
@@ -13,8 +11,6 @@ type MerchStandEditorProps = {
   current: MerchStandSettings | null;
   chargesEnabled: boolean;
   atStandAvailable: boolean;
-  /** Paying inside the app is a Pro perk. */
-  isPro: boolean;
   onSave: (settings: MerchStandSettings) => Promise<void>;
   onStop: () => Promise<void>;
   onClose: () => void;
@@ -48,12 +44,11 @@ const MerchStandEditor: React.FC<MerchStandEditorProps> = ({
   current,
   chargesEnabled,
   atStandAvailable,
-  isPro,
   onSave,
   onStop,
   onClose,
 }) => {
-  const inAppAllowed = isPro && chargesEnabled;
+  const inAppAllowed = chargesEnabled;
   const defaultMethod: PaymentMethod = current?.paymentMethod ?? (atStandAvailable || !inAppAllowed ? 'at_stand' : 'in_app');
   const [pickupPoint, setPickupPoint] = useState(current?.pickupPoint ?? '');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(defaultMethod);
@@ -112,13 +107,10 @@ const MerchStandEditor: React.FC<MerchStandEditorProps> = ({
           disabled={!inAppAllowed}
           title="Pago en la app"
           detail={
-            !isPro
-              ? 'Pagan al reservar, con tarjeta.'
-              : chargesEnabled
-                ? `Pagan al reservar. Te llega a Stripe, menos el ${merchFeeLabel()}.`
-                : 'Necesita una cuenta de cobros con Stripe (abajo).'
+            chargesEnabled
+              ? `Pagan al reservar. Te llega a Stripe, menos el ${merchFeeLabel()}.`
+              : 'Necesita una cuenta de cobros con Stripe (abajo).'
           }
-          aside={isPro ? null : <ProLockChip />}
           onSelect={() => setPaymentMethod('in_app')}
         />
       </fieldset>

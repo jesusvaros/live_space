@@ -3,9 +3,8 @@ import { requiredEnv } from "./cloudinary.ts";
 
 // Merch payments: Stripe Checkout with Connect destination charges. The seller
 // (band or venue) has an Express account; Live Space keeps MERCH_FEE_BPS.
-// Paying in the app is a Pro perk (enforced in the database by
-// merch_in_app_requires_pro); the fee matches MERCH_PRO_FEE_BPS in
-// src/features/pro/planRules.ts.
+// Any seller can turn it on; paying at the stand stays 0 %. The fee matches
+// MERCH_APP_FEE_BPS in src/features/merch/merchRules.ts.
 
 export const stripeClient = () =>
   new Stripe(requiredEnv("STRIPE_SECRET_KEY"), { httpClient: Stripe.createFetchHttpClient() });

@@ -234,3 +234,7 @@ export const isOrderToCollect = (
   if (!order.event) return order.status === 'paid';
   return now <= reservationExpiresAt(order.event.startsAt, order.event.endsAt).getTime();
 };
+
+/** Live Space's cut on merch paid inside the app (MERCH_FEE_BPS in supabase/functions/_shared/stripe.ts). Paying at the stand: 0 %. */
+export const MERCH_APP_FEE_BPS = 500;
+export const merchFeeLabel = (bps = MERCH_APP_FEE_BPS) => `${(bps / 100).toLocaleString('es-ES')} %`;

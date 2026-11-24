@@ -8,7 +8,6 @@ import { useWorkspace } from '../contexts/WorkspaceContext';
 import { EntityStatsPanel } from '../features/community/EntityStats';
 import type { ManagedEntity } from '../lib/types';
 import { canGoBack } from '../app/useGoBack';
-import { useSubjectPlan } from '../features/pro/useSubjectPlan';
 
 const entityName = (entity: ManagedEntity) => entity.artist?.name || entity.venue?.name || 'Sin nombre';
 
@@ -28,7 +27,6 @@ const GestionEstadisticas: React.FC = () => {
     entities.find(entity => entity.subject_id === activeWorkspace?.subject_id) ||
     entities[0] ||
     null;
-  const { loading: planLoading, isPro } = useSubjectPlan(selected?.subject_id);
 
   return (
     <AppShell headerProps={null}>
@@ -87,7 +85,7 @@ const GestionEstadisticas: React.FC = () => {
               </div>
             ) : null}
             <div className="mt-4">
-              {planLoading ? null : <EntityStatsPanel key={selected.subject_id} subjectId={selected.subject_id} locked={!isPro} />}
+              <EntityStatsPanel key={selected.subject_id} subjectId={selected.subject_id} />
             </div>
           </>
         )}

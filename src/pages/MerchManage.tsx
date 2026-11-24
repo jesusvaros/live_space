@@ -14,8 +14,6 @@ import MerchStandEditor from '../features/merch/manage/MerchStandEditor';
 import MerchStandOrders from '../features/merch/manage/MerchStandOrders';
 import MerchPayouts from '../features/merch/manage/MerchPayouts';
 import { concertDateLabel } from '../features/merch/manage/fields';
-import ProLockChip from '../features/pro/ProLockChip';
-import { useSubjectPlan } from '../features/pro/useSubjectPlan';
 
 type View = { kind: 'home' } | { kind: 'item'; draft: ItemDraft } | { kind: 'stand'; event: ManagedEvent };
 
@@ -29,7 +27,6 @@ const MerchManage: React.FC = () => {
   const entityType = entity?.type === 'venue' ? 'venue' : 'artist';
   const entityId = entity ? (entity.type === 'venue' ? entity.venue?.id : entity.artist?.id) : null;
 
-  const { isPro } = useSubjectPlan(subjectId);
   const [view, setView] = useState<View>({ kind: 'home' });
   const [items, setItems] = useState<MerchItem[]>([]);
   const [events, setEvents] = useState<ManagedEvent[]>([]);
@@ -156,7 +153,6 @@ const MerchManage: React.FC = () => {
             current={stands.get(view.event.id) ?? null}
             chargesEnabled={chargesEnabled}
             atStandAvailable={atStandAvailable}
-            isPro={isPro}
             onSave={saveStand(view.event)}
             onStop={stopStand(view.event)}
             onClose={() => home()}
@@ -214,17 +210,7 @@ const MerchManage: React.FC = () => {
               })}
             </section>
 
-            {isPro ? (
-              <MerchPayouts subjectId={subjectId} chargesEnabled={chargesEnabled} onChargesEnabled={onChargesEnabled} />
-            ) : (
-              <section className="flex items-center gap-3 rounded-2xl border border-dashed border-white/25 p-3.5">
-                <div className="min-w-0 flex-1">
-                  <h2 className="font-display text-lg font-bold">Pago en la app</h2>
-                  <p className="text-sm text-white/60">Que paguen al reservar.</p>
-                </div>
-                <ProLockChip />
-              </section>
-            )}
+            <MerchPayouts subjectId={subjectId} chargesEnabled={chargesEnabled} onChargesEnabled={onChargesEnabled} />
           </>
         )}
       </div>
