@@ -35,6 +35,7 @@ objetivo es que la gente instale la app (ver [Web pública y landings](./landing
 | Importar clips de Instagram, TikTok y YouTube | [Importar clips](./importar-clips.md) |
 | Coordinar trabajo asistido | [Manual de agentes](./agentes.md) |
 | Ver fases y puertas de salida | [Roadmap](./roadmap.md) |
+| Vender a salas y artistas, modelo de negocio y Google Play | [Lanzamiento](./lanzamiento/index.md) |
 
 ## Regla de mantenimiento
 
