@@ -7,7 +7,8 @@ import GeneratedPoster from '../../../components/ui/GeneratedPoster';
 import { Modal } from '../../../components/ui/AppPrimitives';
 import EventPosterTile from '../components/EventPosterTile';
 import HomeSectionHeader from './HomeSectionHeader';
-import { IconCalendar } from '../../../components/icons';
+import { IconCalendar, IconUser } from '../../../components/icons';
+import { goingLabel, useGoingCounts } from '../goingCounts';
 
 const eventCity = (event: EventListItem) => (event.city || event.venue_place?.city || '').trim();
 
@@ -97,13 +98,17 @@ const CityListingSection: React.FC<CityListingSectionProps> = ({ events, cities,
   }, [city, firstDayWithEvents]);
 
   const selectedEvents = byDay.get(dayKey(days[selected])) || [];
+  // The week at a glance: «182 conciertos esta semana» says the city is alive.
+  const weekTotal = useMemo(() => Array.from(byDay.values()).reduce((sum, list) => sum + list.length, 0), [byDay]);
+  const selectedIds = useMemo(() => selectedEvents.map(event => event.id), [selectedEvents]);
+  const goingCounts = useGoingCounts(selectedIds);
   const nextDayIndex = days.findIndex((day, index) => index > selected && (byDay.get(dayKey(day)) || []).length > 0);
 
   return (
     <section className="flex flex-col gap-3.5">
       <HomeSectionHeader
         title="Cartelera"
-        kicker="En tu ciudad"
+        kicker={weekTotal > 0 ? `${weekTotal} ${weekTotal === 1 ? 'concierto' : 'conciertos'} esta semana` : 'En tu ciudad'}
         icon={<IconCalendar size={20} />}
         action={
           <button
@@ -191,6 +196,12 @@ const CityListingSection: React.FC<CityListingSectionProps> = ({ events, cities,
                     <p className="mt-0.5 font-display text-base font-bold leading-snug text-app-ink line-clamp-1">{artist}</p>
                     <p className="mt-0.5 text-[13px] text-[#c9c5bd] line-clamp-1">{subtitle}</p>
                   </div>
+                  {goingLabel(goingCounts.get(event.id)) ? (
+                    <span className="inline-flex shrink-0 items-center gap-1 self-start rounded-full border border-app-line px-2 py-1 font-mono text-[11px] font-semibold text-app-ink/80">
+                      <IconUser size={12} />
+                      {goingLabel(goingCounts.get(event.id))}
+                    </span>
+                  ) : null}
                 </button>
               </li>
             );

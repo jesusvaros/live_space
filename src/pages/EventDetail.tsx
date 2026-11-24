@@ -8,7 +8,8 @@ import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
 import { NAV_CLEARANCE } from '../components/BottomNav';
 import ShareSheet from '../components/ShareSheet';
-import { IconBookmark, IconBookmarkFilled, IconChevronRight, IconQrCode, IconShare } from '../components/icons';
+import { IconBookmark, IconBookmarkFilled, IconCamera, IconChevronRight, IconQrCode, IconShare, IconUser } from '../components/icons';
+import { goingLabel, useGoingCounts } from '../features/events/goingCounts';
 import DetailHeader from '../components/ui/DetailHeader';
 import { fetchEventCardById } from '../data/eventQueries';
 import { eventCacheKey, readCache } from '../data/pageCache';
@@ -486,6 +487,9 @@ const EventDetail: React.FC = () => {
       ? 'pb-[calc(156px+env(safe-area-inset-bottom,0px))]'
       : NAV_CLEARANCE;
   const merchStands = useEventMerchStands(id, event?.starts_at ?? null, stageMode);
+  // «12 van»: only the number, only from 2 people, only before the concert.
+  const goingIds = useMemo(() => (event && !isPastEvent ? [event.id] : []), [event, isPastEvent]);
+  const goingCount = useGoingCounts(goingIds).get(event?.id ?? '') ?? 0;
   const hasPhotos = useMemo(() => groupPhotoAlbums(moments, user?.id ?? null).length > 0, [moments, user?.id]);
 
   const handleFollowClick = () => {
@@ -624,13 +628,28 @@ const EventDetail: React.FC = () => {
                 <div className="relative z-10 bg-app-bg">
                   {momentsLoading ? (
                     <div className="mx-4 mt-5 h-[120px] animate-pulse rounded-2xl bg-app-surface motion-reduce:animate-none" aria-label="Cargando momentos" />
+                  ) : moments.length === 0 ? (
+                    // No clips yet: no empty stage, just a small way in
+                    // (only when the bottom bar is not already offering it).
+                    showBottomBar ? null : <div className="px-4 pt-5">
+                      <button
+                        type="button"
+                        onClick={() => openUpload()}
+                        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-app-line bg-app-surface pl-1.5 pr-4 text-sm font-semibold text-app-ink"
+                      >
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-app-accent text-[#14151a]">
+                          <IconCamera size={16} />
+                        </span>
+                        ¿Estuviste? Sube lo que grabaste
+                      </button>
+                    </div>
                   ) : (
                     <div className="px-4 pt-5">
                       <p className="font-display text-xl font-bold text-app-ink">Sube lo que grabaste</p>
                       <p className="mt-1 text-sm text-[#c9c5bd]">
                         {timeline && timeline.unplaced.length > 0
                           ? 'Los momentos de este concierto no tienen hora: están más abajo.'
-                          : 'Aún no hay momentos. Lo que subáis se monta aquí como un solo vídeo, canción a canción.'}
+                          : 'Lo que subáis se monta aquí como un solo vídeo, canción a canción.'}
                       </p>
                       <button
                         type="button"
@@ -703,6 +722,20 @@ const EventDetail: React.FC = () => {
                 ) : null}
                 {cancelled ? null : (
                 <>
+                {isPastEvent ? (
+                  // Past and nothing uploaded: one small way in, no empty
+                  // block (the bottom bar offers it when it is showing).
+                  showBottomBar ? null : <button
+                    type="button"
+                    onClick={() => openUpload()}
+                    className="inline-flex min-h-11 items-center gap-2 self-start rounded-full border border-app-line bg-app-surface pl-1.5 pr-4 text-sm font-semibold text-app-ink"
+                  >
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-app-accent text-[#14151a]">
+                      <IconCamera size={16} />
+                    </span>
+                    ¿Estuviste? Sube lo que grabaste
+                  </button>
+                ) : (
                 <div className="pt-1">
                   <span
                     className={`inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-[11px] font-bold tracking-[0.08em] ${
@@ -724,7 +757,14 @@ const EventDetail: React.FC = () => {
                     Al subirlo lo colocamos en su canción, junto a lo que grabó el resto del público.
                   </p>
                 </div>
+                )}
 
+                {goingLabel(goingCount) ? (
+                  <p className="inline-flex items-center gap-1.5 self-start rounded-full border border-app-line px-3 py-1.5 font-mono text-[12px] font-semibold text-app-ink/80">
+                    <IconUser size={14} />
+                    {goingLabel(goingCount)}
+                  </p>
+                ) : null}
                 {!isPastEvent ? <FriendsGoingRow eventId={event.id} /> : null}
                 {!isPastEvent ? <TicketSlot eventId={event.id} eventName={heroTitle || event.name} /> : null}
 

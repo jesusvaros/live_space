@@ -217,7 +217,8 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
   const hasInfo = Boolean(artist?.bio) || externalLinks.length > 0 || isManager;
   const tabs: { key: ArtistTab; label: string }[] = [
     { key: 'shows', label: 'Conciertos' },
-    { key: 'moments', label: 'Momentos' },
+    // Only when there is something to watch: an empty tab makes the profile look dead.
+    ...(moments.length > 0 ? [{ key: 'moments' as const, label: 'Momentos' }] : []),
     ...(hasInfo ? [{ key: 'about' as const, label: 'Info' }] : []),
   ];
 
@@ -275,7 +276,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
           fetchPage={fetchPastPage}
           titleOf={event => event.venue_place?.name || event.address || 'Sala'}
           subtitleOf={event => event.venue_place?.city || event.city || null}
-          hideWhenEmpty={upcomingShows.length === 0}
+          hideWhenEmpty
           className="pt-4"
           headingClassName="font-display text-lg font-bold text-app-ink"
         />
@@ -290,7 +291,8 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
     );
   };
 
-  const tabBar = (
+  // A single tab is not a choice: no bar then.
+  const tabBar = tabs.length < 2 ? null : (
     <div role="tablist" aria-label="Secciones del artista" className="flex gap-1 rounded-full border border-app-line bg-app-surface p-1">
       {tabs.map(tab => (
         <button

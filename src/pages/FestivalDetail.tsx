@@ -244,14 +244,12 @@ const FestivalDetail: React.FC = () => {
             )}
           </section>
 
-          <section className="px-4 pt-6">
-            <h2 className="mb-2.5 font-display text-xl font-bold text-app-ink">Grabado aquí</h2>
-            {moments.length === 0 ? (
-              <p className="text-sm text-white/55">Todavía nadie ha subido nada de este festival.</p>
-            ) : (
+          {moments.length > 0 ? (
+            <section className="px-4 pt-6">
+              <h2 className="mb-2.5 font-display text-xl font-bold text-app-ink">Grabado aquí</h2>
               <MomentGrid moments={moments} />
-            )}
-          </section>
+            </section>
+          ) : null}
 
           {canManage ? null : (
             <ClaimProfileLink type="festival" entityId={festival.id} subjectId={festival.subjectId} className="px-4 pt-6" />

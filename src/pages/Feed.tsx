@@ -17,8 +17,11 @@ import ShareSheet from '../components/ShareSheet';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
 import { videoPoster } from '../media/videoPoster';
 import { IconHeart, IconHeartFilled, IconPlus, IconShare } from '../components/icons';
+import ThisWeek from '../features/feed/ThisWeek';
+import { FEED_MIN_MOMENTS, showThisWeek } from '../features/feed/thisWeekRules';
 
 const PAGE_SIZE = 8;
+const DEFAULT_FEED_CITY = 'Madrid';
 const MAX_BARS = 8;
 
 type FeedScope = 'all' | 'city' | 'following';
@@ -199,6 +202,28 @@ const Feed: React.FC = () => {
   const [songNumbers, setSongNumbers] = useState<Record<string, number>>({});
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [shareId, setShareId] = useState<string | null>(null);
+  // While there are few public moments the tab shows the week's concerts
+  // (with the latest clips on top) instead of a thin feed.
+  const [publicMoments, setPublicMoments] = useState<number | null>(null);
+  const [latestClips, setLatestClips] = useState<FeedPost[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      supabase.from('v_post_cards').select('id', { count: 'exact', head: true }),
+      supabase.from('v_post_cards').select('*').order('created_at', { ascending: false }).limit(PAGE_SIZE),
+    ])
+      .then(([counted, latest]) => {
+        if (cancelled) return;
+        setPublicMoments(counted.error ? FEED_MIN_MOMENTS : counted.count ?? 0);
+        setLatestClips(((latest.data || []) as unknown as FeedPost[]));
+      })
+      .catch(() => {
+        if (!cancelled) setPublicMoments(FEED_MIN_MOMENTS);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [resumeTick]);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const { followedSubjectIds } = useFollowedSubjects();
@@ -379,6 +404,10 @@ const Feed: React.FC = () => {
   );
 
   const emptyFollowing = scope === 'following' && (!user || entities.length === 0);
+
+  if (showThisWeek(publicMoments)) {
+    return <ThisWeek city={city || DEFAULT_FEED_CITY} clips={withoutBlocked(latestClips, blocked, post => post.user_id)} />;
+  }
 
   return (
     <div className="relative h-full bg-black">
