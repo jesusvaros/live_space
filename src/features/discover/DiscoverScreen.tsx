@@ -15,12 +15,15 @@ import { useStoredLocation } from '../../shared/hooks/useStoredLocation';
 import { useFollowedSubjects } from '../../hooks/useFollowedSubjects';
 import { SuggestConcertCard, SuggestConcertSheet } from '../suggestions/SuggestConcert';
 import { askForAccount } from '../../auth/askForAccount';
+import FilterPills, { FilterSheet } from '../../components/ui/FilterPills';
 
 type RouteState = { initialTab?: DiscoverTabKey } | undefined;
 
 // Explorar shows the first styles as short rows; a chip opens the whole style.
 const SHELVES_ON_HOME = 3;
 const SHELF_PREVIEW = 6;
+// Styles in sight as pills; the rest behind «Estilos ▾».
+const QUICK_STYLES = 3;
 
 const DiscoverScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -32,6 +35,7 @@ const DiscoverScreen: React.FC = () => {
   const [query, setQuery] = useState('');
   const [style, setStyle] = useState<string | null>(null);
   const [suggestOpen, setSuggestOpen] = useState(false);
+  const [stylesOpen, setStylesOpen] = useState(false);
   const debouncedQuery = useDebouncedValue(query, 350);
 
   const { canFollow, isFollowing, isToggling, toggleFollowSubject } = useFollowedSubjects();
@@ -52,6 +56,7 @@ const DiscoverScreen: React.FC = () => {
     }
   }, []);
 
+  const quickStyles = styleShelves.slice(0, QUICK_STYLES).map(shelf => shelf.style);
   const selectedShelf = style ? styleShelves.find(shelf => shelf.style === style) ?? null : null;
 
   const onToggleFollow = async (subjectId: string, kind: 'artist' | 'venue') => {
@@ -131,25 +136,40 @@ const DiscoverScreen: React.FC = () => {
       <DiscoverSegmentedControl value={tab} onChange={setTab} />
 
       {tab === 'artists' && !query.trim() && styleShelves.length > 0 ? (
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4" role="tablist" aria-label="Estilo">
-          {[null, ...styleShelves.map(shelf => shelf.style)].map(option => {
-            const selected = style === option;
-            return (
-              <button
-                key={option ?? 'all'}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                onClick={() => setStyle(option)}
-                className={`min-h-9 shrink-0 rounded-full px-3.5 text-[13px] font-semibold transition-colors ${
-                  selected ? 'bg-app-accent text-app-bg' : 'bg-white/[0.06] text-[#c9c5bd]'
-                }`}
-              >
-                {option ?? 'Todo'}
-              </button>
-            );
-          })}
-        </div>
+        <>
+          <FilterPills
+            label="Estilo"
+            className="-mx-4 px-4"
+            pills={[
+              ...quickStyles.map(option => ({
+                key: `style:${option}`,
+                label: option,
+                selected: style === option,
+                onPress: () => setStyle(style === option ? null : option),
+              })),
+              ...(styleShelves.length > QUICK_STYLES
+                ? [
+                    {
+                      key: 'style:more',
+                      label: style && !quickStyles.includes(style) ? style : 'Estilos',
+                      selected: Boolean(style && !quickStyles.includes(style)),
+                      opens: true,
+                      onPress: () => setStylesOpen(true),
+                      onClear: () => setStyle(null),
+                    },
+                  ]
+                : []),
+            ]}
+          />
+          <FilterSheet
+            isOpen={stylesOpen}
+            title="Estilos"
+            onClose={() => setStylesOpen(false)}
+            options={styleShelves.map(shelf => ({ value: shelf.style, label: shelf.style }))}
+            selected={style}
+            onSelect={setStyle}
+          />
+        </>
       ) : null}
 
       <div className="flex flex-col gap-[22px] pt-2">
