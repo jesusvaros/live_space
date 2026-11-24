@@ -5,9 +5,11 @@ import QrScanner from '../../components/QrScanner';
 import { IconQrCode } from '../../components/icons';
 import { parseScannedUploadValue } from '../../lib/uploadQr';
 import { track } from '../analytics/analytics';
+import HomeTicketFab from '../tickets/HomeTicketFab';
 
 /**
- * Floating «Escanear QR» on Inicio. The concert's uploader does the rest:
+ * Floating «Escanear QR» on Inicio, with «Tu entrada» above it when the fan
+ * saved one. The concert's uploader does the rest:
  * welcome, «Voy»/«Fui» and the picker (Upload.tsx, fromQr).
  */
 const ScanConcertFab: React.FC = () => {
@@ -31,15 +33,19 @@ const ScanConcertFab: React.FC = () => {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label="Escanear el QR del concierto"
-        className="fixed bottom-[calc(96px+env(safe-area-inset-bottom,0px))] right-4 z-[1200] flex h-14 items-center gap-2 rounded-full bg-app-accent px-5 text-sm font-bold text-[#14151a] shadow-xl"
-      >
-        <IconQrCode size={20} />
-        Escanear QR
-      </button>
+      {/* Stack on the right above the tab bar: the saved ticket (if any), then the QR. */}
+      <div className="pointer-events-none fixed bottom-[calc(96px+env(safe-area-inset-bottom,0px))] right-4 z-[1200] flex flex-col items-end gap-3 [&>*]:pointer-events-auto">
+        <HomeTicketFab />
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label="Escanear el QR del concierto"
+          className="flex h-14 items-center gap-2 rounded-full bg-app-accent px-5 text-sm font-bold text-[#14151a] shadow-xl"
+        >
+          <IconQrCode size={20} />
+          Escanear QR
+        </button>
+      </div>
 
       <Modal isOpen={open} onDidDismiss={() => setOpen(false)} title="Escanear QR del concierto">
         <Content fullscreen>
