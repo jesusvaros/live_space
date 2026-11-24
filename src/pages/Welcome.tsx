@@ -19,14 +19,9 @@ const Welcome: React.FC = () => {
 
   const handleDone = (result: AuthPanelResult) => {
     if (result === 'confirmation-sent') return;
-    const returnTo = readReturnTo();
-    // A brand-new account sets up its agenda first, unless it was on its way
-    // somewhere (an upload, a claim…).
-    if (result === 'signed-up' && returnTo === '/tabs/events') {
-      navigate('/empezar', { replace: true, state: { returnTo: '/tabs/events' } });
-      return;
-    }
-    navigate(returnTo, { replace: true });
+    // Straight back to where they were: no extra set-up steps after the
+    // account (the agenda is tuned later, from Inicio or Perfil).
+    navigate(readReturnTo(), { replace: true });
   };
 
   return (
@@ -57,7 +52,6 @@ const Welcome: React.FC = () => {
 
         <AuthPanel
           key={location.key}
-          defaultMode="signin"
           initialError={linkError ? authErrorToSpanish(linkError) : ''}
           onDone={handleDone}
         />

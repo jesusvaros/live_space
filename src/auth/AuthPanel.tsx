@@ -4,19 +4,19 @@ import { Link } from 'react-router-dom';
 import { legalAppPath } from '../features/legal/paths';
 import { Spinner } from '../components/ui/AppPrimitives';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
 import { fetchEnabledProviders, signInWithProvider, type OAuthProvider } from './nativeAuth';
 import { track } from '../features/analytics/analytics';
 import { rememberPendingSignIn, trackSignInTap } from '../features/analytics/signInEvents';
+import { continueWithEmail, validateEmailForm } from './emailFlow';
 
-// Sign-in / sign-up block shared by /welcome, the first-run onboarding and the
-// sheet that pops up when someone who came in through a concert QR presses
-// «Publicar». Apple and Google first, email underneath.
+// Sign-in / sign-up block: the account sheet (askForAccount), /welcome, the
+// first-run onboarding and «Publicar» after a QR upload. Google and Apple
+// first; «Continuar con email» opens one email + password box that signs in
+// or creates the account. Nothing else is asked: the @username is made on the
+// server and the rest (name, city, photo) is optional, later, in Ajustes.
 //
 // Google/Apple finish outside this component (deep link on the app, full page
 // redirect on the web): the parent notices the new session through useAuth.
-
-export type AuthMode = 'signin' | 'signup';
 
 export type AuthPanelResult = 'signed-in' | 'signed-up' | 'confirmation-sent';
 
@@ -51,38 +51,18 @@ const AppleLogo = () => (
   </svg>
 );
 
-const Field: React.FC<{
-  label: string;
-  type?: string;
-  value: string;
-  onChange: (value: string) => void;
-  autoComplete?: string;
-  placeholder?: string;
-  optional?: boolean;
-}> = ({ label, type = 'text', value, onChange, autoComplete, placeholder, optional }) => {
-  const id = useId();
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-medium text-white/80">
-        {label}
-        {optional ? <span className="font-normal text-white/50"> (opcional)</span> : null}
-      </label>
-      <input
-        id={id}
-        type={type}
-        value={value}
-        autoComplete={autoComplete}
-        placeholder={placeholder}
-        onChange={(event) => onChange(event.target.value)}
-        className="min-h-12 w-full rounded-2xl border border-white/15 bg-black/40 px-4 text-base text-white placeholder:text-white/35 focus:border-[#ff5b2e] focus:outline-none focus:ring-2 focus:ring-[#ff5b2e]/30"
-      />
-    </div>
-  );
-};
+const MailGlyph = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <path d="M3 7l9 6 9-6" />
+  </svg>
+);
+
+const inputClass =
+  'min-h-12 w-full rounded-2xl border border-white/15 bg-black/40 px-4 text-base text-white placeholder:text-white/40 focus:border-[#ff5b2e] focus:outline-none focus:ring-2 focus:ring-[#ff5b2e]/30';
 
 type AuthPanelProps = {
-  defaultMode?: AuthMode;
-  // Shown under the form when the email link must be pressed before entering.
+  // Shown when the email link must be pressed before entering.
   confirmationNotice?: string;
   // Error carried in from an auth link (?error= on /welcome).
   initialError?: string;
@@ -93,31 +73,27 @@ type AuthPanelProps = {
   beforeProviderRedirect?: () => Promise<void>;
   // Where Google/Apple bring the user back to on the web.
   providerReturnPath?: string;
-  // Only username, email and password (the publish sheet: as short as possible).
-  minimal?: boolean;
 };
 
 const AuthPanel: React.FC<AuthPanelProps> = ({
-  defaultMode = 'signup',
-  confirmationNotice = 'Te hemos enviado un email. Pulsa el enlace (en este móvil o en otro dispositivo) y vuelve aquí para pulsar «Entrar».',
+  confirmationNotice = 'Te hemos mandado un email. Pulsa el enlace y vuelve aquí.',
   initialError = '',
   onDone,
   beforeProviderRedirect,
   providerReturnPath,
-  minimal = false,
 }) => {
   const { signIn, signUp, sendPasswordReset } = useAuth();
-  const [mode, setMode] = useState<AuthMode>(defaultMode);
+  const emailId = useId();
+  const passwordId = useId();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [primaryCity, setPrimaryCity] = useState('');
   const [busy, setBusy] = useState<null | 'email' | OAuthProvider | 'reset'>(null);
   const [error, setError] = useState(initialError);
   const [notice, setNotice] = useState('');
-  const [showReset, setShowReset] = useState(false);
+  const [wrongPassword, setWrongPassword] = useState(false);
   const [providers, setProviders] = useState<Record<OAuthProvider, boolean>>({ google: false, apple: false });
+  const [providersLoaded, setProvidersLoaded] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
 
   useEffect(() => {
     if (initialError) setError(initialError);
@@ -125,64 +101,53 @@ const AuthPanel: React.FC<AuthPanelProps> = ({
 
   useEffect(() => {
     let active = true;
-    fetchEnabledProviders().then((enabled) => {
-      if (active) setProviders(enabled);
-    });
+    fetchEnabledProviders()
+      .then((enabled) => {
+        if (active) setProviders(enabled);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setProvidersLoaded(true);
+      });
     return () => {
       active = false;
     };
   }, []);
 
-  const switchMode = (next: AuthMode) => {
-    setMode(next);
-    setError('');
-    setNotice('');
-    setShowReset(false);
-  };
-
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError('');
     setNotice('');
-    if (!email || !password || (mode === 'signup' && !username)) {
-      setError(mode === 'signup' ? 'Rellena email, contraseña y nombre de usuario.' : 'Rellena email y contraseña.');
+    setWrongPassword(false);
+    const invalid = validateEmailForm(email, password);
+    if (invalid) {
+      setError(invalid);
       return;
     }
     setBusy('email');
     trackSignInTap('email');
-    const signInMode = mode;
     try {
-      if (mode === 'signup') {
-        const { error: signUpError } = await signUp(email, password, { username, displayName, primaryCity });
-        if (signUpError) {
-          track('sign_in_failed', { provider: 'email', mode: signInMode });
-          setError(authErrorToSpanish(signUpError.message));
-          return;
-        }
-        const { data } = await supabase.auth.getSession();
-        if (!data.session) {
-          // Email confirmation is on in Supabase. The link may be opened on
-          // another device: leave the form ready to sign in here.
-          setMode('signin');
-          setNotice(confirmationNotice);
-          track('sign_in', { provider: 'email', mode: 'signup', confirmed: false });
-          onDone?.('confirmation-sent');
-          return;
-        }
+      const outcome = await continueWithEmail({ signIn, signUp: (address, secret) => signUp(address, secret) }, email, password);
+      if (outcome.kind === 'signed-in') {
+        track('sign_in', { provider: 'email', mode: 'signin' });
+        onDone?.('signed-in');
+      } else if (outcome.kind === 'signed-up') {
         track('sign_in', { provider: 'email', mode: 'signup', confirmed: true });
         onDone?.('signed-up');
-        return;
+      } else if (outcome.kind === 'confirmation-sent') {
+        track('sign_in', { provider: 'email', mode: 'signup', confirmed: false });
+        setNotice(confirmationNotice);
+        onDone?.('confirmation-sent');
+      } else if (outcome.kind === 'wrong-password') {
+        track('sign_in_failed', { provider: 'email', reason: 'wrong_password' });
+        setWrongPassword(true);
+        setError('Esa contraseña no es la de tu cuenta.');
+      } else {
+        track('sign_in_failed', { provider: 'email' });
+        setError(authErrorToSpanish(outcome.message));
       }
-      const { error: signInError } = await signIn(email, password);
-      if (signInError) {
-        track('sign_in_failed', { provider: 'email', mode: signInMode });
-        setError(authErrorToSpanish(signInError.message));
-        return;
-      }
-      track('sign_in', { provider: 'email', mode: 'signin' });
-      onDone?.('signed-in');
     } catch {
-      track('sign_in_failed', { provider: 'email', mode: signInMode });
+      track('sign_in_failed', { provider: 'email' });
       setError('Algo ha fallado. Vuelve a intentarlo.');
     } finally {
       setBusy(null);
@@ -215,133 +180,114 @@ const AuthPanel: React.FC<AuthPanelProps> = ({
   const handleReset = async () => {
     setError('');
     setNotice('');
-    if (!email) {
-      setError('Escribe tu email y te mandamos el enlace.');
-      return;
-    }
     setBusy('reset');
     try {
-      const { error: resetError } = await sendPasswordReset(email);
+      const { error: resetError } = await sendPasswordReset(email.trim().toLowerCase());
       if (resetError) setError(authErrorToSpanish(resetError.message));
-      else setNotice('Te hemos enviado un enlace para cambiar la contraseña.');
+      else setNotice('Te hemos mandado un enlace para cambiarla.');
     } finally {
       setBusy(null);
     }
   };
 
   const anyProvider = providers.google || providers.apple;
+  // Google/Apple first; the email box only opens on request (or straight
+  // away when no provider works on this device).
+  const showEmailForm = emailOpen || (providersLoaded && !anyProvider);
 
   return (
-    <div className="flex flex-col gap-6">
-      {anyProvider ? (
-        <div className="flex flex-col gap-3">
-          {providers.apple ? (
-            <button
-              type="button"
-              onClick={() => handleProvider('apple')}
-              disabled={busy !== null}
-              className="inline-flex min-h-[52px] items-center justify-center gap-2.5 rounded-full border-0 bg-white text-base font-semibold text-black disabled:opacity-60"
-            >
-              {busy === 'apple' ? <Spinner /> : <AppleLogo />}
-              Continuar con Apple
-            </button>
-          ) : null}
-          {providers.google ? (
-            <button
-              type="button"
-              onClick={() => handleProvider('google')}
-              disabled={busy !== null}
-              className="inline-flex min-h-[52px] items-center justify-center gap-2.5 rounded-full border border-white/20 bg-[#17191f] text-base font-semibold text-white disabled:opacity-60"
-            >
-              {busy === 'google' ? <Spinner /> : <GoogleLogo />}
-              Continuar con Google
-            </button>
-          ) : null}
-          <p className="m-0 flex items-center gap-3 text-sm text-white/50" aria-hidden="true">
-            <span className="h-px flex-1 bg-white/15" />o con tu email<span className="h-px flex-1 bg-white/15" />
-          </p>
-        </div>
+    <div className="flex flex-col gap-3">
+      {providers.apple ? (
+        <button
+          type="button"
+          onClick={() => handleProvider('apple')}
+          disabled={busy !== null}
+          className="inline-flex min-h-[52px] items-center justify-center gap-2.5 rounded-full border-0 bg-white text-base font-semibold text-black disabled:opacity-60"
+        >
+          {busy === 'apple' ? <Spinner /> : <AppleLogo />}
+          Continuar con Apple
+        </button>
+      ) : null}
+      {providers.google ? (
+        <button
+          type="button"
+          onClick={() => handleProvider('google')}
+          disabled={busy !== null}
+          className="inline-flex min-h-[52px] items-center justify-center gap-2.5 rounded-full border border-white/20 bg-[#17191f] text-base font-semibold text-white disabled:opacity-60"
+        >
+          {busy === 'google' ? <Spinner /> : <GoogleLogo />}
+          Continuar con Google
+        </button>
       ) : null}
 
-      <div role="tablist" aria-label="Acceso" className="grid grid-cols-2 gap-1 rounded-full bg-white/10 p-1">
-        {(['signup', 'signin'] as AuthMode[]).map((item) => (
+      {showEmailForm ? (
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3" noValidate>
+          <label htmlFor={emailId} className="sr-only">Email</label>
+          <input
+            id={emailId}
+            type="email"
+            inputMode="email"
+            value={email}
+            autoComplete="email"
+            placeholder="Email"
+            onChange={(event) => setEmail(event.target.value)}
+            className={inputClass}
+          />
+          <label htmlFor={passwordId} className="sr-only">Contraseña</label>
+          <input
+            id={passwordId}
+            type="password"
+            value={password}
+            autoComplete="current-password"
+            placeholder="Contraseña"
+            onChange={(event) => setPassword(event.target.value)}
+            className={inputClass}
+          />
+
+          {error ? <p role="alert" className="m-0 text-sm text-[#ffb4a0]">{error}</p> : null}
+          {notice ? <p role="status" className="m-0 text-sm text-emerald-300">{notice}</p> : null}
+
           <button
-            key={item}
-            type="button"
-            role="tab"
-            aria-selected={mode === item}
-            onClick={() => switchMode(item)}
-            className={`min-h-11 rounded-full border-0 text-sm font-semibold transition-colors ${
-              mode === item ? 'bg-white text-black' : 'bg-transparent text-white/70'
-            }`}
+            type="submit"
+            disabled={busy !== null}
+            className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-full border-0 text-base font-semibold text-[#0d0e12] disabled:opacity-60"
+            style={{ background: ACCENT }}
           >
-            {item === 'signin' ? 'Ya tengo cuenta' : 'Crear cuenta'}
+            {busy === 'email' ? <Spinner /> : null}
+            Continuar
           </button>
-        ))}
-      </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-        {mode === 'signup' ? (
-          <>
-            <Field label="Nombre de usuario" value={username} onChange={setUsername} autoComplete="username" placeholder="tunombre" />
-            {minimal ? null : (
-              <>
-                <Field label="Cómo te llamamos" value={displayName} onChange={setDisplayName} autoComplete="name" optional />
-                <Field label="Tu ciudad" value={primaryCity} onChange={setPrimaryCity} autoComplete="address-level2" placeholder="Madrid" optional />
-              </>
-            )}
-          </>
-        ) : null}
-        <Field label="Email" type="email" value={email} onChange={setEmail} autoComplete="email" placeholder="tu@email.com" />
-        <Field
-          label="Contraseña"
-          type="password"
-          value={password}
-          onChange={setPassword}
-          autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-          placeholder={mode === 'signup' ? 'Mínimo 6 caracteres' : ''}
-        />
-
-        {error ? <p role="alert" className="m-0 text-sm text-[#ffb4a0]">{error}</p> : null}
-        {notice ? <p role="status" className="m-0 text-sm text-emerald-300">{notice}</p> : null}
-
-        <button
-          type="submit"
-          disabled={busy !== null}
-          className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full border-0 text-lg font-semibold text-[#0d0e12] disabled:opacity-60"
-          style={{ background: ACCENT }}
-        >
-          {busy === 'email' ? <Spinner /> : null}
-          {mode === 'signup' ? 'Crear cuenta' : 'Entrar'}
-        </button>
-
-        {mode === 'signin' ? (
-          showReset ? (
+          {wrongPassword ? (
             <button
               type="button"
               onClick={handleReset}
               disabled={busy !== null}
-              className="min-h-11 rounded-full border border-white/20 bg-transparent text-sm font-semibold text-white disabled:opacity-60"
+              className="min-h-11 border-0 bg-transparent text-sm font-semibold text-white/75 disabled:opacity-60"
             >
-              {busy === 'reset' ? 'Enviando…' : 'Enviarme el enlace para cambiarla'}
+              {busy === 'reset' ? 'Enviando…' : 'Mandarme un enlace para cambiarla'}
             </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowReset(true)}
-              className="min-h-11 border-0 bg-transparent text-sm font-semibold text-white/70"
-            >
-              ¿Has olvidado la contraseña?
-            </button>
-          )
-        ) : null}
-      </form>
+          ) : null}
+        </form>
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={() => setEmailOpen(true)}
+            disabled={busy !== null}
+            className="inline-flex min-h-[52px] items-center justify-center gap-2.5 rounded-full border border-white/20 bg-transparent text-base font-semibold text-white disabled:opacity-60"
+          >
+            <MailGlyph />
+            Continuar con email
+          </button>
+          {error ? <p role="alert" className="m-0 text-sm text-[#ffb4a0]">{error}</p> : null}
+        </>
+      )}
 
-      <p className="m-0 text-center text-xs leading-relaxed text-white/55">
+      <p className="m-0 mt-1 text-center text-xs leading-relaxed text-white/50">
         Al continuar aceptas las{' '}
-        <Link to={legalAppPath('condiciones')} className="font-semibold text-white/80 underline underline-offset-2">Condiciones de uso</Link>
+        <Link to={legalAppPath('condiciones')} className="text-white/75 underline underline-offset-2">Condiciones</Link>
         {' '}y la{' '}
-        <Link to={legalAppPath('privacidad')} className="font-semibold text-white/80 underline underline-offset-2">Política de privacidad</Link>.
+        <Link to={legalAppPath('privacidad')} className="text-white/75 underline underline-offset-2">Privacidad</Link>.
       </p>
     </div>
   );

@@ -53,6 +53,7 @@ error, nunca el mensaje), `notificationType`.
 | `sign_in` | `provider`, `mode` (email), `via` (`native` \| `redirect`) | AuthPanel; Google/Apple por página al llegar la sesión (`signInEvents.ts`, AuthContext) |
 | `sign_in_failed` | `provider`, `mode` | AuthPanel |
 | `sign_in_cancelled` | `provider` | AuthPanel (hoja nativa cancelada) |
+| `auth_prompt_shown` / `auth_prompt_dismissed` / `auth_prompt_done` | `source` (`action`, `reels`…) | Hoja de cuenta (`AuthSheetHost`, `askForAccount`, `reelNudge`) |
 | `sign_out` | — | AuthContext.signOut |
 | `push_prompt` | `trigger` (`going`, `follow`, `merch`, `settings`), `step` (`explainer` \| `system`) | offer.ts, Ajustes → Notificaciones |
 | `push_granted` / `push_denied` | `trigger`, `step` | ídem |

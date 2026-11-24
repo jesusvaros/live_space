@@ -165,7 +165,7 @@ const EventMerchSection: React.FC<EventMerchSectionProps> = ({ eventId, startsAt
             Te guardamos el merch con tu cuenta y te damos el código para recogerlo en el puesto.
           </p>
           <div className="mt-5">
-            <AuthPanel defaultMode="signup" minimal providerReturnPath={`${location.pathname}${location.search}`} />
+            <AuthPanel providerReturnPath={`${location.pathname}${location.search}`} />
           </div>
         </div>
       </Modal>

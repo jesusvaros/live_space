@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import { useLastKnownLocation } from '../shared/hooks/useLastKnownLocation';
 import { readStoredLocation } from '../shared/hooks/useStoredLocation';
@@ -22,7 +21,7 @@ import ScanConcertFab from '../features/events/ScanConcertFab';
 import WrappedCard from '../features/wrapped/WrappedCard';
 import { HomeCustomizer, HomeSectionKey, useHomeLayout } from '../features/events/homeLayout';
 import ForYouSection from '../features/events/sections/ForYouSection';
-import { clearCity, isSetupDone, nearestCity as nearestOf, persistCity, readStoredCity, readTastes, sameCity } from '../features/agenda/agendaPrefs';
+import { clearCity, nearestCity as nearestOf, persistCity, readStoredCity, readTastes, sameCity } from '../features/agenda/agendaPrefs';
 import { useConcertHistory } from '../features/agenda/useConcertHistory';
 import { inicioWindow } from '../features/events/inicioWindow';
 import { useFirstContent } from '../lib/perfTiming';
@@ -31,20 +30,11 @@ const NEARBY_RADIUS_KM = 50;
 // How far a city's venues can sit from its representative point.
 const CITY_SPREAD_KM = 30;
 const DEFAULT_CITY = 'Madrid';
-// Accounts this young get the agenda setup once, wherever they signed up.
-const NEW_ACCOUNT_MS = 3 * 24 * 60 * 60 * 1000;
 
 const Events: React.FC = () => {
   const { user, profile } = useAuth();
-  const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!user || !profile || isSetupDone(user.id)) return;
-    const createdAt = Date.parse(profile.created_at);
-    if (Number.isFinite(createdAt) && Date.now() - createdAt < NEW_ACCOUNT_MS) {
-      navigate('/empezar', { replace: true, state: { returnTo: '/tabs/events' } });
-    }
-  }, [navigate, profile, user]);
+  // No set-up screen forced after the account: «Según tus gustos» offers it.
   // A city the visitor picked sticks across visits and back navigation.
   const [pickedCity, setPickedCity] = useState<string | null>(() => readStoredCity());
   const pickCity = (next: string) => {

@@ -68,7 +68,7 @@ const Onboarding: React.FC = () => {
   const handleDone = (result: AuthPanelResult) => {
     if (result === 'signed-up') {
       done('signed_up');
-      navigate('/empezar', { replace: true, state: { returnTo: '/tabs/events' } });
+      navigate('/tabs/events', { replace: true });
     } else if (result === 'signed-in') {
       done('signed_in');
       navigate('/tabs/events', { replace: true });
@@ -134,7 +134,7 @@ const Onboarding: React.FC = () => {
               </h1>
               <p className="m-0 mt-2 text-base text-white/75">Para subir lo que grabes y seguir a tus artistas y salas.</p>
             </div>
-            <AuthPanel defaultMode="signup" onDone={handleDone} />
+            <AuthPanel onDone={handleDone} />
           </div>
         ) : (
           <>
