@@ -272,11 +272,13 @@ const Map: React.FC = () => {
             onWhenChange={filters.setWhen}
             day={filters.day}
             onDayChange={filters.setDay}
+            city={city}
+            cities={filters.cities}
+            onCityChange={filters.setCity}
             search={filters.search}
             onSearchChange={filters.setSearch}
             artists={artists}
             onRemoveArtist={filters.removeArtist}
-            onClearArtists={filters.clearArtists}
             activeFilterCount={filters.activeFilterCount}
             onOpenFilters={() => setShowFilters(true)}
           />

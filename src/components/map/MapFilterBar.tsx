@@ -1,5 +1,6 @@
-import React, { useRef } from 'react';
-import { IconFilters } from '../icons';
+import React, { useState } from 'react';
+import FilterPills, { FilterSheet, type FilterPill } from '../ui/FilterPills';
+import { IconFilters, IconMap } from '../icons';
 import { MAP_WHEN_LABELS, toDateInputValue, type MapArtistFilter, type MapWhen } from '../../hooks/useMapFilters';
 
 type MapFilterBarProps = {
@@ -8,11 +9,13 @@ type MapFilterBarProps = {
   /** yyyy-mm-dd picked in the calendar, when the "Fecha" chip is active. */
   day: string | null;
   onDayChange: (day: string | null) => void;
+  city: string | null;
+  cities: string[];
+  onCityChange: (city: string | null) => void;
   search: string;
   onSearchChange: (value: string) => void;
   artists: MapArtistFilter[];
   onRemoveArtist: (id: string) => void;
-  onClearArtists: () => void;
   activeFilterCount: number;
   onOpenFilters: () => void;
 };
@@ -43,72 +46,72 @@ const dayLabel = (day: string) =>
     .toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })
     .replace(/\./g, '');
 
-// Date chips always in sight under the search: the quick ranges plus a
-// calendar for a specific day. The same choice shows in the filters sheet.
-const DateChips: React.FC<Pick<MapFilterBarProps, 'when' | 'onWhenChange' | 'day' | 'onDayChange'>> = ({
-  when,
-  onWhenChange,
-  day,
-  onDayChange,
-}) => {
-  const dateInput = useRef<HTMLInputElement | null>(null);
-  const openCalendar = () => {
-    const input = dateInput.current;
-    if (!input) return;
-    try {
-      input.showPicker();
-    } catch {
-      input.click();
-    }
-  };
-  return (
-    <div className="flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]" role="group" aria-label="Fechas">
-      {(Object.keys(MAP_WHEN_LABELS) as Exclude<MapWhen, 'all' | 'day'>[]).map(value => (
-        <button
-          key={value}
-          type="button"
-          aria-pressed={when === value}
-          onClick={() => onWhenChange(value)}
-          className={chipClass(when === value)}
-        >
-          {value === 'next30' ? '30 días' : MAP_WHEN_LABELS[value]}
-        </button>
-      ))}
-      <button type="button" aria-pressed={when === 'day'} onClick={openCalendar} className={chipClass(when === 'day')}>
-        <CalendarGlyph />
-        {when === 'day' && day ? dayLabel(day) : 'Fecha'}
-      </button>
-      <button type="button" aria-pressed={when === 'all'} onClick={() => onWhenChange('all')} className={chipClass(when === 'all')}>
-        Cualquier fecha
-      </button>
-      <input
-        ref={dateInput}
-        type="date"
-        aria-label="Elegir un día"
-        min={toDateInputValue(new Date())}
-        value={day ?? ''}
-        onChange={event => onDayChange(event.target.value || null)}
-        className="pointer-events-none absolute h-0 w-0 opacity-0"
-        tabIndex={-1}
-      />
-    </div>
-  );
-};
+// Quick dates always in sight (Hoy, Este finde); «Fecha ▾» opens every range
+// plus a calendar, «Ciudad ▾» the cities. What is picked slides to the start.
+const QUICK_WHEN: MapWhen[] = ['today', 'weekend'];
+const DEFAULT_WHEN: MapWhen = 'next30';
+
+const whenLabel = (when: MapWhen, day: string | null) =>
+  when === 'day' ? (day ? dayLabel(day) : 'Fecha') : when === 'all' ? 'Cualquier fecha' : when === 'next30' ? '30 días' : MAP_WHEN_LABELS[when];
 
 const MapFilterBar: React.FC<MapFilterBarProps> = ({
   when,
   onWhenChange,
   day,
   onDayChange,
+  city,
+  cities,
+  onCityChange,
   search,
   onSearchChange,
   artists,
   onRemoveArtist,
-  onClearArtists,
   activeFilterCount,
   onOpenFilters,
-}) => (
-  <div className="flex flex-col gap-2">
+}) => {
+  const [sheet, setSheet] = useState<'when' | 'city' | null>(null);
+  const quickWhen = QUICK_WHEN.includes(when);
+  const detailedWhen = !quickWhen && when !== DEFAULT_WHEN;
+  const pills: FilterPill[] = [
+    ...QUICK_WHEN.map(value => ({
+      key: `when:${value}`,
+      label: whenLabel(value, null),
+      selected: when === value,
+      onPress: () => onWhenChange(when === value ? DEFAULT_WHEN : value),
+    })),
+    {
+      key: 'when:more',
+      label: detailedWhen ? whenLabel(when, day) : 'Fecha',
+      icon: <CalendarGlyph />,
+      selected: detailedWhen,
+      opens: true,
+      onPress: () => setSheet('when'),
+      onClear: () => onWhenChange(DEFAULT_WHEN),
+    },
+    ...(cities.length > 1 || city
+      ? [
+          {
+            key: 'city',
+            label: city ?? 'Ciudad',
+            icon: <IconMap size={15} />,
+            selected: Boolean(city),
+            opens: true,
+            onPress: () => setSheet('city'),
+            onClear: () => onCityChange(null),
+          },
+        ]
+      : []),
+    ...artists.map(artist => ({
+      key: `artist:${artist.id}`,
+      label: artist.name,
+      icon: artist.avatar_url ? <img src={artist.avatar_url} alt="" className="h-6 w-6 rounded-full object-cover" /> : undefined,
+      selected: true,
+      onPress: () => onRemoveArtist(artist.id),
+    })),
+  ];
+
+  return (
+  <div className="flex flex-col gap-1">
     <div className="flex items-center gap-2 px-4">
       <label className="flex h-12 min-w-0 flex-1 items-center gap-2 rounded-full border border-app-line bg-app-surface/90 pl-4 pr-2 text-app-ink/60 shadow-[0_8px_24px_rgba(0,0,0,0.45)] backdrop-blur-md focus-within:border-app-accent/70">
         <SearchGlyph />
@@ -148,34 +151,46 @@ const MapFilterBar: React.FC<MapFilterBarProps> = ({
       </button>
     </div>
 
-    <DateChips when={when} onWhenChange={onWhenChange} day={day} onDayChange={onDayChange} />
+    <FilterPills pills={pills} label="Filtros rápidos" className="px-4" />
 
-    {artists.length > 0 ? (
-      <div className="flex gap-2 overflow-x-auto px-4 pb-1">
-        {artists.map(artist => (
-          <span key={artist.id} className={`${chipClass(true)} pr-1`}>
-            {artist.avatar_url ? (
-              <img src={artist.avatar_url} alt="" className="h-6 w-6 rounded-full object-cover" />
-            ) : null}
-            {artist.name}
-            <button
-              type="button"
-              onClick={() => onRemoveArtist(artist.id)}
-              aria-label={`Quitar ${artist.name}`}
-              className="inline-flex h-9 items-center rounded-full bg-black/20 px-3 text-[12px] font-semibold"
-            >
-              Quitar
-            </button>
-          </span>
-        ))}
-        {artists.length > 1 ? (
-          <button type="button" className={chipClass(false)} onClick={onClearArtists}>
-            Quitar filtro
-          </button>
-        ) : null}
-      </div>
-    ) : null}
+    <FilterSheet
+      isOpen={sheet === 'when'}
+      title="Fecha"
+      onClose={() => setSheet(null)}
+      options={(['today', 'tomorrow', 'weekend', 'week', 'next30', 'all'] as MapWhen[]).map(value => ({
+        value,
+        label: whenLabel(value, null),
+      }))}
+      selected={when === 'day' ? null : when}
+      onSelect={value => onWhenChange((value as MapWhen | null) ?? DEFAULT_WHEN)}
+    >
+      <label className="mt-5 flex min-h-12 items-center gap-3 rounded-2xl border border-app-line bg-app-surface px-4 text-sm font-semibold text-app-ink">
+        <CalendarGlyph />
+        <span className="flex-1">Un día concreto</span>
+        <input
+          type="date"
+          aria-label="Elegir un día"
+          min={toDateInputValue(new Date())}
+          value={when === 'day' && day ? day : ''}
+          onChange={event => {
+            onDayChange(event.target.value || null);
+            if (event.target.value) setSheet(null);
+          }}
+          className="bg-transparent text-app-ink [color-scheme:dark]"
+        />
+      </label>
+    </FilterSheet>
+
+    <FilterSheet
+      isOpen={sheet === 'city'}
+      title="Ciudad"
+      onClose={() => setSheet(null)}
+      options={cities.map(value => ({ value, label: value }))}
+      selected={city}
+      onSelect={onCityChange}
+    />
   </div>
-);
+  );
+};
 
 export default MapFilterBar;
