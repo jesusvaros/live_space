@@ -49,7 +49,6 @@ const Feed = page(() => import('./pages/Feed'));
 const TimelinePlayground = import.meta.env.DEV ? page(() => import('./pages/dev/TimelinePlayground'), false) : null;
 const MerchPlayground = import.meta.env.DEV ? page(() => import('./pages/dev/MerchPlayground'), false) : null;
 const ProfilePlayground = import.meta.env.DEV ? page(() => import('./pages/dev/ProfilePlayground'), false) : null;
-const ProPlayground = import.meta.env.DEV ? page(() => import('./pages/dev/ProPlayground'), false) : null;
 const FriendsPlayground = import.meta.env.DEV ? page(() => import('./pages/dev/FriendsPlayground'), false) : null;
 const TeamPlayground = import.meta.env.DEV ? page(() => import('./pages/dev/TeamPlayground'), false) : null;
 const SchedulePlayground = import.meta.env.DEV ? page(() => import('./pages/dev/SchedulePlayground'), false) : null;
@@ -76,7 +75,6 @@ const SuggestedUpload = page(() => import('./pages/SuggestedUpload'));
 const Import = page(() => import('./pages/Import'));
 const Wrapped = page(() => import('./pages/Wrapped'), false);
 const GestionEstadisticas = page(() => import('./pages/GestionEstadisticas'), false);
-const GestionPro = page(() => import('./pages/GestionPro'), false);
 const LegalPage = page(() => import('./pages/LegalPage'), false);
 const SettingsScreen = page(() => import('./features/settings/SettingsScreen'));
 const ClaimProfile = page(() => import('./pages/ClaimProfile'), false);
@@ -302,7 +300,6 @@ const AppRoutes = () => {
           <Route path="/amigos" element={<RequireAuth>{deferredPage(<Friends />)}</RequireAuth>} />
           <Route path="/pedidos/:id" element={<RequireAuth>{deferredPage(<MerchOrder />)}</RequireAuth>} />
           <Route path="/gestion/estadisticas" element={<RequireAuth>{deferredPage(<GestionEstadisticas />)}</RequireAuth>} />
-          <Route path="/gestion/pro" element={<RequireAuth>{deferredPage(<GestionPro />)}</RequireAuth>} />
           {/* Privacy policy, terms, account deletion, moments licence: bundled, no account needed. */}
           <Route path="/legal/:doc" element={deferredPage(<LegalPage />)} />
           <Route path="/ajustes" element={<RequireAuth>{deferredPage(<SettingsScreen />)}</RequireAuth>} />
@@ -326,7 +323,6 @@ const AppRoutes = () => {
           {TimelinePlayground ? <Route path="/dev/linea-de-tiempo" element={deferredPage(<TimelinePlayground />)} /> : null}
           {MerchPlayground ? <Route path="/dev/merch" element={deferredPage(<MerchPlayground />)} /> : null}
           {ProfilePlayground ? <Route path="/dev/perfil" element={deferredPage(<ProfilePlayground />)} /> : null}
-          {ProPlayground ? <Route path="/dev/pro" element={deferredPage(<ProPlayground />)} /> : null}
           {FriendsPlayground ? <Route path="/dev/amigos" element={deferredPage(<FriendsPlayground />)} /> : null}
           {TeamPlayground ? <Route path="/dev/gestion" element={deferredPage(<TeamPlayground />)} /> : null}
           {SchedulePlayground ? <Route path="/dev/conciertos" element={deferredPage(<SchedulePlayground />)} /> : null}
