@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { IconCamera, IconQrCode } from '../../components/icons';
+import { IconCamera, IconQrCode, IconTicket } from '../../components/icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { merchService, type MerchOrder } from '../../services/merch.service';
+import { ticketsService, type TicketEvent, type TicketFile } from '../../services/tickets.service';
+import { TicketViewer } from '../tickets/TicketSlot';
 import { useAppResume } from '../../shared/hooks/useAppResume';
 import { scheduleOpenNotification } from '../alerts/concertAlerts';
 import { useUserConcertHero } from '../events/hooks/useUserConcertHero';
@@ -11,6 +13,8 @@ import { useUserConcertHero } from '../events/hooks/useUserConcertHero';
 // - the merch pickup code, for the whole concert (from a few hours before
 //   doors until the reservation is released), so it is one tap away at the
 //   stand; plus a notification with the code when the concert starts;
+// - «Tu entrada», the ticket the fan saved, over the same concert window,
+//   plus a notification half an hour before doors;
 // - «Sube lo de anoche» after a concert you went to, until you close it
 //   (the morning-after notification is momentNudge.ts).
 
@@ -26,6 +30,12 @@ export const orderWindow = (order: Pick<MerchOrder, 'event' | 'expiresAt'>) => {
   const start = Date.parse(order.event.startsAt);
   const end = order.expiresAt ? Date.parse(order.expiresAt) : start + FALLBACK_AFTER_START_MS;
   return { start, from: start - SHOW_BEFORE_MS, to: end };
+};
+
+/** A saved ticket floats from a few hours before doors until 6 h after. */
+export const ticketIsLive = (event: Pick<TicketEvent, 'startsAt'>, now: number) => {
+  const start = Date.parse(event.startsAt);
+  return now >= start - SHOW_BEFORE_MS && now <= start + 6 * HOUR;
 };
 
 /** The code floats from a few hours before the concert until the reservation is released. */
@@ -49,6 +59,35 @@ const ConcertDock: React.FC = () => {
   const { hero, dismissPendingMoments } = useUserConcertHero();
   const [orders, setOrders] = useState<MerchOrder[]>([]);
   const [now, setNow] = useState(() => Date.now());
+  const [tickets, setTickets] = useState<TicketEvent[]>([]);
+  const [ticketFiles, setTicketFiles] = useState<TicketFile[] | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      setTickets([]);
+      return undefined;
+    }
+    let live = true;
+    ticketsService
+      .upcoming(user.id)
+      .then(list => {
+        if (!live) return;
+        setTickets(list);
+        list.forEach(event => {
+          void scheduleOpenNotification({
+            key: `ticket:${event.id}`,
+            title: 'Tu entrada, a mano',
+            body: event.name,
+            at: new Date(Date.parse(event.startsAt) - NOTIFY_BEFORE_MS),
+            path: `/event/${event.id}`,
+          }).catch(() => undefined);
+        });
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [user, resumeTick]);
 
   useEffect(() => {
     if (!user) {
@@ -90,12 +129,20 @@ const ConcertDock: React.FC = () => {
   if (hiddenOn(pathname)) return null;
 
   const liveOrder = orders.find(order => isLive(order, now));
+  const liveTicket = tickets.find(event => ticketIsLive(event, now));
+  const openTicket = async (event: TicketEvent) => {
+    if (!user) return;
+    const files = await ticketsService.list(user.id, event.id).catch(() => []);
+    if (files.length) setTicketFiles(files);
+    else navigate(`/event/${event.id}`);
+  };
   // On Inicio the big hero already asks for last night's videos.
   const pending = hero.kind === 'just_attended' && pathname !== '/tabs/events' ? hero.event : null;
 
-  if (!liveOrder && !pending) return null;
+  if (!liveOrder && !pending && !liveTicket) return null;
 
   return (
+    <>
     <div className="pointer-events-none fixed inset-x-0 bottom-[calc(84px+env(safe-area-inset-bottom,0px))] z-40 flex flex-col items-center gap-2 px-4">
       {liveOrder ? (
         <button type="button" onClick={() => navigate(`/pedidos/${liveOrder.id}`)} className={pill} aria-label={`Código de tu merch: ${liveOrder.pickupCode}`}>
@@ -105,6 +152,18 @@ const ConcertDock: React.FC = () => {
           <span className="min-w-0 flex-1">
             <span className="block font-mono text-[17px] font-bold tracking-[0.18em] text-app-ink">{liveOrder.pickupCode}</span>
             <span className="block truncate text-[12px] text-white/60">{liveOrder.pickupPoint}</span>
+          </span>
+        </button>
+      ) : null}
+
+      {liveTicket ? (
+        <button type="button" onClick={() => void openTicket(liveTicket)} className={pill} aria-label={`Tu entrada de ${liveTicket.name}`}>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-app-accent text-[#14151a]">
+            <IconTicket size={20} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-bold text-app-ink">Tu entrada</span>
+            <span className="block truncate text-[12px] text-white/60">{liveTicket.name}</span>
           </span>
         </button>
       ) : null}
@@ -135,6 +194,8 @@ const ConcertDock: React.FC = () => {
         </div>
       ) : null}
     </div>
+    <TicketViewer files={ticketFiles || []} isOpen={ticketFiles !== null} onClose={() => setTicketFiles(null)} />
+    </>
   );
 };
 

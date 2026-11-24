@@ -19,13 +19,13 @@ import { useFirstContent } from '../lib/perfTiming';
 import { fetchEventCards } from '../data/eventQueries';
 import { fetchPostCards } from '../data/postQueries';
 import ConcertHistorySection from '../features/agenda/ConcertHistorySection';
-import { useConcertHistory } from '../features/agenda/useConcertHistory';
 import { readStoredCity } from '../features/agenda/agendaPrefs';
 import type { EventListItem } from '../features/events/types';
 import ConcertPosters from '../features/profile/ConcertPosters';
 import FollowingGrid from '../features/profile/FollowingGrid';
 import MomentsByConcert from '../features/profile/MomentsByConcert';
 import PassportHeader from '../features/profile/PassportHeader';
+import TicketSlot from '../features/tickets/TicketSlot';
 import ProfileMerchSection from '../features/profile/ProfileMerchSection';
 import { UPCOMING_GRACE_MS, type ProfileMoment } from '../features/profile/profileLayout';
 
@@ -303,10 +303,6 @@ const Profile: React.FC = () => {
       .sort((left, right) => left.starts_at.localeCompare(right.starts_at))[0] || null;
   })();
 
-  // The passport numbers up top (concerts, venues, artists): the same history
-  // the «Conciertos» tab ranks.
-  const { history } = useConcertHistory(!isManagementMode && user ? user.id : null);
-
   // Opened from «Lo que sigues · Gestionar»: bring the following wall into view.
   const tabsRef = useRef<HTMLDivElement | null>(null);
   const openedOnFollowing = useRef(selectedTab === 'following');
@@ -408,13 +404,8 @@ const Profile: React.FC = () => {
           subline={subline || 'Añade tu ciudad en ajustes'}
           avatarUrl={avatarUrl}
           entityKind={isManagementMode && activeEntity ? (activeEntity.type === 'artist' ? 'artist' : 'venue') : null}
-          stats={isManagementMode ? null : { concerts: history.concerts, venues: history.venues.length, artists: history.artists.length }}
           links={isManagementMode ? [] : quickLinks}
           onSettings={() => navigate('/ajustes')}
-          onStatSelect={() => {
-            selectTab('concerts');
-            tabsRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
-          }}
         />
 
         {isManagementMode && managedEntities.length > 1 && (
@@ -482,6 +473,9 @@ const Profile: React.FC = () => {
               <IconChevronRight size={18} className="shrink-0 text-white/40" />
             </span>
           </button>
+        ) : null}
+        {!isManagementMode && nextConcert ? (
+          <TicketSlot className="mx-4 mt-2" eventId={nextConcert.id} eventName={nextConcert.name} />
         ) : null}
 
         {!isManagementMode && user ? <ProfileMerchSection userId={user.id} city={area} goingEventIds={upcomingGoingIds} /> : null}

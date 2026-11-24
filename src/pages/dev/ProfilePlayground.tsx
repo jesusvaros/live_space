@@ -2,6 +2,7 @@ import React from 'react';
 import { IconCalendar, IconHeart } from '../../components/icons';
 import ConcertPosters from '../../features/profile/ConcertPosters';
 import MomentsByConcert from '../../features/profile/MomentsByConcert';
+import { TicketStub } from '../../features/tickets/TicketSlot';
 import PassportHeader from '../../features/profile/PassportHeader';
 import type { ProfileMoment } from '../../features/profile/profileLayout';
 import type { EventListItem } from '../../features/events/types';
@@ -70,13 +71,16 @@ const ProfilePlayground: React.FC = () => {
       <PassportHeader
         name="Jesús"
         subline="Madrid · @jesus"
-        stats={{ concerts: 12, venues: 7, artists: 15 }}
         links={[
           { key: 'saved', label: 'Guardadas', icon: <IconHeart size={16} />, onSelect: () => undefined },
           { key: 'agenda', label: 'Tu agenda', icon: <IconCalendar size={16} />, onSelect: () => undefined },
         ]}
         onSettings={() => undefined}
       />
+      <div className="mx-4 mt-4 flex flex-col gap-2">
+        <TicketStub has={false} eventName="Demo" onMain={() => undefined} onAdd={() => undefined} />
+        <TicketStub has eventName="Demo" onMain={() => undefined} onAdd={() => undefined} />
+      </div>
       <div className="mt-6">
         {tab === 'conciertos' ? (
           <ConcertPosters events={CONCERTS} badgeFor={event => (event.id === 'c4' ? 'Voy' : null)} />
