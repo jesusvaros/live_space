@@ -40,7 +40,7 @@ test('the landing footer links the legal pages', async ({ page }) => {
 test('sign-in links the terms and the privacy policy, which open inside the app', async ({ page }) => {
   await page.goto('/welcome');
   await expect(page.getByText('Al continuar aceptas las')).toBeVisible();
-  await page.getByRole('link', { name: 'Política de privacidad' }).click();
+  await page.getByRole('link', { name: 'Privacidad', exact: true }).click();
   await expect(page).toHaveURL(/\/legal\/privacidad$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Política de privacidad' })).toBeVisible();
   await page.getByRole('link', { name: 'Borrar tu cuenta' }).first().click();

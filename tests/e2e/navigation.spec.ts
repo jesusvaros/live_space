@@ -15,7 +15,8 @@ test('first open without an account shows the onboarding, which ends in the acco
     await page.getByRole('button', { name: /Siguiente|Empezar/ }).click();
   }
   await expect(page.getByRole('heading', { name: /Crea tu cuenta/ })).toBeVisible();
-  await expect(page.getByRole('tab', { name: 'Crear cuenta' })).toHaveAttribute('aria-selected', 'true');
+  // No form to fill in: Google/Apple or «Continuar» with email.
+  await expect(page.getByRole('button', { name: /^Continuar/ }).first()).toBeVisible();
 
   await page.getByRole('button', { name: 'Ahora no' }).click();
   await expect(page).toHaveURL(/\/tabs\/events$/);
@@ -36,7 +37,11 @@ test('shows the shared sign-in experience', async ({ page }) => {
   await page.goto('/welcome');
 
   await expect(page.getByRole('heading', { name: /Lo grabaste/ })).toBeVisible();
-  await expect(page.getByRole('tab', { name: 'Ya tengo cuenta' })).toHaveAttribute('aria-selected', 'true');
+  // One email box that signs in or creates the account (behind «Continuar
+  // con email» when Google/Apple are available).
+  const openEmail = page.getByRole('button', { name: 'Continuar con email' });
+  await expect(openEmail.or(page.getByLabel('Email'))).toBeVisible();
+  if (await openEmail.isVisible()) await openEmail.click();
   await expect(page.getByLabel('Email')).toBeVisible();
   await expect(page.getByLabel('Contraseña')).toBeVisible();
 });
