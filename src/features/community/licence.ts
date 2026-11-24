@@ -1,4 +1,6 @@
+import { Capacitor } from '@capacitor/core';
 import type { MomentLicence } from './api';
+import { saveFirstReachable, saveMediaFiles } from './saveMedia';
 
 export const LICENCE_TERMS_PATH = '/legal/licencia-momentos';
 
@@ -78,18 +80,6 @@ export const cloudinaryDownloadUrl = (
   return `${match[1]}${steps.join('/')}/${match[2]}`;
 };
 
-const saveBlob = (blob: Blob, fileName: string) => {
-  const objectUrl = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = objectUrl;
-  anchor.download = fileName;
-  anchor.rel = 'noopener';
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000);
-};
-
 /**
  * Downloads a reusable moment named with its credit. Tries the credited
  * overlay first, then the untouched file (an account with strict
@@ -107,16 +97,20 @@ export const downloadMoment = async (licence: MomentLicence, options: { overlay:
     licence.media_url,
   ].filter((url): url is string => Boolean(url));
 
-  for (const url of [...new Set(candidates)]) {
-    try {
-      const response = await fetch(url, { mode: 'cors' });
-      if (!response.ok) continue;
-      saveBlob(await response.blob(), fileName);
-      return fileName;
-    } catch {
-      // try the next candidate
+  // App: the native download needs no CORS and ends in the share sheet.
+  if (Capacitor.isNativePlatform()) {
+    for (const url of [...new Set(candidates)]) {
+      try {
+        await saveMediaFiles([{ url, fileName }]);
+        return fileName;
+      } catch {
+        // e.g. an overlay the account refuses: try the next one
+      }
     }
+    throw new Error('No se pudo descargar.');
   }
-  window.open(candidates.at(-2) ?? candidates[0], '_blank', 'noopener');
+  if (!(await saveFirstReachable(candidates, fileName))) {
+    window.open(candidates.at(-2) ?? candidates[0], '_blank', 'noopener');
+  }
   return fileName;
 };

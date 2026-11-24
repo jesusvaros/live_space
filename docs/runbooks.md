@@ -98,6 +98,31 @@ descargarse entero, que no lleva GPS (`exiftool`), y en Supabase el
 `media_assets` (`storage_provider = 'r2'`, `pending_review`) y el post. Un PUT con
 otro tamaño debe fallar con 403 y una reserva ajena debe dar 404.
 
+## Descargar vídeos de R2 (gestores)
+
+Los gestores descargan momentos (con licencia) desde Gestión → concierto →
+«Momentos» y desde el detalle de cada momento.
+
+- **App (Android/iOS):** el archivo se descarga de forma nativa a la caché y se
+  abre la hoja de compartir del sistema («Guardar vídeo», «Guardar en Fotos»).
+  No depende del CORS del bucket.
+- **Web:** se descarga con `fetch`, así que el bucket tiene que permitir el
+  origen de la web. Comprobado el 24/11/2026: la regla CORS del bucket ya
+  incluye `https://localhost`, `capacitor://localhost` y
+  `http://localhost:5173`, pero **no** el dominio de la web pública
+  (`https://livespace-dusky.vercel.app` ni el dominio propio cuando exista).
+  Mientras falte, la web abre el vídeo en otra pestaña para guardarlo a mano.
+
+**Paso humano:** Cloudflare → R2 → bucket → Settings → CORS policy → añadir a
+`AllowedOrigins` el origen de la web (y el dominio propio cuando se compre):
+
+```json
+"AllowedOrigins": ["https://livespace-dusky.vercel.app", "https://localhost", "capacitor://localhost", "http://localhost:5173"]
+```
+
+Comprobar: `curl -s -o /dev/null -D - -H "Origin: https://livespace-dusky.vercel.app" -r 0-10 <url de un vídeo>`
+debe devolver `Access-Control-Allow-Origin`.
+
 ## Backup semanal
 
 El workflow `backup-weekly.yml` queda inactivo de facto mientras no existan los
