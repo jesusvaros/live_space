@@ -12,11 +12,12 @@ import { artistService } from '../services/artist.service';
 import { venueService } from '../services/venue.service';
 import { supabase } from '../lib/supabase';
 import ClaimsQueue from '../components/admin/ClaimsQueue';
+import ClaimLinks from '../components/admin/ClaimLinks';
 import ConcertProposals from '../components/pro/ConcertProposals';
 import SetlistProposalsReview from '../features/setlist/SetlistProposalsReview';
 import AdminFestivalForm from '../components/admin/AdminFestivalForm';
 
-type AdminTab = 'claims' | 'concerts' | 'setlists' | 'artist' | 'venue' | 'festival' | 'grant' | 'access';
+type AdminTab = 'claims' | 'links' | 'concerts' | 'setlists' | 'artist' | 'venue' | 'festival' | 'grant' | 'access';
 
 type AccessRow = {
   profile_id: string;
@@ -39,6 +40,7 @@ type AccessRow = {
 
 const tabs: Array<{ key: AdminTab; label: string }> = [
   { key: 'claims', label: 'Solicitudes' },
+  { key: 'links', label: 'Enlaces' },
   { key: 'concerts', label: 'Conciertos' },
   { key: 'setlists', label: 'Setlists' },
   { key: 'artist', label: 'Crear artista' },
@@ -402,6 +404,7 @@ const Admin: React.FC = () => {
         </div>
 
         {activeTab === 'claims' && <ClaimsQueue />}
+        {activeTab === 'links' && <ClaimLinks />}
         {activeTab === 'concerts' && <ConcertProposals mode="moderation" />}
         {activeTab === 'setlists' && <SetlistProposalsReview mode="moderation" />}
         {activeTab === 'festival' && <AdminFestivalForm />}

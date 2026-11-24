@@ -50,6 +50,7 @@ const MerchPlayground = import.meta.env.DEV ? page(() => import('./pages/dev/Mer
 const ProfilePlayground = import.meta.env.DEV ? page(() => import('./pages/dev/ProfilePlayground'), false) : null;
 const ProPlayground = import.meta.env.DEV ? page(() => import('./pages/dev/ProPlayground'), false) : null;
 const FriendsPlayground = import.meta.env.DEV ? page(() => import('./pages/dev/FriendsPlayground'), false) : null;
+const TeamPlayground = import.meta.env.DEV ? page(() => import('./pages/dev/TeamPlayground'), false) : null;
 const MerchOrder = page(() => import('./pages/MerchOrder'), false);
 const MerchOrders = page(() => import('./pages/MerchOrders'), false);
 const SavedPhotos = page(() => import('./pages/SavedPhotos'), false);
@@ -81,6 +82,9 @@ const Management = page(() => import('./pages/Management'), false);
 const FestivalDetail = page(() => import('./pages/FestivalDetail'));
 const FestivalTimetable = page(() => import('./pages/FestivalTimetable'), false);
 const EventQr = page(() => import('./pages/EventQr'), false);
+const GestionPerfil = page(() => import('./pages/GestionPerfil'), false);
+const GestionEquipo = page(() => import('./pages/GestionEquipo'), false);
+const JoinByLink = page(() => import('./pages/JoinByLink'), false);
 const AgendaSetup = page(() => import('./pages/AgendaSetup'));
 
 // The screen the app opens on, by path: its chunk loads with the cache.
@@ -304,8 +308,12 @@ const AppRoutes = () => {
           <Route path="/upload" element={<UploadRedirect />} />
           {/* Morning-after nudge: clips found in the gallery, ready to publish */}
           <Route path="/subir/sugerido" element={<RequireAuth>{deferredPage(<SuggestedUpload />)}</RequireAuth>} />
+          <Route path="/reclamar/enlace/:token" element={<RequireAuth>{deferredPage(<JoinByLink mode="claim" />)}</RequireAuth>} />
           <Route path="/reclamar/:type/:id" element={<RequireAuth>{deferredPage(<ClaimProfile />)}</RequireAuth>} />
+          <Route path="/equipo/unirse/:token" element={<RequireAuth>{deferredPage(<JoinByLink mode="team" />)}</RequireAuth>} />
           <Route path="/gestion" element={<RequireAuth>{deferredPage(<Management />)}</RequireAuth>} />
+          <Route path="/gestion/perfil" element={<RequireAuth>{deferredPage(<GestionPerfil />)}</RequireAuth>} />
+          <Route path="/gestion/equipo" element={<RequireAuth>{deferredPage(<GestionEquipo />)}</RequireAuth>} />
           <Route path="/gestion/festival/:id" element={<RequireAuth>{deferredPage(<FestivalTimetable />)}</RequireAuth>} />
           <Route path="/gestion/evento/:id/qr" element={<RequireAuth>{deferredPage(<EventQr />)}</RequireAuth>} />
           <Route path="/empezar" element={<RequireAuth>{deferredPage(<AgendaSetup />)}</RequireAuth>} />
@@ -316,6 +324,7 @@ const AppRoutes = () => {
           {ProfilePlayground ? <Route path="/dev/perfil" element={deferredPage(<ProfilePlayground />)} /> : null}
           {ProPlayground ? <Route path="/dev/pro" element={deferredPage(<ProPlayground />)} /> : null}
           {FriendsPlayground ? <Route path="/dev/amigos" element={deferredPage(<FriendsPlayground />)} /> : null}
+          {TeamPlayground ? <Route path="/dev/gestion" element={deferredPage(<TeamPlayground />)} /> : null}
           <Route
             path="/tabs"
             element={(
