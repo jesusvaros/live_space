@@ -46,12 +46,12 @@ interface AuthContextType extends AuthState {
   signUp: (
     email: string,
     password: string,
-    data: {
+    data?: {
       username?: string;
       displayName?: string;
       primaryCity?: string;
     }
-  ) => Promise<{ error: AuthError | null }>;
+  ) => Promise<{ error: AuthError | null; hasSession: boolean; existingAccount: boolean }>;
   sendPasswordReset: (email: string) => Promise<{ error: AuthError | null }>;
   updatePassword: (password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
@@ -290,9 +290,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       username?: string;
       displayName?: string;
       primaryCity?: string;
-    }
+    } = {}
   ) => {
-    const { error } = await supabase.auth.signUp({
+    const { data: result, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -304,7 +304,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
     });
-    return { error };
+    // With email confirmation on, Supabase answers an already used email with
+    // a user that has no identities (and sends nothing) instead of an error.
+    const existingAccount = Boolean(result?.user && Array.isArray(result.user.identities) && result.user.identities.length === 0);
+    return { error, hasSession: Boolean(result?.session), existingAccount };
   };
 
   const sendPasswordReset = async (email: string) => {

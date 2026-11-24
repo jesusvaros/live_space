@@ -1067,9 +1067,7 @@ const Upload: React.FC = () => {
           </p>
           <div className="mt-5">
             <AuthPanel
-              defaultMode="signup"
-              minimal
-              confirmationNotice="Te hemos enviado un email. Pulsa el enlace en este móvil y publicamos solos lo que has elegido. Si lo abres en otro dispositivo, vuelve aquí y pulsa «Entrar»."
+              confirmationNotice="Te hemos enviado un email. Pulsa el enlace en este móvil y publicamos solos lo que has elegido. Si lo abres en otro dispositivo, vuelve aquí y pulsa «Continuar»."
               providerReturnPath={`${location.pathname}${location.search}`}
               beforeProviderRedirect={() =>
                 savePendingSelection({

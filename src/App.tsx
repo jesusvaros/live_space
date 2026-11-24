@@ -17,6 +17,7 @@ import { useAuth } from './contexts/AuthContext';
 import { useWorkspace } from './contexts/WorkspaceContext';
 import AppBackHandler from './app/AppBackHandler';
 import AuthDeepLinks from './app/AuthDeepLinks';
+import AuthSheetHost from './auth/AuthSheetHost';
 import { hasSeenOnboarding } from './app/onboarding';
 import { clearReturnTo, readReturnTo, rememberReturnTo, readLeavingTo } from './auth/returnTo';
 import MomentNudges from './features/moments/MomentNudges';
@@ -275,6 +276,7 @@ const AppRoutes = () => {
     <>
       <AppBackHandler mainTabPath={mainTabHref} />
       <AuthDeepLinks />
+      <AuthSheetHost />
       <FirstRunGate />
       <MomentNudges />
       <ConcertAlertsListener />

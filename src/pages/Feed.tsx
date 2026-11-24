@@ -1,3 +1,4 @@
+import { useReelSignInNudge } from '../auth/reelNudge';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { readStoredCity } from '../features/agenda/agendaPrefs';
@@ -75,10 +76,13 @@ type SlideProps = {
   liked: boolean;
   onLike: () => void;
   onShare: () => void;
+  onSeen?: () => void;
 };
 
 // One moment per screen. Videos play only while on screen.
-const MomentSlide: React.FC<SlideProps> = ({ post, songNumber, group, liked, onLike, onShare }) => {
+const MomentSlide: React.FC<SlideProps> = ({ post, songNumber, group, liked, onLike, onShare, onSeen }) => {
+  const onSeenRef = useRef(onSeen);
+  onSeenRef.current = onSeen;
   const ref = useRef<HTMLElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const event = post.events || null;
@@ -88,12 +92,14 @@ const MomentSlide: React.FC<SlideProps> = ({ post, songNumber, group, liked, onL
 
   useEffect(() => {
     const node = ref.current;
+    if (!node || typeof IntersectionObserver === 'undefined') return;
     const video = videoRef.current;
-    if (!node || !video || typeof IntersectionObserver === 'undefined') return;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) video.play().catch(() => {});
-        else video.pause();
+        if (entry.isIntersecting) {
+          onSeenRef.current?.();
+          video?.play().catch(() => {});
+        } else video?.pause();
       },
       { threshold: 0.6 },
     );
@@ -185,6 +191,8 @@ const Feed: React.FC = () => {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const resumeTick = useAppResume();
+  // Without an account, the account sheet comes up after a few moments.
+  const noteSeen = useReelSignInNudge();
   // The city chosen on Inicio (agenda), then the profile's; no default city:
   // without one the feed shows everything instead of somebody else's city.
   const city = readStoredCity() || profile?.primary_city || null;
@@ -498,6 +506,7 @@ const Feed: React.FC = () => {
               liked={likedIds.has(post.id)}
               onLike={() => toggleLike(post.id)}
               onShare={() => setShareId(post.id)}
+              onSeen={() => noteSeen(post.id)}
             />
           ))}
           {hasMore ? (
