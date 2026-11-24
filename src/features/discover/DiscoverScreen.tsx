@@ -23,7 +23,7 @@ type RouteState = { initialTab?: DiscoverTabKey } | undefined;
 const SHELVES_ON_HOME = 3;
 const SHELF_PREVIEW = 6;
 // Styles in sight as pills; the rest behind «Estilos ▾».
-const QUICK_STYLES = 3;
+const QUICK_STYLES = 2;
 
 const DiscoverScreen: React.FC = () => {
   const navigate = useNavigate();
