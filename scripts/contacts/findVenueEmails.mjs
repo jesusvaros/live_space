@@ -22,7 +22,7 @@ if (!url || !key) {
 
 const UA = 'LiveSpaceContactFinder/1.0 (contacto manual con salas y artistas)';
 const EMAIL = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
-const JUNK = /(\.(png|jpe?g|gif|webp|svg)$)|example\.|exemple@|sentry|wixpress|godaddy|dominio\.com|domain\.com|correo\.com|email\.com|@2x|u00|curriculum|cv\+|talentclue|objetosperdidos|accessibilitat|accesibilidad|financiero|rrhh|jobs?@|empleo/i;
+const JUNK = /(\.(png|jpe?g|gif|webp|svg)$)|example\.|exemple@|sentry|wixpress|godaddy|dominio\.com|domain\.com|correo\.com|email\.com|@2x|u00|curriculum|cv\+|talentclue|objetosperdidos|accessibilitat|accesibilidad|financiero|rrhh|jobs?@|empleo|@mysite\.com|@company\.com|lorem@|ejemplo@|@linktr\.ee|tienda|shop|merch|customerservice|support@|licensing@|webmaster@|anwalt/i;
 // Best channel first: programming/booking, then general info.
 const RANK = [/programaci|booking|contrataci|management|manager/i, /^(info|hola|contact|contacto|informacion|sala)@/i];
 const rank = email => {
