@@ -8,9 +8,13 @@ import EventMomentsManager, { CreditBox } from '../features/community/EventMomen
 import { creditLine, downloadableFiles, fetchEventMoments, setMomentHidden, type ManagedMoment } from '../features/community/eventMoments';
 import { saveMediaFiles } from '../features/community/saveMedia';
 import { isForbidden } from '../features/community/api';
+import { useWorkspace } from '../contexts/WorkspaceContext';
+import { isProActive } from '../features/pro/planRules';
+import { useSubjectPlans } from '../features/pro/useSubjectPlan';
 
 // /gestion/evento/:id/momentos — what the audience filmed at one concert,
-// for its artist, venue or festival: hide and download (with licence).
+// for its artist, venue or festival: hide (free) and download (Pro, with the
+// fan's licence).
 const GestionMomentos: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -19,6 +23,11 @@ const GestionMomentos: React.FC = () => {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [credit, setCredit] = useState('');
+  // Downloads are a Pro perk (same rule as a moment's detail); hiding is free.
+  const { managedEntities } = useWorkspace();
+  const managedIds = managedEntities.filter(entity => entity.type === 'artist' || entity.type === 'venue').map(entity => entity.subject_id);
+  const { plans } = useSubjectPlans(managedIds);
+  const canDownload = [...plans.values()].some(plan => isProActive(plan));
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -95,7 +104,7 @@ const GestionMomentos: React.FC = () => {
           <Spinner />
         </div>
       ) : (
-        <EventMomentsManager moments={moments} busy={busy} onSetHidden={setHidden} onDownload={download} />
+        <EventMomentsManager moments={moments} busy={busy} canDownload={canDownload} onSetHidden={setHidden} onDownload={download} />
       )}
     </div>
   );

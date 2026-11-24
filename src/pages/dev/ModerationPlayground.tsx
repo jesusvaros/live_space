@@ -6,7 +6,7 @@ import { ReportsQueueView } from '../../components/admin/ReportsQueue';
 
 // DEV ONLY (mounted under import.meta.env.DEV in App.tsx): the concert's
 // moments for its managers and the admin reports queue, with invented data.
-// ?vista=momentos | reportes
+// ?vista=momentos | reportes · &plan=gratis shows the Pro lock on downloads
 
 const PHOTOS = [
   '/fotos/multitud-escenario.jpg',
@@ -96,6 +96,7 @@ const ModerationPlayground: React.FC = () => {
           ) : null}
           <EventMomentsManager
             moments={moments}
+            canDownload={new URLSearchParams(window.location.search).get('plan') !== 'gratis'}
             onSetHidden={(ids, hidden) =>
               setMoments(rows => rows.map(row => (ids.includes(row.post_id) ? { ...row, hidden } : row)))
             }

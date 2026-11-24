@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { IconCheckCircle, IconCopy, IconDownload, IconEye, IconEyeOff, IconFlag, IconLock, IconPlay } from '../../components/icons';
 import { Modal } from '../../components/ui/AppPrimitives';
+import ProLockChip from '../pro/ProLockChip';
 import { creditLine, type ManagedMoment } from './eventMoments';
 
 // The fans' moments of one concert, for its artist, venue or festival.
@@ -13,6 +14,8 @@ type Filter = 'all' | 'hidden';
 type EventMomentsManagerProps = {
   moments: ManagedMoment[];
   busy?: boolean;
+  /** Downloading is a Pro perk; hiding is always free. */
+  canDownload?: boolean;
   onSetHidden: (postIds: string[], hidden: boolean) => Promise<void> | void;
   onDownload: (moments: ManagedMoment[]) => Promise<void> | void;
 };
@@ -97,7 +100,7 @@ const CreditBox: React.FC<{ line: string }> = ({ line }) => {
   );
 };
 
-const EventMomentsManager: React.FC<EventMomentsManagerProps> = ({ moments, busy = false, onSetHidden, onDownload }) => {
+const EventMomentsManager: React.FC<EventMomentsManagerProps> = ({ moments, busy = false, canDownload = true, onSetHidden, onDownload }) => {
   const [filter, setFilter] = useState<Filter>('all');
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -196,6 +199,7 @@ const EventMomentsManager: React.FC<EventMomentsManagerProps> = ({ moments, busy
               {chosenAllHidden ? <IconEye size={16} /> : <IconEyeOff size={16} />}
               {chosenAllHidden ? 'Mostrar' : 'Ocultar'}
             </button>
+            {canDownload ? (
             <button
               type="button"
               disabled={busy || chosenDownloadable.length === 0}
@@ -208,8 +212,11 @@ const EventMomentsManager: React.FC<EventMomentsManagerProps> = ({ moments, busy
               <IconDownload size={16} />
               {chosenDownloadable.length || ''}
             </button>
+            ) : (
+              <ProLockChip label="Descargar" className="mr-1 min-h-11 px-3.5" />
+            )}
           </div>
-        ) : allDownloadable.length > 0 ? (
+        ) : allDownloadable.length > 0 && canDownload ? (
           <button
             type="button"
             disabled={busy}
@@ -252,6 +259,7 @@ const EventMomentsManager: React.FC<EventMomentsManagerProps> = ({ moments, busy
                 {open.hidden ? <IconEye size={17} /> : <IconEyeOff size={17} />}
                 {open.hidden ? 'Mostrar' : 'Ocultar'}
               </button>
+              {canDownload ? (
               <button
                 type="button"
                 disabled={busy || !open.allow_reuse || !open.media_url}
@@ -261,8 +269,13 @@ const EventMomentsManager: React.FC<EventMomentsManagerProps> = ({ moments, busy
                 {open.allow_reuse ? <IconDownload size={17} /> : <IconLock size={16} />}
                 {open.allow_reuse ? 'Descargar' : 'Sin permiso'}
               </button>
+              ) : (
+                <span className="flex min-h-12 items-center justify-center rounded-2xl border border-dashed border-white/25">
+                  <ProLockChip label="Descargar" />
+                </span>
+              )}
             </div>
-            {open.allow_reuse ? (
+            {open.allow_reuse && canDownload ? (
               <div className="mt-3">
                 <CreditBox line={creditLine([open])} />
               </div>
