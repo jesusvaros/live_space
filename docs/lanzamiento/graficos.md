@@ -1,6 +1,6 @@
 # Gráficos de Google Play
 
-Imágenes de la ficha de Live Space en Play, en [`graficos/`](./graficos/). Todas son PNG sin transparencia. Se generan con plantillas HTML sobre capturas reales de la app (Playwright, 412×860 a 3×), con la paleta y la tipografía de la app (`#0D0E12`, `#FF5B2E`, Space Grotesk).
+Imágenes de la ficha de Live Space en Play, en la carpeta `docs/lanzamiento/graficos/`. Todas son PNG sin transparencia. Se generan con plantillas HTML sobre capturas reales de la app (Playwright, 412×860 a 3×), con la paleta y la tipografía de la app (`#0D0E12`, `#FF5B2E`, Space Grotesk).
 
 | Archivo | Tamaño | Para qué |
 | --- | --- | --- |
