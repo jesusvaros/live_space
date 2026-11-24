@@ -26,6 +26,7 @@ export const mapProfile = (row: UnknownRow, subjectId?: string | null): Profile 
       ? (row.external_links as Record<string, string>)
       : {},
   is_verified: row.app_role === 'admin' || row.app_role === 'moderator',
+  plans_visibility: row.plans_visibility === 'nadie' ? 'nadie' : 'amigos',
   created_at: String(row.created_at ?? ''),
   updated_at: String(row.updated_at ?? ''),
 });

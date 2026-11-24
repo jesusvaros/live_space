@@ -17,6 +17,7 @@ import { useNearbyEvents } from '../features/events/hooks/useNearbyEvents';
 import { useUserConcertHero } from '../features/events/hooks/useUserConcertHero';
 import TimelineHeroSection from '../features/events/sections/TimelineHeroSection';
 import GoingSection from '../features/events/sections/GoingSection';
+import FriendsSection from '../features/friends/FriendsSection';
 import ScanConcertFab from '../features/events/ScanConcertFab';
 import WrappedCard from '../features/wrapped/WrappedCard';
 import { HomeCustomizer, HomeSectionKey, useHomeLayout } from '../features/events/homeLayout';
@@ -177,6 +178,7 @@ const Events: React.FC = () => {
 
   const sections: Record<HomeSectionKey, React.ReactNode> = {
     going: <GoingSection userId={user?.id ?? null} />,
+    friends: <FriendsSection userId={user?.id ?? null} />,
     forYou: (
       <ForYouSection
         events={events}

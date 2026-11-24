@@ -20,6 +20,7 @@ import { EventStatsCard, VenueFeedbackPrompt } from '../features/community';
 import { festivalService } from '../services/festival.service';
 import EventMerchSection from '../features/merch/EventMerchSection';
 import TicketSlot from '../features/tickets/TicketSlot';
+import FriendsGoingRow from '../features/friends/FriendsGoingRow';
 import { useEventMerchStands } from '../features/merch/useEventMerchStands';
 import AttendanceSuggestion from '../features/events/AttendanceSuggestion';
 import EventUploadButton from '../features/events/EventUploadButton';
@@ -691,6 +692,7 @@ const EventDetail: React.FC = () => {
                   </p>
                 </div>
 
+                {!isPastEvent ? <FriendsGoingRow eventId={event.id} /> : null}
                 {!isPastEvent ? <TicketSlot eventId={event.id} eventName={heroTitle || event.name} /> : null}
 
                 <EventMerchSection

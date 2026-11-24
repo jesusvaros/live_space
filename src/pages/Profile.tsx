@@ -11,7 +11,7 @@ import { eventCoverSources } from '../lib/eventCover';
 import { NAV_CLEARANCE } from '../components/BottomNav';
 import { useFollowedSubjects } from '../hooks/useFollowedSubjects';
 import { useFollowedEntities } from '../hooks/useFollowedEntities';
-import { IconCalendar, IconChevronRight, IconHeart } from '../components/icons';
+import { IconCalendar, IconChevronRight, IconHeart, IconUser } from '../components/icons';
 import { useAppResume } from '../shared/hooks/useAppResume';
 import { fetchQuery, getQuerySnapshot, serializeQueryKey, type QueryPersistOptions } from '../lib/queryClient';
 import { PERSIST_MAX_AGE } from '../lib/persistentCache';
@@ -394,6 +394,7 @@ const Profile: React.FC = () => {
       icon: <IconCalendar size={16} />,
       onSelect: () => navigate('/empezar', { state: { returnTo: '/tabs/profile' } }),
     },
+    { key: 'friends', label: 'Amigos', icon: <IconUser size={16} />, onSelect: () => navigate('/amigos') },
   ];
 
   return (

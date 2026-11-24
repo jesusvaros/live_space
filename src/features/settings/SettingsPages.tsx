@@ -13,8 +13,10 @@ import {
   IconLogout,
   IconShield,
   IconTrash,
+  IconUser as IconUsers,
 } from '../../components/icons';
 import { useAuth } from '../../contexts/AuthContext';
+import { friendsService } from '../../services/friends.service';
 import { useWorkspace } from '../../contexts/WorkspaceContext';
 import type { ManagedEntity } from '../../lib/types';
 import { useBlockedUserIds } from '../blocks/useBlockedUsers';
@@ -128,6 +130,35 @@ const LOCATION_LABELS: Record<PermissionState, string> = {
   unknown: 'Se pide al usarla',
 };
 
+// «Tus planes»: friends (people you follow who follow you back) see the
+// concerts you mark «Voy», unless you switch it off.
+const PlansVisibilitySetting: React.FC = () => {
+  const { user, profile, refreshProfile } = useAuth();
+  const [shared, setShared] = useState(profile?.plans_visibility !== 'nadie');
+  useEffect(() => setShared(profile?.plans_visibility !== 'nadie'), [profile?.plans_visibility]);
+  if (!user) return null;
+  return (
+    <>
+      <SettingsGroup label="Amigos">
+        <SettingsItem icon={<IconUsers size={18} />} title="Tus planes">
+          <Switch
+            checked={shared}
+            label="Tus amigos ven a qué conciertos vas"
+            onChange={value => {
+              setShared(value);
+              friendsService
+                .setPlansVisibility(user.id, value ? 'amigos' : 'nadie')
+                .then(() => refreshProfile())
+                .catch(() => setShared(!value));
+            }}
+          />
+        </SettingsItem>
+      </SettingsGroup>
+      <SettingsHelp>Solo quien te sigue y a quien sigues ve los conciertos donde marcas «Voy».</SettingsHelp>
+    </>
+  );
+};
+
 export const PrivacyPage: React.FC = () => {
   const blocked = useBlockedUserIds();
   const { items: hidden } = useHiddenOnMap();
@@ -156,6 +187,8 @@ export const PrivacyPage: React.FC = () => {
       <AnalyticsSharingSetting
         privacyLink={<Link to={legalAppPath('privacidad')} className="text-app-accent">Privacidad</Link>}
       />
+
+      <PlansVisibilitySetting />
 
       <SettingsGroup label="Personas y mapa">
         <SettingsRow to="/ajustes/bloqueados" icon={<IconBlock size={18} />} title="Usuarios bloqueados" value={String(blocked.size)} />
