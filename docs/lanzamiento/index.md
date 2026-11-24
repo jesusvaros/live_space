@@ -12,3 +12,4 @@ Planes para empezar a vender Live Space a salas y artistas y publicarlo en Googl
 | [5 · Onboarding y contenido](./5-onboarding-contenido.md) | Primer uso y cómo llenar la app |
 | [6 · Modelo de negocio](./6-modelo-negocio.md) | Qué se cobra y a quién |
 | [7 · Google Play](./7-google-play.md) | Respuestas de los formularios y ficha |
+| [Gráficos de Play](./graficos.md) | Icono, gráfico destacado y capturas de la ficha |
