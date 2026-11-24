@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import FilterPills, { FilterSheet, type FilterPill } from '../ui/FilterPills';
-import { IconFilters, IconMap } from '../icons';
+import { IconFilters } from '../icons';
 import { MAP_WHEN_LABELS, toDateInputValue, type MapArtistFilter, type MapWhen } from '../../hooks/useMapFilters';
 
 type MapFilterBarProps = {
@@ -48,6 +48,7 @@ const dayLabel = (day: string) =>
 
 // Quick dates always in sight (Hoy, Este finde); «Fecha ▾» opens every range
 // plus a calendar, «Ciudad ▾» the cities. What is picked slides to the start.
+// No icons on the row so all four fit a phone without scrolling.
 const QUICK_WHEN: MapWhen[] = ['today', 'weekend'];
 const DEFAULT_WHEN: MapWhen = 'next30';
 
@@ -82,7 +83,6 @@ const MapFilterBar: React.FC<MapFilterBarProps> = ({
     {
       key: 'when:more',
       label: detailedWhen ? whenLabel(when, day) : 'Fecha',
-      icon: <CalendarGlyph />,
       selected: detailedWhen,
       opens: true,
       onPress: () => setSheet('when'),
@@ -93,7 +93,6 @@ const MapFilterBar: React.FC<MapFilterBarProps> = ({
           {
             key: 'city',
             label: city ?? 'Ciudad',
-            icon: <IconMap size={15} />,
             selected: Boolean(city),
             opens: true,
             onPress: () => setSheet('city'),
