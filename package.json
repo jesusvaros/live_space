@@ -40,6 +40,8 @@
     "media:optimize": "npm run scrape:build && node dist-scraper/scripts/optimizeVideos.js",
     "enrich:links": "npm run scrape:build && node dist-scraper/scripts/enrichArtistLinks.js",
     "enrich:genres": "npm run scrape:build && node dist-scraper/scripts/enrichGenres.js",
+    "profiles:readiness": "node scripts/profiles/readiness.mjs",
+    "profiles:drafts": "npm run scrape:build && node dist-scraper/scripts/draftArtistProfiles.js",
     "setlists:fallback": "npm run scrape:build && node dist-scraper/scripts/fillSetlists.js",
     "artists:cleanup": "npm run scrape:build && node dist-scraper/scripts/cleanupArtistNames.js",
     "venues:discover": "npm run scrape:build && node dist-scraper/scripts/discoverVenues.js",
