@@ -320,7 +320,7 @@ const Management: React.FC = () => {
                 </button>
                 {selected ? (
                   <>
-                    <div className="grid grid-cols-4 border-t border-app-line">
+                    <div className="grid grid-cols-5 border-t border-app-line">
                       {(['edit', 'setlist', 'stats'] as const).map(key => (
                         <button
                           key={key}
@@ -334,6 +334,12 @@ const Management: React.FC = () => {
                           {key === 'edit' ? 'Editar' : key === 'setlist' ? 'Setlist' : 'Público'}
                         </button>
                       ))}
+                      <Link
+                        to={`/gestion/evento/${event.id}/momentos`}
+                        className="flex min-h-12 items-center justify-center border-r border-app-line text-[13px] font-semibold text-app-ink"
+                      >
+                        Momentos
+                      </Link>
                       <Link
                         to={`/gestion/evento/${event.id}/qr`}
                         className="flex min-h-12 items-center justify-center text-[13px] font-semibold text-app-ink"

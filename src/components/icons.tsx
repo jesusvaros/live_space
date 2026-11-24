@@ -311,3 +311,9 @@ export const IconLock: React.FC<IconProps> = ({ className, size = 20 }) => (
     <path d="M8 11V8a4 4 0 018 0v3" />
   </svg>
 );
+
+export const IconDownload: React.FC<IconProps> = ({ className, size = 20 }) => (
+  <svg {...baseProps(size)} className={className}>
+    <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />
+  </svg>
+);
