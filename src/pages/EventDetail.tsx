@@ -41,7 +41,7 @@ import { uploadCountdown } from '../features/events/uploadCountdown';
 import EventPhotos from '../features/photos/EventPhotos';
 import { useHiddenPostIds } from '../features/photos/postCollections';
 import { withoutHidden } from '../features/photos/photoAlbums';
-import { heroParallaxOffset, stageIsMostlyVisible } from '../features/moments/stageParallax';
+import { stageIsMostlyVisible } from '../features/moments/stageParallax';
 import { track } from '../features/analytics/analytics';
 import { askForAccount } from '../auth/askForAccount';
 
@@ -135,6 +135,7 @@ const EventDetail: React.FC = () => {
   const moments = useMemo(() => withoutHidden(loadedMoments, hiddenIds, moment => moment.id), [loadedMoments, hiddenIds]);
   const heroRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLElement | null>(null);
+  const photosRef = useRef<HTMLDivElement | null>(null);
   const [stageInView, setStageInView] = useState(false);
   const [pageVisible, setPageVisible] = useState(() => typeof document === 'undefined' || document.visibilityState !== 'hidden');
   const [viewportHeight, setViewportHeight] = useState<number | null>(null);
@@ -346,35 +347,6 @@ const EventDetail: React.FC = () => {
     return () => document.removeEventListener('visibilitychange', onVisibility);
   }, []);
 
-  // Half-speed hero while the stage slides over it.
-  useEffect(() => {
-    const scroller = contentRef.current;
-    const hero = heroRef.current;
-    if (!hasStage || !scroller || !hero) return undefined;
-    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)');
-    let frame = 0;
-    let last = -1;
-    const update = () => {
-      frame = 0;
-      const offset = heroParallaxOffset(scroller.scrollTop, hero.offsetHeight, { reducedMotion: Boolean(reduced?.matches) });
-      if (offset === last) return;
-      last = offset;
-      hero.style.transform = offset ? `translate3d(0, ${offset}px, 0)` : '';
-    };
-    const onScroll = () => {
-      if (!frame) frame = requestAnimationFrame(update);
-    };
-    update();
-    scroller.addEventListener('scroll', onScroll, { passive: true });
-    reduced?.addEventListener?.('change', update);
-    return () => {
-      scroller.removeEventListener('scroll', onScroll);
-      reduced?.removeEventListener?.('change', update);
-      if (frame) cancelAnimationFrame(frame);
-      hero.style.transform = '';
-    };
-  }, [hasStage, event?.id, loading]);
-
   const scrollToStage = () => {
     const stage = stageRef.current;
     if (!stage) return;
@@ -388,7 +360,7 @@ const EventDetail: React.FC = () => {
     openedPhotosRef.current = true;
     if (stageRef.current) {
       setStageView('photos');
-      window.setTimeout(() => contentRef.current?.scrollTo({ top: stageRef.current?.offsetTop ?? 0, behavior: 'auto' }), 60);
+      window.setTimeout(() => contentRef.current?.scrollTo({ top: photosRef.current?.offsetTop ?? 0, behavior: 'auto' }), 60);
     } else {
       window.setTimeout(() => document.getElementById('event-photos-title')?.scrollIntoView({ block: 'start' }), 60);
     }
@@ -572,9 +544,11 @@ const EventDetail: React.FC = () => {
           aria-selected={stageView === key}
           onClick={() => {
             setStageView(key);
-            // Keep the stage filling the screen when the view switches.
-            const stage = stageRef.current;
-            if (stage) contentRef.current?.scrollTo({ top: stage.offsetTop, behavior: 'auto' });
+            // One page, one scroll: jump to where the chosen view starts.
+            window.requestAnimationFrame(() => {
+              const target = key === 'videos' ? stageRef.current : photosRef.current;
+              if (target) contentRef.current?.scrollTo({ top: target.offsetTop, behavior: 'auto' });
+            });
           }}
           className={`min-h-9 rounded-full px-4 text-[13px] font-bold transition-colors ${
             stageView === key ? 'bg-app-ink text-app-bg' : 'text-white/75'
@@ -623,7 +597,7 @@ const EventDetail: React.FC = () => {
             title={heroTitle}
             scrollRef={contentRef}
             overlay={stageInView}
-            center={stageMode && stageInView ? stageTabs : undefined}
+            center={stageMode ? stageTabs : undefined}
             actions={shareButton}
           />
 
@@ -648,7 +622,7 @@ const EventDetail: React.FC = () => {
                 <section
                   ref={stageRef}
                   aria-label="El concierto, a pantalla completa"
-                  className="relative z-10 mt-5 overflow-hidden bg-black"
+                  className={`relative z-10 mt-5 overflow-hidden bg-black ${stageView === 'photos' ? 'hidden' : ''}`}
                   style={{ height: viewportHeight ? `${viewportHeight}px` : '100dvh' }}
                 >
                   <ConcertPlayer
@@ -675,37 +649,28 @@ const EventDetail: React.FC = () => {
                       </>
                     }
                   />
-                  {stageView === 'photos' ? (
-                    // The photos view fills the stage like the player does;
-                    // the player stays mounted (paused) underneath.
-                    <div
-                      className="absolute inset-0 z-20 overflow-y-auto bg-app-bg pt-[calc(68px+env(safe-area-inset-top,0px))]"
-                      style={{ paddingBottom: `calc(${bottomClearance} + 64px)` }}
-                    >
-                      <EventPhotos
-                        moments={moments}
-                        currentUserId={user?.id ?? null}
-                        onDeleted={removeMoment}
-                        songs={photoSongs}
-                        onUpload={() => openUpload()}
-                        hideTitle
-                      />
-                    </div>
-                  ) : null}
-                  {stageView === 'photos' ? (
-                    // «+ Subir» and its progress («Subiendo 3/14 · 40 %»), at
-                    // the same place as on the player, over the photos.
-                    <div
-                      className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-end px-3 pt-2"
-                      style={{ paddingBottom: bottomClearance }}
-                    >
-                      <div className="pointer-events-auto flex w-full min-w-0 justify-end">
-                        <EventUploadButton variant="pill" bar={uploadBar} onUpload={() => openUpload()} onOpenUploads={() => setUploadsOpen(true)} />
-                      </div>
-                    </div>
-                  ) : null}
                 </section>
-              ) : (
+              ) : null}
+              {stageMode && timeline && stageView === 'photos' ? (
+                // «Fotos»: part of the page, the same scroll as the poster above.
+                <div ref={photosRef} className="relative z-10 min-h-[100dvh] bg-app-bg pt-[calc(60px+env(safe-area-inset-top,0px))]">
+                  <EventPhotos
+                    moments={moments}
+                    currentUserId={user?.id ?? null}
+                    onDeleted={removeMoment}
+                    songs={photoSongs}
+                    onUpload={() => openUpload()}
+                    hideTitle
+                  />
+                  {/* «+ Subir» and its progress, at the bottom while scrolling the photos. */}
+                  <div className="pointer-events-none sticky bottom-0 z-20 flex justify-end px-3 pt-3" style={{ paddingBottom: bottomClearance }}>
+                    <div className="pointer-events-auto flex w-full min-w-0 justify-end">
+                      <EventUploadButton variant="pill" bar={uploadBar} onUpload={() => openUpload()} onOpenUploads={() => setUploadsOpen(true)} />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+              {stageMode && timeline ? null : (
                 // Nothing to play yet: the setlist and the rest below the poster.
                 <div className="relative z-10 bg-app-bg">
                   {momentsLoading ? (
