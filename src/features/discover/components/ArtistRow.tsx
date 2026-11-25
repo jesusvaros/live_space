@@ -1,6 +1,7 @@
 import React from 'react';
 import { DiscoverArtist } from '../types';
 import Avatar from '../../../components/ui/Avatar';
+import { IconPlus } from '../../../components/icons';
 
 type ArtistRowProps = {
   artist: DiscoverArtist;
@@ -11,24 +12,35 @@ type ArtistRowProps = {
   onOpenProfile: () => void;
 };
 
-// A round portrait in the Explorar grid; the line under the name follows.
+const CheckIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="m5 12.5 4.5 4.5L19 7.5" />
+  </svg>
+);
+
+// A round portrait that fills its cell in the Explorar grid, with follow as a
+// small round button on its corner: «+» to follow, a tick when following.
 const ArtistRow: React.FC<ArtistRowProps> = ({ artist, isFollowing, followLoading, onToggleFollow, onOpenProfile }) => (
-  <div className="flex min-w-0 flex-col items-center gap-1 text-center">
-    <button type="button" onClick={onOpenProfile} className="flex w-full min-w-0 flex-col items-center gap-1.5 text-app-ink">
-      <Avatar name={artist.name} src={artist.avatar_url} kind="artist" className="h-[92px] w-[92px] text-[30px]" />
-      <span className="w-full truncate text-[13px] font-semibold">{artist.name}</span>
-    </button>
-    <button
-      type="button"
-      disabled={followLoading}
-      aria-pressed={isFollowing}
-      aria-label={`${isFollowing ? 'Dejar de seguir' : 'Seguir'} a ${artist.name}`}
-      onClick={onToggleFollow}
-      className={`min-h-6 font-mono text-[11px] font-medium uppercase disabled:opacity-60 ${
-        isFollowing ? 'text-[#8f8b84]' : 'text-app-accent'
-      }`}
-    >
-      {isFollowing ? 'Siguiendo' : '+ Seguir'}
+  <div className="flex min-w-0 flex-col items-center gap-1.5 text-center">
+    <div className="relative w-full">
+      <button type="button" onClick={onOpenProfile} aria-label={artist.name} className="block w-full">
+        <Avatar name={artist.name} src={artist.avatar_url} kind="artist" className="aspect-square h-auto w-full text-[34px]" />
+      </button>
+      <button
+        type="button"
+        disabled={followLoading}
+        aria-pressed={isFollowing}
+        aria-label={`${isFollowing ? 'Dejar de seguir' : 'Seguir'} a ${artist.name}`}
+        onClick={onToggleFollow}
+        className={`absolute bottom-0.5 right-0.5 flex h-9 w-9 items-center justify-center rounded-full border-[3px] border-app-bg disabled:opacity-60 ${
+          isFollowing ? 'bg-app-surface text-app-ink' : 'bg-app-accent text-[#14151a]'
+        }`}
+      >
+        {isFollowing ? <CheckIcon /> : <IconPlus size={18} />}
+      </button>
+    </div>
+    <button type="button" onClick={onOpenProfile} className="line-clamp-2 w-full px-0.5 text-[15px] font-bold leading-tight text-app-ink">
+      {artist.name}
     </button>
   </div>
 );
