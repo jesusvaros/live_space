@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CoverImage from '../../components/ui/CoverImage';
 import GeneratedPoster from '../../components/ui/GeneratedPoster';
@@ -8,8 +8,6 @@ import { getEventCoverSources } from '../events/utils';
 import type { EventListItem } from '../events/types';
 import { concertDateLabel, groupMomentsByConcert, lineupLabel, type MomentConcert, type ProfileMoment } from './profileLayout';
 
-// A group shows two rows until it is opened.
-const COLLAPSED = 6;
 
 type MomentTileProps = { moment: ProfileMoment; onSelect: () => void; featured?: 'big' | 'wide' | false; order: number };
 
@@ -24,7 +22,7 @@ const MomentTile: React.FC<MomentTileProps> = ({ moment, onSelect, featured = fa
     <button
       type="button"
       onClick={onSelect}
-      className={`relative overflow-hidden rounded-xl bg-app-surface animate-timeline-fade motion-reduce:animate-none ${
+      className={`relative block w-full overflow-hidden rounded-xl bg-app-surface animate-timeline-fade motion-reduce:animate-none ${
         featured === 'big' ? 'col-span-2 row-span-2' : featured === 'wide' ? 'col-span-2 aspect-[4/5]' : 'aspect-[3/4]'
       }`}
       style={{ animationDelay: `${Math.min(order, 8) * 45}ms` }}
@@ -84,14 +82,10 @@ type MomentsByConcertProps = {
 const MomentsByConcert: React.FC<MomentsByConcertProps> = ({ moments, cards }) => {
   const navigate = useNavigate();
   const groups = useMemo(() => groupMomentsByConcert(moments, cards), [moments, cards]);
-  const [open, setOpen] = useState<Set<string>>(() => new Set());
 
   return (
     <div className="flex flex-col gap-6 px-4">
       {groups.map(group => {
-        const expanded = open.has(group.concert.id);
-        const shown = expanded ? group.moments : group.moments.slice(0, COLLAPSED);
-        const hidden = group.moments.length - shown.length;
         return (
           <section key={group.concert.id} aria-label={lineupLabel(group.concert.artists, group.concert.name)} className="flex flex-col gap-2.5">
             <ConcertHeader
@@ -99,34 +93,14 @@ const MomentsByConcert: React.FC<MomentsByConcertProps> = ({ moments, cards }) =
               count={group.moments.length}
               onSelect={() => navigate(`/event/${group.concert.id}`)}
             />
-            <div className="grid grid-cols-3 gap-1.5">
-              {shown.map((moment, index) => (
-                <MomentTile
-                  key={moment.id}
-                  moment={moment}
-                  order={index}
-                  featured={index !== 0 ? false : shown.length >= 3 ? 'big' : shown.length === 1 ? 'wide' : false}
-                  onSelect={() => navigate(`/post/${moment.id}`)}
-                />
+            {/* Three at a time, all the same size; the rest sideways. */}
+            <div className="-mx-4 flex snap-x gap-1.5 overflow-x-auto px-4 [scrollbar-width:none]">
+              {group.moments.map((moment, index) => (
+                <div key={moment.id} className="w-[calc((100%-0.75rem)/3)] shrink-0 snap-start">
+                  <MomentTile moment={moment} order={index} onSelect={() => navigate(`/post/${moment.id}`)} />
+                </div>
               ))}
             </div>
-            {hidden > 0 || expanded ? (
-              <button
-                type="button"
-                aria-expanded={expanded}
-                onClick={() =>
-                  setOpen(current => {
-                    const next = new Set(current);
-                    if (next.has(group.concert.id)) next.delete(group.concert.id);
-                    else next.add(group.concert.id);
-                    return next;
-                  })
-                }
-                className="min-h-10 self-start text-sm font-semibold text-app-accent"
-              >
-                {expanded ? 'Ver menos' : `Ver ${hidden} más`}
-              </button>
-            ) : null}
           </section>
         );
       })}
