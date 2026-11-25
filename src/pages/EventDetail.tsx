@@ -39,7 +39,7 @@ import EventDescription from '../features/events/EventDescription';
 import { uploadCountdown } from '../features/events/uploadCountdown';
 import EventPhotos from '../features/photos/EventPhotos';
 import { useHiddenPostIds } from '../features/photos/postCollections';
-import { groupPhotoAlbums, withoutHidden } from '../features/photos/photoAlbums';
+import { withoutHidden } from '../features/photos/photoAlbums';
 import { heroParallaxOffset, stageIsMostlyVisible } from '../features/moments/stageParallax';
 import { track } from '../features/analytics/analytics';
 import { askForAccount } from '../auth/askForAccount';
@@ -85,7 +85,8 @@ const kickerDate = (date: Date) => {
 const STAGE_PILL =
   'flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-white/20 bg-black/45 px-3 font-mono text-[11px] font-semibold uppercase tracking-[0.06em] text-white backdrop-blur';
 
-type StageSheet = 'setlist' | 'photos' | 'merch';
+type StageSheet = 'setlist' | 'merch';
+type StageView = 'videos' | 'photos';
 
 const EventDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -107,6 +108,8 @@ const EventDetail: React.FC = () => {
   const [playingSongId, setPlayingSongId] = useState<string | null>(null);
   const [showShare, setShowShare] = useState(false);
   const [sheet, setSheet] = useState<StageSheet | null>(null);
+  // The stage's two big views, switched by the tabs at its top.
+  const [stageView, setStageView] = useState<StageView>('videos');
   const [followed, setFollowed] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [attendanceStatus, setAttendanceStatus] = useState<'going' | 'attended' | null>(null);
@@ -500,7 +503,6 @@ const EventDetail: React.FC = () => {
   // «12 van»: only the number, only from 2 people, only before the concert.
   const goingIds = useMemo(() => (event && !isPastEvent ? [event.id] : []), [event, isPastEvent]);
   const goingCount = useGoingCounts(goingIds).get(event?.id ?? '') ?? 0;
-  const hasPhotos = useMemo(() => groupPhotoAlbums(moments, user?.id ?? null).length > 0, [moments, user?.id]);
 
   const handleFollowClick = () => {
     if (!user) {
@@ -530,13 +532,30 @@ const EventDetail: React.FC = () => {
     </button>
   );
 
-  const stageChip = eventStart ? (
-    <span className="block truncate rounded-full bg-black/55 px-2.5 py-1.5 font-mono text-[11px] font-semibold uppercase text-app-ink">
-      {[heroTitle, venue?.name, dayWord(eventStart) || eventStart.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })]
-        .filter(Boolean)
-        .join(' · ')}
-    </span>
-  ) : null;
+  // «Vídeos · Fotos» at the top of the stage, between back and share.
+  const stageTabs = (
+    <div role="tablist" aria-label="Vídeos o fotos" className="flex rounded-full bg-black/55 p-1 backdrop-blur-md">
+      {(['videos', 'photos'] as const).map(key => (
+        <button
+          key={key}
+          type="button"
+          role="tab"
+          aria-selected={stageView === key}
+          onClick={() => {
+            setStageView(key);
+            // Keep the stage filling the screen when the view switches.
+            const stage = stageRef.current;
+            if (stage) contentRef.current?.scrollTo({ top: stage.offsetTop, behavior: 'auto' });
+          }}
+          className={`min-h-9 rounded-full px-4 text-[13px] font-bold transition-colors ${
+            stageView === key ? 'bg-app-ink text-app-bg' : 'text-white/75'
+          }`}
+        >
+          {key === 'videos' ? 'Vídeos' : 'Fotos'}
+        </button>
+      ))}
+    </div>
+  );
 
   const kicker = eventStart ? kickerDate(eventStart) : null;
 
@@ -605,11 +624,10 @@ const EventDetail: React.FC = () => {
                   <ConcertPlayer
                     timeline={timeline}
                     title={heroTitle}
-                    stageChip={stageChip}
                     seekRequest={seekRequest}
                     onActiveSongChange={onActiveSongChange}
                     onDuration={reportDuration}
-                    inView={stageInView && pageVisible}
+                    inView={stageInView && pageVisible && stageView === 'videos'}
                     bottomClearance={bottomClearance}
                     actions={
                       <>
@@ -617,11 +635,6 @@ const EventDetail: React.FC = () => {
                           Setlist
                           {setlist.length > 0 ? <span className="text-white/55">{setlist.length}</span> : null}
                         </button>
-                        {hasPhotos || hasStarted ? (
-                          <button type="button" aria-haspopup="dialog" onClick={() => setSheet('photos')} className={STAGE_PILL}>
-                            Fotos
-                          </button>
-                        ) : null}
                         {merchStands.length > 0 ? (
                           <button type="button" aria-haspopup="dialog" onClick={() => setSheet('merch')} className={STAGE_PILL}>
                             Merch
@@ -632,6 +645,22 @@ const EventDetail: React.FC = () => {
                       </>
                     }
                   />
+                  {stageView === 'photos' ? (
+                    // The photos view fills the stage like the player does;
+                    // the player stays mounted (paused) underneath.
+                    <div className="absolute inset-0 z-20 overflow-y-auto bg-app-bg pb-[calc(24px+env(safe-area-inset-bottom,0px))] pt-[calc(48px+env(safe-area-inset-top,0px))]">
+                      <EventPhotos
+                        moments={moments}
+                        currentUserId={user?.id ?? null}
+                        onDeleted={removeMoment}
+                        onUpload={() => openUpload()}
+                        hideTitle
+                      />
+                    </div>
+                  ) : null}
+                  <div className="pointer-events-none absolute inset-x-[64px] top-[calc(14px+env(safe-area-inset-top,0px))] z-30 flex justify-center">
+                    <div className="pointer-events-auto">{stageTabs}</div>
+                  </div>
                 </section>
               ) : (
                 // Nothing to play yet: the setlist and the rest below the poster.
@@ -872,22 +901,6 @@ const EventDetail: React.FC = () => {
               <div className="px-4 pt-4 empty:hidden">
                 <VenueFeedbackPrompt eventId={event.id} />
               </div>
-            </div>
-          </Modal>
-
-          <Modal isOpen={sheet === 'photos'} onDidDismiss={() => setSheet(null)} initialBreakpoint={0.9} title="Fotos">
-            <div className="max-h-[90dvh] overflow-y-auto pb-[calc(20px+env(safe-area-inset-bottom,0px))] pt-3">
-              <div className="mx-auto h-1 w-10 rounded-full bg-white/20" aria-hidden />
-              <EventPhotos
-                moments={moments}
-                currentUserId={user?.id ?? null}
-                onDeleted={removeMoment}
-                inSheet
-                onUpload={() => {
-                  setSheet(null);
-                  openUpload();
-                }}
-              />
             </div>
           </Modal>
 
