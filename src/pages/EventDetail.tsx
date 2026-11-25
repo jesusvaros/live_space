@@ -617,7 +617,7 @@ const EventDetail: React.FC = () => {
                           Setlist
                           {setlist.length > 0 ? <span className="text-white/55">{setlist.length}</span> : null}
                         </button>
-                        {hasPhotos ? (
+                        {hasPhotos || hasStarted ? (
                           <button type="button" aria-haspopup="dialog" onClick={() => setSheet('photos')} className={STAGE_PILL}>
                             Fotos
                           </button>
@@ -673,7 +673,12 @@ const EventDetail: React.FC = () => {
 
                   {momentsError && <p className="px-4 pt-2 text-sm text-rose-400">{momentsError}</p>}
 
-                  <EventPhotos moments={moments} currentUserId={user?.id ?? null} onDeleted={removeMoment} />
+                  <EventPhotos
+                    moments={moments}
+                    currentUserId={user?.id ?? null}
+                    onDeleted={removeMoment}
+                    onUpload={hasStarted ? () => openUpload() : undefined}
+                  />
 
                   <UnplacedMoments moments={timeline?.unplaced ?? []} fallbackTitle={heroTitle} />
 
@@ -873,7 +878,16 @@ const EventDetail: React.FC = () => {
           <Modal isOpen={sheet === 'photos'} onDidDismiss={() => setSheet(null)} initialBreakpoint={0.9} title="Fotos">
             <div className="max-h-[90dvh] overflow-y-auto pb-[calc(20px+env(safe-area-inset-bottom,0px))] pt-3">
               <div className="mx-auto h-1 w-10 rounded-full bg-white/20" aria-hidden />
-              <EventPhotos moments={moments} currentUserId={user?.id ?? null} onDeleted={removeMoment} inSheet />
+              <EventPhotos
+                moments={moments}
+                currentUserId={user?.id ?? null}
+                onDeleted={removeMoment}
+                inSheet
+                onUpload={() => {
+                  setSheet(null);
+                  openUpload();
+                }}
+              />
             </div>
           </Modal>
 
