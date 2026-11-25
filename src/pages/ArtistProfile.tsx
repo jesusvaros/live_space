@@ -9,7 +9,8 @@ import { ArtistProfileArtist, ArtistProfileEvent } from '../components/artist/ty
 import ArtistHero from '../components/artist/ArtistHero';
 import AboutSection from '../components/artist/AboutSection';
 import ConcertRow from '../components/ui/ConcertRow';
-import MomentGrid from '../components/ui/MomentGrid';
+import MomentsByConcert from '../features/profile/MomentsByConcert';
+import { useMomentConcertCards } from '../features/profile/useMomentConcertCards';
 import { fetchEventCards, fetchPastEventCards } from '../data/eventQueries';
 import { fetchPostCards } from '../data/postQueries';
 import { artistCacheKey, eventCacheKey, primeCache, readCache, writeCache } from '../data/pageCache';
@@ -58,6 +59,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
   const [upcomingShows, setUpcomingShows] = useState<ArtistProfileEvent[]>(initial?.upcoming ?? []);
   const [pastCount, setPastCount] = useState(initial?.pastCount ?? 0);
   const [moments, setMoments] = useState<PostWithSetlist[]>(initial?.moments ?? []);
+  const momentCards = useMomentConcertCards(moments);
   const [loading, setLoading] = useState(!initial);
   const [error, setError] = useState('');
   useFirstContent('artist', Boolean(artist));
@@ -221,7 +223,10 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
 
     if (activeTab === 'moments') {
       return moments.length ? (
-        <MomentGrid moments={moments} columns={3} />
+        // The same gallery as a person's profile: one block per concert.
+        <div className="-mx-4">
+          <MomentsByConcert moments={moments} cards={momentCards} />
+        </div>
       ) : (
         <p className="text-sm text-white/60">Aún nadie ha subido momentos de sus conciertos.</p>
       );
@@ -269,12 +274,6 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
           headingClassName="font-display text-lg font-bold text-app-ink"
         />
 
-        {moments.length > 0 ? (
-          <section className="pt-4">
-            <h2 className="mb-2.5 font-display text-lg font-bold text-app-ink">Lo que grabó el público</h2>
-            <MomentGrid moments={moments} limit={8} />
-          </section>
-        ) : null}
       </div>
     );
   };

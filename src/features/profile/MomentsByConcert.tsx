@@ -94,7 +94,7 @@ const MomentsByConcert: React.FC<MomentsByConcertProps> = ({ moments, cards }) =
               onSelect={() => navigate(`/event/${group.concert.id}`)}
             />
             {/* Three at a time, all the same size; the rest sideways. */}
-            <div className="-mx-4 flex snap-x gap-1.5 overflow-x-auto px-4 [scrollbar-width:none]">
+            <div className="-mx-4 flex snap-x scroll-px-4 gap-1.5 overflow-x-auto px-4 [scrollbar-width:none]">
               {group.moments.map((moment, index) => (
                 <div key={moment.id} className="w-[calc((100%-0.75rem)/3)] shrink-0 snap-start">
                   <MomentTile moment={moment} order={index} onSelect={() => navigate(`/post/${moment.id}`)} />
