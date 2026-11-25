@@ -8,6 +8,8 @@
 - **Autónomo, sin empresa.** No hace falta para nada de esto.
 - **SGAE no hace falta para clips gratis**: como Instagram/TikTok, basta retirar a petición (notice-and-takedown). Solo importaría al cobrar por conciertos enteros, y eso irá con autorización del artista.
 - **Merch del artista: pago en el puesto, 0 %.** Pago en la app opcional para cualquiera (sin Pro).
+- **Entradas por referidos (25-nov).** Cada concierto lleva a la compra: el enlace oficial de venta (`events.ticket_url`, 526 de 1.375 conciertos futuros) o, si no hay, la página del concierto en la web de la sala (`source_url`), que casi siempre tiene su botón de compra. Todos los toques pasan por `src/features/tickets/ticketLink.ts`, que añade el código de referido del vendedor cuando haya programa firmado (`REFERRAL_PARAMS`), y quedan medidos (`ticket_tap` con el vendedor) para saber qué programa vale la pena antes de firmar. Vendedores con más conciertos hoy: DICE (114), Moving Tickets (46), Onebox (41), entradas.com (40), Entradium (27). Las cuentas de afiliado las da de alta el dueño.
+- **Market de entradas entre fans: más adelante.** Reventa solo a precio original y con la entrada ligada a la persona (como la lista de espera de DICE), nunca especulación. Antes de construir nada, el abogado revisa los límites a la reventa en España (pregunta 13).
 
 
 Fecha: 24 nov 2026. Solo lectura del repo y búsqueda web; sin cambios en código ni BD. Fuentes verificadas hoy en las páginas oficiales (BOE, EUR-Lex, Google Play Policy Center, SGAE, prensa del sector). Todo lo legal es análisis de producto, **no dictamen jurídico**: las preguntas que debe cerrar un abogado están en §6.
@@ -227,3 +229,4 @@ Qué quitar de lo hecho: el candado Pro del merch (1), el precio y el botón de 
 10. Derecho de imagen: ¿la venta de «Concierto completo» con el nombre del artista como reclamo exige, además de la autorización PI, una cesión expresa de imagen (art. 7.6 LO 1/1982)? Texto único que cubra ambas.
 11. Si el artista es autor socio de SGAE, ¿puede autorizar algo de la obra directamente (art. 158: retirada parcial; art. 169: solo usos no comerciales) o toda la obra pasa por SGAE sin excepción?
 12. Condiciones del merch: contrato de venta entre fan y artista con Live Space como intermediario (desistimiento, devoluciones, factura), tal y como ya pide `docs/merch.md`.
+13. Market de entradas entre fans: ¿qué límites pone la ley española a la reventa (precio máximo, nominatividad, responsabilidad del intermediario) y qué hace falta para que Live Space intermedie el pago?

@@ -65,6 +65,7 @@ error, nunca el mensaje), `notificationType`.
 | `attendance_mark` | `status` (`going`, `attended`, `none`), `source` (`event`, `suggestion`, `qr`) | EventDetail, attendance.ts |
 | `follow` / `unfollow` | `kind` (`artist`, `venue`, `festival`, `profile`, `event`), `count`, `source` | useFollowedSubjects, VenueDetail, FestivalDetail, ProfileDetail, EventDetail (guardar) |
 | `suggestion_sent` | `duplicate`, `with_note` | «¿Falta un concierto?» (suggestEventLink.ts) |
+| `ticket_tap` | `seller` (`dice`, `entradas_com`, `onebox`…, `other`, `venue_page`), `official` (enlace oficial de venta o página de la sala) | EventDetail, botón «Entradas» (`ticketLink.ts`) |
 | `merch_order_start` | `payment` (`in_app` \| `at_stand`), `lines`, `units` | EventMerchSection |
 | `qr_scan` | `source` (`home_button`, `upload_button`, `link`), `valid` | ScanConcertFab, Upload |
 | `setlist_proposed` | `status` (`pending` \| `approved`), `songs` | setlistProposals.ts |
