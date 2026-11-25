@@ -44,6 +44,7 @@ import { plantaBajaAgendaParser } from './parsers/plantaBajaAgendaParser.js';
 import { garajeBeatAgendaParser } from './parsers/garajeBeatAgendaParser.js';
 import { dabadabaAgendaParser } from './parsers/dabadabaAgendaParser.js';
 import { escenarioSantanderAgendaParser } from './parsers/escenarioSantanderAgendaParser.js';
+import { barMutanteAgendaParser } from './parsers/barMutanteAgendaParser.js';
 
 const parserRegistry: Record<ParserKey, VenueParser> = {
   'apolo-agenda': apoloAgendaParser,
@@ -91,6 +92,7 @@ const parserRegistry: Record<ParserKey, VenueParser> = {
   'garaje-beat-agenda': garajeBeatAgendaParser,
   'dabadaba-agenda': dabadabaAgendaParser,
   'escenario-santander-agenda': escenarioSantanderAgendaParser,
+  'bar-mutante-agenda': barMutanteAgendaParser,
 };
 
 export const getParser = (key: ParserKey): VenueParser => {

@@ -102,6 +102,20 @@ porque programa sobre todo teatro y danza en una URL que cambia cada temporada.
 Sala X, La2, Obbio, Naima, La Caja Negra y Bestiario no tienen agenda en web
 propia.
 
+El 25 de noviembre de 2026 se sumó El Bar Mutante (Alameda de Hércules) con
+`bar-mutante-agenda`. Su web responde 406 a clientes que no son un navegador;
+el scraper ya entra con navegador. Lee el calendario mensual de Events Manager
+de `/eventos/` (fecha del día, hora «9:00 PM», ficha y cartel del popup del
+día) y sigue el enlace «mes siguiente», así que cada pasada ve de cinco a nueve
+semanas. Casi todas las noches son series del bar sin cartel propio, y el
+parser las descarta: open mic, jams, poetry slam, charlas, «Jueves de reinas»
+(drag), la noche de musicales, sesiones DJ y fiestas (todo lo que empieza a las
+23:00 o más tarde) y el comodín de fin de semana «Conciertos en el Mutante»
+hasta que anuncian las bandas. El feed `/events.ics` no sirve: devuelve
+siempre los 50 eventos más antiguos (2023-2024). La fuente entra activa con la
+migración `20261125002000_source_el_bar_mutante.sql` (la misma fila que
+`scrape:seed`); la sala la crea el pipeline en la primera pasada.
+
 El 9 de noviembre de 2026 se preparó la escena local de siete ciudades más.
 Todas las fuentes entran con `is_active = false` y `termsReviewStatus =
 pending`. Tienen agenda en su web, su `robots.txt` lo permite y la sonda en

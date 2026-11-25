@@ -250,6 +250,17 @@ export const seedSources: SeedSource[] = [
     reviewedAt: LOCAL_SCENE_REVIEW,
     structuredDataVerified: true,
   }),
+  // El Bar Mutante (Alameda de Hércules), added on the owner's request on
+  // 2026-11-25: Events Manager month calendar on its own site, robots.txt
+  // allows it. Answers 406 to non-browser user agents, so it needs the
+  // browser fetch like every source. The bar's own series (open mic, jams,
+  // drag show, DJ sessions) are left out by the parser.
+  source('El Bar Mutante', 'https://elbarmutante.com/eventos/', 'Sevilla', 'https://elbarmutante.com/', {
+    parserKey: 'bar-mutante-agenda',
+    ready: true,
+    reviewedAt: '2026-11-25T00:00:00.000Z',
+    structuredDataVerified: true,
+  }),
   // Madrid local scene (agent): own parsers for agendas the auto-probe could
   // not read. robots.txt allows every agenda path. Costello (empty agenda),
   // Copérnico (no dates after May 2026), Sala Vesta (ticketing widget only)
