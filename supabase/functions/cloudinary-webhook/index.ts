@@ -27,6 +27,7 @@ type Reservation = {
   event_id: string | null;
   subject_id: string | null;
   cloudinary_public_id: string;
+  folder: string | null;
   max_bytes: number;
   max_duration_seconds: number | null;
   consumed_at: string | null;
@@ -90,7 +91,7 @@ Deno.serve(async (request) => {
     );
     const { data, error } = await supabase
       .from("media_upload_reservations")
-      .select("id,user_id,kind,event_id,subject_id,cloudinary_public_id,max_bytes,max_duration_seconds,consumed_at")
+      .select("id,user_id,kind,event_id,subject_id,cloudinary_public_id,folder,max_bytes,max_duration_seconds,consumed_at")
       .eq("id", reservationId)
       .maybeSingle();
     if (error) throw error;
@@ -108,7 +109,13 @@ Deno.serve(async (request) => {
     }
 
     const rejectionReasons: string[] = [];
-    if (reservation.cloudinary_public_id !== payload.public_id) rejectionReasons.push("public_id mismatch");
+    // With fixed folders Cloudinary puts the folder in front of the signed
+    // public_id («live-space/…/events/<id>/<uuid>»): both forms are ours.
+    const expectedIds = [
+      reservation.cloudinary_public_id,
+      reservation.folder ? `${reservation.folder}/${reservation.cloudinary_public_id}` : null,
+    ];
+    if (!expectedIds.includes(payload.public_id)) rejectionReasons.push("public_id mismatch");
     if (reservation.kind !== payload.resource_type) rejectionReasons.push("resource type mismatch");
     if (!Number.isFinite(payload.bytes) || (payload.bytes ?? 0) > reservation.max_bytes) rejectionReasons.push("file exceeds byte limit");
     if (reservation.kind === "video" && (
