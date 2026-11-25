@@ -9,6 +9,8 @@ type EventUploadButtonProps = {
   variant?: 'bar' | 'pill';
   // While uploading, tapping the progress opens «Subiendo».
   onOpenUploads?: () => void;
+  // The pill at the top of the concert player: bigger and always orange.
+  large?: boolean;
 };
 
 /**
@@ -21,7 +23,7 @@ type EventUploadButtonProps = {
  * there: «+ Subir» in orange, or a discreet «+ Subir más» for someone who
  * already uploaded here. It fills and fails the same way, in less space.
  */
-const EventUploadButton: React.FC<EventUploadButtonProps> = ({ bar, onUpload, variant = 'bar', onOpenUploads }) => {
+const EventUploadButton: React.FC<EventUploadButtonProps> = ({ bar, onUpload, variant = 'bar', onOpenUploads, large = false }) => {
   const { summary, retryAll, clearFailed, inProgress, failed } = bar;
   // Too big / too long / unsupported: retrying can't help, offer to remove.
   const canRetry = summary.retryable > 0;
@@ -45,7 +47,7 @@ const EventUploadButton: React.FC<EventUploadButtonProps> = ({ bar, onUpload, va
     // Orange to invite the first upload; translucent like the other
     // controls once they have moments here (or until that is known).
     const idleStyle =
-      bar.alreadyUploaded === false
+      large || bar.alreadyUploaded === false
         ? 'bg-app-accent text-[#14151a]'
         : 'border border-white/20 bg-black/45 text-white backdrop-blur';
     return (
@@ -55,7 +57,9 @@ const EventUploadButton: React.FC<EventUploadButtonProps> = ({ bar, onUpload, va
         disabled={inProgress && !onOpenUploads}
         aria-busy={inProgress}
         aria-label={failed ? (canRetry ? 'No se pudo subir: reintentar' : `${errorText}: quitar`) : undefined}
-        className={`relative flex h-9 min-w-0 max-w-[62%] shrink items-center justify-center gap-1 overflow-hidden rounded-full px-3.5 text-[13px] font-bold transition-colors duration-500 ${
+        className={`relative flex min-w-0 max-w-[62%] shrink items-center justify-center gap-1 overflow-hidden rounded-full font-bold transition-colors duration-500 ${
+          large ? 'h-11 px-4 text-[15px] shadow-[0_6px_20px_rgba(0,0,0,0.35)]' : 'h-9 px-3.5 text-[13px]'
+        } ${
           failed ? 'bg-rose-500 text-white' : inProgress ? 'bg-[#3a3b42] text-white' : idleStyle
         }`}
       >
@@ -64,7 +68,7 @@ const EventUploadButton: React.FC<EventUploadButtonProps> = ({ bar, onUpload, va
           className="absolute inset-y-0 left-0 bg-app-accent transition-[width,opacity] duration-500 ease-out"
           style={{ width: inProgress ? `${Math.max(3, summary.percent)}%` : '0%', opacity: inProgress ? 1 : 0 }}
         />
-        {idle ? <IconPlus className="relative h-4 w-4 shrink-0" /> : null}
+        {idle ? <IconPlus className={`relative shrink-0 ${large ? 'h-5 w-5' : 'h-4 w-4'}`} /> : null}
         <span className="relative min-w-0 truncate tabular-nums">{pillLabel}</span>
       </button>
     );

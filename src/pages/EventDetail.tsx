@@ -84,7 +84,7 @@ const kickerDate = (date: Date) => {
 // The player's own controls: small dark pills, mono labels (like the
 // stage chip), clearly apart from the per-clip ♥ / report buttons.
 const STAGE_PILL =
-  'flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-white/20 bg-black/45 px-3 font-mono text-[11px] font-semibold uppercase tracking-[0.06em] text-white backdrop-blur';
+  'flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-white/20 bg-black/45 px-3.5 font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-white backdrop-blur';
 
 type StageSheet = 'setlist' | 'merch';
 type StageView = 'videos' | 'photos';
@@ -645,7 +645,7 @@ const EventDetail: React.FC = () => {
                           </button>
                         ) : null}
                         <span className="min-w-0 flex-1" />
-                        <EventUploadButton variant="pill" bar={uploadBar} onUpload={() => openUpload()} onOpenUploads={() => setUploadsOpen(true)} />
+                        <EventUploadButton variant="pill" large bar={uploadBar} onUpload={() => openUpload()} onOpenUploads={() => setUploadsOpen(true)} />
                       </>
                     }
                   />
