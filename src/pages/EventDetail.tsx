@@ -35,6 +35,8 @@ import type { Clip } from '../features/moments/concertTimeline';
 import EventSetlist, { UnplacedMoments } from '../features/events/EventSetlist';
 import { useFirstContent } from '../lib/perfTiming';
 import EventHero from '../features/events/EventHero';
+import EventDescription from '../features/events/EventDescription';
+import { uploadCountdown } from '../features/events/uploadCountdown';
 import EventPhotos from '../features/photos/EventPhotos';
 import { useHiddenPostIds } from '../features/photos/postCollections';
 import { groupPhotoAlbums, withoutHidden } from '../features/photos/photoAlbums';
@@ -113,6 +115,12 @@ const EventDetail: React.FC = () => {
   // Cancelled / postponed by a manager, and whether this viewer manages it (QR).
   const [schedule, setSchedule] = useState<EventSchedule | null>(null);
   const [canManage, setCanManage] = useState(false);
+  // Re-render once a minute: the «Subir» countdown and before/after-the-concert state.
+  const [, setMinuteTick] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => setMinuteTick(tick => tick + 1), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const contentRef = useRef<HTMLElement | null>(null);
   const { moments: loadedMoments, loading: momentsLoading, error: momentsError, removeMoment } = useConcertMoments(id);
   // What this viewer hid («Ocultar» on a photo) leaves the player and the albums.
@@ -738,14 +746,19 @@ const EventDetail: React.FC = () => {
                     ¿Estuviste? Sube lo que grabaste
                   </button>
                 ) : (
-                <div className="pt-1">
-                  <p className="font-display text-xl font-bold text-app-ink">
-                    {isPastEvent ? 'Sube lo que grabaste' : 'Graba lo que quieras recordar'}
-                  </p>
-                  <p className="mt-1 text-sm text-[#c9c5bd]">
-                    Al subirlo lo colocamos en su canción, junto a lo que grabó el resto del público.
-                  </p>
-                </div>
+                  // Before the concert: «Subir» waits, with the time left; once it
+                  // has started it opens the uploader.
+                  <button
+                    type="button"
+                    disabled={!hasStarted}
+                    onClick={() => openUpload()}
+                    className="inline-flex min-h-11 items-center gap-2 self-start rounded-full border border-app-line bg-app-surface pl-1.5 pr-4 text-sm font-semibold text-app-ink disabled:text-white/45"
+                  >
+                    <span className={`flex h-8 w-8 items-center justify-center rounded-full ${hasStarted ? 'bg-app-accent text-[#14151a]' : 'bg-app-line text-white/50'}`}>
+                      <IconCamera size={16} />
+                    </span>
+                    {hasStarted ? 'Subir' : `Subir · ${eventStart ? uploadCountdown(eventStart, now) : ''}`}
+                  </button>
                 )}
 
                 {goingLabel(goingCount) ? (
@@ -770,7 +783,7 @@ const EventDetail: React.FC = () => {
 
                 <EventStatsCard eventId={event.id} />
 
-                {event.description ? <p className="text-sm text-white/65 line-clamp-6">{event.description}</p> : null}
+                {event.description ? <EventDescription text={event.description} /> : null}
                 {engagementError && <p className="text-sm text-rose-400">{engagementError}</p>}
               </div>
             </div>
