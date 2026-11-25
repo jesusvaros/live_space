@@ -134,6 +134,11 @@ const UploadsSheet: React.FC<UploadsSheetProps> = ({ isOpen, onClose, eventId })
   const cancelAll = () => {
     for (const job of pending) void remove(job.id);
   };
+  // Done and failed ones off the list (failed: they will not be retried).
+  const finished = shown.filter(job => job.status === 'done' || job.status === 'failed');
+  const clean = () => {
+    for (const job of finished) void remove(job.id);
+  };
 
   return (
     <Modal isOpen={isOpen} onDidDismiss={onClose} initialBreakpoint={0.9} title="Subiendo">
@@ -141,11 +146,18 @@ const UploadsSheet: React.FC<UploadsSheetProps> = ({ isOpen, onClose, eventId })
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20" aria-hidden />
         <div className="mb-3 flex items-baseline justify-between">
           <h3 className="m-0 font-display text-lg font-bold text-app-ink">Subiendo</h3>
-          {shown.length ? (
-            <span className="font-mono text-[12px] font-semibold text-white/55">
-              {done}/{shown.length}
-            </span>
-          ) : null}
+          <span className="flex items-center gap-3">
+            {shown.length ? (
+              <span className="font-mono text-[12px] font-semibold text-white/55">
+                {done}/{shown.length}
+              </span>
+            ) : null}
+            {finished.length ? (
+              <button type="button" onClick={clean} className="min-h-9 rounded-full border border-app-line px-3 text-[12px] font-semibold text-app-ink">
+                Limpiar
+              </button>
+            ) : null}
+          </span>
         </div>
         {shown.length === 0 ? (
           <p className="py-8 text-center text-sm text-white/55">No hay nada subiéndose.</p>
