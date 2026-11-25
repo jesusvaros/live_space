@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { useNavigate } from 'react-router-dom';
 import { Modal } from './ui/AppPrimitives';
-import { IconCamera, IconPlay } from './icons';
+import { IconCamera, IconPlay, IconPlus } from './icons';
 import { jobFraction, useUploadQueue } from '../media/useUploadQueue';
 import { isRetryableFailure, type UploadJob } from '../media/uploadQueue';
 
@@ -70,6 +71,18 @@ const UploadCard: React.FC<{ job: UploadJob; onRetry: () => void; onRemove: () =
           {isVideo ? <IconPlay size={28} /> : <IconCamera size={28} />}
         </span>
       )}
+      {!done && !failed ? (
+        <button
+          type="button"
+          aria-label="Cancelar esta subida"
+          onClick={onRemove}
+          className="absolute right-1.5 top-1.5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+      ) : null}
       <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/65 px-2 py-1 font-mono text-[11px] font-semibold text-white">
         {isVideo ? <IconPlay size={12} /> : <IconCamera size={12} />}
         {time ?? (isVideo ? 'Vídeo' : 'Foto')}
@@ -108,9 +121,19 @@ type UploadsSheetProps = {
 };
 
 const UploadsSheet: React.FC<UploadsSheetProps> = ({ isOpen, onClose, eventId }) => {
+  const navigate = useNavigate();
   const { jobs, retry, remove } = useUploadQueue();
   const shown = useMemo(() => (eventId ? jobs.filter(job => job.eventId === eventId) : jobs), [jobs, eventId]);
   const done = shown.filter(job => job.status === 'done').length;
+  const pending = shown.filter(job => job.status !== 'done' && job.status !== 'failed');
+
+  const uploadMore = () => {
+    onClose();
+    navigate(eventId ? `/tabs/upload?event=${encodeURIComponent(eventId)}` : '/tabs/upload');
+  };
+  const cancelAll = () => {
+    for (const job of pending) void remove(job.id);
+  };
 
   return (
     <Modal isOpen={isOpen} onDidDismiss={onClose} initialBreakpoint={0.9} title="Subiendo">
@@ -133,6 +156,25 @@ const UploadsSheet: React.FC<UploadsSheetProps> = ({ isOpen, onClose, eventId })
             ))}
           </ul>
         )}
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            onClick={uploadMore}
+            className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full bg-app-accent text-[15px] font-bold text-[#14151a]"
+          >
+            <IconPlus size={18} />
+            Subir más
+          </button>
+          {pending.length > 0 ? (
+            <button
+              type="button"
+              onClick={cancelAll}
+              className="min-h-12 shrink-0 rounded-full border border-app-line px-4 text-[14px] font-semibold text-app-ink"
+            >
+              Cancelar {pending.length === 1 ? 'la subida' : `las ${pending.length}`}
+            </button>
+          ) : null}
+        </div>
       </div>
     </Modal>
   );
