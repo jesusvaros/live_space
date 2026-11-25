@@ -81,6 +81,7 @@ const Admin: React.FC = () => {
   const [grantLoading, setGrantLoading] = useState(false);
   const [grantMessage, setGrantMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [userQuery, setUserQuery] = useState('');
+  const [userFocused, setUserFocused] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [entityQuery, setEntityQuery] = useState('');
@@ -96,7 +97,7 @@ const Admin: React.FC = () => {
     if (profile?.role !== 'admin' || activeTab !== 'grant') return;
     let cancelled = false;
     const run = async () => {
-      if (userQuery.length <= 2) {
+      if (!userFocused && !userQuery) {
         setUsers([]);
         return;
       }
@@ -111,7 +112,7 @@ const Admin: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [activeTab, profile?.role, userQuery]);
+  }, [activeTab, profile?.role, userQuery, userFocused]);
 
   useEffect(() => {
     if (profile?.role !== 'admin' || activeTab !== 'grant') return;
@@ -586,6 +587,8 @@ const Admin: React.FC = () => {
                 <input
                   type="text"
                   placeholder="Busca por usuario o nombre visible..."
+                  onFocus={() => setUserFocused(true)}
+                  onBlur={() => window.setTimeout(() => setUserFocused(false), 150)}
                   value={userQuery}
                   onChange={e => setUserQuery(e.target.value)}
                   className="w-full rounded-xl border border-white/10 bg-white/[0.02] p-3 text-white outline-none focus:border-app-accent/60"

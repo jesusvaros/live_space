@@ -75,13 +75,15 @@ export const managementService = {
     if (error) throw error;
   },
 
+  // Empty query: the newest users, so the admin sees suggestions on focus.
   async searchProfiles(query: string) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, username, display_name, avatar_url')
-      .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
-      .limit(10);
-    
+    const term = query.trim().replace(/[%,()]/g, '');
+    let request = supabase.from('profiles').select('id, username, display_name, avatar_url');
+    request = term
+      ? request.or(`username.ilike.%${term}%,display_name.ilike.%${term}%`).order('username', { ascending: true })
+      : request.order('created_at', { ascending: false });
+    const { data, error } = await request.limit(10);
+
     if (error) throw error;
     return data;
   },

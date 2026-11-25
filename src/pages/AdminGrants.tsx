@@ -11,6 +11,7 @@ const AdminGrants: React.FC = () => {
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   const [userQuery, setUserQuery] = useState('');
+  const [userFocused, setUserFocused] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState<any>(null);
 
@@ -20,12 +21,19 @@ const AdminGrants: React.FC = () => {
   const [selectedEntity, setSelectedEntity] = useState<any>(null);
 
   useEffect(() => {
-    if (userQuery.length > 2) {
-      managementService.searchProfiles(userQuery).then(setUsers);
-    } else {
+    if (!userFocused && !userQuery) {
       setUsers([]);
+      return;
     }
-  }, [userQuery]);
+    let cancelled = false;
+    managementService
+      .searchProfiles(userQuery)
+      .then(data => !cancelled && setUsers(data || []))
+      .catch(() => !cancelled && setUsers([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [userQuery, userFocused]);
 
   useEffect(() => {
     if (entityQuery.length > 2) {
@@ -99,6 +107,8 @@ const AdminGrants: React.FC = () => {
                 <input
                   type="text"
                   placeholder="Busca por usuario o nombre visible..."
+                  onFocus={() => setUserFocused(true)}
+                  onBlur={() => window.setTimeout(() => setUserFocused(false), 150)}
                   value={userQuery}
                   onChange={(e) => setUserQuery(e.target.value)}
                   className="w-full rounded-xl border border-white/10 bg-white/5 p-4 text-app-light outline-none focus:border-app-ink/50"
