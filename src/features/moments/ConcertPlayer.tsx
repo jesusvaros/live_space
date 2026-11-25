@@ -779,19 +779,24 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
         </div>
       ) : null}
 
-      {/* Sound: muted autoplay needs an obvious way to turn it on. */}
-      <button
-        type="button"
-        onClick={toggleMute}
-        aria-pressed={!muted}
-        aria-label={muted ? 'Activar sonido' : 'Silenciar'}
-        className={`absolute left-3 top-[calc(64px+env(safe-area-inset-top,0px))] z-10 flex h-11 items-center gap-2 rounded-full backdrop-blur-md ${
-          muted ? 'bg-white px-3.5 text-[#14151a] shadow-[0_6px_20px_rgba(0,0,0,0.35)]' : 'w-11 justify-center bg-black/45 text-white'
-        }`}
-      >
-        <SpeakerIcon muted={muted} />
-        {muted ? <span className="text-[13px] font-bold">Activar sonido</span> : null}
-      </button>
+      {/* Top row, under the page's back / share buttons: sound (muted
+          autoplay needs an obvious way to turn it on), then the page's
+          actions (Setlist, Merch, «+ Subir»), where they are always seen. */}
+      <div className="absolute inset-x-3 top-[calc(64px+env(safe-area-inset-top,0px))] z-10 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={toggleMute}
+          aria-pressed={!muted}
+          aria-label={muted ? 'Activar sonido' : 'Silenciar'}
+          className={`flex h-11 shrink-0 items-center gap-2 rounded-full backdrop-blur-md ${
+            muted ? 'bg-white px-3.5 text-[#14151a] shadow-[0_6px_20px_rgba(0,0,0,0.35)]' : 'w-11 justify-center bg-black/45 text-white'
+          }`}
+        >
+          <SpeakerIcon muted={muted} />
+          {muted && !actions ? <span className="text-[13px] font-bold">Activar sonido</span> : null}
+        </button>
+        {actions}
+      </div>
 
       {/* Controls over the bottom of the picture, clear of the page's
           bottom nav and action bar. */}
@@ -920,7 +925,6 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
           onPickClip={pickClip}
         />
 
-        {actions ? <div className="flex items-center gap-2 pt-2.5">{actions}</div> : null}
       </div>
     </section>
   );
