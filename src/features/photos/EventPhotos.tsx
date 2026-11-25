@@ -19,6 +19,8 @@ type EventPhotosProps = {
   inSheet?: boolean;
   // With no photos yet: an invitation to upload them (concert has started).
   onUpload?: () => void;
+  // Under the stage's «Fotos» tab: the tab already says it, the heading is for screen readers only.
+  hideTitle?: boolean;
 };
 
 const Mosaic: React.FC<{ album: PhotoAlbum }> = ({ album }) => {
@@ -39,7 +41,7 @@ const Mosaic: React.FC<{ album: PhotoAlbum }> = ({ album }) => {
   );
 };
 
-const EventPhotos: React.FC<EventPhotosProps> = ({ moments, currentUserId, onDeleted, inSheet = false, onUpload }) => {
+const EventPhotos: React.FC<EventPhotosProps> = ({ moments, currentUserId, onDeleted, inSheet = false, onUpload, hideTitle = false }) => {
   const navigate = useNavigate();
   const albums = useMemo(() => groupPhotoAlbums(moments, currentUserId), [moments, currentUserId]);
   const [albumId, setAlbumId] = useState(ALL_ALBUM_ID);
@@ -50,7 +52,7 @@ const EventPhotos: React.FC<EventPhotosProps> = ({ moments, currentUserId, onDel
     if (!onUpload) return null;
     return (
       <section className="px-4 pt-6" aria-labelledby="event-photos-title">
-        <h2 id="event-photos-title" className="font-display text-xl font-bold text-app-ink">Fotos</h2>
+        <h2 id="event-photos-title" className={hideTitle ? 'sr-only' : 'font-display text-xl font-bold text-app-ink'}>Fotos</h2>
         <div className="mt-2 rounded-2xl border border-dashed border-app-line px-4 py-5 text-center">
           <p className="m-0 text-sm text-[#c9c5bd]">Aún no hay fotos de este concierto. Cada persona que suba las suyas tendrá aquí su álbum.</p>
           <button
@@ -71,7 +73,7 @@ const EventPhotos: React.FC<EventPhotosProps> = ({ moments, currentUserId, onDel
   return (
     <section className="px-4 pt-6" aria-labelledby="event-photos-title">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 id="event-photos-title" className="font-display text-xl font-bold text-app-ink">Fotos</h2>
+        <h2 id="event-photos-title" className={hideTitle ? 'sr-only' : 'font-display text-xl font-bold text-app-ink'}>Fotos</h2>
         <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.06em] text-white/50">
           {albums[0].photos.length} · {people} {people === 1 ? 'persona' : 'personas'}
         </p>

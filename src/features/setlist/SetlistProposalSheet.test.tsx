@@ -17,7 +17,22 @@ import SetlistProposalSheet from './SetlistProposalSheet';
 const renderSheet = (props: Partial<React.ComponentProps<typeof SetlistProposalSheet>> = {}) =>
   render(<SetlistProposalSheet isOpen onClose={() => undefined} eventId="event-1" {...props} />);
 
-const textarea = () => screen.getByPlaceholderText(/Primera canción/) as HTMLTextAreaElement;
+const titles = () =>
+  within(screen.getByRole('list', { name: 'Canciones del setlist' }))
+    .queryAllByRole('textbox')
+    .filter(input => input.getAttribute('aria-label') !== 'Añadir canción')
+    .map(input => (input as HTMLInputElement).value);
+
+const paste = (value: string) => {
+  const input = screen.getByRole('textbox', { name: 'Añadir canción' });
+  fireEvent.paste(input, { clipboardData: { getData: () => value } });
+};
+
+const type = (value: string) => {
+  const input = screen.getByRole('textbox', { name: 'Añadir canción' });
+  fireEvent.change(input, { target: { value } });
+  fireEvent.keyDown(input, { key: 'Enter' });
+};
 
 describe('SetlistProposalSheet', () => {
   afterEach(cleanup);
@@ -27,14 +42,12 @@ describe('SetlistProposalSheet', () => {
     mocks.recognize.mockReset();
   });
 
-  it('previews the cleaned list and sends it as a proposal', async () => {
+  it('splits a pasted list into songs and sends it as a proposal', async () => {
     mocks.rpc.mockResolvedValue({ data: { status: 'pending', titles: ['Uno', 'Dos'] }, error: null });
     const onSubmitted = vi.fn();
     renderSheet({ onSubmitted });
-    fireEvent.change(textarea(), { target: { value: 'Setlist\n  Uno \n\nDos\nEncore' } });
-
-    const preview = screen.getByRole('list', { name: 'Vista previa del setlist' });
-    expect(within(preview).getAllByRole('listitem').map(item => item.textContent)).toEqual(['01Uno', '02Dos']);
+    paste('Setlist\n  Uno \n\nDos\nEncore');
+    expect(titles()).toEqual(['Uno', 'Dos']);
 
     fireEvent.click(screen.getByRole('button', { name: 'Enviar setlist' }));
     expect(await screen.findByText('Enviado. Lo verá el artista o moderación antes de publicarlo.')).toBeInTheDocument();
@@ -44,7 +57,8 @@ describe('SetlistProposalSheet', () => {
 
   it('explains a title that is too long without sending', async () => {
     renderSheet();
-    fireEvent.change(textarea(), { target: { value: `Uno\n${'a'.repeat(121)}` } });
+    type('Uno');
+    type('a'.repeat(121));
     fireEvent.click(screen.getByRole('button', { name: 'Enviar setlist' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('demasiado largo');
     expect(mocks.rpc).not.toHaveBeenCalled();
@@ -53,19 +67,24 @@ describe('SetlistProposalSheet', () => {
   it('shows why the database refused it', async () => {
     mocks.rpc.mockResolvedValue({ data: null, error: { code: 'P0001', message: 'setlist_locked' } });
     renderSheet();
-    fireEvent.change(textarea(), { target: { value: 'Uno' } });
+    type('Uno');
     fireEvent.click(screen.getByRole('button', { name: 'Enviar setlist' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('ya tiene su setlist oficial');
   });
 
-  it('fills the textarea from a photo', async () => {
+  it('adds each song read from a photo as its own item, reorderable', async () => {
     mocks.recognize.mockResolvedValue([['SETLIST', '1. Can-', 'ción'], ['2) Otra']]);
     renderSheet({ initialTitles: ['Ya escrita'] });
-    await waitFor(() => expect(textarea().value).toBe('Ya escrita'));
+    await waitFor(() => expect(titles()).toEqual(['Ya escrita']));
     const file = new File(['x'], 'setlist.jpg', { type: 'image/jpeg' });
     fireEvent.change(screen.getByTestId('setlist-photo-input'), { target: { files: [file] } });
-    await waitFor(() => expect(textarea().value).toBe('Ya escrita\nCanción\nOtra'));
+    await waitFor(() => expect(titles()).toEqual(['Ya escrita', 'Canción', 'Otra']));
     expect(mocks.recognize).toHaveBeenCalledWith(file);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mover arriba Otra' }));
+    expect(titles()).toEqual(['Ya escrita', 'Otra', 'Canción']);
+    fireEvent.click(screen.getByRole('button', { name: 'Quitar Ya escrita' }));
+    expect(titles()).toEqual(['Otra', 'Canción']);
   });
 
   it('says so when the photo has no songs', async () => {

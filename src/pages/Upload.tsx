@@ -8,7 +8,7 @@ import QrScanner from '../components/QrScanner';
 import { buildMomentItems, momentItemFromGallery, momentItemFromNativePick, releasePreview, MomentItem } from '../lib/moments';
 import AppShell from '../components/AppShell';
 import GeneratedPoster from '../components/ui/GeneratedPoster';
-import { IconChevronDown, IconMic, IconPlay, IconPlus, IconQrCode } from '../components/icons';
+import { IconCamera, IconChevronDown, IconMic, IconPlay, IconPlus, IconQrCode } from '../components/icons';
 import VideoThumb from '../components/ui/VideoThumb';
 import { fetchEventCardById, fetchUploadCandidates } from '../data/eventQueries';
 import { eventService } from '../services/event.service';
@@ -832,7 +832,9 @@ const Upload: React.FC = () => {
             <h2 className="mx-4 mb-2 mt-[18px] font-display text-base font-bold text-app-ink">
               {setlist.length ? 'Cada vídeo va a su canción' : 'Tus momentos'}
             </h2>
-            <ul className="flex flex-col gap-2 px-4">
+            {/* Big cards, two per row: the photo or video itself, a tag with
+                what it is and when, the song (videos) along the bottom. */}
+            <ul className="grid grid-cols-2 gap-2 px-4">
               {items.map(item => {
                 const isVideo = item.mediaType === 'video';
                 // Photos are not tied to a song on this screen; videos are, when there is a setlist.
@@ -841,82 +843,75 @@ const Upload: React.FC = () => {
                 const offNight = Boolean(
                   event && item.captureAt && distanceToConcert(item.captureAt, event.starts_at, event.ends_at ?? null) > 0,
                 );
+                const label = `${isVideo ? 'Vídeo' : 'Foto'} de las ${clock(item.captureAt)}`;
+                const songLabel = song
+                  ? `${pad(song.ordinal)} · ${song.song_title || 'Canción'}`
+                  : isVideo && setlist.length
+                    ? 'Elige la canción'
+                    : null;
                 return (
-                  <li key={item.id} className="flex items-center gap-3">
-                    <span className="relative h-20 w-16 shrink-0 overflow-hidden rounded-[10px] bg-app-surface">
-                      {!item.file ? (
-                        // From the in-app gallery: the plugin's thumbnail (a frame, for videos).
-                        item.previewUrl ? (
-                          <img src={item.previewUrl} alt={`${item.mediaType === 'video' ? 'Vídeo' : 'Foto'} de las ${clock(item.captureAt)}`} className="h-full w-full object-cover" />
-                        ) : (
-                          <span className="flex h-full w-full items-center justify-center text-[#8f8b84]">
-                            <IconPlay size={20} />
-                          </span>
-                        )
-                      ) : item.mediaType === 'video' ? (
-                        <VideoThumb
-                          src={item.previewUrl}
-                          label={`Vídeo de las ${clock(item.captureAt)}`}
-                          onDuration={seconds => setDurations(prev => ({ ...prev, [item.id]: seconds }))}
-                        />
+                  <li key={item.id} className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-app-surface">
+                    {!item.file ? (
+                      // From the in-app gallery: the plugin's thumbnail (a frame, for videos).
+                      item.previewUrl ? (
+                        <img src={item.previewUrl} alt={label} className="h-full w-full object-cover" />
                       ) : (
-                        <img src={item.previewUrl} alt={`Foto de las ${clock(item.captureAt)}`} className="h-full w-full object-cover" />
-                      )}
-                      {length ? (
-                        <span className="absolute bottom-1 left-1 rounded bg-black/70 px-1 font-mono text-[10px] font-semibold text-app-ink">
-                          {length}
+                        <span className="flex h-full w-full items-center justify-center text-[#8f8b84]">
+                          <IconPlay size={28} />
                         </span>
-                      ) : null}
+                      )
+                    ) : isVideo ? (
+                      <VideoThumb
+                        src={item.previewUrl}
+                        label={label}
+                        onDuration={seconds => setDurations(prev => ({ ...prev, [item.id]: seconds }))}
+                      />
+                    ) : (
+                      <img src={item.previewUrl} alt={label} className="h-full w-full object-cover" />
+                    )}
+                    <span
+                      className={`absolute left-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-1 font-mono text-[11px] font-semibold ${
+                        offNight ? 'bg-amber-300 text-[#14151a]' : 'bg-black/65 text-white'
+                      }`}
+                    >
+                      {isVideo ? <IconPlay size={12} /> : <IconCamera size={12} />}
+                      {offNight ? 'Sin hora' : clock(item.captureAt)}
+                      {length ? <span className="opacity-70">· {length}</span> : null}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label="Quitar"
+                      onClick={() => removeItem(item.id)}
+                      className="absolute right-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+                        <path d="M6 6l12 12M18 6L6 18" />
+                      </svg>
+                    </button>
+                    {songLabel ? (
                       <button
                         type="button"
-                        aria-label="Quitar"
-                        onClick={() => removeItem(item.id)}
-                        className="absolute right-0.5 top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white"
-                      >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
-                          <path d="M6 6l12 12M18 6L6 18" />
-                        </svg>
-                      </button>
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      {offNight ? (
-                        <span className="block text-[11px] font-semibold text-amber-300">
-                          Sin la hora del concierto · irá a «Sin hora exacta»
-                        </span>
-                      ) : (
-                        <span className="block font-mono text-[11px] font-semibold text-[#8f8b84]">{clock(item.captureAt)}</span>
-                      )}
-                      <span className="block font-display text-[15px] font-bold leading-snug text-app-ink line-clamp-2">
-                        {song
-                          ? `${pad(song.ordinal)} · ${song.song_title || 'Canción'}`
-                          : isVideo && setlist.length
-                            ? 'Elige la canción'
-                            : isVideo
-                              ? 'Vídeo'
-                              : 'Foto'}
-                      </span>
-                    </span>
-                    {isVideo && setlist.length ? (
-                      <button
-                        type="button"
-                        aria-label="Cambiar canción"
+                        aria-label={`Cambiar canción: ${songLabel}`}
                         onClick={() => setSongPickerFor(item.id)}
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-app-line text-[#c9c5bd]"
+                        className="absolute inset-x-0 bottom-0 flex min-h-11 items-end gap-1 bg-gradient-to-t from-black/85 to-transparent px-2.5 pb-2 pt-6 text-left"
                       >
-                        <IconChevronDown size={18} />
+                        <span className="min-w-0 flex-1 font-display text-[13px] font-bold leading-tight text-white line-clamp-2">
+                          {songLabel}
+                        </span>
+                        <IconChevronDown size={16} />
                       </button>
                     ) : null}
                   </li>
                 );
               })}
-              <li>
+              <li className="aspect-[3/4]">
                 <button
                   type="button"
                   onClick={openPicker}
-                  className="flex min-h-16 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-app-line text-sm font-semibold text-[#c9c5bd]"
+                  className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-app-line text-sm font-semibold text-[#c9c5bd]"
                 >
-                  <IconPlus size={18} />
-                  Añadir más de la galería
+                  <IconPlus size={22} />
+                  Añadir más
                 </button>
               </li>
             </ul>

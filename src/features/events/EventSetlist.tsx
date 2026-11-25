@@ -2,13 +2,14 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import SetlistAttribution from '../../components/event/SetlistAttribution';
 import GeneratedPoster from '../../components/ui/GeneratedPoster';
+import { IconPlus } from '../../components/icons';
 import type { EventSetlistEntry } from '../../lib/types';
 import type { Clip, TimelineMoment } from '../moments/concertTimeline';
 import SetlistCredit from '../setlist/SetlistCredit';
 import SetlistProposalAction from '../setlist/SetlistProposalAction';
 
 // The setlist of a concert that already happened, song by song: each song
-// with its clips (tap: play them) or «¿La grabaste?», the setlist's source
+// with its clips (tap: play them) and a «Subir» button, the setlist's source
 // and the audience proposal. On the concert page it lives in the player's
 // «Setlist» sheet, or below the poster when there is nothing to play yet.
 
@@ -92,15 +93,22 @@ const EventSetlist: React.FC<EventSetlistProps> = ({
                     );
                   })}
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => onUpload(entry.ordinal)}
-                  className="min-h-11 shrink-0 rounded-full border border-dashed border-app-line px-3 text-xs font-semibold text-[#c9c5bd]"
-                >
-                  ¿La grabaste?
-                </button>
-              )}
+              ) : null}
+              {/* «Subir» on every song: a pill while it has nothing, a small
+                  round + next to the clips once it has. */}
+              <button
+                type="button"
+                aria-label={`Subir a ${entry.song_title || 'esta canción'}`}
+                onClick={() => onUpload(entry.ordinal)}
+                className={
+                  songClips.length > 0
+                    ? 'flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-app-line text-[#c9c5bd]'
+                    : 'inline-flex min-h-10 shrink-0 items-center gap-1 rounded-full bg-white/[0.08] pl-2.5 pr-3 text-[13px] font-semibold text-app-ink'
+                }
+              >
+                <IconPlus size={songClips.length > 0 ? 16 : 14} />
+                {songClips.length > 0 ? null : 'Subir'}
+              </button>
             </li>
           );
         })}
