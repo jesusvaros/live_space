@@ -42,10 +42,10 @@ describe('SuggestConcertSheet', () => {
   it('sends the normalized link and thanks', async () => {
     renderSheet();
     typeLink(' https://dice.fm/event/abc?utm_source=ig&fbclid=x ');
-    fireEvent.change(screen.getByPlaceholderText(/segundo pase/), { target: { value: '  Es el pase de las 23:00 ' } });
     fireEvent.click(screen.getByRole('button', { name: 'Enviar' }));
     expect(await screen.findByText(/Gracias\. Lo buscaremos en el próximo repaso de conciertos y te avisamos\./)).toBeInTheDocument();
-    expect(mocks.insert).toHaveBeenCalledWith({ url: 'https://dice.fm/event/abc', note: 'Es el pase de las 23:00' });
+    expect(mocks.insert).toHaveBeenCalledWith({ url: 'https://dice.fm/event/abc', note: null });
+    expect(screen.queryByPlaceholderText(/segundo pase/)).toBeNull();
   });
 
   it('rejects something that is not an http(s) link', async () => {
