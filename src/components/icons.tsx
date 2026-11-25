@@ -123,10 +123,10 @@ export const IconCheckCircle: React.FC<IconProps> = ({ className, size = 20 }) =
 
 export const IconShare: React.FC<IconProps> = ({ className, size = 20 }) => (
   <svg {...baseProps(size)} className={className}>
-    <path d="M16 6l-8 4 8 4" />
-    <circle cx="17.5" cy="6" r="2.5" />
-    <circle cx="6.5" cy="12" r="2.5" />
-    <circle cx="17.5" cy="18" r="2.5" />
+    <circle cx="18" cy="5" r="3" />
+    <circle cx="6" cy="12" r="3" />
+    <circle cx="18" cy="19" r="3" />
+    <path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" />
   </svg>
 );
 
