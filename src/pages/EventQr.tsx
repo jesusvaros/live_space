@@ -7,6 +7,7 @@ import { IconChevronLeft } from '../components/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { buildUploadQrUrl } from '../lib/uploadQr';
 import { POSTER_COLORS, PosterVariant, qrSvg, renderPosterPng } from '../lib/qrPoster';
+import { safeImageUrl } from '../lib/eventCover';
 import { eventManagementService, ManagedEvent } from '../services/eventManagement.service';
 import { supabase } from '../api';
 import { canGoBack } from '../app/useGoBack';
@@ -138,6 +139,7 @@ const EventQr: React.FC = () => {
       url: link,
       kicker,
       artist: event.headliner?.name || event.name,
+      posterUrl: safeImageUrl(event.poster_url) || safeImageUrl(event.poster_thumb_url),
     };
   }, [event, link, isVenue, venueName]);
 
@@ -238,7 +240,16 @@ const EventQr: React.FC = () => {
                 Escanea y <span style={{ color: colors.accent }}>sube tus vídeos</span> del concierto
               </p>
               <div className="mt-3 flex items-center justify-between gap-3 border-t-2 pt-2.5" style={{ borderColor: colors.ink }}>
-                <span className="min-w-0 truncate font-poster text-[22px] print:text-[32pt]">{content.artist}</span>
+                <span className="flex min-w-0 items-center gap-2.5">
+                  {'posterUrl' in content && content.posterUrl ? (
+                    <img
+                      src={content.posterUrl}
+                      alt=""
+                      className="h-[58px] w-[44px] shrink-0 object-cover print:h-[40mm] print:w-[30mm]"
+                    />
+                  ) : null}
+                  <span className="min-w-0 truncate font-poster text-[22px] print:text-[32pt]">{content.artist}</span>
+                </span>
                 <span className="flex shrink-0 items-center gap-1.5 font-display text-[13px] font-bold print:text-[16pt]">
                   <BrandMark color={colors.accent} />
                   Live Space

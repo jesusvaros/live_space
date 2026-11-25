@@ -6,7 +6,19 @@ export type PosterContent = {
   url: string;
   kicker: string; // "LA RIVIERA · JUE 29 OCT"
   artist: string;
+  // The concert's poster (R2 copy, CORS-enabled for the app); left out of the
+  // PNG when it can't be loaded.
+  posterUrl?: string | null;
 };
+
+const loadImage = (url: string) =>
+  new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('poster'));
+    image.src = url;
+  });
 
 export const POSTER_COLORS: Record<PosterVariant, { ground: string; ink: string; accent: string }> = {
   paper: { ground: '#f3efe7', ink: '#14151a', accent: '#ff5b2e' },
@@ -85,8 +97,12 @@ export const renderPosterPng = async (content: PosterContent, variant: PosterVar
   context.fillStyle = colors.ink;
   context.fillText('ESTA NOCHE', pad + grabesWidth, headTop + lineHeight);
 
+  const posterImage = content.posterUrl ? await loadImage(content.posterUrl).catch(() => null) : null;
+  const posterW = 210;
+  const posterH = 280;
+
   // QR on a white card
-  const footerTop = height - pad - 120;
+  const footerTop = height - pad - (posterImage ? posterH + 40 : 120);
   const qrTop = headTop + lineHeight + 70;
   const qrBox = Math.min(width - pad * 2 - 120, footerTop - qrTop - 110);
   const qrX = (width - qrBox) / 2;
@@ -132,10 +148,22 @@ export const renderPosterPng = async (content: PosterContent, variant: PosterVar
   context.arc(markCx, markCy, markSize / 4.4, 0, Math.PI * 2);
   context.fill();
 
+  // The concert poster, cropped to 3:4, left of the artist name.
+  let artistX = pad;
+  if (posterImage) {
+    const top = footerTop + 32;
+    const scale = Math.max(posterW / posterImage.width, posterH / posterImage.height);
+    const sw = posterW / scale;
+    const sh = posterH / scale;
+    context.imageSmoothingEnabled = true;
+    context.drawImage(posterImage, (posterImage.width - sw) / 2, (posterImage.height - sh) / 2, sw, sh, pad, top, posterW, posterH);
+    artistX = pad + posterW + 32;
+  }
+
   context.fillStyle = colors.ink;
   const artist = content.artist.toUpperCase();
-  fitFont(context, artist, poster, 84, markCx - markSize / 2 - pad - 32);
-  context.fillText(artist, pad, baseline + 6);
+  fitFont(context, artist, poster, 84, markCx - markSize / 2 - artistX - 32);
+  context.fillText(artist, artistX, baseline + 6);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(blob => (blob ? resolve(blob) : reject(new Error('No se pudo generar la imagen'))), 'image/png');
