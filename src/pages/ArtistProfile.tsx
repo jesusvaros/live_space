@@ -190,17 +190,6 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
     [id],
   );
 
-  const handleOpenMap = () => {
-    if (!artist) return;
-    navigate('/tabs/map', { state: {
-      artistFilter: {
-        id: artist.id,
-        name: artist.name,
-        avatar_url: artist.avatar_url,
-      },
-    } });
-  };
-
   const playedCount = pastCount + upcomingShows.length;
 
   const handleToggleFollow = async () => {
@@ -248,7 +237,6 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
           onShowConcerts={() => setActiveTab('shows')}
           onEditLinks={() => navigate('/ajustes/perfil')}
           onCreateShow={() => navigate('/create-event', { state: { from: `/tabs/artist/${id}` } })}
-          onOpenMap={handleOpenMap}
         />
       );
     }
@@ -343,7 +331,13 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
         title={artist?.name || 'Artista'}
         scrollRef={contentRef}
         fallbackHref="/tabs/discover"
-        actions={artist ? <MapVisibilityMenu type="artist" id={artist.id} name={artist.name} imageUrl={artist.avatar_url} /> : null}
+        actions={
+          artist ? (
+            <MapVisibilityMenu type="artist" id={artist.id} name={artist.name} imageUrl={artist.avatar_url}>
+              <ClaimProfileLink type="artist" entityId={artist.id} subjectId={artist.subject_id} variant="menu" />
+            </MapVisibilityMenu>
+          ) : null
+        }
       />
       {loading && <DetailSkeleton />}
 
@@ -366,11 +360,6 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
           <div className={`px-4 pt-4 ${NAV_CLEARANCE}`}>
             {tabBar}
             <div className="pt-3.5">{renderTabContent()}</div>
-            {/* Claiming is for the few who are the artist: tucked away under
-                Info, or at the end of the concerts when there is no Info. */}
-            {activeTab === 'about' || (!hasInfo && activeTab === 'shows') ? (
-              <ClaimProfileLink type="artist" entityId={artist.id} subjectId={artist.subject_id} className="pt-6" />
-            ) : null}
           </div>
         </>
       )}

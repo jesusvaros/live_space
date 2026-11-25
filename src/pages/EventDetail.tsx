@@ -739,20 +739,7 @@ const EventDetail: React.FC = () => {
                   </button>
                 ) : (
                 <div className="pt-1">
-                  <span
-                    className={`inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-[11px] font-bold tracking-[0.08em] ${
-                      isPastEvent ? 'bg-app-line text-app-ink' : 'bg-app-accent text-[#14151a]'
-                    }`}
-                  >
-                    {!isPastEvent && eventStart && sameDay(eventStart, now) ? (
-                      <span className="relative flex h-2 w-2">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#14151a]/60" />
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-[#14151a]" />
-                      </span>
-                    ) : null}
-                    {isPastEvent ? '¿ESTUVISTE?' : eventStart && sameDay(eventStart, now) ? 'ESTA NOCHE' : 'EL DÍA DEL CONCIERTO'}
-                  </span>
-                  <p className="mt-2 font-display text-xl font-bold text-app-ink">
+                  <p className="font-display text-xl font-bold text-app-ink">
                     {isPastEvent ? 'Sube lo que grabaste' : 'Graba lo que quieras recordar'}
                   </p>
                   <p className="mt-1 text-sm text-[#c9c5bd]">
@@ -768,7 +755,7 @@ const EventDetail: React.FC = () => {
                   </p>
                 ) : null}
                 {!isPastEvent ? <FriendsGoingRow eventId={event.id} /> : null}
-                {!isPastEvent ? <TicketSlot eventId={event.id} eventName={heroTitle || event.name} /> : null}
+                {!isPastEvent && attendanceActive ? <TicketSlot eventId={event.id} eventName={heroTitle || event.name} /> : null}
 
                 <EventMerchSection
                   eventId={event.id}
@@ -845,7 +832,7 @@ const EventDetail: React.FC = () => {
                         onClick={() => track('ticket_tap', { seller: tickets.seller, official: tickets.official })}
                         className="flex h-[50px] flex-1 items-center justify-center rounded-full border border-app-line text-[15px] font-semibold text-app-ink"
                       >
-                        {event.is_free ? 'Más info' : 'Entradas'}
+                        {event.is_free ? 'Más info' : 'Comprar'}
                       </a>
                     ) : null}
                   </>

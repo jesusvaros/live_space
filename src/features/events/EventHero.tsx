@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IconFlag } from '../../components/icons';
 import Avatar from '../../components/ui/Avatar';
 import CoverImage from '../../components/ui/CoverImage';
 import GeneratedPoster from '../../components/ui/GeneratedPoster';
-import { eventCoverSources } from '../../lib/eventCover';
+import { eventCoverSources, safeImageUrl, uniqueImageUrls } from '../../lib/eventCover';
+import PosterViewer from './PosterViewer';
 import type { Artist, Event, VenuePlace } from '../../lib/types';
 
 // The top of the concert page: the poster with the date, the headliner and
@@ -25,9 +26,27 @@ type EventHeroProps = {
 
 const EventHero: React.FC<EventHeroProps> = ({ event, title, tourName, kicker, artists, venue, festival, isFollowing }) => {
   const navigate = useNavigate();
+  const [posterOpen, setPosterOpen] = useState(false);
+  // The poster itself, biggest first; a fan photo cover is not the poster.
+  const posterUrls = uniqueImageUrls([
+    event.poster_sources?.original,
+    event.poster_sources?.card,
+    safeImageUrl(event.cover_image_url),
+  ]);
   return (
     <>
+      {posterOpen && posterUrls.length > 0 ? (
+        <PosterViewer sources={posterUrls} alt={`Cartel de ${title}`} onClose={() => setPosterOpen(false)} />
+      ) : null}
       <section className="relative h-[380px] overflow-hidden">
+        {posterUrls.length > 0 ? (
+          <button
+            type="button"
+            aria-label="Ver el cartel a pantalla completa"
+            onClick={() => setPosterOpen(true)}
+            className="absolute inset-0 z-[1]"
+          />
+        ) : null}
         <CoverImage
           sources={eventCoverSources(event, 'card')}
           eager
