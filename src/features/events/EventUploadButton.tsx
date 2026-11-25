@@ -7,6 +7,8 @@ type EventUploadButtonProps = {
   onUpload: () => void;
   // 'pill': the compact «+ Subir» among the concert player's controls.
   variant?: 'bar' | 'pill';
+  // While uploading, tapping the progress opens «Subiendo».
+  onOpenUploads?: () => void;
 };
 
 /**
@@ -19,12 +21,16 @@ type EventUploadButtonProps = {
  * there: «+ Subir» in orange, or a discreet «+ Subir más» for someone who
  * already uploaded here. It fills and fails the same way, in less space.
  */
-const EventUploadButton: React.FC<EventUploadButtonProps> = ({ bar, onUpload, variant = 'bar' }) => {
+const EventUploadButton: React.FC<EventUploadButtonProps> = ({ bar, onUpload, variant = 'bar', onOpenUploads }) => {
   const { summary, retryAll, clearFailed, inProgress, failed } = bar;
   // Too big / too long / unsupported: retrying can't help, offer to remove.
   const canRetry = summary.retryable > 0;
   const live = summary.total - summary.failed;
-  const onClick = failed ? () => void (canRetry ? retryAll() : clearFailed()) : onUpload;
+  const onClick = inProgress
+    ? () => onOpenUploads?.()
+    : failed
+      ? () => void (canRetry ? retryAll() : clearFailed())
+      : onUpload;
 
   if (variant === 'pill') {
     const errorText = summary.errorMessage ?? (summary.failed === 1 ? 'No se pudo subir' : `${summary.failed} no se pudieron subir`);
@@ -46,7 +52,7 @@ const EventUploadButton: React.FC<EventUploadButtonProps> = ({ bar, onUpload, va
       <button
         type="button"
         onClick={onClick}
-        disabled={inProgress}
+        disabled={inProgress && !onOpenUploads}
         aria-busy={inProgress}
         aria-label={failed ? (canRetry ? 'No se pudo subir: reintentar' : `${errorText}: quitar`) : undefined}
         className={`relative flex h-9 min-w-0 max-w-[62%] shrink items-center justify-center gap-1 overflow-hidden rounded-full px-3.5 text-[13px] font-bold transition-colors duration-500 ${
@@ -87,7 +93,7 @@ const EventUploadButton: React.FC<EventUploadButtonProps> = ({ bar, onUpload, va
     <button
       type="button"
       onClick={onClick}
-      disabled={inProgress}
+      disabled={inProgress && !onOpenUploads}
       aria-busy={inProgress}
       className={`relative flex h-[52px] flex-1 items-center justify-center gap-2 overflow-hidden rounded-full text-base font-bold transition-colors duration-500 ${
         failed ? 'bg-rose-500 text-white' : inProgress ? 'bg-[#3a3b42] text-white' : 'bg-app-accent text-[#14151a]'

@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import UploadsSheet from './UploadsSheet';
 import { useUploadQueue } from '../media/useUploadQueue';
 
 type UploadProgressPillProps = {
@@ -12,6 +13,7 @@ type UploadProgressPillProps = {
  */
 const UploadProgressPill = ({ className }: UploadProgressPillProps) => {
   const { summary, retryAll, clearFailed, clearFinished } = useUploadQueue();
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   // "Subidos" stays a few seconds, then the pill goes away.
   useEffect(() => {
@@ -79,7 +81,14 @@ const UploadProgressPill = ({ className }: UploadProgressPillProps) => {
           summary.state === 'working' ? 'animate-pulse motion-reduce:animate-none' : '',
         ].join(' ')}
       />
-      <span className={['min-w-0 flex-1', summary.state === 'error' ? 'line-clamp-2' : 'truncate'].join(' ')}>{label}</span>
+      {/* Tapping the progress opens «Subiendo» with every photo and video. */}
+      <button
+        type="button"
+        onClick={() => setSheetOpen(true)}
+        className={['min-w-0 flex-1 text-left', summary.state === 'error' ? 'line-clamp-2' : 'truncate'].join(' ')}
+      >
+        {label}
+      </button>
       {action && (
         <button
           type="button"
@@ -96,6 +105,7 @@ const UploadProgressPill = ({ className }: UploadProgressPillProps) => {
           style={{ width: `${summary.percent}%` }}
         />
       )}
+      <UploadsSheet isOpen={sheetOpen} onClose={() => setSheetOpen(false)} />
     </div>
   );
 };

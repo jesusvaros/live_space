@@ -11,11 +11,14 @@ type DetailHeaderProps = {
   // Something full-screen (the concert player) is under the bar: stay
   // see-through even past the hero.
   overlay?: boolean;
+  // In place of the title, centred (the concert stage's «Vídeos · Fotos»):
+  // inside the bar so it gets the taps, not the bar above it.
+  center?: React.ReactNode;
 };
 
 // Back bar pinned to the top of a detail page, over its hero. Solid with the
 // title once the hero has scrolled away.
-const DetailHeader: React.FC<DetailHeaderProps> = ({ title, actions, scrollRef, fallbackHref = '/tabs/events', overlay = false }) => {
+const DetailHeader: React.FC<DetailHeaderProps> = ({ title, actions, scrollRef, fallbackHref = '/tabs/events', overlay = false, center }) => {
   const goBack = useGoBack(fallbackHref);
   const [scrolledPast, setSolid] = useState(false);
   const solid = scrolledPast && !overlay;
@@ -43,6 +46,9 @@ const DetailHeader: React.FC<DetailHeaderProps> = ({ title, actions, scrollRef, 
       >
         <IconChevronLeft size={22} />
       </button>
+      {center ? (
+        <div className="flex min-w-0 flex-1 justify-center">{center}</div>
+      ) : (
       <p
         className={`min-w-0 flex-1 truncate font-display text-base font-bold text-white transition-opacity ${
           solid ? 'opacity-100' : 'opacity-0'
@@ -50,6 +56,7 @@ const DetailHeader: React.FC<DetailHeaderProps> = ({ title, actions, scrollRef, 
       >
         {title}
       </p>
+      )}
       {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
     </div>
   );

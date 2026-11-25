@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
 import { NAV_CLEARANCE } from '../components/BottomNav';
 import ShareSheet from '../components/ShareSheet';
+import UploadsSheet from '../components/UploadsSheet';
 import { IconBookmark, IconBookmarkFilled, IconCamera, IconChevronRight, IconQrCode, IconShare, IconUser } from '../components/icons';
 import { goingLabel, useGoingCounts } from '../features/events/goingCounts';
 import DetailHeader from '../components/ui/DetailHeader';
@@ -107,6 +108,7 @@ const EventDetail: React.FC = () => {
   const [seekRequest, setSeekRequest] = useState<SeekRequest>(null);
   const [playingSongId, setPlayingSongId] = useState<string | null>(null);
   const [showShare, setShowShare] = useState(false);
+  const [uploadsOpen, setUploadsOpen] = useState(false);
   const [sheet, setSheet] = useState<StageSheet | null>(null);
   // The stage's two big views, switched by the tabs at its top.
   const [stageView, setStageView] = useState<StageView>('videos');
@@ -594,6 +596,7 @@ const EventDetail: React.FC = () => {
             title={heroTitle}
             scrollRef={contentRef}
             overlay={stageInView}
+            center={stageMode && stageInView ? stageTabs : undefined}
             actions={shareButton}
           />
 
@@ -641,7 +644,7 @@ const EventDetail: React.FC = () => {
                           </button>
                         ) : null}
                         <span className="min-w-0 flex-1" />
-                        <EventUploadButton variant="pill" bar={uploadBar} onUpload={() => openUpload()} />
+                        <EventUploadButton variant="pill" bar={uploadBar} onUpload={() => openUpload()} onOpenUploads={() => setUploadsOpen(true)} />
                       </>
                     }
                   />
@@ -649,7 +652,7 @@ const EventDetail: React.FC = () => {
                     // The photos view fills the stage like the player does;
                     // the player stays mounted (paused) underneath.
                     <div
-                      className="absolute inset-0 z-20 overflow-y-auto bg-app-bg pt-[calc(48px+env(safe-area-inset-top,0px))]"
+                      className="absolute inset-0 z-20 overflow-y-auto bg-app-bg pt-[calc(68px+env(safe-area-inset-top,0px))]"
                       style={{ paddingBottom: `calc(${bottomClearance} + 64px)` }}
                     >
                       <EventPhotos
@@ -668,14 +671,11 @@ const EventDetail: React.FC = () => {
                       className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-end px-3 pt-2"
                       style={{ paddingBottom: bottomClearance }}
                     >
-                      <div className="pointer-events-auto flex min-w-0 max-w-full justify-end">
-                        <EventUploadButton variant="pill" bar={uploadBar} onUpload={() => openUpload()} />
+                      <div className="pointer-events-auto flex w-full min-w-0 justify-end">
+                        <EventUploadButton variant="pill" bar={uploadBar} onUpload={() => openUpload()} onOpenUploads={() => setUploadsOpen(true)} />
                       </div>
                     </div>
                   ) : null}
-                  <div className="pointer-events-none absolute inset-x-[64px] top-[calc(14px+env(safe-area-inset-top,0px))] z-30 flex justify-center">
-                    <div className="pointer-events-auto">{stageTabs}</div>
-                  </div>
                 </section>
               ) : (
                 // Nothing to play yet: the setlist and the rest below the poster.
@@ -858,7 +858,7 @@ const EventDetail: React.FC = () => {
             <div className={`pointer-events-none fixed inset-x-0 z-[1300] flex justify-center px-3 ${ACTION_BAR_BOTTOM}`}>
               <div className="pointer-events-auto flex w-full max-w-[34rem] items-center gap-2 rounded-full border border-white/10 bg-app-bg/85 p-1 shadow-[0_8px_28px_rgba(0,0,0,0.45)] backdrop-blur-xl">
                 {uploadMode ? (
-                  <EventUploadButton bar={uploadBar} onUpload={() => openUpload()} />
+                  <EventUploadButton bar={uploadBar} onUpload={() => openUpload()} onOpenUploads={() => setUploadsOpen(true)} />
                 ) : (
                   <>
                     <button
@@ -938,6 +938,7 @@ const EventDetail: React.FC = () => {
       ) : null}
 
       <ShareSheet isOpen={showShare} onClose={() => setShowShare(false)} link={shareUrl} />
+      <UploadsSheet isOpen={uploadsOpen} onClose={() => setUploadsOpen(false)} eventId={id} />
     </AppShell>
   );
 };
