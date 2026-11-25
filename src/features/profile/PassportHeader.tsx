@@ -12,6 +12,8 @@ type PassportHeaderProps = {
   entityKind?: 'artist' | 'venue' | null;
   links?: PassportLink[];
   onSettings: () => void;
+  // Your own profile: tapping the photo opens «Foto de perfil».
+  onAvatarPress?: () => void;
 };
 
 // The top of the profile: who you are and two shortcuts. No counters: the
@@ -24,6 +26,7 @@ const PassportHeader: React.FC<PassportHeaderProps> = ({
   entityKind = null,
   links = [],
   onSettings,
+  onAvatarPress,
 }) => {
   return (
     <header className="relative overflow-hidden px-4 pb-2 pt-[calc(16px+env(safe-area-inset-top,0px))]">
@@ -35,7 +38,13 @@ const PassportHeader: React.FC<PassportHeaderProps> = ({
         {entityKind ? (
           <Avatar name={name} src={avatarUrl} kind={entityKind} badge className="h-[72px] w-[72px] text-[24px]" />
         ) : (
-          <span className="shrink-0 rounded-full p-[3px] ring-2 ring-app-accent">
+          <button
+            type="button"
+            aria-label="Cambiar foto de perfil"
+            disabled={!onAvatarPress}
+            onClick={onAvatarPress}
+            className="shrink-0 rounded-full p-[3px] ring-2 ring-app-accent"
+          >
             {avatarUrl ? (
               <Avatar name={name} src={avatarUrl} className="h-[66px] w-[66px] text-[24px]" />
             ) : (
@@ -43,7 +52,7 @@ const PassportHeader: React.FC<PassportHeaderProps> = ({
                 Tú
               </span>
             )}
-          </span>
+          </button>
         )}
         <div className="min-w-0 flex-1">
           <h1 className="truncate font-display text-[26px] font-bold leading-tight text-app-ink">{name}</h1>

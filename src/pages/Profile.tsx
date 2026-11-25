@@ -25,6 +25,7 @@ import ConcertPosters from '../features/profile/ConcertPosters';
 import FollowingGrid from '../features/profile/FollowingGrid';
 import MomentsByConcert from '../features/profile/MomentsByConcert';
 import PassportHeader from '../features/profile/PassportHeader';
+import ProfilePhotoSheet from '../features/profile/ProfilePhotoSheet';
 import ProfileMerchSection from '../features/profile/ProfileMerchSection';
 import { UPCOMING_GRACE_MS, type ProfileMoment } from '../features/profile/profileLayout';
 
@@ -62,7 +63,8 @@ const profileQueryKeys = (userId: string, isManagementMode: boolean, entitySubje
 };
 
 const Profile: React.FC = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
+  const [photoOpen, setPhotoOpen] = useState(false);
 
   const {
     managedEntities,
@@ -406,7 +408,17 @@ const Profile: React.FC = () => {
           entityKind={isManagementMode && activeEntity ? (activeEntity.type === 'artist' ? 'artist' : 'venue') : null}
           links={isManagementMode ? [] : quickLinks}
           onSettings={() => navigate('/ajustes')}
+          onAvatarPress={!isManagementMode && user ? () => setPhotoOpen(true) : undefined}
         />
+        {user ? (
+          <ProfilePhotoSheet
+            isOpen={photoOpen}
+            userId={user.id}
+            hasPhoto={Boolean(profile?.avatar_url)}
+            onClose={() => setPhotoOpen(false)}
+            onChanged={refreshProfile}
+          />
+        ) : null}
 
         {isManagementMode && managedEntities.length > 1 && (
           <div className="flex gap-2 overflow-x-auto px-4 pb-1">
