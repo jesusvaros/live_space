@@ -19,11 +19,18 @@ describe('ticketLink', () => {
   });
 
   it('adds referral parameters only to the seller that has them', () => {
-    const referral = { entradas_com: { affiliate: 'LIVESPACE' } };
+    const referral = { entradas_com: { params: { affiliate: 'LIVESPACE' } } };
     expect(ticketLink({ ticket_url: 'https://www.entradas.com/event/x?a=1' }, referral)?.url).toBe(
       'https://www.entradas.com/event/x?a=1&affiliate=LIVESPACE',
     );
     expect(ticketLink({ ticket_url: 'https://tickets.oneboxtds.com/x' }, referral)?.url).toBe('https://tickets.oneboxtds.com/x');
+  });
+
+  it('wraps the link in the network redirect when the programme asks for it', () => {
+    const referral = { entradas_com: { wrap: 'https://www.awin1.com/cread.php?awinmid=24761&awinaffid=1&ued={url}' } };
+    expect(ticketLink({ ticket_url: 'https://www.entradas.com/event/x?a=1' }, referral)?.url).toBe(
+      'https://www.awin1.com/cread.php?awinmid=24761&awinaffid=1&ued=https%3A%2F%2Fwww.entradas.com%2Fevent%2Fx%3Fa%3D1',
+    );
   });
 
   it('ignores links that are not web addresses', () => {
