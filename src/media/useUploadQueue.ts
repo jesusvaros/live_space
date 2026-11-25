@@ -23,7 +23,7 @@ export type UploadQueueSummary = {
   compressing: boolean;
 };
 
-const jobFraction = (job: UploadJob) => {
+export const jobFraction = (job: UploadJob) => {
   switch (job.status) {
     case 'done':
       return 1;

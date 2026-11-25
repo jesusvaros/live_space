@@ -186,6 +186,34 @@ describe('CloudinaryMediaProvider', () => {
     }
   });
 
+  it('accepts the public_id with the folder in front (fixed-folder accounts)', async () => {
+    const globals = globalThis as { CapacitorWebFetch?: typeof fetch };
+    globals.CapacitorWebFetch = (async () =>
+      jsonResponse({
+        public_id: 'live-space/pilot/users/user-1/asset-1',
+        secure_url: 'https://res.cloudinary.com/live-space/image/upload/live-space/pilot/users/user-1/asset-1.jpg',
+        resource_type: 'image',
+        version: 1,
+        width: 10,
+        height: 10,
+        bytes: 4,
+        format: 'jpg',
+      })) as typeof fetch;
+    try {
+      const provider = new CloudinaryMediaProvider({
+        edgeFunctionUrl: 'https://project.supabase.co/functions/v1/cloudinary-sign-upload',
+        getAccessToken: async () => 'user-access-token',
+        fetch: (async () => jsonResponse(authorization())) as typeof fetch,
+        now: () => NOW,
+      });
+      const result = await provider.upload({ file: new File(['test'], 'a.jpg', { type: 'image/jpeg' }), eventId: 'event-1' });
+      expect(result.publicId).toBe('live-space/pilot/users/user-1/asset-1');
+      expect(result.reservationId).toBe('reservation-1');
+    } finally {
+      delete globals.CapacitorWebFetch;
+    }
+  });
+
   it('retries once with an in-memory copy when the WebView refuses the file (ERR_UPLOAD_FILE_CHANGED)', async () => {
     const calls: RequestInit[] = [];
     const globals = globalThis as { CapacitorWebFetch?: typeof fetch };

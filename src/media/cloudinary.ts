@@ -133,7 +133,9 @@ const parseUploadResult = (
 ): MediaUploadResult => {
   if (
     !isNonEmptyString(payload.public_id) ||
-    payload.public_id !== authorization.public_id ||
+    // With fixed folders Cloudinary returns «folder/public_id».
+    (payload.public_id !== authorization.public_id &&
+      payload.public_id !== `${authorization.folder}/${authorization.public_id}`) ||
     !isNonEmptyString(payload.secure_url) ||
     !payload.secure_url.startsWith('https://') ||
     payload.resource_type !== authorization.resourceType ||
