@@ -47,7 +47,8 @@ export type ParserKey =
   | 'planta-baja-agenda'
   | 'garaje-beat-agenda'
   | 'dabadaba-agenda'
-  | 'escenario-santander-agenda';
+  | 'escenario-santander-agenda'
+  | 'bar-mutante-agenda';
 
 export type RawScrapedEvent = {
   sourceUrl: string;

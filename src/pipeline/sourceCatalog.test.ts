@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { seedSources } from './sourceCatalog.js';
 
 describe('pilot source catalog', () => {
-  it('contains 53 unique official venue sources', () => {
-    expect(seedSources).toHaveLength(53);
-    expect(new Set(seedSources.map((source) => source.base_url)).size).toBe(53);
+  it('contains 54 unique official venue sources', () => {
+    expect(seedSources).toHaveLength(54);
+    expect(new Set(seedSources.map((source) => source.base_url)).size).toBe(54);
     expect(new Set(seedSources.map((source) => source.city))).toEqual(new Set([
       'Madrid', 'Barcelona', 'Sevilla', 'Valencia',
       'Bilbao', 'Granada', 'Murcia', 'San Sebastián', 'Santander', 'Vigo', 'Zaragoza',
@@ -22,6 +22,7 @@ describe('pilot source catalog', () => {
       'Café La Palma',
       'Café Libertad 8',
       'Dabadaba',
+      'El Bar Mutante',
       'El Intruso',
       'Escenario Santander',
       'Freedonia',
