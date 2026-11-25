@@ -11,6 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
 import EventPosterTile from '../features/events/components/EventPosterTile';
 import MomentsByConcert from '../features/profile/MomentsByConcert';
+import PhotoStatsRow from '../features/people/PhotoStatsRow';
 import type { EventListItem } from '../features/events/types';
 import { mapProfile } from '../data/canonicalMappers';
 import { fetchEventCards } from '../data/eventQueries';
@@ -142,6 +143,7 @@ const ProfileDetail: React.FC = () => {
               </button>
             ) : null}
           </header>
+          <PhotoStatsRow profileId={profile.id} className="px-4 pt-4" />
 
           {plans.length ? (
             <section aria-label="Sus planes" className="px-4 pt-6">

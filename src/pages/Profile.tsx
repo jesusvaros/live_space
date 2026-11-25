@@ -25,6 +25,7 @@ import ConcertPosters from '../features/profile/ConcertPosters';
 import FollowingGrid from '../features/profile/FollowingGrid';
 import MomentsByConcert from '../features/profile/MomentsByConcert';
 import PassportHeader from '../features/profile/PassportHeader';
+import PhotoStatsRow from '../features/people/PhotoStatsRow';
 import ProfilePhotoSheet from '../features/profile/ProfilePhotoSheet';
 import ProfileMerchSection from '../features/profile/ProfileMerchSection';
 import { UPCOMING_GRACE_MS, type ProfileMoment } from '../features/profile/profileLayout';
@@ -410,6 +411,7 @@ const Profile: React.FC = () => {
           onSettings={() => navigate('/ajustes')}
           onAvatarPress={!isManagementMode && user ? () => setPhotoOpen(true) : undefined}
         />
+        {!isManagementMode && user ? <PhotoStatsRow profileId={user.id} className="px-4 pt-3" /> : null}
         {user ? (
           <ProfilePhotoSheet
             isOpen={photoOpen}

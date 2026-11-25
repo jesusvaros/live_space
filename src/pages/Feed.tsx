@@ -7,7 +7,6 @@ import { PostWithRelations, VenuePlace } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppResume } from '../shared/hooks/useAppResume';
 import { supabase } from '../lib/supabase';
-import { fetchPostCards } from '../data/postQueries';
 import { ExternalMomentCard, isExternalPost } from '../features/socialImport';
 import { ReportMomentButton } from '../features/community';
 import { blockTargetLabel, withoutBlocked } from '../features/blocks/blocking';
@@ -19,6 +18,9 @@ import GeneratedPoster from '../components/ui/GeneratedPoster';
 import { videoPoster } from '../media/videoPoster';
 import { IconHeart, IconHeartFilled, IconPlus, IconShare } from '../components/icons';
 import ThisWeek from '../features/feed/ThisWeek';
+import Avatar from '../components/ui/Avatar';
+import ConcertGallerySlide from '../features/feed/ConcertGallerySlide';
+import { fetchFollowedPeopleIds } from '../features/people/photographers.service';
 import { FEED_MIN_MOMENTS, showThisWeek } from '../features/feed/thisWeekRules';
 
 const PAGE_SIZE = 8;
@@ -89,6 +91,7 @@ const MomentSlide: React.FC<SlideProps> = ({ post, songNumber, group, liked, onL
   const venue = event?.venue_place?.name || event?.city || '';
   const title = event?.name || 'Concierto';
   const poster = videoPoster(post.thumbnail_url, event?.cover_image_url);
+  const authorName = post.profiles?.username ? `@${post.profiles.username}` : post.profiles?.display_name || 'Alguien del público';
 
   useEffect(() => {
     const node = ref.current;
@@ -152,6 +155,15 @@ const MomentSlide: React.FC<SlideProps> = ({ post, songNumber, group, liked, onL
       </div>
 
       <div className="absolute bottom-[calc(84px+env(safe-area-inset-bottom,0px))] left-4 right-[76px] flex flex-col gap-2">
+        {/* Who took it, to their profile and galleries. */}
+        {!isExternalPost(post) && post.user_id ? (
+          <div className="flex items-center gap-2">
+            <Link to={`/profile/${post.user_id}`} className="flex min-w-0 items-center gap-2 text-white">
+              <Avatar name={authorName.replace('@', '')} src={post.profiles?.avatar_url} className="h-8 w-8 shrink-0 text-[12px]" />
+              <span className="truncate text-[14px] font-bold [text-shadow:0_1px_3px_rgba(0,0,0,0.7)]">{authorName}</span>
+            </Link>
+          </div>
+        ) : null}
         {post.song_title ? (
           <span className="inline-flex max-w-full items-center gap-1.5 self-start rounded-full bg-app-accent px-2.5 py-1.5 font-mono text-[12px] font-semibold text-[#14151a]">
             <MusicNote />
@@ -238,6 +250,7 @@ const Feed: React.FC = () => {
   const { entities, loading: entitiesLoading } = useFollowedEntities(followedSubjectIds);
   const followedKey = useMemo(() => entities.map(entity => entity.id).sort().join(','), [entities]);
   const followedEventIdsRef = useRef<string[] | null>(null);
+  const followedPeopleRef = useRef<string[] | null>(null);
 
   const fetchPage = useCallback(
     async (nextPage: number): Promise<FeedPost[]> => {
@@ -250,8 +263,25 @@ const Feed: React.FC = () => {
             entities.filter(entity => entity.kind === 'venue').map(entity => entity.id),
           );
         }
-        if (followedEventIdsRef.current.length === 0) return [];
-        return (await fetchPostCards({ from, to, eventIds: followedEventIdsRef.current })) as FeedPost[];
+        if (!followedPeopleRef.current) {
+          followedPeopleRef.current = profile?.subject_id ? await fetchFollowedPeopleIds(profile.subject_id).catch(() => []) : [];
+        }
+        const eventIds = followedEventIdsRef.current;
+        const people = followedPeopleRef.current;
+        if (eventIds.length === 0 && people.length === 0) return [];
+        // Their concerts (artists, venues) and the people you follow.
+        const filters = [
+          eventIds.length ? `event_id.in.(${eventIds.join(',')})` : null,
+          people.length ? `user_id.in.(${people.join(',')})` : null,
+        ].filter(Boolean).join(',');
+        const { data, error: queryError } = await supabase
+          .from('v_post_cards')
+          .select('*')
+          .or(filters)
+          .order('created_at', { ascending: false })
+          .range(from, to);
+        if (queryError) throw queryError;
+        return (data || []) as unknown as FeedPost[];
       }
       let query = supabase.from('v_post_cards').select('*');
       if (scope === 'city' && city) query = query.ilike('events->>city', city);
@@ -260,13 +290,14 @@ const Feed: React.FC = () => {
       if (queryError) throw queryError;
       return (data || []) as unknown as FeedPost[];
     },
-    [city, entities, scope],
+    [city, entities, scope, profile?.subject_id],
   );
 
   useEffect(() => {
     if (scope === 'following' && entitiesLoading) return;
     let cancelled = false;
     followedEventIdsRef.current = null;
+    followedPeopleRef.current = null;
     setLoading(true);
     setError('');
     setPage(0);
@@ -385,16 +416,38 @@ const Feed: React.FC = () => {
     if (likeError) apply(wasLiked);
   };
 
-  // Progress bars: the moments of the same song (or concert) next to each other.
-  const groups = useMemo(() => {
+  // Photos of a concert become one gallery slide (where its first photo
+  // was); videos stay one slide each, with progress bars for the moments of
+  // the same song (or concert) next to each other.
+  type FeedItem =
+    | { kind: 'post'; post: FeedPost; group: { index: number; size: number } }
+    | { kind: 'gallery'; eventId: string; photos: FeedPost[] };
+  const items = useMemo<FeedItem[]>(() => {
     const keyOf = (post: FeedPost) => `${post.event_id}:${post.song_id || ''}`;
     const counts = new Map<string, number>();
-    return posts.map(post => {
+    const galleries = new Map<string, Extract<FeedItem, { kind: 'gallery' }>>();
+    const list: FeedItem[] = [];
+    const slides: { item: Extract<FeedItem, { kind: 'post' }>; key: string }[] = [];
+    for (const post of posts) {
+      if (post.media_type === 'image' && !isExternalPost(post)) {
+        const existing = galleries.get(post.event_id);
+        if (existing) existing.photos.push(post);
+        else {
+          const gallery = { kind: 'gallery' as const, eventId: post.event_id, photos: [post] };
+          galleries.set(post.event_id, gallery);
+          list.push(gallery);
+        }
+        continue;
+      }
       const key = keyOf(post);
       const index = counts.get(key) || 0;
       counts.set(key, index + 1);
-      return { key, index };
-    }).map(entry => ({ index: entry.index, size: counts.get(entry.key) || 1 }));
+      const item = { kind: 'post' as const, post, group: { index, size: 1 } };
+      slides.push({ item, key });
+      list.push(item);
+    }
+    for (const { item, key } of slides) item.group.size = counts.get(key) || 1;
+    return list;
   }, [posts]);
 
   const scopeButton = (value: FeedScope, label: string) => (
@@ -411,7 +464,7 @@ const Feed: React.FC = () => {
     </button>
   );
 
-  const emptyFollowing = scope === 'following' && (!user || entities.length === 0);
+  const emptyFollowing = scope === 'following' && (!user || posts.length === 0) && entities.length === 0;
 
   if (showThisWeek(publicMoments)) {
     return <ThisWeek city={city || DEFAULT_FEED_CITY} clips={withoutBlocked(latestClips, blocked, post => post.user_id)} />;
@@ -462,7 +515,7 @@ const Feed: React.FC = () => {
             </h3>
             <p className="max-w-xs text-sm text-white/70">
               {emptyFollowing
-                ? 'Sigue artistas y salas y aquí verás lo que graba el público en sus conciertos.'
+                ? 'Sigue artistas, salas o a gente del público y aquí verás lo que suben de sus conciertos.'
                 : 'Graba en tu próximo concierto y súbelo: aparecerá aquí, en su canción.'}
             </p>
             <div className="flex flex-wrap gap-3">
@@ -497,18 +550,22 @@ const Feed: React.FC = () => {
         </div>
       ) : (
         <div className="h-full snap-y snap-mandatory overflow-y-auto overscroll-y-contain" data-scroll>
-          {posts.map((post, index) => (
-            <MomentSlide
-              key={post.id}
-              post={post}
-              songNumber={post.song_id ? songNumbers[`${post.event_id}:${post.song_id}`] || null : null}
-              group={groups[index]}
-              liked={likedIds.has(post.id)}
-              onLike={() => toggleLike(post.id)}
-              onShare={() => setShareId(post.id)}
-              onSeen={() => noteSeen(post.id)}
-            />
-          ))}
+          {items.map(item =>
+            item.kind === 'gallery' ? (
+              <ConcertGallerySlide key={`gallery-${item.eventId}`} eventId={item.eventId} photos={item.photos} />
+            ) : (
+              <MomentSlide
+                key={item.post.id}
+                post={item.post}
+                songNumber={item.post.song_id ? songNumbers[`${item.post.event_id}:${item.post.song_id}`] || null : null}
+                group={item.group}
+                liked={likedIds.has(item.post.id)}
+                onLike={() => toggleLike(item.post.id)}
+                onShare={() => setShareId(item.post.id)}
+                onSeen={() => noteSeen(item.post.id)}
+              />
+            ),
+          )}
           {hasMore ? (
             <div ref={loadMoreRef} className="flex h-24 items-center justify-center text-white">
               {loadingMore ? <Spinner /> : null}

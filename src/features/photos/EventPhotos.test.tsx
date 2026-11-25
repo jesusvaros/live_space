@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { TimelineMoment } from '../moments/concertTimeline';
 
+vi.mock('../people/FollowProfileButton', () => ({ default: () => null }));
 vi.mock('./PhotoGrid', () => ({ default: () => null }));
 vi.mock('./usePhotoActions', () => ({ usePhotoActions: () => ({ handlers: {}, undo: null, undoHide: () => undefined }) }));
 
