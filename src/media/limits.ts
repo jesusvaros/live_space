@@ -6,6 +6,9 @@
 export const IMAGE_MAX_BYTES = 10_000_000;
 export const VIDEO_MAX_BYTES = 75_000_000;
 export const VIDEO_MAX_DURATION_SECONDS = 45;
+/** Photos per person: per concert and per 24 h (reserve_media_upload). */
+export const PHOTOS_PER_CONCERT = 100;
+export const PHOTOS_PER_DAY = 300;
 
 /**
  * On-device compression target: H.264/AAC MP4 inside a 1280×720 box (720p,

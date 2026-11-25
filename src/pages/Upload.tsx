@@ -40,6 +40,7 @@ import {
   type GalleryPermission,
 } from '../media/native/gallery';
 import type { MomentUploadItem } from '../media';
+import { PHOTOS_PER_CONCERT } from '../media/limits';
 import { track } from '../features/analytics/analytics';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -448,9 +449,12 @@ const Upload: React.FC = () => {
   const addFromGallery = (assets: GalleryAsset[]) => {
     setGalleryOpen(false);
     setError('');
-    setItems(current =>
-      [...current.filter(item => !item.galleryAssetId), ...assets.map(momentItemFromGallery)].sort(byCaptureTime),
-    );
+    setItems(current => {
+      const kept = current.filter(item => !item.galleryAssetId);
+      const room = Math.max(0, PHOTOS_PER_CONCERT - kept.length);
+      if (assets.length > room) setError(`Como mucho ${PHOTOS_PER_CONCERT} a la vez: hemos dejado las primeras.`);
+      return [...kept, ...assets.slice(0, room).map(momentItemFromGallery)].sort(byCaptureTime);
+    });
   };
 
   const handleFiles = async (input: React.ChangeEvent<HTMLInputElement>) => {
@@ -463,6 +467,12 @@ const Upload: React.FC = () => {
   // New picks join the list and, unless the concert was chosen, detect it.
   const addItems = async (built: MomentItem[]) => {
     setError('');
+    const room = Math.max(0, PHOTOS_PER_CONCERT - itemsRef.current.length);
+    if (built.length > room) {
+      built.slice(room).forEach(discardItem);
+      built = built.slice(0, room);
+      setError(`Como mucho ${PHOTOS_PER_CONCERT} a la vez: hemos dejado las primeras.`);
+    }
     const next = [...itemsRef.current, ...built].sort(byCaptureTime);
     itemsRef.current = next;
     setItems(next);
