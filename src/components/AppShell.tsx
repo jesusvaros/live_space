@@ -42,7 +42,7 @@ const AppShell: React.FC<AppShellProps> = ({
       {/* Background uploads (src/media/uploadQueue.ts); renders nothing when idle.
           Kept between the round back / share buttons pages put in the top
           corners (44 px at 16 px from the edge). */}
-      <div className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top,0px)+8px)] z-50 flex justify-center px-[68px]">
+      <div className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top,0px)+8px)] z-[1400] flex justify-center px-[68px]">
         {/* Still mounted when hidden: mounting it resumes saved uploads. */}
         <UploadProgressPill className={`pointer-events-auto w-full max-w-sm ${hideUploadPill ? 'hidden' : ''}`} />
       </div>
