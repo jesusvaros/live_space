@@ -5,7 +5,7 @@ import type { PostWithRelations } from '../../lib/types';
 import { cloudinaryResized } from '../photos/photoAlbums';
 
 // Momentos: the photos of one concert as a single slide, not one slide each.
-// A mosaic of them, who took them, and «Ver la galería», which opens the
+// Same-size big photos in a sideways row, who took them, and «Ver la galería», which opens the
 // concert on its «Fotos» tab (cover with the most liked, a section per person).
 
 const photoUrl = (post: PostWithRelations, width: number) =>
@@ -24,8 +24,7 @@ const ConcertGallerySlide: React.FC<{ eventId: string; photos: PostWithRelations
   const navigate = useNavigate();
   const event = (photos[0]?.events ?? null) as (NonNullable<PostWithRelations['events']> & { venue_place?: { name?: string | null } | null }) | null;
   const people = Array.from(new Map(photos.map(photo => [photo.user_id, photo])).values());
-  const [hero, ...rest] = photos;
-  const tiles = rest.slice(0, 4);
+  const hero = photos[0];
   const names = people.slice(0, 2).map(handleOf);
   const more = people.length - names.length;
   const credit = `${names.join(' y ')}${more > 0 ? ` y ${more} más` : ''}`;
@@ -45,23 +44,19 @@ const ConcertGallerySlide: React.FC<{ eventId: string; photos: PostWithRelations
           {[event?.venue_place?.name || event?.city, whenLabel(event?.starts_at)].filter(Boolean).join(' · ')}
         </p>
 
-        <button type="button" onClick={open} aria-label="Ver la galería" className="mt-4 grid min-h-0 flex-1 grid-cols-3 grid-rows-3 gap-1">
-          {hero ? (
-            <span className={`overflow-hidden rounded-xl bg-app-surface ${tiles.length ? 'col-span-3 row-span-2' : 'col-span-3 row-span-3'}`}>
-              <img src={photoUrl(hero, 900)} alt={`Foto de ${handleOf(hero)}`} className="h-full w-full object-cover" />
-            </span>
-          ) : null}
-          {tiles.slice(0, 3).map((photo, index) => (
-            <span key={photo.id} className="relative overflow-hidden rounded-xl bg-app-surface">
-              <img src={photoUrl(photo, 300)} alt={`Foto de ${handleOf(photo)}`} loading="lazy" className="h-full w-full object-cover" />
-              {index === 2 && photos.length > 4 ? (
-                <span className="absolute inset-0 flex items-center justify-center bg-black/55 font-display text-xl font-bold text-white">
-                  +{photos.length - 4}
-                </span>
-              ) : null}
-            </span>
+        {/* Every photo the same size, big; swipe sideways for the rest. */}
+        <div className="-mx-4 mt-4 flex min-h-0 flex-1 snap-x snap-mandatory gap-2 overflow-x-auto px-4 [scrollbar-width:none]">
+          {photos.map(photo => (
+            <button
+              key={photo.id}
+              type="button"
+              onClick={open}
+              className="h-full w-[82%] shrink-0 snap-center overflow-hidden rounded-2xl bg-app-surface"
+            >
+              <img src={photoUrl(photo, 900)} alt={`Foto de ${handleOf(photo)}`} loading="lazy" className="h-full w-full object-cover" />
+            </button>
           ))}
-        </button>
+        </div>
 
         <div className="mt-3 flex items-center gap-3">
           <span className="flex -space-x-2">
