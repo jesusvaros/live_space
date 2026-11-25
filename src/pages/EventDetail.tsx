@@ -94,6 +94,8 @@ const EventDetail: React.FC = () => {
   const location = useLocation();
   // Just published to a concert we recognised from their photos (Upload).
   const suggestAttendance = Boolean((location.state as { suggestAttendance?: boolean } | null)?.suggestAttendance);
+  // From a gallery slide in Momentos: straight to the concert's photos.
+  const openPhotos = Boolean((location.state as { openPhotos?: boolean } | null)?.openPhotos);
   const id = useRouteEntityId() || '';
   const { user } = useAuth();
   // This concert's uploads show in its bottom button, not in the top pill.
@@ -284,8 +286,10 @@ const EventDetail: React.FC = () => {
   const eventStart = useMemo(() => (event ? new Date(event.starts_at) : null), [event]);
   const eventEnd = useMemo(() => (event?.ends_at ? new Date(event.ends_at) : null), [event]);
 
+  // The player and its timeline are videos only: photos live in «Fotos».
+  const videoMoments = useMemo(() => moments.filter(moment => moment.mediaType !== 'image'), [moments]);
   const { timeline, reportDuration } = useConcertTimeline({
-    moments,
+    moments: videoMoments,
     setlist,
     startsAt: event?.starts_at ?? null,
     endsAt: event?.ends_at ?? null,
@@ -377,6 +381,18 @@ const EventDetail: React.FC = () => {
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     contentRef.current?.scrollTo({ top: stage.offsetTop, behavior: reduced ? 'auto' : 'smooth' });
   };
+
+  const openedPhotosRef = useRef(false);
+  useEffect(() => {
+    if (!openPhotos || openedPhotosRef.current || loading || momentsLoading || !event) return;
+    openedPhotosRef.current = true;
+    if (stageRef.current) {
+      setStageView('photos');
+      window.setTimeout(() => contentRef.current?.scrollTo({ top: stageRef.current?.offsetTop ?? 0, behavior: 'auto' }), 60);
+    } else {
+      window.setTimeout(() => document.getElementById('event-photos-title')?.scrollIntoView({ block: 'start' }), 60);
+    }
+  });
 
   // A song tapped in the setlist sheet: play it, back on the stage.
   const playClip = (clip: Clip) => {
@@ -694,7 +710,7 @@ const EventDetail: React.FC = () => {
                 <div className="relative z-10 bg-app-bg">
                   {momentsLoading ? (
                     <div className="mx-4 mt-5 h-[120px] animate-pulse rounded-2xl bg-app-surface motion-reduce:animate-none" aria-label="Cargando momentos" />
-                  ) : moments.length === 0 ? (
+                  ) : videoMoments.length === 0 ? (
                     // No clips yet: no empty stage, just a small way in
                     // (only when the bottom bar is not already offering it).
                     showBottomBar ? null : <div className="px-4 pt-5">

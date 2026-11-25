@@ -13,6 +13,9 @@ import {
 import PhotoGrid from './PhotoGrid';
 import PhotoViewer from './PhotoViewer';
 import { usePhotoActions } from './usePhotoActions';
+import FollowProfileButton from '../people/FollowProfileButton';
+
+const sectionLikes = (photos: TimelineMoment[]) => photos.reduce((sum, photo) => sum + (photo.likes ?? 0), 0);
 
 // «Fotos» on the concert page, one long scroll: the cover («Lo más
 // gustado», or the latest while nothing has ♥), then a section per person
@@ -156,22 +159,21 @@ const EventPhotos: React.FC<EventPhotosProps> = ({
           <div key={`${grouping}-${section.id}`}>
             {grouping === 'people' ? (
               <div className="mb-2 flex items-center gap-2.5">
-                <Avatar name={section.label.replace('@', '')} src={section.avatarUrl} className="h-9 w-9 shrink-0 text-[13px]" />
-                <div className="min-w-0 flex-1">
-                  <p className="m-0 truncate text-[15px] font-bold text-app-ink">{section.label}</p>
-                  <p className="m-0 font-mono text-[11px] uppercase tracking-[0.06em] text-white/50">
-                    {section.photos.length} {section.photos.length === 1 ? 'foto' : 'fotos'}
-                  </p>
-                </div>
-                {section.isMe || !section.userId ? null : (
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/profile/${section.userId}`)}
-                    className="min-h-9 shrink-0 rounded-full border border-app-line px-3 text-[12px] font-semibold text-app-ink"
-                  >
-                    Ver perfil
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => section.userId && navigate(`/profile/${section.userId}`)}
+                  className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+                >
+                  <Avatar name={section.label.replace('@', '')} src={section.avatarUrl} className="h-9 w-9 shrink-0 text-[13px]" />
+                  <span className="min-w-0">
+                    <span className="block truncate text-[15px] font-bold text-app-ink">{section.label}</span>
+                    <span className="block font-mono text-[11px] uppercase tracking-[0.06em] text-white/50">
+                      {section.photos.length} {section.photos.length === 1 ? 'foto' : 'fotos'}
+                      {sectionLikes(section.photos) ? ` · ♥ ${sectionLikes(section.photos)}` : ''}
+                    </span>
+                  </span>
+                </button>
+                {section.isMe || !section.userId ? null : <FollowProfileButton profileId={section.userId} className="min-h-9 px-3 text-[12px]" />}
               </div>
             ) : (
               <div className="mb-2 flex items-baseline justify-between gap-3">
