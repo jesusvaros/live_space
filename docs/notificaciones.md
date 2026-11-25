@@ -81,6 +81,7 @@ noche anterior).
 | `concert_day` | Día de un concierto con «Voy» (`going`) | 12:00–18:00, antes de empezar | «Hoy: Morat en La Riviera a las 21:30» · «Que lo disfrutes. Si grabas algo, luego lo subes en un momento.» | `/event/<id>` | `conciertos` |
 | `upload_reminder` | Mañana siguiente a un concierto `going`/`attended` sin nada subido (ni post ni media suya) | 10:00–14:00 | «¿Grabaste algo de Morat? Súbelo» · «Tus fotos y vídeos de anoche en La Riviera, en un par de toques.» | `/tabs/upload?event=<id>` | `momentos` |
 | `suggestion_imported` | Se publica un concierto del que pasaste el link en «¿No encuentras un concierto?» (`event_link_suggestions.status = 'imported'` en los últimos 7 días), aún por empezar | 10:00–21:00, antes de empezar | «Ya está: Frisbi en Fun Club el sábado 12 de diciembre» · «El concierto que nos pasaste ya está en Live Space. Toca para verlo.» | `/event/<id>` | `conciertos` |
+| `suggestion_imported` (sala o artista) | El admin crea la sala o el artista de un link que pasaste (su web, Spotify, Instagram…; `event_link_suggestions` `kind` `venue`/`artist`/`profile`, `status = 'imported'` en los últimos 7 días) | 10:00–21:00 | «Ya está: El Bar Mutante en Live Space» · «La sala que nos pasaste ya está en Live Space. Síguela para enterarte de sus conciertos.» (o «El artista… Síguelo…») | `/tabs/venue/<id>` o `/tabs/artist/<id>` | `conciertos` |
 | `followed_new_concert` | Un artista, sala o festival que sigues anuncia concierto | 10:00–21:00 | Uno: «Morat anuncia concierto en Madrid el sábado 12 de diciembre» · «En La Riviera. Toca para verlo.» Varios: «3 conciertos nuevos de lo que sigues» · «Morat, Rels B.» | `/event/<id>` o `/tabs/events` | `conciertos` |
 
 `new_moments` queda para un paso posterior (por eventos, no programado).
@@ -114,6 +115,7 @@ siguiente. Prioridad: `merch_pickup` > `concert_day` > `upload_reminder` >
 
 Claves: `concert_day:<event>`, `upload_reminder:<event>`,
 `merch_pickup:<order>`, `suggestion_imported:<event>`,
+`suggestion_imported:venue:<sala>` o `suggestion_imported:artist:<artista>`,
 `followed_new_concert:<event>` o `followed_new_concert:batch:<hash de los ids>`.
 
 ### Envío y fallos

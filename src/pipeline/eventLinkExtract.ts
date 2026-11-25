@@ -42,7 +42,7 @@ export type ExtractedEvent = {
   record: JsonRecord;
 };
 
-export type OpenGraph = { title?: string; imageUrl?: string; type?: string };
+export type OpenGraph = { title?: string; imageUrl?: string; type?: string; siteName?: string; description?: string };
 
 export type ExtractionResult =
   | { kind: 'event'; event: ExtractedEvent; openGraph: OpenGraph }
@@ -140,6 +140,8 @@ export const readOpenGraph = (html: string, pageUrl: string): OpenGraph => {
     title: metaContent(html, 'og:title') ?? titleTag,
     imageUrl: toHttpUrl(metaContent(html, 'og:image') ?? metaContent(html, 'twitter:image'), pageUrl) ?? undefined,
     type: metaContent(html, 'og:type'),
+    siteName: metaContent(html, 'og:site_name'),
+    description: metaContent(html, 'og:description') ?? metaContent(html, 'description'),
   };
 };
 
@@ -281,15 +283,21 @@ const pickEvent = (events: JsonRecord[], pageUrl: string): JsonRecord | 'several
 
 // --- Entry point -------------------------------------------------------------
 
+/** Every JSON-LD object on the page (arrays, @graph and ItemList entries included). */
+export const jsonLdRecords = (html: string): JsonRecord[] => jsonLdBlocks(html).flatMap(block => collectRecords(parseBlock(block)));
+
+/** schema.org types of a record, without the «https://schema.org/» prefix. */
+export const schemaTypes = typesOf;
+
 export const extractEventFromHtml = (html: string, pageUrl: string, options: ExtractOptions = {}): ExtractionResult => {
   const openGraph = readOpenGraph(html, pageUrl);
-  const blocks = jsonLdBlocks(html);
-  const records = blocks.flatMap(block => collectRecords(parseBlock(block)));
+  const records = jsonLdRecords(html);
   const events = records.filter(isEvent);
 
   if (events.length === 0) {
     // The page describes itself in JSON-LD and none of it is an event (a
-    // listing, a shop, an organisation's home): nothing to import.
+    // listing, a shop, an organisation's home): nothing to import as a
+    // concert (linkClassify may still read it as a venue or an artist).
     if (records.some(record => typesOf(record).length > 0)) {
       return { kind: 'failed', reason: 'not-an-event', openGraph };
     }
@@ -298,8 +306,35 @@ export const extractEventFromHtml = (html: string, pageUrl: string, options: Ext
 
   const picked = pickEvent(events, pageUrl);
   if (picked === 'several') return { kind: 'review', reason: `several-events:${events.length}`, openGraph };
-  const record = picked as JsonRecord;
+  return extractFromRecord(picked as JsonRecord, pageUrl, openGraph, options);
+};
 
+/**
+ * An agenda page (several JSON-LD Events): every distinct, complete concert
+ * on it, in date order. When an event has no page of its own (its url is the
+ * agenda itself), the url gets a «#name|date» fragment so each concert keeps
+ * its own identity in staging.
+ */
+export const extractAgendaFromHtml = (html: string, pageUrl: string, options: ExtractOptions = {}): ExtractedEvent[] => {
+  const openGraph = readOpenGraph(html, pageUrl);
+  const distinct = new Map<string, JsonRecord>();
+  for (const record of jsonLdRecords(html).filter(isEvent)) {
+    const key = eventKey(record);
+    const current = distinct.get(key);
+    if (!current || Object.keys(record).length > Object.keys(current).length) distinct.set(key, record);
+  }
+  const events: ExtractedEvent[] = [];
+  for (const [key, record] of distinct) {
+    const result = extractFromRecord(record, pageUrl, openGraph, options);
+    if (result.kind !== 'event') continue;
+    const event = result.event;
+    events.push(sameUrl(event.url, pageUrl) ? { ...event, url: `${pageUrl.replace(/#.*$/, '')}#${encodeURIComponent(key)}` } : event);
+  }
+  return events.sort((left, right) => left.startsAt.localeCompare(right.startsAt));
+};
+
+/** One schema.org Event record → a complete concert, or why not. */
+const extractFromRecord = (record: JsonRecord, pageUrl: string, openGraph: OpenGraph, options: ExtractOptions): ExtractionResult => {
   const status = asText(record.eventStatus)?.replace(/^https?:\/\/schema\.org\//i, '');
   if (status === 'EventCancelled') return { kind: 'failed', reason: 'cancelled', openGraph };
 

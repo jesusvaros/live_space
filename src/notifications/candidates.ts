@@ -6,7 +6,7 @@
 // at 00:30 counts as the previous night.
 
 import { addDays, clockLabel, dateLabel, localParts, nightDate } from './time.js';
-import type { EventInfo, Notice, SenderType, UserData } from './types.js';
+import type { EventInfo, Notice, SenderType, SuggestedProfile, UserData } from './types.js';
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
@@ -188,6 +188,31 @@ export const suggestionImportedNotice = (profileId: string, event: EventInfo, ti
   };
 };
 
+/**
+ * «Ya está» for a venue or an artist this person sent (their website, Spotify,
+ * Instagram…) that the admin has just added. Same switch as a concert
+ * (suggestion_imported); one notice per venue or artist.
+ */
+export const suggestedProfileNotice = (profileId: string, profile: SuggestedProfile): Notice => {
+  const venue = profile.kind === 'venue';
+  return {
+    type: 'suggestion_imported',
+    profileId,
+    dedupeKey: dedupeKey('suggestion_imported', profile.kind, profile.id),
+    title: `Ya está: ${profile.name} en Live Space`,
+    body: venue
+      ? 'La sala que nos pasaste ya está en Live Space. Síguela para enterarte de sus conciertos.'
+      : 'El artista que nos pasaste ya está en Live Space. Síguelo para enterarte de sus conciertos.',
+    route: `/tabs/${profile.kind}/${profile.id}`,
+    channel: 'conciertos',
+    priority: 'normal',
+    ttlSeconds: 24 * 3600,
+    eventIds: [],
+    window: WINDOWS.suggestion_imported,
+    expiresAt: null,
+  };
+};
+
 /** Concert ids already announced to this person (followed_new_concert and suggestion_imported payloads). */
 export const announcedEventIds = (user: UserData, now: Date) => {
   const ids = new Set<string>();
@@ -277,6 +302,7 @@ export const buildCandidates = (input: CandidateInput): Notice[] => {
     if (new Date(event.startsAt).getTime() <= now.getTime()) continue;
     notices.push(suggestionImportedNotice(user.profileId, event, timezone));
   }
+  for (const profile of user.suggestedProfiles) notices.push(suggestedProfileNotice(user.profileId, profile));
 
   const followed = followedConcerts(input).filter(event => !suggested.has(event.id));
   if (followed.length > 0) notices.push(followedNotice(user.profileId, followed, timezone));

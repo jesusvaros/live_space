@@ -1,5 +1,5 @@
--- Local check of event_link_suggestions (migrations 20261112000100 and
--- 20261112000200). Run against a THROWAWAY database with every migration
+-- Local check of event_link_suggestions (migrations 20261112000100,
+-- 20261112000200 and 20261125003000). Run against a THROWAWAY database with every migration
 -- applied, never against production (same setup as delete_my_account.sql):
 --
 --   docker run -d --name ls-test -e POSTGRES_PASSWORD=postgres public.ecr.aws/supabase/postgres:17.11.0.006
@@ -128,6 +128,82 @@ begin
   end if;
   insert into public.notifications_sent (profile_id, type, dedupe_key)
   values ('00000000-0000-0000-0000-0000000000b1', 'suggestion_imported', 'suggestion_imported:test');
+end;
+$$;
+
+-- Venue/artist candidates (20261125003000): only the worker sets kind and
+-- candidate; only admins list and resolve them.
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-0000000000c1', 'c@example.test');
+update public.profiles set app_role = 'admin' where id = '00000000-0000-0000-0000-0000000000c1';
+update public.event_link_suggestions
+  set status = 'review', kind = 'venue', candidate = '{"name": "Bar Ejemplo", "city": "Sevilla"}'
+  where suggested_by = '00000000-0000-0000-0000-0000000000b1';
+insert into public.venue_places (id, name, normalized_name, city)
+values ('00000000-0000-0000-0000-0000000000f1', 'Bar Ejemplo', 'bar ejemplo', 'Sevilla');
+
+do $$
+begin
+  if has_column_privilege('authenticated', 'public.event_link_suggestions', 'kind', 'insert')
+     or has_column_privilege('authenticated', 'public.event_link_suggestions', 'candidate', 'insert') then
+    raise exception 'authenticated can set kind or candidate';
+  end if;
+end;
+$$;
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000b1","role":"authenticated"}', true),
+       set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000b1', true);
+do $$
+begin
+  begin
+    perform * from public.admin_link_candidates();
+    raise exception 'a non-admin listed the candidates';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform public.admin_resolve_link_candidate('https://tickets.example/e/b', 'dismissed');
+    raise exception 'a non-admin resolved a candidate';
+  exception when insufficient_privilege then null;
+  end;
+end;
+$$;
+
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000c1","role":"authenticated"}', true),
+       set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000c1', true);
+do $$
+declare
+  listed record;
+begin
+  select * into listed from public.admin_link_candidates();
+  if listed.url is distinct from 'https://tickets.example/e/b' or listed.kind <> 'venue' or listed.people <> 1
+     or listed.candidate->>'name' <> 'Bar Ejemplo' then
+    raise exception 'admin_link_candidates: %', row_to_json(listed);
+  end if;
+  begin
+    perform public.admin_resolve_link_candidate('https://tickets.example/e/b', 'created');
+    raise exception 'created without a venue or artist';
+  exception when invalid_parameter_value then null;
+  end;
+  if public.admin_resolve_link_candidate('https://tickets.example/e/b', 'created', '00000000-0000-0000-0000-0000000000f1') <> 1 then
+    raise exception 'admin_resolve_link_candidate did not resolve the row';
+  end if;
+  if public.admin_resolve_link_candidate('https://tickets.example/e/b', 'dismissed') <> 0 then
+    raise exception 'a resolved candidate was resolved again';
+  end if;
+  if exists (select 1 from public.admin_link_candidates()) then
+    raise exception 'resolved candidate still listed';
+  end if;
+end;
+$$;
+reset role;
+
+do $$
+begin
+  if not exists (select 1 from public.event_link_suggestions
+                 where suggested_by = '00000000-0000-0000-0000-0000000000b1' and status = 'imported'
+                   and result_venue_place_id = '00000000-0000-0000-0000-0000000000f1') then
+    raise exception 'created candidate not imported with its venue';
+  end if;
 end;
 $$;
 
