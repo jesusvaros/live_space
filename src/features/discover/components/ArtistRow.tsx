@@ -21,7 +21,7 @@ const CheckIcon = () => (
 // A round portrait that fills its cell in the Explorar grid, with follow as a
 // small round button on its corner: «+» to follow, a tick when following.
 const ArtistRow: React.FC<ArtistRowProps> = ({ artist, isFollowing, followLoading, onToggleFollow, onOpenProfile }) => (
-  <div className="flex min-w-0 flex-col items-center gap-1 text-center">
+  <div className="flex min-w-0 flex-col items-center gap-1.5 text-center">
     <div className="relative w-full">
       <button type="button" onClick={onOpenProfile} aria-label={artist.name} className="block w-full">
         <Avatar name={artist.name} src={artist.avatar_url} kind="artist" className="aspect-square h-auto w-full text-[34px]" />
@@ -39,7 +39,7 @@ const ArtistRow: React.FC<ArtistRowProps> = ({ artist, isFollowing, followLoadin
         {isFollowing ? <CheckIcon /> : <IconPlus size={18} />}
       </button>
     </div>
-    <button type="button" onClick={onOpenProfile} className="w-full truncate text-[13px] font-semibold text-app-ink">
+    <button type="button" onClick={onOpenProfile} className="line-clamp-2 w-full px-0.5 text-[15px] font-bold leading-tight text-app-ink">
       {artist.name}
     </button>
   </div>
