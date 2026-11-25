@@ -13,6 +13,10 @@ describe('uploadCountdown', () => {
     expect(uploadCountdown(start, at('2026-11-28T18:55:00Z'))).toBe('en 2 h 05 min');
     expect(uploadCountdown(start, at('2026-11-28T20:48:30Z'))).toBe('en 12 min');
   });
+  it('shows the date when it is more than a week away', () => {
+    expect(uploadCountdown(start, at('2026-11-20T20:00:00Z'), 'Europe/Madrid')).toBe('el 28 nov');
+    expect(uploadCountdown(start, at('2026-11-21T22:00:00Z'))).toBe('en 6 d 23 h');
+  });
   it('is null once it has started', () => {
     expect(uploadCountdown(start, start)).toBeNull();
   });

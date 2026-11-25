@@ -1,8 +1,12 @@
-// «en 3 d 4 h», «en 2 h 05 min», «en 12 min»: time left until the concert
-// starts, for the disabled «Subir» button on the concert page.
-export const uploadCountdown = (startsAt: Date, now: Date): string | null => {
+// «el 3 abr» (more than a week away), «en 3 d 4 h», «en 2 h 05 min», «en 12 min»:
+// when the concert starts, for the disabled «Subir» button on the concert page.
+export const uploadCountdown = (startsAt: Date, now: Date, timeZone?: string): string | null => {
   const ms = startsAt.getTime() - now.getTime();
   if (ms <= 0) return null;
+  if (ms > 7 * 24 * 60 * 60 * 1000) {
+    const date = startsAt.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', timeZone }).replace('.', '');
+    return `el ${date}`;
+  }
   const minutes = Math.ceil(ms / 60_000);
   const days = Math.floor(minutes / 1440);
   const hours = Math.floor((minutes % 1440) / 60);

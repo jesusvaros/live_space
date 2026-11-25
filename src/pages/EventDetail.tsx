@@ -757,7 +757,7 @@ const EventDetail: React.FC = () => {
                     <span className={`flex h-8 w-8 items-center justify-center rounded-full ${hasStarted ? 'bg-app-accent text-[#14151a]' : 'bg-app-line text-white/50'}`}>
                       <IconCamera size={16} />
                     </span>
-                    {hasStarted ? 'Subir' : `Subir · ${eventStart ? uploadCountdown(eventStart, now) : ''}`}
+                    {hasStarted ? 'Subir' : `Subir · ${eventStart ? uploadCountdown(eventStart, now, event.timezone || 'Europe/Madrid') : ''}`}
                   </button>
                 )}
 
