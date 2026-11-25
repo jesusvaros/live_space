@@ -6,18 +6,21 @@ Imágenes de la ficha de Live Space en Play, en la carpeta `docs/lanzamiento/gra
 | --- | --- | --- |
 | `feature-1024x500.png` | 1024×500 | Gráfico destacado: logo, «Los conciertos, desde el público» y la Cartelera |
 | `01-inicio.png` … `07-sala.png` | 1080×1920 | Capturas de móvil, en este orden: Inicio, canción a canción, subir, mapa, explorar, artista, sala |
-| `ls-icon-a.png`, `ls-icon-b.png`, `ls-icon-c.png` | 512×512 | Tres propuestas de icono |
+| `icono-512.png` | 512×512 | Icono de la ficha de Play |
+| `icono.svg` | — | Fuente del icono |
 | `hoja-live-space.png` | — | Hoja de revisión con todo junto |
 
 ## Icono
 
-El icono actual (anillo con punto) se lee como «grabar» o una app de cámara.
+«Mano arriba»: un brazo levantado sujetando el móvil con la pantalla naranja, la postura de cualquiera grabando en un concierto. Colores planos (`#0D0E12`, `#F3EDE4`, `#FF5B2E`) y el borde un poco a mano, sin textura.
 
-- **A:** el actual, con el anillo más grueso y dentro de la zona segura del icono adaptativo.
-- **B (recomendado):** punto con ondas a los lados. Se lee como «en directo» y sigue claro a 48 px.
-- **C:** una entrada con el punto. Se entiende, pero hace pensar en una app de venta de entradas, y Live Space no lo es.
+Se descartaron el anillo con punto (se leía como una app de cámara) y otras ideas: un foco en forma de L, público, escenario, pulsera de festival y setlist.
 
-Cambiar el icono de la app (`android/app/src/main/res/mipmap-*`) es un paso aparte; estas imágenes no lo tocan.
+El mismo dibujo está en la app:
+
+- **Android:** `android/app/src/main/res/mipmap-*`. El icono adaptativo usa el fondo `#0D0E12` y el dibujo al 72 %, para que el móvil quede dentro de la zona visible.
+- **iOS:** `AppIcon-512@2x.png`.
+- **Fuentes de Capacitor:** `assets/icon-*.png`.
 
 ## Pantallas que faltan
 
