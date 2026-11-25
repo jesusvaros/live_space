@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Avatar from '../../components/ui/Avatar';
 import type { TimelineMoment } from '../moments/concertTimeline';
 import { ALL_ALBUM_ID, groupPhotoAlbums, photoThumbUrl, type PhotoAlbum } from './photoAlbums';
@@ -16,6 +17,8 @@ type EventPhotosProps = {
   onDeleted: (postId: string) => void;
   // Shown inside a sheet: the viewer opens within it (PhotoViewer inline).
   inSheet?: boolean;
+  // With no photos yet: an invitation to upload them (concert has started).
+  onUpload?: () => void;
 };
 
 const Mosaic: React.FC<{ album: PhotoAlbum }> = ({ album }) => {
@@ -36,13 +39,31 @@ const Mosaic: React.FC<{ album: PhotoAlbum }> = ({ album }) => {
   );
 };
 
-const EventPhotos: React.FC<EventPhotosProps> = ({ moments, currentUserId, onDeleted, inSheet = false }) => {
+const EventPhotos: React.FC<EventPhotosProps> = ({ moments, currentUserId, onDeleted, inSheet = false, onUpload }) => {
+  const navigate = useNavigate();
   const albums = useMemo(() => groupPhotoAlbums(moments, currentUserId), [moments, currentUserId]);
   const [albumId, setAlbumId] = useState(ALL_ALBUM_ID);
   const [viewerAt, setViewerAt] = useState<number | null>(null);
   const { handlers, undo, undoHide } = usePhotoActions({ onDeleted });
 
-  if (albums.length === 0) return null;
+  if (albums.length === 0) {
+    if (!onUpload) return null;
+    return (
+      <section className="px-4 pt-6" aria-labelledby="event-photos-title">
+        <h2 id="event-photos-title" className="font-display text-xl font-bold text-app-ink">Fotos</h2>
+        <div className="mt-2 rounded-2xl border border-dashed border-app-line px-4 py-5 text-center">
+          <p className="m-0 text-sm text-[#c9c5bd]">Aún no hay fotos de este concierto. Cada persona que suba las suyas tendrá aquí su álbum.</p>
+          <button
+            type="button"
+            onClick={onUpload}
+            className="mt-3 min-h-11 rounded-full bg-app-accent px-5 text-sm font-bold text-[#14151a]"
+          >
+            Subir mis fotos
+          </button>
+        </div>
+      </section>
+    );
+  }
   // The chosen album may have emptied (hidden or deleted): back to «Todas».
   const album = albums.find(item => item.id === albumId) ?? albums[0];
   const people = albums.length - 1;
@@ -93,6 +114,28 @@ const EventPhotos: React.FC<EventPhotosProps> = ({ moments, currentUserId, onDel
         })}
       </div>
 
+      {album.id !== ALL_ALBUM_ID ? (
+        // A person's album: who took them, with a way to their profile, so a
+        // photographer's album reads as theirs.
+        <div className="mt-3 flex items-center gap-3 rounded-2xl border border-app-line bg-app-surface px-3 py-2.5">
+          <Avatar name={album.label.replace('@', '')} src={album.avatarUrl} className="h-10 w-10 shrink-0 text-[14px]" />
+          <div className="min-w-0 flex-1">
+            <p className="m-0 truncate text-[15px] font-bold text-app-ink">{album.isMe ? 'Tus fotos' : `Fotos de ${album.label}`}</p>
+            <p className="m-0 font-mono text-[11px] uppercase tracking-[0.06em] text-white/50">
+              {album.photos.length} {album.photos.length === 1 ? 'foto' : 'fotos'}
+            </p>
+          </div>
+          {album.isMe ? null : (
+            <button
+              type="button"
+              onClick={() => navigate(`/profile/${album.id}`)}
+              className="min-h-10 shrink-0 rounded-full border border-app-line px-3.5 text-[13px] font-semibold text-app-ink"
+            >
+              Ver perfil
+            </button>
+          )}
+        </div>
+      ) : null}
       <p className="mt-3 text-[12px] text-white/45">Toca una foto para verla en grande. Mantén pulsado para guardarla u ocultarla.</p>
       <div className="mt-2">
         <PhotoGrid key={album.id} photos={album.photos} onOpen={setViewerAt} {...handlers} />
