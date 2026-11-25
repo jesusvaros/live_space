@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { getReuseConsent } from '../features/community/licence';
 import type { MediaKind, MediaProvider } from './types';
+import { MediaUploadError } from './errors';
 
 const delay = (milliseconds: number) =>
   new Promise<void>(resolve => globalThis.setTimeout(resolve, milliseconds));
@@ -20,6 +21,22 @@ export const waitForMediaAssetId = async (
       .maybeSingle();
     if (error) throw error;
     if (data?.id) return data.id as string;
+    // Every few tries: a reservation Cloudinary's webhook rejected, or one
+    // that expired without the file, will never get its asset. Fail for good
+    // instead of sitting at 99 %.
+    if (attempt % 4 === 3) {
+      const { data: reservation } = await supabase
+        .from('media_upload_reservations')
+        .select('rejected_reason, consumed_at, expires_at')
+        .eq('id', reservationId)
+        .maybeSingle();
+      if (reservation?.rejected_reason) {
+        throw new MediaUploadError('upload_rejected', 'Esta foto no se ha podido procesar. Quítala y vuelve a subirla.');
+      }
+      if (reservation && !reservation.consumed_at && new Date(reservation.expires_at as string).getTime() < Date.now() - 60_000) {
+        throw new MediaUploadError('upload_rejected', 'La subida caducó. Quítala y vuelve a subirla.');
+      }
+    }
     await delay(intervalMs);
   }
 

@@ -12,7 +12,7 @@ type UploadProgressPillProps = {
  * uploads saved before the app was closed.
  */
 const UploadProgressPill = ({ className }: UploadProgressPillProps) => {
-  const { summary, retryAll, clearFailed, clearFinished } = useUploadQueue();
+  const { summary, jobs, remove, retryAll, clearFailed, clearFinished } = useUploadQueue();
   const [sheetOpen, setSheetOpen] = useState(false);
 
   // "Subidos" stays a few seconds, then the pill goes away.
@@ -56,6 +56,9 @@ const UploadProgressPill = ({ className }: UploadProgressPillProps) => {
 
   const showBar = summary.state === 'working';
   // Only what can succeed is retried; the rest (too big, too long…) is removed.
+  const cancelPending = () => {
+    for (const job of jobs) if (job.status !== 'done' && job.status !== 'failed') void remove(job.id);
+  };
   const action = summary.retryable > 0
     ? { text: 'Reintentar', onClick: retryAll }
     : summary.failed > 0
@@ -63,6 +66,13 @@ const UploadProgressPill = ({ className }: UploadProgressPillProps) => {
       : summary.state === 'done'
         ? { text: 'Cerrar', onClick: () => void clearFinished() }
         : null;
+  // Always a way out: «Cancelar» while something is pending, «Quitar» next to
+  // «Reintentar» for what failed.
+  const secondary = summary.pending > 0
+    ? { text: 'Cancelar', onClick: cancelPending }
+    : summary.retryable > 0
+      ? { text: 'Quitar', onClick: () => void clearFailed() }
+      : null;
 
   return (
     <div
@@ -96,6 +106,15 @@ const UploadProgressPill = ({ className }: UploadProgressPillProps) => {
           className="shrink-0 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white hover:bg-white/20"
         >
           {action.text}
+        </button>
+      )}
+      {secondary && (
+        <button
+          type="button"
+          onClick={secondary.onClick}
+          className="shrink-0 rounded-full border border-white/20 px-3 py-1 text-xs font-semibold text-white/80"
+        >
+          {secondary.text}
         </button>
       )}
       {showBar && (
