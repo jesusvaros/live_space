@@ -21,6 +21,7 @@ import { EventStatsCard, VenueFeedbackPrompt } from '../features/community';
 import { festivalService } from '../services/festival.service';
 import EventMerchSection from '../features/merch/EventMerchSection';
 import TicketSlot from '../features/tickets/TicketSlot';
+import { ticketLink } from '../features/tickets/ticketLink';
 import FriendsGoingRow from '../features/friends/FriendsGoingRow';
 import EventScheduleBanner from '../features/events/EventScheduleBanner';
 import { eventManagementService, scheduleState, type EventSchedule } from '../services/eventManagement.service';
@@ -479,6 +480,7 @@ const EventDetail: React.FC = () => {
   // on the stage, where «+ Subir» is one of the player's controls.
   const uploadMode = isPastEvent || lived;
   const cancelled = scheduleState(schedule) === 'cancelled';
+  const tickets = event && !isPastEvent ? ticketLink(event) : null;
   const showBottomBar = !cancelled && (!uploadMode || (uploadBar.visible && !stageMode));
   const bottomClearance = showBottomBar ? CLEAR_NAV_AND_BAR : CLEAR_NAV;
   const pagePadding = stageMode
@@ -831,18 +833,19 @@ const EventDetail: React.FC = () => {
                         attendanceActive
                           ? 'border-[#25d47b] bg-[#25d47b]/[0.12] text-[#25d47b]'
                           : 'border-app-line bg-app-surface text-app-ink'
-                      } ${event.ticket_url ? '' : 'flex-1'}`}
+                      } ${tickets ? '' : 'flex-1'}`}
                     >
                       Voy
                     </button>
-                    {event.ticket_url ? (
+                    {tickets ? (
                       <a
-                        href={event.ticket_url}
+                        href={tickets.url}
                         target="_blank"
                         rel="noopener noreferrer"
+                        onClick={() => track('ticket_tap', { seller: tickets.seller, official: tickets.official })}
                         className="flex h-[50px] flex-1 items-center justify-center rounded-full border border-app-line text-[15px] font-semibold text-app-ink"
                       >
-                        Entradas
+                        {event.is_free ? 'Más info' : 'Entradas'}
                       </a>
                     ) : null}
                   </>
