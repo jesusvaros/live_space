@@ -4,6 +4,8 @@ import { DiscoverTabKey } from '../types';
 type DiscoverSegmentedControlProps = {
   value: DiscoverTabKey;
   onChange: (next: DiscoverTabKey) => void;
+  // Extra control at the end of the row (Explorar: the «Estilo ▾» dropdown).
+  trailing?: React.ReactNode;
 };
 
 const OPTIONS: { key: DiscoverTabKey; label: string }[] = [
@@ -11,7 +13,7 @@ const OPTIONS: { key: DiscoverTabKey; label: string }[] = [
   { key: 'venues', label: 'Salas' },
 ];
 
-const DiscoverSegmentedControl: React.FC<DiscoverSegmentedControlProps> = ({ value, onChange }) => (
+const DiscoverSegmentedControl: React.FC<DiscoverSegmentedControlProps> = ({ value, onChange, trailing }) => (
   <div role="tablist" aria-label="Qué buscar" className="flex gap-2">
     {OPTIONS.map(option => (
       <button
@@ -27,6 +29,7 @@ const DiscoverSegmentedControl: React.FC<DiscoverSegmentedControlProps> = ({ val
         {option.label}
       </button>
     ))}
+    {trailing}
   </div>
 );
 

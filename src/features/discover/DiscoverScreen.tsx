@@ -15,15 +15,12 @@ import { useStoredLocation } from '../../shared/hooks/useStoredLocation';
 import { useFollowedSubjects } from '../../hooks/useFollowedSubjects';
 import { SuggestConcertCard, SuggestConcertSheet } from '../suggestions/SuggestConcert';
 import { askForAccount } from '../../auth/askForAccount';
-import FilterPills, { FilterSheet } from '../../components/ui/FilterPills';
+import { FilterSheet } from '../../components/ui/FilterPills';
 
 type RouteState = { initialTab?: DiscoverTabKey } | undefined;
 
-// Explorar shows the first styles as short rows; a chip opens the whole style.
-const SHELVES_ON_HOME = 3;
-const SHELF_PREVIEW = 6;
-// Styles in sight as pills; the rest behind «Estilos ▾».
-const QUICK_STYLES = 2;
+// Styles are secondary: one «Estilo ▾» dropdown next to Artistas / Salas;
+// choosing one shows that style's artists. No style rows on the home view.
 
 const DiscoverScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -56,7 +53,6 @@ const DiscoverScreen: React.FC = () => {
     }
   }, []);
 
-  const quickStyles = styleShelves.slice(0, QUICK_STYLES).map(shelf => shelf.style);
   const selectedShelf = style ? styleShelves.find(shelf => shelf.style === style) ?? null : null;
 
   const onToggleFollow = async (subjectId: string, kind: 'artist' | 'venue') => {
@@ -133,44 +129,35 @@ const DiscoverScreen: React.FC = () => {
         onClear={() => setQuery('')}
       />
 
-      <DiscoverSegmentedControl value={tab} onChange={setTab} />
-
-      {tab === 'artists' && !query.trim() && styleShelves.length > 0 ? (
-        <>
-          <FilterPills
-            label="Estilo"
-            className="-mx-4 px-4"
-            pills={[
-              ...quickStyles.map(option => ({
-                key: `style:${option}`,
-                label: option,
-                selected: style === option,
-                onPress: () => setStyle(style === option ? null : option),
-              })),
-              ...(styleShelves.length > QUICK_STYLES
-                ? [
-                    {
-                      key: 'style:more',
-                      label: style && !quickStyles.includes(style) ? style : 'Estilos',
-                      selected: Boolean(style && !quickStyles.includes(style)),
-                      opens: true,
-                      onPress: () => setStylesOpen(true),
-                      onClear: () => setStyle(null),
-                    },
-                  ]
-                : []),
-            ]}
-          />
-          <FilterSheet
-            isOpen={stylesOpen}
-            title="Estilos"
-            onClose={() => setStylesOpen(false)}
-            options={styleShelves.map(shelf => ({ value: shelf.style, label: shelf.style }))}
-            selected={style}
-            onSelect={setStyle}
-          />
-        </>
-      ) : null}
+      <DiscoverSegmentedControl
+        value={tab}
+        onChange={setTab}
+        trailing={
+          tab === 'artists' && !query.trim() && styleShelves.length > 0 ? (
+            <span className={`inline-flex min-h-10 items-center rounded-full text-sm font-semibold ${style ? 'bg-app-ink text-app-bg' : 'border border-app-line text-[#c9c5bd]'}`}>
+              <button type="button" onClick={() => setStylesOpen(true)} className="inline-flex min-h-10 items-center gap-1 pl-4 pr-3">
+                {style ?? 'Estilo'}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </button>
+              {style ? (
+                <button type="button" aria-label="Quitar estilo" onClick={() => setStyle(null)} className="-ml-1 inline-flex min-h-10 items-center pr-3.5">
+                  ×
+                </button>
+              ) : null}
+            </span>
+          ) : null
+        }
+      />
+      <FilterSheet
+        isOpen={stylesOpen}
+        title="Estilo"
+        onClose={() => setStylesOpen(false)}
+        options={styleShelves.map(shelf => ({ value: shelf.style, label: shelf.style }))}
+        selected={style}
+        onSelect={setStyle}
+      />
 
       <div className="flex flex-col gap-[22px] pt-2">
         {loading && <DiscoverSkeletonList rows={6} />}
@@ -188,7 +175,7 @@ const DiscoverScreen: React.FC = () => {
               <h2 className="mb-3 font-display text-xl font-bold text-app-ink">{selectedShelf.style}</h2>
               {artistGrid(selectedShelf.items)}
             </section>
-          ) : suggestedArtistSections.length === 0 && styleShelves.length === 0 ? (
+          ) : suggestedArtistSections.length === 0 ? (
             <DiscoverEmptyState
               title="Aún no hay artistas sugeridos"
               description="Busca por nombre para encontrar un artista."
@@ -199,23 +186,6 @@ const DiscoverScreen: React.FC = () => {
                 <section key={section.key}>
                   <h2 className="mb-3 font-display text-xl font-bold text-app-ink">{section.title}</h2>
                   {artistGrid(section.items)}
-                </section>
-              ))}
-              {styleShelves.slice(0, SHELVES_ON_HOME).map(shelf => (
-                <section key={shelf.style}>
-                  <div className="mb-3 flex items-baseline justify-between gap-3">
-                    <h2 className="font-display text-xl font-bold text-app-ink">{shelf.style}</h2>
-                    {shelf.items.length > SHELF_PREVIEW ? (
-                      <button
-                        type="button"
-                        onClick={() => setStyle(shelf.style)}
-                        className="min-h-8 font-mono text-[11px] font-medium uppercase text-app-accent"
-                      >
-                        Ver todos
-                      </button>
-                    ) : null}
-                  </div>
-                  {artistGrid(shelf.items.slice(0, SHELF_PREVIEW))}
                 </section>
               ))}
             </>
