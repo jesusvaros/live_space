@@ -43,14 +43,14 @@ describe('poster fallback chain', () => {
     expect(posterChain(posterSourcesFromRow({ image_url: 'http://www.intrusobar.com/p.jpg' }), 'card')).toEqual([]);
   });
 
-  it('puts a fan photo first and extra candidates (headliner photo) last', () => {
-    const fan = 'https://res.cloudinary.com/x/fan.jpg';
+  it('puts the poster renditions first, then the cover, extra candidates (headliner photo) last', () => {
+    const cover = 'https://example.com/original-poster.jpg';
     const avatar = 'https://cdn.deezer.com/artist.jpg';
-    expect(eventCoverSources({ cover_image_url: fan, poster_sources: poster }, 'thumb', [avatar])).toEqual([
-      fan,
+    expect(eventCoverSources({ cover_image_url: cover, poster_sources: poster }, 'thumb', [avatar])).toEqual([
       poster.thumb,
       poster.card,
       poster.original,
+      cover,
       avatar,
     ]);
     // cover_image_url already being the poster's card does not jump the thumbnail.

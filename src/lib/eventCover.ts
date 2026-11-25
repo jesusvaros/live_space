@@ -60,9 +60,9 @@ export const posterChain = (poster: PosterSources | null | undefined, size: Cove
 };
 
 /**
- * The full chain for an event card: its cover (a fan photo comes first when
- * there is one), then the poster renditions, then any extra candidates such
- * as the headliner's photo. The caller renders the generated poster when
+ * The full chain for an event card: the poster renditions, then the original
+ * poster, then any extra candidates such as the headliner's photo. Fan
+ * photos never stand in for the poster. The caller renders the generated poster when
  * every URL fails.
  */
 export const eventCoverSources = (
@@ -72,8 +72,8 @@ export const eventCoverSources = (
 ): string[] => {
   const poster = event.poster_sources ?? null;
   const posterUrls = posterChain(poster, size);
+  // cover_image_url is the original poster (never a fan photo): the mirrored
+  // renditions first, it after them.
   const cover = safeImageUrl(event.cover_image_url);
-  // cover_image_url is either a fan photo or one of the poster URLs.
-  const fanCover = cover && !posterUrls.includes(cover) ? cover : null;
-  return uniqueImageUrls([fanCover, ...posterUrls, cover, ...extra]);
+  return uniqueImageUrls([...posterUrls, cover, ...extra]);
 };
