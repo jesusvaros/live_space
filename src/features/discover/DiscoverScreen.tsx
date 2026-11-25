@@ -71,7 +71,7 @@ const DiscoverScreen: React.FC = () => {
   };
 
   const artistGrid = (list: DiscoverArtist[]) => (
-    <div className="grid grid-cols-3 gap-x-2.5 gap-y-3.5">
+    <div className="grid grid-cols-3 gap-x-1.5 gap-y-2.5">
       {list.map(artist => (
         <ArtistRow
           key={artist.id}
