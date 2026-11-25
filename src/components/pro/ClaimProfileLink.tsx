@@ -10,11 +10,14 @@ type ClaimProfileLinkProps = {
   entityId: string | null | undefined;
   subjectId?: string | null;
   className?: string;
+  // 'menu': a row in the page's «Más opciones» sheet; 'footer': the old link under the page.
+  variant?: 'footer' | 'menu';
 };
 
-// Footer of an artist, venue or festival page. Members get the way into the management
+// In the «Más opciones» menu of an artist or venue page (variant 'menu'), or
+// the footer of a festival page. Members get the way into the management
 // panel; everyone else a discreet "is this you?" link to claim the profile.
-const ClaimProfileLink: React.FC<ClaimProfileLinkProps> = ({ type, entityId, subjectId, className = '' }) => {
+const ClaimProfileLink: React.FC<ClaimProfileLinkProps> = ({ type, entityId, subjectId, className = '', variant = 'footer' }) => {
   const { user } = useAuth();
   const { managedEntities, setActiveWorkspace } = useWorkspace();
   const [pending, setPending] = useState(false);
@@ -39,6 +42,28 @@ const ClaimProfileLink: React.FC<ClaimProfileLinkProps> = ({ type, entityId, sub
   }, [user?.id, subjectId, membership]);
 
   if (!entityId) return null;
+
+  if (variant === 'menu') {
+    const row =
+      'flex min-h-12 items-center gap-3 rounded-2xl border border-app-line bg-app-surface px-4 text-left text-[15px] font-semibold text-app-ink';
+    if (membership) {
+      return (
+        <Link to="/gestion" onClick={() => setActiveWorkspace(membership)} className={row}>
+          <IconBriefcase size={20} />
+          Panel de gestión
+        </Link>
+      );
+    }
+    if (pending) {
+      return <p className="m-0 px-1 text-sm text-white/60">Tu solicitud para gestionar este perfil está pendiente de verificación.</p>;
+    }
+    return (
+      <Link to={user ? `/reclamar/${type}/${entityId}` : '/welcome'} className={row}>
+        <IconBriefcase size={20} />
+        ¿Eres tú? Gestiona este perfil
+      </Link>
+    );
+  }
 
   if (membership) {
     return (

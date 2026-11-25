@@ -1,6 +1,5 @@
 import React from 'react';
 import { ArtistProfileArtist } from './types';
-import { IconMap } from '../icons';
 import { BRAND_COLORS, LINK_LABELS, SocialIcon, type SocialKey } from './ArtistHero';
 
 type AboutSectionProps = {
@@ -11,7 +10,6 @@ type AboutSectionProps = {
   onShowConcerts: () => void;
   onCreateShow: () => void;
   onEditLinks: () => void;
-  onOpenMap: () => void;
 };
 
 // What a fan wants from a band besides the dates: where to listen and follow.
@@ -46,7 +44,6 @@ const AboutSection: React.FC<AboutSectionProps> = ({
   onShowConcerts,
   onCreateShow,
   onEditLinks,
-  onOpenMap,
 }) => (
   <section className="flex flex-col gap-5">
     {artist.bio ? <p className="text-[15px] leading-relaxed text-[#e4e0d8]">{artist.bio}</p> : null}
@@ -97,16 +94,8 @@ const AboutSection: React.FC<AboutSectionProps> = ({
       </button>
     ) : null}
 
-    <div className="flex flex-wrap gap-2">
-      <button
-        type="button"
-        onClick={onOpenMap}
-        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-app-line px-4 text-sm font-semibold text-app-ink"
-      >
-        <IconMap size={16} />
-        Ver en el mapa
-      </button>
-      {isManager ? (
+    {isManager ? (
+      <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={onCreateShow}
@@ -114,8 +103,8 @@ const AboutSection: React.FC<AboutSectionProps> = ({
         >
           Crear concierto
         </button>
-      ) : null}
-    </div>
+      </div>
+    ) : null}
   </section>
 );
 

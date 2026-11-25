@@ -317,7 +317,13 @@ const VenueDetail: React.FC = () => {
         title={venue?.name || 'Sala'}
         scrollRef={contentRef}
         fallbackHref="/tabs/discover"
-        actions={venue ? <MapVisibilityMenu type="venue" id={venue.id} name={venue.name} imageUrl={venueCover} /> : null}
+        actions={
+          venue ? (
+            <MapVisibilityMenu type="venue" id={venue.id} name={venue.name} imageUrl={venueCover}>
+              <ClaimProfileLink type="venue" entityId={venue.id} subjectId={venue.subject_id} variant="menu" />
+            </MapVisibilityMenu>
+          ) : null
+        }
       />
       {loading && <DetailSkeleton />}
 
@@ -447,7 +453,6 @@ const VenueDetail: React.FC = () => {
               <MomentGrid moments={moments} />
             </section>
           ) : null}
-          <ClaimProfileLink type="venue" entityId={venue.id} subjectId={venue.subject_id} className="px-4 pt-6" />
         </div>
       )}
     </AppShell>

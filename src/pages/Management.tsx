@@ -203,7 +203,7 @@ const Management: React.FC = () => {
       <section className="space-y-3 px-4 pt-6">
         <h2 className="font-display text-xl font-bold text-app-ink">Todavía no gestionas ningún perfil</h2>
         <p className="text-sm text-white/70">
-          Si eres artista o llevas una sala, busca tu perfil y pulsa «¿Eres tú? Gestiona este perfil». Una persona del
+          Si eres artista o llevas una sala, busca tu perfil, abre los tres puntos de arriba y pulsa «¿Eres tú? Gestiona este perfil». Una persona del
           equipo lo verifica.
         </p>
         <Button variant="secondary" onClick={() => navigate('/tabs/discover')}>Buscar mi perfil</Button>

@@ -9,14 +9,17 @@ type MapVisibilityMenuProps = {
   id: string | null | undefined;
   name: string;
   imageUrl?: string | null;
+  // Extra rows above «Ocultar del mapa» (e.g. «¿Eres tú? Gestiona este perfil»).
+  children?: React.ReactNode;
 };
 
 /**
- * «Más opciones» in the header of an artist or venue page: «Ocultar del mapa»
+ * «Más opciones» in the header of an artist or venue page: the claim or
+ * management link (children) and «Ocultar del mapa»
  * / «Mostrar en el mapa». The only place to hide; undone here or in
  * Ajustes → Privacidad → Ocultos del mapa.
  */
-const MapVisibilityMenu: React.FC<MapVisibilityMenuProps> = ({ type, id, name, imageUrl = null }) => {
+const MapVisibilityMenu: React.FC<MapVisibilityMenuProps> = ({ type, id, name, imageUrl = null, children }) => {
   const { isHidden, hide, show } = useHiddenOnMap();
   const { presentToast } = useToast();
   const [open, setOpen] = useState(false);
@@ -53,9 +56,10 @@ const MapVisibilityMenu: React.FC<MapVisibilityMenuProps> = ({ type, id, name, i
       >
         <IconMore size={22} />
       </button>
-      <Modal isOpen={open} onDidDismiss={() => setOpen(false)} initialBreakpoint={0.35} title={`Opciones de ${name}`}>
+      <Modal isOpen={open} onDidDismiss={() => setOpen(false)} initialBreakpoint={children ? 0.45 : 0.35} title={`Opciones de ${name}`}>
         <div className="flex flex-col gap-2 p-4 pb-[calc(16px+env(safe-area-inset-bottom,0px))]">
           <p className="m-0 mb-1 truncate text-sm text-white/60">{name}</p>
+          {children ? <div onClick={() => setOpen(false)}>{children}</div> : null}
           <button
             type="button"
             disabled={busy}
