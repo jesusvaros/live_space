@@ -44,11 +44,16 @@ export const DownloadIcon: React.FC<{ className?: string }> = ({ className }) =>
   </svg>
 );
 
-export const BrandMark: React.FC<{ size?: number }> = ({ size = 28 }) => (
-  <svg width={size} height={size} viewBox="0 0 28 28" aria-hidden="true">
-    <circle cx="14" cy="14" r="12" fill="none" stroke="var(--ls-accent)" strokeWidth="2.5" />
-    <circle cx="14" cy="14" r="4.5" fill="var(--ls-accent)" />
-  </svg>
+// The app icon («Mano arriba», assets/icon-only.png), as on the phone.
+export const BrandMark: React.FC<{ size?: number }> = ({ size = 38 }) => (
+  <img
+    src="/brand/icono-192.png"
+    width={size}
+    height={size}
+    alt=""
+    aria-hidden="true"
+    className="shrink-0 rounded-[22%] ring-1 ring-white/20"
+  />
 );
 
 export const LiveDot: React.FC<{ className?: string }> = ({ className = 'h-2.5 w-2.5 bg-[var(--ls-accent)]' }) => (
