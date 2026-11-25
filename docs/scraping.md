@@ -206,12 +206,35 @@ una búsqueda sin resultados y al final de los resultados) guarda el link en
 lo importa sin IA y sin navegador; la persona recibe un push cuando se publica
 (docs/notificaciones.md, `suggestion_imported`).
 
+**Cualquier link** (migración `20261125003000`; el formulario no cambia). La
+gente pega lo que tiene a mano: la página de entradas, pero también la web de
+una sala, su Instagram, el Spotify de un artista o un enlace corto de Google.
+Cada link acaba en un `kind`:
+
+| `kind` | Qué es | Qué pasa |
+| --- | --- | --- |
+| `event` | Un concierto (JSON-LD `Event`) | Como siempre: staging → confianza → publicar |
+| `agenda` | Una página con varios `Event` en JSON-LD | Se prepara cada concierto futuro (máx. 20, `MAX_AGENDA_EVENTS`); la sugerencia sigue al más cercano (`staging_event_id`) y avisa cuando se publica |
+| `venue` | La web de una sala | Candidata en Admin → «Sugeridos» |
+| `artist` | La web de un artista o su página en Spotify, Apple Music, Bandcamp o SoundCloud | Candidato en Admin → «Sugeridos» |
+| `profile` | Un perfil de Instagram, TikTok, Facebook, YouTube o Linktree (sala o artista, decide el admin) | Candidato en Admin → «Sugeridos» |
+
+Si ya tenemos esa sala o ese artista (misma web, mismo enlace de Spotify,
+Bandcamp, Apple Music o Instagram, o el mismo nombre normalizado y único, en la
+misma ciudad para salas) → `duplicate` con `result_venue_place_id` /
+`result_artist_id`, sin pasar por el admin.
+
 **Tabla.** `url` (normalizada: sin espacios, sin `#…`, sin `utm_*`, `fbclid`,
 `gclid` y similares; mismas reglas en `src/shared/suggestions/url.ts` y en
 `public.normalize_suggestion_url()`), `url_host` (sin `www.`), `note`,
 `suggested_by`, `status` (`pending` → `review` | `imported` | `duplicate` |
 `failed`), `result_event_id`, `staging_event_id`, `error`, `attempts`,
-`processed_at`, `created_at`. Única por (`suggested_by`, `url`).
+`processed_at`, `created_at`. Única por (`suggested_by`, `url`). Desde
+`20261125003000`: `kind` (`event` por defecto), `candidate` (jsonb: `name`,
+`city`, `address`, `website`, `links`, `imageUrl`, `description`, `evidence`),
+`result_venue_place_id` y `result_artist_id`. El cliente sigue pudiendo
+insertar solo `url` y `note`, así que `kind` y `candidate` solo los escribe el
+importador.
 
 - **RLS:** la persona inserta (solo `url` y `note`) y lee sus filas; nadie más
   las lee; `service_role` procesa. Sin `update`/`delete` para usuarios.
@@ -241,7 +264,19 @@ lanza con `--apply` justo después del scraping:
      80/443, redirecciones seguidas a mano y **cada salto debe resolver a
      direcciones públicas** (nada de `localhost`, redes privadas ni
      `169.254.169.254`). 404/410 y similares → `failed`; red, timeout o 5xx →
-     se reintenta otro día.
+     se reintenta otro día. Si un sitio contesta 403/406 a `LiveSpaceBot/1.0`
+     (cortafuegos de WordPress que exigen que el agente empiece por
+     `Mozilla/5.0`), se repite una vez con
+     `Mozilla/5.0 (compatible; LiveSpaceBot/1.0; +https://github.com/jesusvaros/live_space)`:
+     sigue diciendo quién somos, como los rastreadores de buscadores; nunca nos
+     hacemos pasar por un navegador.
+   - Antes de descargar, `src/pipeline/linkClassify.ts` (`classifyUrl`) mira la
+     dirección: página de artista en Spotify/Apple Music/Bandcamp/SoundCloud →
+     `artist`; perfil de Instagram/TikTok/Facebook/YouTube/Linktree →
+     `profile`; un sitio de Google Maps (`/maps/place/<nombre>`) → `venue`.
+     La página solo aporta nombre e imagen (OpenGraph) y, si no carga
+     (Instagram a veces), vale el nombre de usuario. Lo mismo tras las
+     redirecciones (un `share.google` o `bit.ly` que acaba en un perfil).
    - Lee la página con `src/pipeline/eventLinkExtract.ts`: el `Event` de
      schema.org en JSON-LD (`@graph`, listas, `ItemList`, subtipos como
      `MusicEvent` o `Festival`, `performer` en lista o texto, `location` `Place`
@@ -255,10 +290,32 @@ lanza con `--apply` justo después del scraping:
        (`buildStagingRow`; `source_event_id` = página canónica; enlace de venta
        y precios en el `payload` para `extractOffer`) → `review` con
        `staging_event_id`;
-     - sin JSON-LD, varios eventos en la página, sin fecha o sin sala, fuera de
-       España o aplazado → `review` (en `error`, el motivo y el título OG);
+     - varios eventos en la página → `agenda` (ver arriba); si ninguno está
+       completo y por venir, `review` como antes;
+     - sin JSON-LD, o con JSON-LD que no es un evento → `classifyPage` decide
+       si es una sala o un artista (abajo); si no lo tiene claro, como antes;
+     - sin JSON-LD, sin fecha o sin sala, fuera de España o aplazado →
+       `review` (en `error`, el motivo y el título OG);
      - el JSON-LD describe otra cosa (una portada, un listado), cancelado,
        solo online o ya pasado → `failed`.
+
+   **`classifyPage`** (nunca en taquillas, `TICKET_PLATFORM_HOSTS`: una página
+   de DICE o Entradium sin evento es un evento que no supimos leer):
+   - JSON-LD `MusicGroup`/`PerformingGroup` → artista; `LocalBusiness`,
+     `BarOrPub`, `NightClub`, `MusicVenue`, `EventVenue`, `Place`,
+     `PerformingArtsTheater`… → sala (nombre, dirección, ciudad y `sameAs`).
+   - Sin JSON-LD, por señales. Sala: el título dice sala/bar/club/teatro/
+     espacio… (+2), «próximos eventos»/agenda/programación (+1), dirección
+     con código postal y ciudad (+2, o +1 solo la calle), enlace a Google Maps
+     (+1), teléfono (+1), tres o más fechas (+1), portada del sitio (+1); con
+     5 o más es una sala. Artista: cada enlace a su Spotify/Apple
+     Music/Bandcamp/SoundCloud (+2), «banda», «discografía», «gira»… (+2 en
+     el título, +1 en el texto); con 3 o más y sin pinta de sala es un
+     artista. Una sala enlaza a los artistas que programa, así que con
+     dirección postal gana la sala.
+   - El caso real del 25-nov, `share.google/…` → `elbarmutante.com`
+     (Elementor, sin JSON-LD): sala «El Bar Mutante», Sevilla, Calle Fresa 15,
+     con su Instagram, Facebook y YouTube.
 3. Si se preparó algo, ejecuta el procesado normal de staging (normalización
    determinista, sala y artistas, deduplicación, confianza) y reconcilia otra
    vez, para que el aviso salga el mismo día. Este camino **nunca llama a la
@@ -284,9 +341,26 @@ una única fuente de tipo `venue`, se usa esa sala. Una sala nueva creada desde
 una sugerencia no recibe `website_url` (el link es de la taquilla, no de la
 sala).
 
-**Revisar.** Lo que queda en `review` sin `staging_event_id` (sin datos
-estructurados) se mira en Supabase → `event_link_suggestions`; el resto, en la
-cola de staging como cualquier fuente. Comprobado el 12-nov contra páginas
+**Salas y artistas sugeridos** (Admin → «Sugeridos»). Lista los links
+`venue`/`artist`/`profile` en `review`, uno por link con cuántas personas lo
+mandaron y sus notas (RPC `admin_link_candidates()`, solo admins, sin decir
+quién). Nombre y ciudad vienen rellenos y se pueden corregir. «Crear sala»
+(nombre y ciudad obligatorios; dirección y web del candidato) o «Crear
+artista» (con los enlaces que conoce el perfil: Instagram, Spotify, web,
+YouTube, TikTok, Bandcamp, Apple Music) usan los mismos servicios que las
+pestañas «Crear sala/artista» y luego `admin_resolve_link_candidate(url,
+'created', sala|artista)` marca `imported` todas las sugerencias de ese link:
+quien lo mandó recibe «Ya está: El Bar Mutante en Live Space»
+(docs/notificaciones.md). «Descartar» → `failed` (`dismissed-by-admin`). Crear
+la sala no trae su agenda: para eso hace falta una fuente con parser (ver
+«Contrato de fuente»). No se reutiliza `venue_discovery_candidates`: es el
+inventario de OpenStreetMap, con ciclo de vida por ausencias entre capturas,
+y no sirve para artistas.
+
+**Revisar.** Lo que queda en `review` sin `staging_event_id` ni candidato (sin
+datos estructurados y sin pinta de sala ni de artista) se mira en Supabase →
+`event_link_suggestions`; el resto, en la cola de staging como cualquier
+fuente. Comprobado el 12-nov contra páginas
 reales: DICE (`MusicEvent` completo) y Loco Club (sala desde su fuente) se
 importan; Entradium no publica JSON-LD (→ `review`); un listado de DICE
 (`Organization`/`WebSite`) → `failed`.

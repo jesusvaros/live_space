@@ -57,6 +57,8 @@ export type MerchOrder = {
 
 export type Attendance = { eventId: string; status: 'going' | 'attended' | 'interested' };
 
+export type SuggestedProfile = { kind: 'venue' | 'artist'; id: string; name: string };
+
 /** Everything the candidate builder knows about one person. */
 export type UserData = {
   profileId: string;
@@ -71,6 +73,8 @@ export type UserData = {
   follows: Follow[];
   /** Upcoming published concerts imported from links this person sent (event_link_suggestions). */
   suggestedEvents: EventInfo[];
+  /** Venues and artists added from links this person sent (event_link_suggestions kind venue/artist/profile). */
+  suggestedProfiles: SuggestedProfile[];
   /** notifications_sent of the last days (dedupe, daily limit, announced concerts). */
   sent: SentRow[];
 };

@@ -9,6 +9,17 @@ import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 
 export const SUGGESTION_USER_AGENT = 'LiveSpaceBot/1.0 (+https://github.com/jesusvaros/live_space)';
+// Some small sites (WordPress firewalls, mod_security) answer 403/406 to any
+// User-Agent that does not start with «Mozilla/5.0». The retry still says who
+// we are, the way search engine crawlers do: never a fake browser.
+export const SUGGESTION_COMPATIBLE_USER_AGENT = 'Mozilla/5.0 (compatible; LiveSpaceBot/1.0; +https://github.com/jesusvaros/live_space)';
+const RETRY_WITH_COMPATIBLE_UA = new Set([403, 406]);
+
+const headersFor = (compatible: boolean) => ({
+  'User-Agent': compatible ? SUGGESTION_COMPATIBLE_USER_AGENT : SUGGESTION_USER_AGENT,
+  Accept: compatible ? 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' : 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.5',
+  'Accept-Language': 'es-ES,es;q=0.9,en;q=0.6',
+});
 
 export type SafeFetchResult =
   | { ok: true; url: string; status: number; html: string; contentType: string }
@@ -113,6 +124,7 @@ const PERMANENT_STATUS = new Set([400, 401, 403, 404, 405, 406, 410, 451]);
 export const safeFetchHtml = async (rawUrl: string, options: SafeFetchOptions = {}): Promise<SafeFetchResult> => {
   const { timeoutMs = 20_000, maxBytes = 2_000_000, maxRedirects = 5, fetchImpl = fetch, resolve = defaultResolve } = options;
   let current = rawUrl;
+  let compatible = false;
   for (let hop = 0; hop <= maxRedirects; hop += 1) {
     let url: URL;
     try {
@@ -129,12 +141,14 @@ export const safeFetchHtml = async (rawUrl: string, options: SafeFetchOptions = 
       const response = await fetchImpl(url.toString(), {
         redirect: 'manual',
         signal: controller.signal,
-        headers: {
-          'User-Agent': SUGGESTION_USER_AGENT,
-          Accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.5',
-          'Accept-Language': 'es-ES,es;q=0.9,en;q=0.6',
-        },
+        headers: headersFor(compatible),
       });
+      if (!compatible && RETRY_WITH_COMPATIBLE_UA.has(response.status)) {
+        // Same address once more with the compatible User-Agent (counts as a hop).
+        await response.body?.cancel().catch(() => undefined);
+        compatible = true;
+        continue;
+      }
       if (response.status >= 300 && response.status < 400) {
         const location = response.headers.get('location');
         await response.body?.cancel().catch(() => undefined);

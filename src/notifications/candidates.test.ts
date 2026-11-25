@@ -39,6 +39,7 @@ const user = (overrides: Partial<UserData> = {}): UserData => ({
   merchOrders: [],
   follows: [],
   suggestedEvents: [],
+  suggestedProfiles: [],
   sent: [],
   ...overrides,
 });
@@ -227,6 +228,29 @@ describe('suggestion_imported', () => {
       { type: 'suggestion_imported', dedupeKey: 'suggestion_imported:s1', sentAt: '2026-11-12T10:00:00Z', payload: { event_ids: ['s1'] } },
     ];
     expect(build({ user: user({ follows, sent }), now, newEvents: [fresh] })).toEqual([]);
+  });
+
+  it('a venue or artist they sent, once the admin adds it: «Ya está: {nombre} en Live Space», to its page', () => {
+    const notices = build({
+      user: user({
+        suggestedProfiles: [
+          { kind: 'venue', id: 'v1', name: 'El Bar Mutante' },
+          { kind: 'artist', id: 'a1', name: 'Los Ejemplos' },
+        ],
+      }),
+      now,
+    });
+    expect(notices).toEqual([
+      expect.objectContaining({
+        type: 'suggestion_imported',
+        dedupeKey: 'suggestion_imported:venue:v1',
+        title: 'Ya está: El Bar Mutante en Live Space',
+        route: '/tabs/venue/v1',
+        eventIds: [],
+        expiresAt: null,
+      }),
+      expect.objectContaining({ dedupeKey: 'suggestion_imported:artist:a1', route: '/tabs/artist/a1' }),
+    ]);
   });
 
   it('goes after the concert-day notice', () => {

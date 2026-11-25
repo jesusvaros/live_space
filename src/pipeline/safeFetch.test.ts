@@ -35,6 +35,29 @@ describe('safeFetchHtml', () => {
     expect(userAgent).toMatch(/^LiveSpaceBot/);
   });
 
+  it('403/406 to the bot User-Agent: one retry with the compatible one, still identifiable', async () => {
+    const agents: string[] = [];
+    const result = await safeFetchHtml('https://bar.example/', {
+      resolve: publicResolve,
+      fetchImpl: (async (_url: string, init: RequestInit) => {
+        const userAgent = new Headers(init.headers).get('user-agent') ?? '';
+        agents.push(userAgent);
+        return userAgent.startsWith('Mozilla/5.0')
+          ? response(200, '<html>ok</html>', { 'content-type': 'text/html' })
+          : response(406, 'Not Acceptable', { 'content-type': 'text/html' });
+      }) as unknown as typeof fetch,
+    });
+    expect(result).toMatchObject({ ok: true, html: '<html>ok</html>' });
+    expect(agents).toHaveLength(2);
+    expect(agents[1]).toMatch(/^Mozilla\/5\.0 \(compatible; LiveSpaceBot\/1\.0; \+https:\/\/github\.com\/jesusvaros\/live_space\)$/);
+
+    const always403 = await safeFetchHtml('https://bar.example/', {
+      resolve: publicResolve,
+      fetchImpl: (async () => response(403, 'no', { 'content-type': 'text/html' })) as unknown as typeof fetch,
+    });
+    expect(always403).toMatchObject({ ok: false, error: 'http-403', permanent: true });
+  });
+
   it('never follows a redirect into a private address', async () => {
     const requested: string[] = [];
     const result = await safeFetchHtml('https://tickets.example/e/1', {

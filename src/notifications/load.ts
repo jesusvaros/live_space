@@ -4,7 +4,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { resolvePrefs } from './policy.js';
 import { FOLLOWED_LOOKBACK_MS } from './candidates.js';
-import type { Attendance, Device, EventInfo, Follow, MerchOrder, SentRow, UserData } from './types.js';
+import type { Attendance, Device, EventInfo, Follow, MerchOrder, SentRow, SuggestedProfile, UserData } from './types.js';
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
@@ -277,6 +277,46 @@ export const loadSenderData = async (supabase: SupabaseClient, { now, profileId 
     for (const list of suggestedByUser.values()) list.sort((left, right) => left.startsAt.localeCompare(right.startsAt));
   }
 
+  // 7b. Venues and artists the admin added from links they sent (migration
+  // 20261125003000). Optional like the concerts above.
+  const profilesByUser = new Map<string, SuggestedProfile[]>();
+  let addedRows: Row[] = [];
+  try {
+    addedRows = await inChunks(deviceUsers, chunk =>
+      supabase
+        .from('event_link_suggestions')
+        .select('suggested_by,result_venue_place_id,result_artist_id')
+        .eq('status', 'imported')
+        .in('kind', ['venue', 'artist', 'profile'])
+        .gte('processed_at', new Date(now.getTime() - SUGGESTION_MEMORY_MS).toISOString())
+        .in('suggested_by', chunk),
+    );
+  } catch (error) {
+    const code = (error as { code?: string })?.code;
+    if (code !== '42P01' && code !== 'PGRST205' && code !== '42703' && code !== 'PGRST204') throw error;
+  }
+  if (addedRows.length > 0) {
+    const venueIds = addedRows.map(row => row.result_venue_place_id).filter(Boolean).map(String);
+    const artistIds = addedRows.map(row => row.result_artist_id).filter(Boolean).map(String);
+    const names = new Map<string, string>();
+    for (const row of await inChunks(venueIds, chunk => supabase.from('venue_places').select('id,name').in('id', chunk))) {
+      names.set(`venue:${row.id}`, String(row.name));
+    }
+    for (const row of await inChunks(artistIds, chunk => supabase.from('artists').select('id,name').in('id', chunk))) {
+      names.set(`artist:${row.id}`, String(row.name));
+    }
+    for (const row of addedRows) {
+      const kind = row.result_venue_place_id ? 'venue' : row.result_artist_id ? 'artist' : null;
+      const id = String(row.result_venue_place_id ?? row.result_artist_id ?? '');
+      const name = kind ? names.get(`${kind}:${id}`) : undefined;
+      if (!kind || !name) continue;
+      const user = String(row.suggested_by);
+      const list = profilesByUser.get(user) ?? [];
+      if (!list.some(item => item.kind === kind && item.id === id)) list.push({ kind, id, name });
+      profilesByUser.set(user, list);
+    }
+  }
+
   // 8. Preferences and what was already sent.
   const prefRows = await inChunks(allUsers, chunk => supabase.from('notification_preferences').select('*').in('profile_id', chunk));
   const prefsByUser = new Map(prefRows.map(row => [String(row.profile_id), row]));
@@ -326,6 +366,7 @@ export const loadSenderData = async (supabase: SupabaseClient, { now, profileId 
     merchOrders: merchByUser.get(id) ?? [],
     follows: followsByUser.get(id) ?? [],
     suggestedEvents: suggestedByUser.get(id) ?? [],
+    suggestedProfiles: profilesByUser.get(id) ?? [],
     sent: sentByUser.get(id) ?? [],
   }));
 

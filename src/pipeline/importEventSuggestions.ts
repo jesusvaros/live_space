@@ -10,6 +10,11 @@
 //      eventLinkExtract (JSON-LD, no AI) and staged under one of the two
 //      user-suggestion sources. Links already in the catalogue are
 //      'duplicate' without staging anything.
+//      Not one concert? An agenda (several JSON-LD events) stages each
+//      upcoming concert (at most MAX_AGENDA_EVENTS); a venue's or an
+//      artist's page, an artist platform or a social profile is recorded as
+//      a candidate (kind + candidate) for the admin («Salas y artistas
+//      sugeridos»), or 'duplicate' when we already have it.
 //   3. process + reconcile again, so a concert published today notifies
 //      today. Only when AI normalization is off: this path never calls it.
 //
@@ -20,18 +25,23 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { env } from '../config/env.js';
 import { getSupabaseAdmin } from '../db/supabase.js';
+import { normalizeForMatching } from '../normalize/normalizeText.js';
 import type { RawScrapedEvent, ScrapeSource } from '../types/scrape.js';
 import { Logger } from '../utils/logger.js';
 import { runWithConcurrency } from '../utils/promisePool.js';
-import { extractEventFromHtml, type ExtractedEvent, type ExtractionResult } from './eventLinkExtract.js';
+import { extractAgendaFromHtml, extractEventFromHtml, type ExtractedEvent, type ExtractionResult } from './eventLinkExtract.js';
+import { candidateFromUrl, classifyPage, classifyUrl, type LinkCandidate } from './linkClassify.js';
 import { processPendingStaging } from './processStaging.js';
 import { safeFetchHtml, type SafeFetchResult } from './safeFetch.js';
 import { buildStagingRow } from './scrapeSources.js';
 
 export const MAX_ATTEMPTS = 3;
 export const DEFAULT_LIMIT = 50;
+/** Upcoming concerts staged from one agenda link. */
+export const MAX_AGENDA_EVENTS = 20;
 
 export type SuggestionStatus = 'pending' | 'imported' | 'duplicate' | 'review' | 'failed';
+export type SuggestionKind = 'event' | 'agenda' | 'venue' | 'artist' | 'profile';
 
 export type SuggestionRow = {
   id: string;
@@ -135,6 +145,18 @@ export const decideExtraction = (result: ExtractionResult, now: Date): Suggestio
   return { action: 'stage', event: result.event };
 };
 
+/** The extraction found no concert and the page may still be a venue or an artist (pure). */
+export const mayBeVenueOrArtist = (result: ExtractionResult) =>
+  (result.kind === 'review' && result.reason.startsWith('no-structured-data')) || (result.kind === 'failed' && result.reason === 'not-an-event');
+
+/** Upcoming concerts of an agenda page, nearest first, capped (pure). */
+export const agendaToStage = (events: ExtractedEvent[], now: Date, cap = MAX_AGENDA_EVENTS) =>
+  events.filter(event => new Date(event.startsAt).getTime() >= now.getTime()).slice(0, cap);
+
+/** The «error» column of a candidate: what it is and its name, for logs and Supabase. */
+export const candidateNote = (candidate: LinkCandidate) =>
+  `${candidate.kind}-candidate${candidate.name ? ` · ${candidate.name}` : ''}`.slice(0, 1000);
+
 /** The staging row's input, in the shape every parser produces. */
 export const toRawScrapedEvent = (event: ExtractedEvent, fetchedUrl: string): RawScrapedEvent => ({
   sourceUrl: fetchedUrl,
@@ -215,7 +237,49 @@ export type ImportSuggestionsSummary = {
   failed: number;
   duplicate: number;
   retry: number;
+  /** Venue, artist or profile links left for the admin. */
+  candidates: number;
+  /** Concerts staged from agenda links. */
+  agendaEvents: number;
   reconciled: Record<string, number>;
+};
+
+type ExistingProfile = { venuePlaceId: string | null; artistId: string | null };
+
+/** One row only: a name shared by two venues or artists is not a match. */
+const uniqueId = async (query: PromiseLike<{ data: unknown; error: unknown }>): Promise<string | null> => {
+  const { data, error } = await query;
+  if (error) throw error;
+  const rows = (data ?? []) as Array<{ id?: string }>;
+  return rows.length === 1 && rows[0].id ? rows[0].id : null;
+};
+
+/** A venue or artist we already have for this candidate (website, platform link or exact name). */
+const findExistingProfile = async (supabase: SupabaseClient, candidate: LinkCandidate): Promise<ExistingProfile | null> => {
+  const normalized = normalizeForMatching(candidate.name);
+  if (candidate.kind !== 'artist') {
+    const host = hostOf(candidate.website);
+    let venueId = host
+      ? await uniqueId(supabase.from('venue_places').select('id').ilike('website_url', `%://${host}%`).limit(2))
+      : null;
+    if (!venueId && host) venueId = await uniqueId(supabase.from('venue_places').select('id').ilike('website_url', `%://www.${host}%`).limit(2));
+    if (!venueId && normalized) {
+      let query = supabase.from('venue_places').select('id').eq('normalized_name', normalized);
+      if (candidate.city) query = query.ilike('city', candidate.city);
+      venueId = await uniqueId(query.limit(2));
+    }
+    if (venueId) return { venuePlaceId: venueId, artistId: null };
+  }
+  if (candidate.kind !== 'venue') {
+    let artistId: string | null = null;
+    for (const key of ['spotify', 'bandcamp', 'apple_music', 'instagram'] as const) {
+      const link = candidate.links[key];
+      if (!artistId && link) artistId = await uniqueId(supabase.from('artists').select('id').eq(`external_links->>${key}`, link).limit(2));
+    }
+    if (!artistId && normalized) artistId = await uniqueId(supabase.from('artists').select('id').eq('normalized_name', normalized).limit(2));
+    if (artistId) return { venuePlaceId: null, artistId };
+  }
+  return null;
 };
 
 const isMissingTable = (error: { code?: string } | null) => error?.code === '42P01' || error?.code === 'PGRST205';
@@ -255,6 +319,8 @@ export const importEventSuggestions = async (options: ImportSuggestionsOptions):
     failed: 0,
     duplicate: 0,
     retry: 0,
+    candidates: 0,
+    agendaEvents: 0,
     reconciled: {},
   };
 
@@ -376,12 +442,42 @@ export const importEventSuggestions = async (options: ImportSuggestionsOptions):
       await update(ids, { status, attempts, processed_at: now.toISOString(), ...patch });
     };
 
+    // A venue, an artist or a social profile: for the admin, unless we have it.
+    const recordCandidate = async (candidate: LinkCandidate) => {
+      const existingProfile = await findExistingProfile(supabase, candidate);
+      if (existingProfile) {
+        summary.duplicate += 1;
+        itemLogger.info('Venue or artist already in the catalogue', { kind: candidate.kind, name: candidate.name, ...existingProfile });
+        await finish('duplicate', {
+          kind: candidate.kind,
+          candidate,
+          result_venue_place_id: existingProfile.venuePlaceId,
+          result_artist_id: existingProfile.artistId,
+          error: null,
+        });
+        return;
+      }
+      summary.candidates += 1;
+      itemLogger.info('Candidate for the admin', { kind: candidate.kind, name: candidate.name, city: candidate.city, evidence: candidate.evidence });
+      await finish('review', { kind: candidate.kind, candidate, error: candidateNote(candidate) });
+    };
+
     try {
       const existing = await findEventByLink(supabase, [url]);
       if (existing) {
         summary.duplicate += 1;
         itemLogger.info('Already in the catalogue', { eventId: existing });
         await finish('duplicate', { result_event_id: existing, error: null });
+        return;
+      }
+
+      // Artist platforms and social profiles: the address says enough. The
+      // page only adds a name and a picture, and often does not load for a
+      // bot (Instagram), so a failed fetch is fine here.
+      const urlClass = classifyUrl(url);
+      if (urlClass) {
+        const profilePage = await politeFetch(url).catch(() => null);
+        await recordCandidate(candidateFromUrl(urlClass, url, profilePage?.ok ? profilePage.html : null));
         return;
       }
 
@@ -399,8 +495,90 @@ export const importEventSuggestions = async (options: ImportSuggestionsOptions):
         return;
       }
 
+      // A short link (share.google, bit.ly…) that lands on a profile or a map place.
+      const resolvedClass = classifyUrl(page.url);
+      if (resolvedClass) {
+        await recordCandidate(candidateFromUrl(resolvedClass, page.url, page.html));
+        return;
+      }
+
       const knownHost = knownHostFor(hostOf(page.url), known);
-      const extraction = extractEventFromHtml(page.html, page.url, { venueFallback: knownHost?.venue ?? null });
+      const source = knownHost?.trusted ? trustedSource : reviewSource;
+      const extractOptions = { venueFallback: knownHost?.venue ?? null };
+
+      /** Stages one concert; its staging row id (null in a dry run). */
+      const stage = async (event: ExtractedEvent): Promise<string | null> => {
+        itemLogger.info('Staging', {
+          source: source.name,
+          title: event.title,
+          startsAt: event.startsAt,
+          venue: event.venueName,
+          city: event.city,
+          artists: event.artistNames,
+        });
+        if (!apply) return null;
+        const runId = await runFor(source);
+        const row = buildStagingRow(source, runId, toRawScrapedEvent(event, page.url));
+        const { error: stagingError } = await supabase.from('staging_events').upsert(row, {
+          onConflict: 'source_id,raw_hash',
+          ignoreDuplicates: true,
+        });
+        if (stagingError) throw stagingError;
+        const { data: stagingRow, error: readError } = await supabase
+          .from('staging_events')
+          .select('id')
+          .eq('source_id', source.id)
+          .eq('raw_hash', row.raw_hash)
+          .single();
+        if (readError || !stagingRow) throw readError || new Error('Staged row not found');
+        stagedPerRun.set(runId, (stagedPerRun.get(runId) ?? 0) + 1);
+        return (stagingRow as { id: string }).id;
+      };
+
+      const extraction = extractEventFromHtml(page.html, page.url, extractOptions);
+
+      // An agenda: every upcoming concert on it. The suggestion follows the
+      // nearest one (staging_event_id), so its person hears «Ya está» once.
+      if (extraction.kind === 'review' && extraction.reason.startsWith('several-events')) {
+        const upcoming = agendaToStage(extractAgendaFromHtml(page.html, page.url, extractOptions), now);
+        if (upcoming.length > 0) {
+          let firstStagingId: string | null = null;
+          let staged = 0;
+          let alreadyKnown = 0;
+          for (const event of upcoming) {
+            if (await findEventByLink(supabase, [event.url, event.ticketUrl ?? ''])) {
+              alreadyKnown += 1;
+              continue;
+            }
+            const stagingId = await stage(event);
+            firstStagingId ??= stagingId;
+            staged += 1;
+          }
+          summary.agendaEvents += staged;
+          itemLogger.info('Agenda', { upcoming: upcoming.length, staged, alreadyKnown });
+          if (staged === 0) {
+            summary.duplicate += 1;
+            await finish('duplicate', { kind: 'agenda', error: `agenda:${upcoming.length} already in the catalogue` });
+          } else {
+            summary.staged += 1;
+            await finish('review', {
+              kind: 'agenda',
+              staging_event_id: firstStagingId,
+              error: `agenda:${staged} staged${alreadyKnown ? `, ${alreadyKnown} already in the catalogue` : ''}`,
+            });
+          }
+          return;
+        }
+      }
+
+      if (mayBeVenueOrArtist(extraction)) {
+        const pageClass = classifyPage(page.html, page.url);
+        if (pageClass) {
+          await recordCandidate(pageClass.candidate);
+          return;
+        }
+      }
+
       const decision = decideExtraction(extraction, now);
       if (decision.action !== 'stage') {
         summary[decision.action] += 1;
@@ -418,34 +596,10 @@ export const importEventSuggestions = async (options: ImportSuggestionsOptions):
         return;
       }
 
-      const source = knownHost?.trusted ? trustedSource : reviewSource;
       summary.staged += 1;
-      itemLogger.info('Staging', {
-        source: source.name,
-        title: event.title,
-        startsAt: event.startsAt,
-        venue: event.venueName,
-        city: event.city,
-        artists: event.artistNames,
-      });
+      const stagingId = await stage(event);
       if (!apply) return;
-
-      const runId = await runFor(source);
-      const row = buildStagingRow(source, runId, toRawScrapedEvent(event, page.url));
-      const { error: stagingError } = await supabase.from('staging_events').upsert(row, {
-        onConflict: 'source_id,raw_hash',
-        ignoreDuplicates: true,
-      });
-      if (stagingError) throw stagingError;
-      const { data: stagingRow, error: readError } = await supabase
-        .from('staging_events')
-        .select('id')
-        .eq('source_id', source.id)
-        .eq('raw_hash', row.raw_hash)
-        .single();
-      if (readError || !stagingRow) throw readError || new Error('Staged row not found');
-      stagedPerRun.set(runId, (stagedPerRun.get(runId) ?? 0) + 1);
-      await finish('review', { staging_event_id: (stagingRow as { id: string }).id, error: null });
+      await finish('review', { staging_event_id: stagingId, error: null });
     } catch (error) {
       const message = error instanceof Error ? error.message : String((error as { message?: unknown })?.message ?? error);
       itemLogger.error('Suggestion failed', error);
