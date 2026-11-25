@@ -113,3 +113,71 @@ export const neighbourIndexes = (index: number, count: number, radius = 1) => {
   for (let i = Math.max(0, index - radius); i <= Math.min(count - 1, index + radius); i += 1) result.push(i);
   return result;
 };
+
+/** «Lo más gustado»: photos with at least one ♥, most liked first (earlier on ties). */
+export const topLikedPhotos = (moments: readonly TimelineMoment[], limit = 5): TimelineMoment[] =>
+  concertPhotos(moments)
+    .filter(photo => (photo.likes ?? 0) > 0)
+    .sort((left, right) => (right.likes ?? 0) - (left.likes ?? 0) || timeOf(left) - timeOf(right))
+    .slice(0, limit);
+
+export type PhotoGrouping = 'people' | 'songs' | 'time';
+
+export type PhotoSection = {
+  id: string;
+  label: string;
+  // People: their avatar, whether it is you, and a way to their profile.
+  avatarUrl?: string | null;
+  userId?: string;
+  isMe?: boolean;
+  photos: TimelineMoment[];
+};
+
+const halfHourLabel = (time: number) => {
+  const date = new Date(time);
+  date.setMinutes(date.getMinutes() < 30 ? 0 : 30, 0, 0);
+  return { key: date.getTime(), label: date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) };
+};
+
+/**
+ * The gallery below the cover, one section per person (yours first, then the
+ * biggest), per song (setlist order, «Sin canción» last) or per half hour.
+ */
+export const groupPhotoSections = (
+  moments: readonly TimelineMoment[],
+  grouping: PhotoGrouping,
+  options: { currentUserId: string | null; songs?: ReadonlyArray<{ songId: string; label: string }> },
+): PhotoSection[] => {
+  if (grouping === 'people') {
+    return groupPhotoAlbums(moments, options.currentUserId)
+      .filter(album => album.id !== ALL_ALBUM_ID)
+      .map(album => ({ id: album.id, label: album.label, avatarUrl: album.avatarUrl, userId: album.id, isMe: album.isMe, photos: album.photos }));
+  }
+  const photos = concertPhotos(moments);
+  if (grouping === 'songs') {
+    const order = new Map((options.songs ?? []).map((song, index) => [song.songId, { index, label: song.label }]));
+    const sections = new Map<string, PhotoSection & { index: number }>();
+    for (const photo of photos) {
+      const known = photo.songId ? order.get(photo.songId) : undefined;
+      const id = known ? photo.songId! : 'none';
+      let section = sections.get(id);
+      if (!section) {
+        section = { id, label: known?.label ?? 'Sin canción', photos: [], index: known?.index ?? Number.MAX_SAFE_INTEGER };
+        sections.set(id, section);
+      }
+      section.photos.push(photo);
+    }
+    return [...sections.values()].sort((left, right) => left.index - right.index).map(({ index: _index, ...section }) => section);
+  }
+  const sections = new Map<number, PhotoSection>();
+  for (const photo of photos) {
+    const { key, label } = halfHourLabel(timeOf(photo));
+    let section = sections.get(key);
+    if (!section) {
+      section = { id: String(key), label, photos: [] };
+      sections.set(key, section);
+    }
+    section.photos.push(photo);
+  }
+  return [...sections.entries()].sort(([left], [right]) => left - right).map(([, section]) => section);
+};
