@@ -40,7 +40,6 @@ describe('EventPhotos', () => {
   it('opens on the most liked, then a section per person', () => {
     renderPhotos([photo('a', 'ana', 0, 1), photo('b', 'pepe', 7, 2, 's1'), photo('c', 'pepe', 2, 3)]);
     expect(screen.getByText('Lo más gustado')).toBeInTheDocument();
-    expect(screen.getByText('♥ 7')).toBeInTheDocument();
     expect(screen.getByText('Tus fotos')).toBeInTheDocument();
     expect(screen.getByText('@pepe')).toBeInTheDocument();
   });

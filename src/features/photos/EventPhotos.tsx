@@ -5,8 +5,6 @@ import type { TimelineMoment } from '../moments/concertTimeline';
 import {
   concertPhotos,
   groupPhotoSections,
-  photoCredit,
-  photoThumbUrl,
   topLikedPhotos,
   type PhotoGrouping,
 } from './photoAlbums';
@@ -55,7 +53,7 @@ const EventPhotos: React.FC<EventPhotosProps> = ({
 }) => {
   const navigate = useNavigate();
   const photos = useMemo(() => concertPhotos(moments), [moments]);
-  const liked = useMemo(() => topLikedPhotos(moments), [moments]);
+  const liked = useMemo(() => topLikedPhotos(moments, 8), [moments]);
   const [grouping, setGrouping] = useState<PhotoGrouping>('people');
   const sections = useMemo(
     () => groupPhotoSections(moments, grouping, { currentUserId, songs }),
@@ -86,9 +84,8 @@ const EventPhotos: React.FC<EventPhotosProps> = ({
   }
 
   // The cover: most liked; while nothing has ♥ yet, the latest photos.
-  const cover = liked.length ? liked : [...photos].reverse().slice(0, 5);
+  const cover = liked.length ? liked : [...photos].reverse().slice(0, 8);
   const coverLabel = liked.length ? 'Lo más gustado' : 'Lo último';
-  const [hero, ...rest] = cover;
   const people = new Set(photos.map(photo => photo.userId)).size;
   const open = (list: TimelineMoment[], index: number, label: string) => setViewing({ photos: list, index, label });
 
@@ -101,43 +98,8 @@ const EventPhotos: React.FC<EventPhotosProps> = ({
         </p>
       </div>
 
-      {/* Cover */}
-      <div className="px-4 pt-3">
-        <p className="m-0 mb-2 font-display text-base font-bold text-app-ink">{coverLabel}</p>
-        <button
-          type="button"
-          onClick={() => open(cover, 0, coverLabel)}
-          className="relative block aspect-[4/5] w-full overflow-hidden rounded-2xl bg-app-surface"
-        >
-          <img src={photoThumbUrl(hero, 900)} alt={`Foto de ${photoCredit(hero)}`} className="h-full w-full object-cover" />
-          <span className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-black/80 to-transparent px-3 pb-3 pt-10 text-left">
-            <span className="min-w-0 truncate text-[14px] font-bold text-white">{photoCredit(hero)}</span>
-            {(hero.likes ?? 0) > 0 ? (
-              <span className="shrink-0 rounded-full bg-black/60 px-2 py-0.5 font-mono text-[12px] font-bold text-white">♥ {hero.likes}</span>
-            ) : null}
-          </span>
-        </button>
-        {rest.length ? (
-          <div className="mt-1.5 grid grid-cols-4 gap-1.5">
-            {rest.map((photo, index) => (
-              <button
-                key={photo.id}
-                type="button"
-                onClick={() => open(cover, index + 1, coverLabel)}
-                className="relative aspect-square overflow-hidden rounded-xl bg-app-surface"
-              >
-                <img src={photoThumbUrl(photo, 240)} alt={`Foto de ${photoCredit(photo)}`} loading="lazy" className="h-full w-full object-cover" />
-                {(photo.likes ?? 0) > 0 ? (
-                  <span className="absolute bottom-1 right-1 rounded-full bg-black/60 px-1.5 font-mono text-[10px] font-bold text-white">♥ {photo.likes}</span>
-                ) : null}
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </div>
-
-      {/* How the rest is grouped */}
-      <div role="tablist" aria-label="Ordenar fotos" className="sticky top-0 z-10 flex gap-2 bg-app-bg/95 px-4 py-3 backdrop-blur">
+      {/* How the sections below are grouped: at the top, with the count. */}
+      <div role="tablist" aria-label="Ordenar fotos" className="flex gap-2 px-4 pt-3">
         {GROUPINGS.map(option => (
           <button
             key={option.key}
@@ -154,7 +116,13 @@ const EventPhotos: React.FC<EventPhotosProps> = ({
         ))}
       </div>
 
-      <div className="flex flex-col gap-6 px-4 pb-2">
+      {/* Cover: the most liked (or latest), two at a time, sideways. */}
+      <div className="px-4 pt-5">
+        <p className="m-0 mb-2 font-display text-base font-bold text-app-ink">{coverLabel}</p>
+        <PhotoGrid photos={cover} layout="row" perView={2} onOpen={index => open(cover, index, coverLabel)} {...handlers} />
+      </div>
+
+      <div className="flex flex-col gap-6 px-4 pb-2 pt-6">
         {sections.map(section => (
           <div key={`${grouping}-${section.id}`}>
             {grouping === 'people' ? (
@@ -183,7 +151,7 @@ const EventPhotos: React.FC<EventPhotosProps> = ({
             )}
             <PhotoGrid
               photos={section.photos}
-              pageSize={6}
+              layout="row"
               onOpen={index => open(section.photos, index, section.label)}
               {...handlers}
             />

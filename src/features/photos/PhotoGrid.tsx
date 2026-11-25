@@ -17,9 +17,13 @@ type PhotoGridProps = PhotoActionHandlers & {
   emptyText?: string;
   // Thumbnails shown before «Ver más» (the page pages itself: Infinity).
   pageSize?: number;
+  // 'row': every photo the same size in one sideways-scrolling row, `perView`
+  // of them on screen (no paging).
+  layout?: 'grid' | 'row';
+  perView?: 2 | 3;
 };
 
-const PhotoGrid: React.FC<PhotoGridProps> = ({ photos, onOpen, emptyText, pageSize = PAGE, ...actions }) => {
+const PhotoGrid: React.FC<PhotoGridProps> = ({ photos, onOpen, emptyText, pageSize = PAGE, layout = 'grid', perView = 3, ...actions }) => {
   const [shown, setShown] = useState(pageSize);
   const [menuFor, setMenuFor] = useState<TimelineMoment | null>(null);
   const pressRef = useRef<{ timer: number; x: number; y: number; fired: boolean } | null>(null);
@@ -32,16 +36,26 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({ photos, onOpen, emptyText, pageSi
     return emptyText ? <p className="text-sm text-white/55">{emptyText}</p> : null;
   }
 
-  const visible = photos.slice(0, shown);
+  const row = layout === 'row';
+  const visible = row ? photos : photos.slice(0, shown);
   return (
     <>
-      <ul className="grid grid-cols-3 gap-1">
+      <ul
+        className={
+          row
+            ? '-mx-4 flex snap-x scroll-px-4 gap-1.5 overflow-x-auto px-4 [scrollbar-width:none]'
+            : 'grid grid-cols-3 gap-1'
+        }
+      >
         {visible.map((photo, index) => (
-          <li key={photo.id}>
+          <li
+            key={photo.id}
+            className={row ? `shrink-0 snap-start ${perView === 2 ? 'w-[calc((100%-0.375rem)/2)]' : 'w-[calc((100%-0.75rem)/3)]'}` : undefined}
+          >
             <button
               type="button"
               aria-label={`Ver foto de ${photoCredit(photo)}`}
-              className="relative block aspect-[3/4] w-full select-none overflow-hidden rounded-lg bg-app-surface [-webkit-touch-callout:none]"
+              className={`relative block aspect-[3/4] w-full select-none overflow-hidden bg-app-surface ${row ? 'rounded-xl' : 'rounded-lg'} [-webkit-touch-callout:none]`}
               onPointerDown={event => {
                 cancelPress();
                 const press = { timer: 0, x: event.clientX, y: event.clientY, fired: false };
@@ -92,7 +106,7 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({ photos, onOpen, emptyText, pageSi
           </li>
         ))}
       </ul>
-      {photos.length > shown ? (
+      {!row && photos.length > shown ? (
         <button
           type="button"
           onClick={() => setShown(value => value + pageSize)}
