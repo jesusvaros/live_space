@@ -5,6 +5,8 @@ import {
   cloudinaryResized,
   concertPhotos,
   groupPhotoAlbums,
+  groupPhotoSections,
+  topLikedPhotos,
   neighbourIndexes,
   photoCredit,
   photoThumbUrl,
@@ -115,5 +117,40 @@ describe('neighbourIndexes', () => {
     expect(neighbourIndexes(2, 5)).toEqual([1, 2, 3]);
     expect(neighbourIndexes(4, 5)).toEqual([3, 4]);
     expect(neighbourIndexes(0, 0)).toEqual([]);
+  });
+});
+
+describe('topLikedPhotos', () => {
+  it('keeps liked photos only, most liked first', () => {
+    const a = moment({ likes: 2 });
+    const b = moment({ likes: 0 });
+    const c = moment({ likes: 5 });
+    const v = moment({ mediaType: 'video', likes: 9 });
+    expect(topLikedPhotos([a, b, c, v]).map(photo => photo.id)).toEqual([c.id, a.id]);
+  });
+});
+
+describe('groupPhotoSections', () => {
+  it('per song in setlist order, «Sin canción» last', () => {
+    const one = moment({ songId: 's1' });
+    const two = moment({ songId: 's2' });
+    const none = moment({ songId: null });
+    const sections = groupPhotoSections([none, two, one], 'songs', {
+      currentUserId: null,
+      songs: [{ songId: 's1', label: '01 · Uno' }, { songId: 's2', label: '02 · Dos' }],
+    });
+    expect(sections.map(section => section.label)).toEqual(['01 · Uno', '02 · Dos', 'Sin canción']);
+  });
+
+  it('per person, without «Todas»', () => {
+    const sections = groupPhotoSections([moment({}), moment({ userId: 'u2', userName: 'pepe' })], 'people', { currentUserId: 'u2' });
+    expect(sections.map(section => section.label)).toEqual(['Tus fotos', '@lucia']);
+  });
+
+  it('per half hour, in order', () => {
+    const late = moment({ capturedAt: '2026-10-10T22:40:00.000Z' });
+    const early = moment({ capturedAt: '2026-10-10T22:05:00.000Z' });
+    const sections = groupPhotoSections([late, early], 'time', { currentUserId: null });
+    expect(sections.map(section => section.photos[0].id)).toEqual([early.id, late.id]);
   });
 });

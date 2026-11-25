@@ -385,6 +385,17 @@ const EventDetail: React.FC = () => {
     scrollToStage();
   };
 
+  // Setlist songs for the gallery's «Canciones».
+  const photoSongs = useMemo(
+    () =>
+      setlist.flatMap(entry =>
+        entry.song_id
+          ? [{ songId: entry.song_id, label: `${String(entry.ordinal).padStart(2, '0')} · ${entry.song_title || 'Canción'}` }]
+          : [],
+      ),
+    [setlist],
+  );
+
   const onActiveSongChange = useCallback((songId: string | null) => setPlayingSongId(songId), []);
 
   // No account needed to start an upload: it is asked for only on publishing.
@@ -659,6 +670,7 @@ const EventDetail: React.FC = () => {
                         moments={moments}
                         currentUserId={user?.id ?? null}
                         onDeleted={removeMoment}
+                        songs={photoSongs}
                         onUpload={() => openUpload()}
                         hideTitle
                       />
@@ -721,6 +733,7 @@ const EventDetail: React.FC = () => {
                     moments={moments}
                     currentUserId={user?.id ?? null}
                     onDeleted={removeMoment}
+                    songs={photoSongs}
                     onUpload={hasStarted ? () => openUpload() : undefined}
                   />
 

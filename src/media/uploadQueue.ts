@@ -4,6 +4,7 @@ import { uploadFailureReason, uploadFailureStatus } from '../features/analytics/
 import { getReuseConsent } from '../features/community/licence';
 import { supabase } from '../lib/supabase';
 import { getConfiguredMediaProvider } from './configured';
+import { compressMomentPhoto } from './compressPhoto';
 import { isMediaUploadError, MediaUploadError } from './errors';
 import { IMAGE_MAX_BYTES, VIDEO_MAX_BYTES, VIDEO_MAX_DURATION_SECONDS } from './limits';
 import {
@@ -151,6 +152,8 @@ type QueueDeps = {
     songId: string | null;
     allowReuse: boolean;
   }) => Promise<string>;
+  /** Shrinks a photo before uploading (the app: compressMomentPhoto). */
+  compressPhoto?: (file: File) => Promise<File>;
   /** Usage events (upload_start/done/failed/retry): kinds, reasons, counts and sizes only. */
   track?: (name: string, props: Record<string, string | number | boolean | null>) => void;
 };
@@ -619,7 +622,7 @@ export class UploadQueue {
     // 1. Prepare: compress native videos (the size limit applies to the
     // compressed file), check limits on files that are uploaded as they are.
     if (!job.prepared && job.kind === 'video') job = await this.prepareVideo(job);
-    if (job.kind === 'image' && job.file && job.file.size > IMAGE_MAX_BYTES) {
+    if (job.kind === 'image' && job.file && job.file.size > IMAGE_MAX_BYTES && !this.deps.compressPhoto) {
       throw new MediaUploadError('file_too_large', limitMessages.photoTooLarge(job.file.size));
     }
 
@@ -747,6 +750,10 @@ export class UploadQueue {
     }
     if (job.cloudinaryReservationId) return this.deps.waitForAsset(job.cloudinaryReservationId, 'image');
     if (!file) throw new MediaUploadError('unsupported_media', 'No encontramos el archivo de la foto.');
+    if (this.deps.compressPhoto) {
+      file = await this.deps.compressPhoto(file);
+      this.patch(job.id, { totalBytes: file.size });
+    }
     if (file.size > IMAGE_MAX_BYTES) throw new MediaUploadError('file_too_large', limitMessages.photoTooLarge(file.size));
     const result = await this.deps.provider().uploadToCloudinary({
       file,
@@ -887,6 +894,7 @@ export class UploadQueue {
 
 const defaultDeps: QueueDeps = {
   provider: getConfiguredMediaProvider,
+  compressPhoto: compressMomentPhoto,
   track: trackAnalytics,
   currentUserId: async () => {
     const { data } = await supabase.auth.getSession();

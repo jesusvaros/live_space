@@ -94,6 +94,60 @@ type ModalProps = {
   title?: string;
 };
 
+/**
+ * A bottom sheet follows the finger down and closes past 110 px (or a quick
+ * flick). Only when what is under the finger is scrolled to the top, so
+ * scrolling a list inside the sheet still works.
+ */
+const useSheetSwipe = (enabled: boolean, onClose: () => void) => {
+  const drag = useRef<{ y: number; t: number; dy: number; active: boolean; node: HTMLElement } | null>(null);
+  if (!enabled) return {};
+  const scrolledInside = (target: EventTarget | null, root: HTMLElement) => {
+    for (let el = target as HTMLElement | null; el && el !== root; el = el.parentElement) {
+      if (el.scrollTop > 0) return true;
+    }
+    return false;
+  };
+  const settle = (node: HTMLElement, close: boolean) => {
+    node.style.transition = 'transform 180ms ease-out';
+    node.style.transform = close ? 'translateY(100%)' : '';
+    if (close) window.setTimeout(onClose, 160);
+    window.setTimeout(() => {
+      node.style.transition = '';
+    }, 200);
+  };
+  return {
+    onTouchStart: (event: React.TouchEvent<HTMLDivElement>) => {
+      const node = event.currentTarget;
+      if (scrolledInside(event.target, node)) {
+        drag.current = null;
+        return;
+      }
+      drag.current = { y: event.touches[0].clientY, t: Date.now(), dy: 0, active: false, node };
+    },
+    onTouchMove: (event: React.TouchEvent<HTMLDivElement>) => {
+      const state = drag.current;
+      if (!state) return;
+      const dy = event.touches[0].clientY - state.y;
+      if (dy <= 0 && !state.active) {
+        drag.current = null;
+        return;
+      }
+      state.active = true;
+      state.dy = Math.max(0, dy);
+      state.node.style.transition = '';
+      state.node.style.transform = `translateY(${state.dy}px)`;
+    },
+    onTouchEnd: () => {
+      const state = drag.current;
+      drag.current = null;
+      if (!state?.active) return;
+      const velocity = state.dy / Math.max(1, Date.now() - state.t);
+      settle(state.node, state.dy > 110 || velocity > 0.6);
+    },
+  };
+};
+
 export const Modal: React.FC<ModalProps> = ({
   isOpen,
   onDidDismiss,
@@ -103,6 +157,7 @@ export const Modal: React.FC<ModalProps> = ({
   title = 'Diálogo',
 }) => {
   const isSheet = typeof initialBreakpoint === 'number' || className?.includes('sheet');
+  const swipe = useSheetSwipe(Boolean(isSheet), onDidDismiss);
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={open => (!open ? onDidDismiss() : undefined)}>
@@ -120,6 +175,7 @@ export const Modal: React.FC<ModalProps> = ({
             className,
           )}
           onOpenAutoFocus={event => event.preventDefault()}
+          {...swipe}
         >
           <Dialog.Title className="sr-only">{title}</Dialog.Title>
           <Dialog.Close data-modal-close className="sr-only" aria-label="Cerrar diálogo">
