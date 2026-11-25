@@ -21,20 +21,31 @@ export const signUploadParameters = async (
   return digestHex("SHA-1", `${serialized}${apiSecret}`);
 };
 
+const safeEqual = (left: string, right: string) => {
+  if (left.length !== right.length) return false;
+  let difference = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    difference |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  }
+  return difference === 0;
+};
+
+/**
+ * Cloudinary signs notifications with the account's signature algorithm:
+ * SHA-1 by default (40 hex chars), SHA-256 when switched (64). Only checking
+ * SHA-256 rejected every photo notification with a 401, so no image ever got
+ * its media asset. The digest is chosen by the length of what arrived.
+ */
 export const verifyWebhookSignature = async (
   rawBody: string,
   timestamp: string,
   receivedSignature: string,
   apiSecret: string,
 ) => {
-  const expected = await digestHex("SHA-256", `${rawBody}${timestamp}${apiSecret}`);
-  if (expected.length !== receivedSignature.length) return false;
-
-  let difference = 0;
-  for (let index = 0; index < expected.length; index += 1) {
-    difference |= expected.charCodeAt(index) ^ receivedSignature.charCodeAt(index);
-  }
-  return difference === 0;
+  const algorithm = receivedSignature.length === 40 ? "SHA-1" : receivedSignature.length === 64 ? "SHA-256" : null;
+  if (!algorithm) return false;
+  const expected = await digestHex(algorithm, `${rawBody}${timestamp}${apiSecret}`);
+  return safeEqual(expected, receivedSignature);
 };
 
 export const requiredEnv = (name: string): string => {
