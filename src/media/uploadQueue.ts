@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase';
 import { getConfiguredMediaProvider } from './configured';
 import { compressMomentPhoto } from './compressPhoto';
 import { isMediaUploadError, MediaUploadError } from './errors';
-import { IMAGE_MAX_BYTES, VIDEO_MAX_BYTES, VIDEO_MAX_DURATION_SECONDS } from './limits';
+import { IMAGE_MAX_BYTES, PHOTOS_PER_CONCERT, PHOTOS_PER_DAY, VIDEO_MAX_BYTES, VIDEO_MAX_DURATION_SECONDS } from './limits';
 import {
   compressMomentVideo,
   deleteNativeFile,
@@ -229,6 +229,12 @@ const classify = (error: unknown): Failure => {
       case 'authorization_failed':
         if (status === 403 && /paused/i.test(error.message)) {
           return { permanent: false, restart: false, waitForAuth: false, longWait: true, message: 'Las subidas están en pausa; seguiremos más tarde.' };
+        }
+        if (status === 403 && /photo limit per concert/i.test(error.message)) {
+          return { permanent: true, restart: false, waitForAuth: false, message: `Ya has subido ${PHOTOS_PER_CONCERT} fotos a este concierto, el máximo.` };
+        }
+        if (status === 403 && /daily photo upload quota/i.test(error.message)) {
+          return { permanent: true, restart: false, waitForAuth: false, message: `Has llegado a ${PHOTOS_PER_DAY} fotos hoy. Mañana puedes seguir.` };
         }
         if (status === 410 || (status === 409 && /part|uploaded/i.test(error.message))) {
           return { permanent: false, restart: true, waitForAuth: false, message: fallback };
