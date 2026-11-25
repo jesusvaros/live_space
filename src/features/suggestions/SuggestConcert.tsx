@@ -5,7 +5,7 @@ import { rememberReturnTo } from '../../auth/returnTo';
 import { IconChevronRight, IconTicket } from '../../components/icons';
 import { Modal, Spinner } from '../../components/ui/AppPrimitives';
 import { useAuth } from '../../contexts/AuthContext';
-import { MAX_SUGGESTION_NOTE_LENGTH, normalizeSuggestionUrl } from '../../shared/suggestions/url';
+import { normalizeSuggestionUrl } from '../../shared/suggestions/url';
 import {
   hasSuggestDraft,
   saveSuggestDraft,
@@ -15,7 +15,7 @@ import {
 } from './suggestEventLink';
 
 // «¿No encuentras un concierto? Pásanos el link de las entradas»: a card in
-// the search results that opens a sheet with the link and an optional note.
+// the search results that opens a sheet with the link.
 // Without an account the same sheet asks for one (deferred login, as at
 // «Publicar» in Upload) and sends what was typed once they are in.
 
@@ -55,7 +55,6 @@ export const SuggestConcertSheet: React.FC<SuggestConcertSheetProps> = ({ isOpen
   const { user } = useAuth();
   const location = useLocation();
   const [url, setUrl] = useState('');
-  const [note, setNote] = useState('');
   const [step, setStep] = useState<Step>('form');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
@@ -70,14 +69,12 @@ export const SuggestConcertSheet: React.FC<SuggestConcertSheetProps> = ({ isOpen
     const draft = takeSuggestDraft();
     if (!draft) return;
     setUrl(draft.url);
-    setNote(draft.note);
     setStep('form');
     onOpen();
   }, [user]);
 
   const reset = () => {
     setUrl('');
-    setNote('');
     setStep('form');
     setError('');
     setAlreadySent(false);
@@ -105,14 +102,14 @@ export const SuggestConcertSheet: React.FC<SuggestConcertSheetProps> = ({ isOpen
       // Nothing is saved without an account. Keep what they typed and come
       // back here after signing in.
       rememberReturnTo(`${location.pathname}${location.search}`);
-      saveSuggestDraft({ url, note });
+      saveSuggestDraft({ url, note: '' });
       sendAfterAuth.current = true;
       setStep('auth');
       return;
     }
     setSending(true);
     try {
-      const result = await sendEventLinkSuggestion(url, note);
+      const result = await sendEventLinkSuggestion(url, '');
       if (result === 'sent' || result === 'already_sent') {
         takeSuggestDraft();
         setAlreadySent(result === 'already_sent');
@@ -169,7 +166,7 @@ export const SuggestConcertSheet: React.FC<SuggestConcertSheetProps> = ({ isOpen
               <AuthPanel
                 confirmationNotice="Te hemos enviado un email. Pulsa el enlace en este móvil y te traemos aquí con el link que pegaste. Si lo abres en otro dispositivo, vuelve aquí y pulsa «Continuar»."
                 providerReturnPath={`${location.pathname}${location.search}`}
-                beforeProviderRedirect={async () => saveSuggestDraft({ url, note })}
+                beforeProviderRedirect={async () => saveSuggestDraft({ url, note: '' })}
               />
             </div>
             <button type="button" onClick={() => setStep('form')} className="mt-4 min-h-11 w-full text-sm font-semibold text-white/60">
@@ -203,17 +200,6 @@ export const SuggestConcertSheet: React.FC<SuggestConcertSheetProps> = ({ isOpen
                 onChange={event => setUrl(event.target.value)}
                 placeholder="https://"
                 className="min-h-12 rounded-xl border border-app-line bg-app-surface px-4 text-[15px] text-app-ink placeholder:text-white/35 focus:border-app-accent focus:outline-none"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wide text-white/55">Nota (opcional)</span>
-              <textarea
-                value={note}
-                maxLength={MAX_SUGGESTION_NOTE_LENGTH}
-                onChange={event => setNote(event.target.value)}
-                rows={3}
-                placeholder="Por ejemplo: es el segundo pase, a las 23:00"
-                className="rounded-xl border border-app-line bg-app-surface px-4 py-3 text-[15px] text-app-ink placeholder:text-white/35 focus:border-app-accent focus:outline-none"
               />
             </label>
             {error ? (
