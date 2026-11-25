@@ -648,7 +648,10 @@ const EventDetail: React.FC = () => {
                   {stageView === 'photos' ? (
                     // The photos view fills the stage like the player does;
                     // the player stays mounted (paused) underneath.
-                    <div className="absolute inset-0 z-20 overflow-y-auto bg-app-bg pb-[calc(24px+env(safe-area-inset-bottom,0px))] pt-[calc(48px+env(safe-area-inset-top,0px))]">
+                    <div
+                      className="absolute inset-0 z-20 overflow-y-auto bg-app-bg pt-[calc(48px+env(safe-area-inset-top,0px))]"
+                      style={{ paddingBottom: `calc(${bottomClearance} + 64px)` }}
+                    >
                       <EventPhotos
                         moments={moments}
                         currentUserId={user?.id ?? null}
@@ -656,6 +659,18 @@ const EventDetail: React.FC = () => {
                         onUpload={() => openUpload()}
                         hideTitle
                       />
+                    </div>
+                  ) : null}
+                  {stageView === 'photos' ? (
+                    // «+ Subir» and its progress («Subiendo 3/14 · 40 %»), at
+                    // the same place as on the player, over the photos.
+                    <div
+                      className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-end px-3 pt-2"
+                      style={{ paddingBottom: bottomClearance }}
+                    >
+                      <div className="pointer-events-auto flex min-w-0 max-w-full justify-end">
+                        <EventUploadButton variant="pill" bar={uploadBar} onUpload={() => openUpload()} />
+                      </div>
                     </div>
                   ) : null}
                   <div className="pointer-events-none absolute inset-x-[64px] top-[calc(14px+env(safe-area-inset-top,0px))] z-30 flex justify-center">
