@@ -9,7 +9,8 @@ import AppShell from '../components/AppShell';
 import { EventListItem } from '../features/events/types';
 import { getEventCoverSources, getPrimaryArtistName } from '../features/events/utils';
 import CoverImage from '../components/ui/CoverImage';
-import MomentGrid from '../components/ui/MomentGrid';
+import MomentsByConcert from '../features/profile/MomentsByConcert';
+import { useMomentConcertCards } from '../features/profile/useMomentConcertCards';
 import { IconCheckCircle, IconMap } from '../components/icons';
 import { VenueFeedbackSummary } from '../features/community';
 import { mapVenue } from '../data/canonicalMappers';
@@ -81,6 +82,7 @@ const VenueDetail: React.FC = () => {
   const eventsScrollerRef = useRef<HTMLDivElement | null>(null);
   const eventsEndRef = useRef<HTMLSpanElement | null>(null);
   const [moments, setMoments] = useState<PostWithSetlist[]>(initial?.moments ?? []);
+  const momentCards = useMomentConcertCards(moments);
   const [loading, setLoading] = useState(!initial);
   const [eventsLoading, setEventsLoading] = useState(!initial);
   const [, setMomentsLoading] = useState(!initial);
@@ -449,8 +451,10 @@ const VenueDetail: React.FC = () => {
           {/* Only when something was recorded here: no empty section. */}
           {moments.length > 0 ? (
             <section className="px-4 pt-5">
-              <h2 className="mb-2.5 font-display text-xl font-bold text-app-ink">Grabado aquí</h2>
-              <MomentGrid moments={moments} />
+              <h2 className="mb-2.5 font-display text-xl font-bold text-app-ink">Momentos</h2>
+              <div className="-mx-4">
+                <MomentsByConcert moments={moments} cards={momentCards} />
+              </div>
             </section>
           ) : null}
         </div>
