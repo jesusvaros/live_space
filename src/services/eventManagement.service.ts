@@ -12,6 +12,8 @@ export type ManagedEvent = {
   image_url: string | null;
   /** R2 thumbnail of image_url once mirrored (read only). */
   poster_thumb_url: string | null;
+  /** R2 card-size copy of image_url (read only); the QR poster prints it. */
+  poster_url?: string | null;
   image_source: string | null;
   status: string;
   city: string;
@@ -61,7 +63,7 @@ export type SetlistSong = {
 };
 
 const BASE_COLUMNS =
-  'id,name,starts_at,ends_at,ticket_url,image_url,poster_thumb_url,image_source,status,city,venue_place_id,venue:venue_places(name),lineup:event_artists(artist_id,is_headliner,billing_order,artist:artists(id,name))';
+  'id,name,starts_at,ends_at,ticket_url,image_url,poster_thumb_url,poster_url,image_source,status,city,venue_place_id,venue:venue_places(name),lineup:event_artists(artist_id,is_headliner,billing_order,artist:artists(id,name))';
 
 type EventRowWithJoins = Omit<ManagedEvent, 'venue_name' | 'headliner' | 'manager_locked_fields' | 'schedule'> & {
   manager_locked_fields?: string[] | null;
