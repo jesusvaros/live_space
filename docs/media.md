@@ -156,7 +156,7 @@ await enqueueMomentUploads([
   rejilla y Momentos su primera página (si estás arriba; si no, lo suma al aviso
   para no mover el vídeo que estás viendo).
 - **Lo de los demás**: Supabase Realtime con los `INSERT` de `public.posts`
-  (migración `20261126001000_posts_realtime.sql`). Realtime aplica el RLS
+  (migración `20261126002000_posts_realtime.sql`). Realtime aplica el RLS
   `posts_read` a cada oyente, bloqueos incluidos, y el trigger
   `publish_uploaded_post` es `BEFORE INSERT`, así que la fila ya llega
   `published`. El concierto (filtrado por `event_id`) y Momentos muestran
