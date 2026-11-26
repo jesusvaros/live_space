@@ -47,6 +47,7 @@ const fileOfSize = (name: string, type: string, size: number) => {
 const makeQueue = (overrides: {
   uploadToCloudinary?: () => Promise<{ reservationId: string }>;
   track?: (name: string, props: Record<string, unknown>) => void;
+  onPublished?: (post: { postId: string; eventId: string; authorId: string }) => void;
 } = {}) => {
   const uploadToCloudinary = vi.fn(overrides.uploadToCloudinary ?? (async () => ({ reservationId: 'res-1' })));
   const provider = {
@@ -63,6 +64,7 @@ const makeQueue = (overrides: {
     resolveSongId: async () => null,
     createPost: async () => 'post-1',
     track: overrides.track,
+    onPublished: overrides.onPublished,
   });
   return { queue, provider };
 };
@@ -79,6 +81,25 @@ beforeEach(() => {
   native.compressMomentVideo.mockReset();
   native.deleteNativeFile.mockClear();
   vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+});
+
+describe('UploadQueue publishing', () => {
+  it('tells the screens about the new post as soon as it exists', async () => {
+    const onPublished = vi.fn();
+    const { queue } = makeQueue({ onPublished });
+    const [id] = await queue.enqueue([{ file: fileOfSize('foto.jpg', 'image/jpeg', 2 * MB), eventId: 'event-1' }]);
+    const job = await settled(queue, id, ['done', 'failed']);
+    expect(job.status).toBe('done');
+    expect(onPublished).toHaveBeenCalledTimes(1);
+    expect(onPublished).toHaveBeenCalledWith({ postId: 'post-1', eventId: 'event-1', authorId: 'user-1' });
+  });
+
+  it('still finishes the upload when a screen refresh throws', async () => {
+    const { queue } = makeQueue({ onPublished: () => { throw new Error('screen gone'); } });
+    const [id] = await queue.enqueue([{ file: fileOfSize('foto.jpg', 'image/jpeg', 2 * MB), eventId: 'event-1' }]);
+    const job = await settled(queue, id, ['done', 'failed']);
+    expect(job.status).toBe('done');
+  });
 });
 
 describe('UploadQueue limits', () => {

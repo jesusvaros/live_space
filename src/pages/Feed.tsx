@@ -22,6 +22,10 @@ import Avatar from '../components/ui/Avatar';
 import ConcertGallerySlide from '../features/feed/ConcertGallerySlide';
 import { fetchFollowedPeopleIds } from '../features/people/photographers.service';
 import { FEED_MIN_MOMENTS, showThisWeek } from '../features/feed/thisWeekRules';
+import { useNewPostsNotice, useOwnPostPublished } from '../features/moments/livePosts';
+import NewMomentsButton from '../features/moments/NewMomentsButton';
+import { usePullToRefresh } from '../shared/pullToRefresh/usePullToRefresh';
+import PullToRefreshIndicator from '../shared/pullToRefresh/PullToRefreshIndicator';
 
 const PAGE_SIZE = 8;
 const DEFAULT_FEED_CITY = 'Madrid';
@@ -226,24 +230,31 @@ const Feed: React.FC = () => {
   // (with the latest clips on top) instead of a thin feed.
   const [publicMoments, setPublicMoments] = useState<number | null>(null);
   const [latestClips, setLatestClips] = useState<FeedPost[]>([]);
+  const loadOverview = useCallback(async (isCancelled: () => boolean = () => false) => {
+    try {
+      const [counted, latest] = await Promise.all([
+        supabase.from('v_post_cards').select('id', { count: 'exact', head: true }),
+        supabase.from('v_post_cards').select('*').order('created_at', { ascending: false }).limit(PAGE_SIZE),
+      ]);
+      if (isCancelled()) return;
+      setPublicMoments(counted.error ? FEED_MIN_MOMENTS : counted.count ?? 0);
+      setLatestClips(((latest.data || []) as unknown as FeedPost[]));
+    } catch {
+      if (!isCancelled()) setPublicMoments(previous => previous ?? FEED_MIN_MOMENTS);
+    }
+  }, []);
   useEffect(() => {
     let cancelled = false;
-    Promise.all([
-      supabase.from('v_post_cards').select('id', { count: 'exact', head: true }),
-      supabase.from('v_post_cards').select('*').order('created_at', { ascending: false }).limit(PAGE_SIZE),
-    ])
-      .then(([counted, latest]) => {
-        if (cancelled) return;
-        setPublicMoments(counted.error ? FEED_MIN_MOMENTS : counted.count ?? 0);
-        setLatestClips(((latest.data || []) as unknown as FeedPost[]));
-      })
-      .catch(() => {
-        if (!cancelled) setPublicMoments(FEED_MIN_MOMENTS);
-      });
+    void loadOverview(() => cancelled);
     return () => {
       cancelled = true;
     };
-  }, [resumeTick]);
+  }, [loadOverview, resumeTick]);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  // Bumped by every full load: a refresh that finishes after the scope
+  // changed is dropped.
+  const loadGeneration = useRef(0);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const { followedSubjectIds } = useFollowedSubjects();
@@ -296,6 +307,7 @@ const Feed: React.FC = () => {
   useEffect(() => {
     if (scope === 'following' && entitiesLoading) return;
     let cancelled = false;
+    loadGeneration.current += 1;
     followedEventIdsRef.current = null;
     followedPeopleRef.current = null;
     setLoading(true);
@@ -320,6 +332,48 @@ const Feed: React.FC = () => {
       cancelled = true;
     };
   }, [scope, city, followedKey, entitiesLoading, resumeTick]);
+
+  // Reads the newest moments again without emptying the screen (pull to
+  // refresh, «N momentos nuevos», your own upload). A failure keeps the list.
+  const refreshFeed = async () => {
+    const generation = loadGeneration.current;
+    followedEventIdsRef.current = null;
+    followedPeopleRef.current = null;
+    const [, first] = await Promise.allSettled([loadOverview(), fetchPage(0)]);
+    if (generation !== loadGeneration.current || first.status !== 'fulfilled') return;
+    setPosts(first.value);
+    setHasMore(first.value.length === PAGE_SIZE);
+    setPage(0);
+    setError('');
+  };
+
+  // Other people's new moments: announced, loaded on a tap (the feed is
+  // full-screen and snaps; adding slides above would move what is playing).
+  const newPosts = useNewPostsNotice({ currentUserId: user?.id ?? null });
+  // Your own: at once when you are at the top, otherwise counted in the same
+  // pill so the slide you are watching does not move.
+  const [ownPending, setOwnPending] = useState(0);
+  useOwnPostPublished(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller || scroller.scrollTop < 8) void refreshFeed();
+    else setOwnPending(value => value + 1);
+  });
+  const lastResumeTick = useRef(resumeTick);
+  useEffect(() => {
+    // Coming back reloads everything (effects above): the pill is stale.
+    if (lastResumeTick.current === resumeTick) return;
+    lastResumeTick.current = resumeTick;
+    newPosts.reset();
+    setOwnPending(0);
+  }, [resumeTick]);
+  const pendingNew = newPosts.count + ownPending;
+  const loadNewPosts = async () => {
+    newPosts.reset();
+    setOwnPending(0);
+    await refreshFeed();
+    scrollerRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+  };
+  const pull = usePullToRefresh(rootRef, loadNewPosts);
 
   const handleLoadMore = async () => {
     if (loadingMore || !hasMore) return;
@@ -467,11 +521,23 @@ const Feed: React.FC = () => {
   const emptyFollowing = scope === 'following' && (!user || posts.length === 0) && entities.length === 0;
 
   if (showThisWeek(publicMoments)) {
-    return <ThisWeek city={city || DEFAULT_FEED_CITY} clips={withoutBlocked(latestClips, blocked, post => post.user_id)} />;
+    return (
+      <div ref={rootRef} className="relative h-full">
+        <PullToRefreshIndicator {...pull} />
+        <ThisWeek city={city || DEFAULT_FEED_CITY} clips={withoutBlocked(latestClips, blocked, post => post.user_id)} />
+      </div>
+    );
   }
 
   return (
-    <div className="relative h-full bg-black">
+    <div ref={rootRef} className="relative h-full bg-black">
+      <PullToRefreshIndicator {...pull} />
+      <NewMomentsButton
+        count={pendingNew}
+        exact={scope === 'all' || newPosts.count === 0}
+        onSelect={() => void loadNewPosts()}
+        className="absolute inset-x-0 top-[calc(62px+env(safe-area-inset-top,0px))] z-30"
+      />
       <div className="pointer-events-none absolute inset-x-4 top-[calc(14px+env(safe-area-inset-top,0px))] z-20 flex items-center">
         <div role="tablist" aria-label="Qué momentos ver" className="pointer-events-auto flex gap-1.5">
           {scopeButton('all', 'Todo')}
@@ -549,7 +615,7 @@ const Feed: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="h-full snap-y snap-mandatory overflow-y-auto overscroll-y-contain" data-scroll>
+        <div ref={scrollerRef} className="h-full snap-y snap-mandatory overflow-y-auto overscroll-y-contain" data-scroll>
           {items.map(item =>
             item.kind === 'gallery' ? (
               <ConcertGallerySlide key={`gallery-${item.eventId}`} eventId={item.eventId} photos={item.photos} />

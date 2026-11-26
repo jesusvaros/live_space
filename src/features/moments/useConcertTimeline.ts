@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import type { EventSetlistEntry, PostWithSetlist } from '../../lib/types';
 import { isExternalPost } from '../socialImport';
@@ -149,7 +149,25 @@ export const useConcertMoments = (eventId: string) => {
     setMoments(previous => previous.filter(moment => moment.id !== momentId));
   }, []);
 
-  return { moments, loading, error, removeMoment };
+  // Reads them again without emptying the screen first (a new upload,
+  // pull-to-refresh, back to the app). A failure keeps what is shown.
+  const eventIdRef = useRef(eventId);
+  eventIdRef.current = eventId;
+  const reload = useCallback(async () => {
+    const requested = eventIdRef.current;
+    if (!requested) return;
+    try {
+      const next = await fetchConcertMoments(requested);
+      if (eventIdRef.current === requested) {
+        setMoments(next);
+        setError('');
+      }
+    } catch {
+      // Offline: keep the moments on screen.
+    }
+  }, []);
+
+  return { moments, loading, error, removeMoment, reload };
 };
 
 /**

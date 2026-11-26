@@ -2,6 +2,7 @@ import { Network, type ConnectionStatus } from '@capacitor/network';
 import { track as trackAnalytics } from '../features/analytics/analytics';
 import { uploadFailureReason, uploadFailureStatus } from '../features/analytics/props';
 import { getReuseConsent } from '../features/community/licence';
+import { notifyOwnPostPublished } from '../features/moments/livePosts';
 import { supabase } from '../lib/supabase';
 import { getConfiguredMediaProvider } from './configured';
 import { compressMomentPhoto } from './compressPhoto';
@@ -154,6 +155,8 @@ type QueueDeps = {
   }) => Promise<string>;
   /** Shrinks a photo before uploading (the app: compressMomentPhoto). */
   compressPhoto?: (file: File) => Promise<File>;
+  /** A post exists: screens showing it reload (src/features/moments/livePosts.ts). */
+  onPublished?: (post: { postId: string; eventId: string; authorId: string }) => void;
   /** Usage events (upload_start/done/failed/retry): kinds, reasons, counts and sizes only. */
   track?: (name: string, props: Record<string, string | number | boolean | null>) => void;
 };
@@ -661,6 +664,11 @@ export class UploadQueue {
     // 4. Done: free the bytes, keep the record for the progress UI.
     await this.cleanupFiles(job);
     this.patch(id, { status: 'done', file: null, error: null, nextAttemptAt: 0 }, true);
+    try {
+      this.deps.onPublished?.({ postId: job.postId!, eventId: job.eventId, authorId: userId });
+    } catch {
+      // Refreshing screens never fails an upload.
+    }
     this.track('upload_done', {
       kind: job.kind,
       attempts: job.attempts + 1,
@@ -902,6 +910,7 @@ const defaultDeps: QueueDeps = {
   provider: getConfiguredMediaProvider,
   compressPhoto: compressMomentPhoto,
   track: trackAnalytics,
+  onPublished: notifyOwnPostPublished,
   currentUserId: async () => {
     const { data } = await supabase.auth.getSession();
     return data.session?.user.id ?? null;

@@ -145,6 +145,40 @@ await enqueueMomentUploads([
 - `enqueueMomentUploads` exige sesión; solo se muestran y suben los trabajos del
   usuario con sesión. Con dos pestañas abiertas sube solo una (Web Locks).
 
+### 4. Momentos nuevos sin recargar
+
+`src/features/moments/livePosts.ts`:
+
+- **Lo tuyo**: al crear el post, la cola llama a `notifyOwnPostPublished()`
+  (dependencia `onPublished`). Eso invalida las cachés que lo incluyen
+  (`["profile:data"…`, `posts:count:user:…`) y avisa a las pantallas abiertas
+  (`useOwnPostPublished`): el concierto recarga sus vídeos y fotos, tu perfil su
+  rejilla y Momentos su primera página (si estás arriba; si no, lo suma al aviso
+  para no mover el vídeo que estás viendo).
+- **Lo de los demás**: Supabase Realtime con los `INSERT` de `public.posts`
+  (migración `20261126001000_posts_realtime.sql`). Realtime aplica el RLS
+  `posts_read` a cada oyente, bloqueos incluidos, y el trigger
+  `publish_uploaded_post` es `BEFORE INSERT`, así que la fila ya llega
+  `published`. El concierto (filtrado por `event_id`) y Momentos muestran
+  «N momentos nuevos» (`NewMomentsButton`); al tocarlo se cargan. No se insertan
+  solos para no saltar el scroll ni cambiar el clip que suena.
+- **Red de seguridad**: al volver la app a primer plano (`useAppResume`) se
+  vuelve a leer todo, por si el móvil cerró el socket en segundo plano.
+
+Se eligió Realtime frente a sondear: un solo socket por pantalla, sin consultas
+periódicas ni batería, y la autorización es la misma RLS de las lecturas.
+
+### 5. Desliza para actualizar
+
+`src/shared/pullToRefresh/` (`usePullToRefresh` + `PullToRefreshIndicator`):
+escucha `touch*` nativos sobre el scroller de la pantalla, solo desde
+`scrollTop` 0 y con gesto vertical. Los sheets van en un portal (fuera del
+scroller en el DOM), así que su deslizar para cerrar (`useSheetSwipe`) no lo
+dispara. Solo se mueve el indicador, nunca el contenido: no rompe el snap de
+Momentos ni el scroll único del concierto. Está en Inicio (fuerza todas sus
+`useQuery` con `requestAppRefresh()`), Momentos, el concierto, tu perfil, el
+perfil de otra persona, artistas y salas.
+
 ### Coste estimado
 
 Precios públicos de R2: almacenamiento 0,015 $/GB-mes, operaciones de clase A

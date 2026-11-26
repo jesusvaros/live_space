@@ -89,3 +89,8 @@ export const clearCached = (prefix?: string) => {
     if (key.startsWith(prefix)) resolved.delete(key);
   }
 };
+
+/** Waits for the requests running now (pull-to-refresh's spinner). Never rejects. */
+export const whenRequestsSettle = async () => {
+  await Promise.allSettled(Array.from(inFlight.values()).map(entry => entry.promise));
+};

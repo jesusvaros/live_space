@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AppShell from '../components/AppShell';
 import { useLastKnownLocation } from '../shared/hooks/useLastKnownLocation';
 import { readStoredLocation } from '../shared/hooks/useStoredLocation';
@@ -28,6 +28,9 @@ import { CityButton, CityPickerSheet } from '../features/agenda/CityPicker';
 import { useConcertHistory } from '../features/agenda/useConcertHistory';
 import { inicioWindow } from '../features/events/inicioWindow';
 import { useFirstContent } from '../lib/perfTiming';
+import { requestAppRefresh } from '../shared/hooks/useAppResume';
+import { usePullToRefresh } from '../shared/pullToRefresh/usePullToRefresh';
+import PullToRefreshIndicator from '../shared/pullToRefresh/PullToRefreshIndicator';
 
 const NEARBY_RADIUS_KM = 50;
 // How far a city's venues can sit from its representative point.
@@ -184,8 +187,13 @@ const Events: React.FC = () => {
     ),
   };
 
+  // Pull down from the top: every list of Inicio reloads.
+  const contentRef = useRef<HTMLElement | null>(null);
+  const pull = usePullToRefresh(contentRef, requestAppRefresh);
+
   return (
-    <AppShell contentWrapperClassName={false}>
+    <AppShell contentWrapperClassName={false} contentRef={contentRef}>
+      <PullToRefreshIndicator {...pull} />
       {/* The city on top, where it is seen: the whole Inicio follows it. */}
       <div className="flex items-center gap-2 px-4 pb-3">
         <span className="shrink-0 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-white/50">Conciertos en</span>

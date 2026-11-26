@@ -44,6 +44,11 @@ import { withoutHidden } from '../features/photos/photoAlbums';
 import { stageIsMostlyVisible } from '../features/moments/stageParallax';
 import { track } from '../features/analytics/analytics';
 import { askForAccount } from '../auth/askForAccount';
+import { useNewPostsNotice, useOwnPostPublished } from '../features/moments/livePosts';
+import NewMomentsButton from '../features/moments/NewMomentsButton';
+import { useAppResume } from '../shared/hooks/useAppResume';
+import { usePullToRefresh } from '../shared/pullToRefresh/usePullToRefresh';
+import PullToRefreshIndicator from '../shared/pullToRefresh/PullToRefreshIndicator';
 
 // Bottom of the screen, from the edge up: the app's floating nav (about 72 px
 // over the safe area), then this page's action bar (about 60 px) right above
@@ -129,7 +134,36 @@ const EventDetail: React.FC = () => {
     return () => window.clearInterval(timer);
   }, []);
   const contentRef = useRef<HTMLElement | null>(null);
-  const { moments: loadedMoments, loading: momentsLoading, error: momentsError, removeMoment } = useConcertMoments(id);
+  const { moments: loadedMoments, loading: momentsLoading, error: momentsError, removeMoment, reload: reloadMoments } = useConcertMoments(id);
+  // Your own upload to this concert shows up as soon as it is published;
+  // other people's are announced («N momentos nuevos») and load on a tap.
+  useOwnPostPublished(post => {
+    if (post.eventId === currentIdRef.current) void reloadMoments();
+  });
+  const newPosts = useNewPostsNotice({ eventId: id || null, currentUserId: user?.id ?? null, enabled: Boolean(id) });
+  const loadNewPosts = () => {
+    newPosts.reset();
+    return reloadMoments();
+  };
+  // Back to the app: the socket may have slept, read them again.
+  const resumeTick = useAppResume();
+  const lastResumeTick = useRef(resumeTick);
+  useEffect(() => {
+    if (lastResumeTick.current === resumeTick) return;
+    lastResumeTick.current = resumeTick;
+    void loadNewPosts();
+  }, [resumeTick]);
+  const pull = usePullToRefresh(contentRef, () => {
+    reloadSetlist();
+    return Promise.all([
+      loadNewPosts(),
+      fetchEventCardById(id)
+        .then(data => {
+          if (data && currentIdRef.current === id) setEvent(data as EventDetailData);
+        })
+        .catch(() => undefined),
+    ]);
+  });
   // What this viewer hid («Ocultar» on a photo) leaves the player and the albums.
   const hiddenIds = useHiddenPostIds();
   const moments = useMemo(() => withoutHidden(loadedMoments, hiddenIds, moment => moment.id), [loadedMoments, hiddenIds]);
@@ -587,6 +621,12 @@ const EventDetail: React.FC = () => {
       // scrolling down, never pulled back to.
       contentClassName="event-detail-content"
     >
+      <PullToRefreshIndicator {...pull} />
+      <NewMomentsButton
+        count={newPosts.count}
+        onSelect={() => void loadNewPosts()}
+        className="fixed inset-x-0 top-[calc(env(safe-area-inset-top,0px)+64px)] z-[1450]"
+      />
       {loading && <DetailSkeleton />}
 
       {!loading && error && <div className="p-4"><p className="text-sm text-rose-400">{error}</p></div>}

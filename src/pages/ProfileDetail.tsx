@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Spinner } from '../components/ui/AppPrimitives';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -19,6 +19,9 @@ import { fetchPostCards } from '../data/postQueries';
 import BlockUserButton from '../features/blocks/BlockUserButton';
 import { blockTargetLabel } from '../features/blocks/blocking';
 import { useBlockedUserIds } from '../features/blocks/useBlockedUsers';
+import { useOwnPostPublished } from '../features/moments/livePosts';
+import { usePullToRefresh } from '../shared/pullToRefresh/usePullToRefresh';
+import PullToRefreshIndicator from '../shared/pullToRefresh/PullToRefreshIndicator';
 
 type ProfileEvent = Event & {
   organizer?: Profile | null;
@@ -43,45 +46,54 @@ const ProfileDetail: React.FC = () => {
   const blocked = useBlockedUserIds();
   const isBlocked = Boolean(profile && blocked.has(profile.id));
 
-  useEffect(() => {
-    const loadProfile = async () => {
+  // `silent`: a refresh (pull to refresh, their new upload) keeps the page
+  // on screen, and a failure keeps what is shown.
+  const loadProfile = async (silent = false) => {
+    if (!silent) {
       setLoading(true);
       setError('');
-      try {
-        const { data: subjectData, error: profileError } = await supabase
-          .from('subjects')
-          .select('id, profile:profiles!subjects_profile_id_fkey(*)')
-          .eq('profile_id', id)
-          .single();
-        
-        const profileRow = Array.isArray(subjectData?.profile)
-          ? subjectData.profile[0]
-          : subjectData?.profile;
-        if (profileError || !profileRow) {
-          throw profileError;
-        }
-
-        const profileData = mapProfile({ ...profileRow, subject_id: subjectData.id });
-        setProfile(profileData);
-
-        if (profileData.subject_id && user && currentUserProfile?.subject_id && profileData.id !== user.id) {
-          const current = await friendsService.relation(currentUserProfile.subject_id, profileData.subject_id);
-          setRelation(current);
-        }
-
-        const authoredMoments = await fetchPostCards({ authorId: profileData.id, from: 0, to: 59 });
-        const eventIds = [...new Set(authoredMoments.map(moment => moment.event_id))];
-        setMoments(authoredMoments as PostWithSetlist[]);
-        setEvents((await fetchEventCards({ eventIds })) as ProfileEvent[]);
-        setVenuePlaces([]);
-      } catch (err) {
-        setError('Perfil no encontrado.');
-      } finally {
-        setLoading(false);
+    }
+    try {
+      const { data: subjectData, error: profileError } = await supabase
+        .from('subjects')
+        .select('id, profile:profiles!subjects_profile_id_fkey(*)')
+        .eq('profile_id', id)
+        .single();
+      
+      const profileRow = Array.isArray(subjectData?.profile)
+        ? subjectData.profile[0]
+        : subjectData?.profile;
+      if (profileError || !profileRow) {
+        throw profileError;
       }
-    };
-    loadProfile();
+
+      const profileData = mapProfile({ ...profileRow, subject_id: subjectData.id });
+      setProfile(profileData);
+
+      if (profileData.subject_id && user && currentUserProfile?.subject_id && profileData.id !== user.id) {
+        const current = await friendsService.relation(currentUserProfile.subject_id, profileData.subject_id);
+        setRelation(current);
+      }
+
+      const authoredMoments = await fetchPostCards({ authorId: profileData.id, from: 0, to: 59 });
+      const eventIds = [...new Set(authoredMoments.map(moment => moment.event_id))];
+      setMoments(authoredMoments as PostWithSetlist[]);
+      setEvents((await fetchEventCards({ eventIds })) as ProfileEvent[]);
+      setVenuePlaces([]);
+    } catch (err) {
+      if (!silent) setError('Perfil no encontrado.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    void loadProfile();
   }, [id, user, currentUserProfile?.subject_id]);
+  useOwnPostPublished(post => {
+    if (post.authorId === id) void loadProfile(true);
+  });
+  const contentRef = useRef<HTMLElement | null>(null);
+  const pull = usePullToRefresh(contentRef, () => loadProfile(true));
 
   // Their upcoming concerts once you follow them (and only if they share
   // them): reloads right after tapping «Seguir» / «Siguiendo».
@@ -117,7 +129,8 @@ const ProfileDetail: React.FC = () => {
   }, [profile]);
 
   return (
-    <AppShell>
+    <AppShell contentRef={contentRef}>
+      <PullToRefreshIndicator {...pull} />
       {loading && (
         <div className="flex items-center justify-center py-12">
           <Spinner />

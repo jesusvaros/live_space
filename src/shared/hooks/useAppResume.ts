@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { whenRequestsSettle } from '../../lib/requestCache';
 
 // One shared "the app came back" counter. focus, pageshow, visibilitychange
 // and Capacitor's resume all fire together when the app returns, so they
@@ -49,5 +50,17 @@ const subscribe = (listener: () => void) => {
 };
 
 const getSnapshot = () => tick;
+
+/**
+ * Pull-to-refresh on a screen built from useQuery: every mounted query (and
+ * every screen that listens to useAppResume) reloads as if the app had just
+ * come back. Resolves once the requests it started have answered.
+ */
+export const requestAppRefresh = async () => {
+  bump();
+  // The forced refetches start in effects, after React renders the tick.
+  await new Promise(resolve => setTimeout(resolve, 50));
+  await whenRequestsSettle();
+};
 
 export const useAppResume = () => useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
