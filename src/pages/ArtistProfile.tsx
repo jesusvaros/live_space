@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { PostWithSetlist } from '../lib/types';
 import AppShell from '../components/AppShell';
+import { usePullToRefresh } from '../shared/pullToRefresh/usePullToRefresh';
+import PullToRefreshIndicator from '../shared/pullToRefresh/PullToRefreshIndicator';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import { ArtistProfileArtist, ArtistProfileEvent } from '../components/artist/types';
 import ArtistHero from '../components/artist/ArtistHero';
@@ -53,6 +55,11 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
   const { managedEntities, activeWorkspace } = useWorkspace();
   const { canFollow, isFollowing, isToggling, toggleFollowSubject } = useFollowedSubjects();
   const contentRef = useRef<HTMLElement | null>(null);
+  // Pull down from the top: the page loads again (what is shown stays until it answers).
+  const [reloadTick, setReloadTick] = useState(0);
+  const pull = usePullToRefresh(contentRef, () => {
+    setReloadTick(tick => tick + 1);
+  });
 
   const initial = readCache<ArtistSnapshot>(artistCacheKey(id || ''));
   const [artist, setArtist] = useState<ArtistProfileArtist | null>(initial?.artist ?? null);
@@ -155,7 +162,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
     };
 
     loadArtist();
-  }, [id]);
+  }, [id, reloadTick]);
 
   const isManager = useMemo(() => {
     if (!artist) return false;
@@ -326,6 +333,7 @@ const ArtistProfile: React.FC<ArtistProfileProps> = ({ artistId, embedded }) => 
 
   return (
     <AppShell headerProps={null} contentRef={contentRef} contentWrapperClassName={false}>
+      <PullToRefreshIndicator {...pull} />
       <DetailHeader
         title={artist?.name || 'Artista'}
         scrollRef={contentRef}

@@ -6,6 +6,8 @@ import { Event, Profile, VenuePlace, PostWithSetlist, Artist } from '../lib/type
 import { socialService } from '../services/social.service';
 import { useAuth } from '../contexts/AuthContext';
 import AppShell from '../components/AppShell';
+import { usePullToRefresh } from '../shared/pullToRefresh/usePullToRefresh';
+import PullToRefreshIndicator from '../shared/pullToRefresh/PullToRefreshIndicator';
 import { EventListItem } from '../features/events/types';
 import { getEventCoverSources, getPrimaryArtistName } from '../features/events/utils';
 import CoverImage from '../components/ui/CoverImage';
@@ -74,6 +76,11 @@ const VenueDetail: React.FC = () => {
   const navigate = useNavigate();
   const { user, profile: currentUserProfile } = useAuth();
   const contentRef = useRef<HTMLElement | null>(null);
+  // Pull down from the top: the page loads again (what is shown stays until it answers).
+  const [reloadTick, setReloadTick] = useState(0);
+  const pull = usePullToRefresh(contentRef, () => {
+    setReloadTick(tick => tick + 1);
+  });
   
   const initial = readCache<VenueSnapshot>(venueCacheKey(id || ''));
   const [venue, setVenue] = useState<VenuePlace | null>(initial?.venue ?? null);
@@ -191,7 +198,7 @@ const VenueDetail: React.FC = () => {
     return () => {
       stale = true;
     };
-  }, [id]);
+  }, [id, reloadTick]);
 
   // Followers and «Siguiendo» need the venue's subject and the session; they
   // load on their own so signing in does not reload the whole page.
@@ -315,6 +322,7 @@ const VenueDetail: React.FC = () => {
 
   return (
     <AppShell headerProps={null} contentRef={contentRef}>
+      <PullToRefreshIndicator {...pull} />
       <DetailHeader
         title={venue?.name || 'Sala'}
         scrollRef={contentRef}

@@ -29,6 +29,9 @@ import PhotoStatsRow from '../features/people/PhotoStatsRow';
 import ProfilePhotoSheet from '../features/profile/ProfilePhotoSheet';
 import ProfileMerchSection from '../features/profile/ProfileMerchSection';
 import { UPCOMING_GRACE_MS, type ProfileMoment } from '../features/profile/profileLayout';
+import { useOwnPostPublished } from '../features/moments/livePosts';
+import { usePullToRefresh } from '../shared/pullToRefresh/usePullToRefresh';
+import PullToRefreshIndicator from '../shared/pullToRefresh/PullToRefreshIndicator';
 
 // How far back a managed artist's or venue's concert list goes.
 const MANAGED_HISTORY_DAYS = 180;
@@ -261,6 +264,14 @@ const Profile: React.FC = () => {
     void loadProfileData(resumed);
   }, [activeEntity?.subject_id, isManagementMode, profile?.role, resumeTick, user?.id]);
 
+  // Your new upload joins the grid as soon as it is published; pulling
+  // down from the top reloads the whole profile.
+  useOwnPostPublished(() => {
+    void loadProfileData(true);
+  }, Boolean(user?.id));
+  const contentRef = useRef<HTMLElement | null>(null);
+  const pull = usePullToRefresh(contentRef, () => loadProfileData(true), { enabled: Boolean(user?.id) });
+
   const { followedSubjectIds } = useFollowedSubjects();
   const { entities: followedEntities } = useFollowedEntities(followedSubjectIds);
 
@@ -400,7 +411,8 @@ const Profile: React.FC = () => {
   ];
 
   return (
-    <AppShell headerProps={null}>
+    <AppShell headerProps={null} contentRef={contentRef}>
+      <PullToRefreshIndicator {...pull} />
       <div className={`flex flex-col ${NAV_CLEARANCE}`}>
         <PassportHeader
           name={headerName}
