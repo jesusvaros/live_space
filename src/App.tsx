@@ -25,6 +25,7 @@ import ConcertAlertsListener from './features/alerts/ConcertAlertsListener';
 import PushNotifications from './features/notifications/PushNotifications';
 import ShareTargetListener from './features/socialImport/ShareTargetListener';
 import { useAppAnalytics } from './features/analytics/useAppAnalytics';
+import { useHomeCitySync } from './features/agenda/useHomeCity';
 import Welcome from './pages/Welcome';
 import Events from './pages/Events';
 import { lazyPage, registerRoutePreload } from './app/lazyPage';
@@ -243,6 +244,8 @@ const AppRoutes = () => {
   const mainTabHref = '/tabs/events';
   const { pathname } = useLocation();
   useAppAnalytics();
+  // The home city: device copy and profile kept equal (Inicio, Ajustes).
+  useHomeCitySync();
   const { profile } = useAuth();
   const pathnameRef = useRef(pathname);
   pathnameRef.current = pathname;

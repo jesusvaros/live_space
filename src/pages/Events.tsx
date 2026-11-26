@@ -21,7 +21,10 @@ import ScanConcertFab from '../features/events/ScanConcertFab';
 import WrappedCard from '../features/wrapped/WrappedCard';
 import { HomeCustomizer, HomeSectionKey, useHomeLayout } from '../features/events/homeLayout';
 import ForYouSection from '../features/events/sections/ForYouSection';
-import { clearCity, nearestCity as nearestOf, persistCity, readStoredCity, readTastes, sameCity } from '../features/agenda/agendaPrefs';
+import { nearestCity as nearestOf, readTastes, sameCity } from '../features/agenda/agendaPrefs';
+import { resolveHomeCity } from '../features/agenda/homeCity';
+import { useHomeCity } from '../features/agenda/useHomeCity';
+import { CityButton, CityPickerSheet } from '../features/agenda/CityPicker';
 import { useConcertHistory } from '../features/agenda/useConcertHistory';
 import { inicioWindow } from '../features/events/inicioWindow';
 import { useFirstContent } from '../lib/perfTiming';
@@ -29,18 +32,14 @@ import { useFirstContent } from '../lib/perfTiming';
 const NEARBY_RADIUS_KM = 50;
 // How far a city's venues can sit from its representative point.
 const CITY_SPREAD_KM = 30;
-const DEFAULT_CITY = 'Madrid';
-
 const Events: React.FC = () => {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
 
   // No set-up screen forced after the account: «Según tus gustos» offers it.
-  // A city the visitor picked sticks across visits and back navigation.
-  const [pickedCity, setPickedCity] = useState<string | null>(() => readStoredCity());
-  const pickCity = (next: string) => {
-    setPickedCity(next);
-    persistCity(next);
-  };
+  // The chosen city is one for the whole app (device + profile, see
+  // features/agenda/homeCity.ts): Ajustes and the set-up change the same one.
+  const { chosen: pickedCity, followingLocation, setCity, followLocation } = useHomeCity();
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const [{ startOfToday, endOfNearbyWindow, startIso, endIso }] = useState(() => inicioWindow());
 
@@ -48,8 +47,7 @@ const Events: React.FC = () => {
 
   // The only place Inicio asks for the position: the visitor chose it.
   const followMyLocation = () => {
-    setPickedCity(null);
-    clearCity();
+    followLocation();
     requestLocation();
   };
 
@@ -81,21 +79,13 @@ const Events: React.FC = () => {
     return best && best.distanceKm <= NEARBY_RADIUS_KM + CITY_SPREAD_KM ? best.city : null;
   }, [cities, location]);
 
-  // Picked city, else where the visitor is, else the profile's city, else Madrid.
-  const city = useMemo(() => {
-    const find = (name?: string | null) =>
-      name ? cities.find(option => option.name.toLowerCase() === name.toLowerCase())?.name : undefined;
-    return (
-      find(pickedCity) ||
-      find(nearestCity) ||
-      find(profile?.primary_city) ||
-      find(DEFAULT_CITY) ||
-      cities[0]?.name ||
-      pickedCity ||
-      profile?.primary_city ||
-      DEFAULT_CITY
-    );
-  }, [cities, nearestCity, pickedCity, profile?.primary_city]);
+  // Chosen city, else where the visitor is, else Madrid.
+  const city = useMemo(
+    () => resolveHomeCity({ cities, chosen: pickedCity, nearest: nearestCity }),
+    [cities, nearestCity, pickedCity],
+  );
+  // Nothing chosen yet: Inicio shows a guess, and says so.
+  const guessing = !pickedCity && !followingLocation && citiesReady;
 
   // A picked city is known before the cities arrive; a position needs them
   // to tell which city it is in, so wait rather than load the wrong one.
@@ -185,10 +175,8 @@ const Events: React.FC = () => {
       <div className="px-4 pt-8">
         <CityListingSection
           events={events}
-          cities={cities}
           city={city}
-          onCityChange={pickCity}
-          onUseLocation={followMyLocation}
+          onOpenCityPicker={() => setPickerOpen(true)}
           loading={loading}
           error={loadError}
         />
@@ -198,6 +186,31 @@ const Events: React.FC = () => {
 
   return (
     <AppShell contentWrapperClassName={false}>
+      {/* The city on top, where it is seen: the whole Inicio follows it. */}
+      <div className="flex items-center gap-2 px-4 pb-3">
+        <span className="shrink-0 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-white/50">Conciertos en</span>
+        <CityButton label={city} size="lg" onClick={() => setPickerOpen(true)} />
+      </div>
+      {guessing ? (
+        <div className="mx-4 mb-3 flex items-center gap-2 rounded-2xl border border-dashed border-app-line p-3">
+          <p className="min-w-0 flex-1 text-[13px] leading-snug text-white/75">¿Es {city} tu ciudad?</p>
+          <button
+            type="button"
+            onClick={() => setCity(city)}
+            className="min-h-10 shrink-0 rounded-full bg-app-accent px-4 text-[13px] font-semibold text-[#14151a]"
+          >
+            Sí
+          </button>
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            className="min-h-10 shrink-0 rounded-full border border-app-line px-4 text-[13px] font-semibold text-app-ink"
+          >
+            Cambiar
+          </button>
+        </div>
+      ) : null}
+
       <TimelineHeroSection
         state={hero}
         featured={featured}
@@ -224,6 +237,17 @@ const Events: React.FC = () => {
       </div>
 
       <ScanConcertFab />
+
+      <CityPickerSheet
+        isOpen={pickerOpen}
+        onDismiss={() => setPickerOpen(false)}
+        cities={cities}
+        current={city}
+        followingLocation={followingLocation}
+        loading={!citiesReady}
+        onPick={setCity}
+        onUseLocation={followMyLocation}
+      />
 
       <HomeCustomizer
         isOpen={customizing}

@@ -5,6 +5,11 @@ import { ProfileRole } from '../../lib/types';
 import { useAuth } from '../../contexts/AuthContext';
 import { useWorkspace } from '../../contexts/WorkspaceContext';
 import { invalidateQueries } from '../../lib/queryClient';
+import { useUpcomingCities } from '../events/hooks/useEventsList';
+import { inicioWindow } from '../events/inicioWindow';
+import { useHomeCity } from '../agenda/useHomeCity';
+import { CityButton, CityPickerSheet } from '../agenda/CityPicker';
+import { useLastKnownLocation } from '../../shared/hooks/useLastKnownLocation';
 
 // Ajustes → Perfil: what the old «Editar perfil» sheet of the profile tab
 // had (name, username, city, bio, artist links and, for venue accounts, the
@@ -33,7 +38,13 @@ const ProfileSettingsPage: React.FC = () => {
 
   const [displayName, setDisplayName] = useState(profile?.display_name || '');
   const [username, setUsername] = useState(profile?.username || '');
-  const [primaryCity, setPrimaryCity] = useState(profile?.primary_city || '');
+  // The city is the home's (same picker as Inicio): it saves on its own, at
+  // once, instead of waiting for «Guardar».
+  const { chosen: homeCity, followingLocation, setCity, followLocation } = useHomeCity();
+  const { requestLocation } = useLastKnownLocation();
+  const [cityPickerOpen, setCityPickerOpen] = useState(false);
+  const [citiesWindow] = useState(() => inicioWindow());
+  const { cities, ready: citiesReady } = useUpcomingCities({ startIso: citiesWindow.startIso, endIso: citiesWindow.endIso });
   const [bio, setBio] = useState(profile?.bio || '');
   const [role, setRole] = useState<ProfileRole>(profile?.role || 'user');
   const [linkWebsite, setLinkWebsite] = useState(profile?.external_links?.website || '');
@@ -57,7 +68,6 @@ const ProfileSettingsPage: React.FC = () => {
   useEffect(() => {
     setDisplayName(profile?.display_name || '');
     setUsername(profile?.username || '');
-    setPrimaryCity(profile?.primary_city || '');
     setBio(profile?.bio || '');
     setRole(profile?.role || 'user');
     setLinkWebsite(profile?.external_links?.website || '');
@@ -115,7 +125,6 @@ const ProfileSettingsPage: React.FC = () => {
     const updates: any = {
       display_name: displayName || null,
       username: username || null,
-      primary_city: primaryCity || null,
       bio: bio || null,
       external_links: nextLinks,
     };
@@ -138,7 +147,7 @@ const ProfileSettingsPage: React.FC = () => {
         .from('venue_places')
         .update({
           name: venueName.trim() || null,
-          city: venueCity.trim() || primaryCity || '',
+          city: venueCity.trim() || profile?.primary_city || '',
           address: venueAddress.trim() || null,
           website_url: venueWebsite.trim() || null,
           capacity: parseInteger(venueCapacity),
@@ -183,16 +192,31 @@ const ProfileSettingsPage: React.FC = () => {
           className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
         />
       </label>
-      <label className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2">
         <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
           Ciudad principal
         </span>
-        <input
-          value={primaryCity}
-          onChange={e => setPrimaryCity(e.target.value)}
-          className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/15"
+        <CityButton
+          label={followingLocation ? 'Según tu ubicación' : homeCity || 'Elegir ciudad'}
+          size="lg"
+          onClick={() => setCityPickerOpen(true)}
+          className="self-start"
         />
-      </label>
+        <span className="text-xs text-white/60">La cartelera de Inicio es la de esta ciudad. Se guarda al elegirla.</span>
+      </div>
+      <CityPickerSheet
+        isOpen={cityPickerOpen}
+        onDismiss={() => setCityPickerOpen(false)}
+        cities={cities}
+        current={homeCity}
+        followingLocation={followingLocation}
+        loading={!citiesReady}
+        onPick={setCity}
+        onUseLocation={() => {
+          followLocation();
+          requestLocation();
+        }}
+      />
       <label className="flex flex-col gap-2">
         <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
           Bio

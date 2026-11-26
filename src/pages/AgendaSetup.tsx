@@ -16,12 +16,11 @@ import { fetchAgendaGenres, fetchAgendaSuggestionIds, type AgendaGenre } from '.
 import {
   markSetupDone,
   nearestCity,
-  persistCity,
   persistTastes,
-  readStoredCity,
   readTastes,
   sameCity,
 } from '../features/agenda/agendaPrefs';
+import { useHomeCity } from '../features/agenda/useHomeCity';
 
 const STEPS = 3;
 const MAX_GENRES = 24;
@@ -64,7 +63,8 @@ const AgendaSetup: React.FC = () => {
   const navigate = useNavigate();
   const routeLocation = useLocation();
   const returnTo = (routeLocation.state as { returnTo?: string } | null)?.returnTo || '/tabs/events';
-  const { user, profile, updateProfile } = useAuth();
+  const { user } = useAuth();
+  const { chosen: chosenCity, setCity: setHomeCity } = useHomeCity();
 
   // Only the list of cities and a few counts: the concerts themselves are
   // never downloaded here.
@@ -76,14 +76,13 @@ const AgendaSetup: React.FC = () => {
   const [step, setStep] = useState(1);
   const [city, setCity] = useState<string | null>(null);
   const [tastes, setTastes] = useState<string[]>(() => readTastes());
-  const [saving, setSaving] = useState(false);
 
   // Preselect the city the user already has, once the listings arrive.
   const preselected = useRef(false);
   useEffect(() => {
     if (preselected.current || cities.length === 0) return;
     preselected.current = true;
-    setCity(current => current || findCity(readStoredCity()) || findCity(profile?.primary_city));
+    setCity(current => current || findCity(chosenCity));
   }, [cities]);
 
   const { location, loading: locating, error: locationError, requestLocation } = useLastKnownLocation();
@@ -165,13 +164,9 @@ const AgendaSetup: React.FC = () => {
     { enabled: step === 3 && Boolean(city), ttlMs: 60_000 },
   );
 
-  const saveCity = async () => {
-    if (!city) return;
-    persistCity(city);
-    if (!profile?.primary_city || !sameCity(profile.primary_city, city)) {
-      // The local choice already drives the home; the profile copy is best effort.
-      await updateProfile({ primary_city: city }).catch(() => undefined);
-    }
+  // The home's city (device now, profile right after: see agenda/homeCity.ts).
+  const saveCity = () => {
+    if (city) setHomeCity(city);
   };
 
   useEffect(() => {
@@ -184,12 +179,8 @@ const AgendaSetup: React.FC = () => {
     navigate(returnTo, { replace: true });
   };
 
-  const next = async () => {
-    if (step === 1) {
-      setSaving(true);
-      await saveCity();
-      setSaving(false);
-    }
+  const next = () => {
+    if (step === 1) saveCity();
     if (step === 2) persistTastes(tastes);
     if (step < STEPS) setStep(step + 1);
     else finish('completed');
@@ -372,8 +363,7 @@ const AgendaSetup: React.FC = () => {
             Atrás
           </Button>
         ) : null}
-        <Button size="lg" block className="flex-1" onClick={() => void next()} disabled={saving || (step === 1 && !city)}>
-          {saving ? <Spinner className="h-4 w-4" /> : null}
+        <Button size="lg" block className="flex-1" onClick={next} disabled={step === 1 && !city}>
           {step < STEPS ? 'Continuar' : 'Listo'}
         </Button>
       </footer>
