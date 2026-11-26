@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { IconHeart, IconHeartFilled } from '../../components/icons';
+import { Link } from 'react-router-dom';
+import { IconChevronDown, IconChevronLeft, IconChevronRight, IconHeart, IconHeartFilled } from '../../components/icons';
+import { Modal } from '../../components/ui/AppPrimitives';
+import Avatar from '../../components/ui/Avatar';
 import { videoPoster } from '../../media/videoPoster';
 import { ReportMomentButton } from '../community';
 import { likesShown } from '../photos/likeCount';
 import { usePostLikes } from '../photos/usePostLikes';
 import { ExternalMomentCard } from '../socialImport';
-import ConcertTracks, { type ConcertTracksHandle } from './ConcertTracks';
 import {
   clipOffsetSec,
   clipsAt,
@@ -21,6 +23,7 @@ import {
   type ManualChoice,
   type TimelineMoment,
 } from './concertTimeline';
+import { activeMinuteIndex, adjacentClip, groupByMinute, swipeDirection } from './minuteNav';
 import { recordPostView } from './postViews';
 import {
   CROSSFADE_MS,
@@ -34,9 +37,15 @@ import {
 } from './videoHandoff';
 
 // The concert as one long video: a full-screen player that follows concert
-// time from clip to clip, with the multi-track timeline (one row per person)
-// laid over the bottom of the picture. It fills its parent (the concert
-// page's stage, one screen tall) and only plays while `inView`.
+// time from clip to clip. It fills its parent (the concert page's stage, one
+// screen tall) and only plays while `inView`.
+//
+// Who recorded the clip on screen sits over the picture as a link to their
+// profile (always tappable, also while it plays). Moving between clips goes
+// by the minute of the concert they were recorded in, never by person: big
+// previous / next buttons, a horizontal swipe on the picture, and a strip of
+// minutes (44 px+ targets). Every moment, by minute or one after another, is
+// in the optional «Por minuto» sheet, closed by default (minuteNav.ts).
 //
 // Playback rules live in concertTimeline.ts; this component only drives the
 // clock. While a video plays, the video is the clock (buffering pauses the
@@ -64,9 +73,8 @@ import {
 // screen: the button on the right or a double tap on the picture. A single
 // tap still plays or pauses (after DOUBLE_TAP_MS, to tell the two apart).
 
-const ZOOMS = [0.5, 1.5, 4]; // px per second of concert
-const DEFAULT_ZOOM = 1;
 const DOUBLE_TAP_MS = 260;
+const LIST_MODES = [['minute', 'Por minuto'], ['moment', 'Por momento']] as const;
 
 type RvfcVideo = HTMLVideoElement & { requestVideoFrameCallback?: (callback: () => void) => number };
 
@@ -88,8 +96,8 @@ type ConcertPlayerProps = {
   // Space the page keeps over the bottom of the stage (its fixed bottom nav
   // and action bar): the controls and tracks sit right above it.
   bottomClearance?: string;
-  // The page's own controls (setlist, photos, upload…): a row of small
-  // pills at the very bottom, under the tracks.
+  // The page's own controls (Setlist, Merch, «+ Subir»): in the top row,
+  // next to the sound button.
   actions?: React.ReactNode;
 };
 
@@ -138,7 +146,6 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
   bottomClearance = 'calc(84px + env(safe-area-inset-bottom, 0px))',
   actions,
 }) => {
-  const tracksRef = useRef<ConcertTracksHandle | null>(null);
   const videosRef = useRef(new Map<string, HTMLVideoElement>());
   const timelineRef = useRef(timeline);
   const tRef = useRef(timeline.start);
@@ -147,8 +154,6 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
   const playingRef = useRef(true);
   const visibleRef = useRef(inView);
   const mutedRef = useRef(true);
-  const scrubbingRef = useRef(false);
-  const wasPlayingRef = useRef(false);
   const lastFrameRef = useRef<number | null>(null);
   const lastDisplayRef = useRef(0);
   // Which clip is on screen and since when (concert time): no early cuts.
@@ -180,8 +185,9 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
   const [muted, setMuted] = useState(true);
   const [ended, setEnded] = useState(false);
   const [buffering, setBuffering] = useState(false);
-  const [following, setFollowing] = useState(true);
-  const [zoom, setZoom] = useState(DEFAULT_ZOOM);
+  // The optional list of every moment (closed by default) and how it groups them.
+  const [listOpen, setListOpen] = useState(false);
+  const [listMode, setListMode] = useState<'minute' | 'moment'>('minute');
   const [displayTime, setDisplayTime] = useState(timeline.start);
   const [shapes, setShapes] = useState<Record<string, boolean>>({});
   const [revealedId, setRevealedId] = useState<string | null>(null);
@@ -195,7 +201,6 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
 
   const active = useMemo(() => timeline.clips.find(clip => clip.id === activeId) ?? null, [timeline.clips, activeId]);
   const covering = useMemo(() => clipsAt(timeline, displayTime), [timeline, displayTime]);
-  const coveringIds = useMemo(() => new Set(covering.map(clip => clip.id)), [covering]);
   const upcoming = useMemo(
     () => upcomingCut(timeline, tRef.current, manual, holdRef.current),
     // Recomputed when the angle changes, not every frame.
@@ -227,7 +232,7 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
         // Not seekable yet: loadedmetadata seeks it.
       }
     }
-    if (playingRef.current && visibleRef.current && !scrubbingRef.current) {
+    if (playingRef.current && visibleRef.current) {
       video.play().catch(() => {
         // Autoplay refused (power saving, no gesture yet): wait for a tap.
         playingRef.current = false;
@@ -350,7 +355,6 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
   }, [checkReveal, reveal, setHandoff, syncVideo]);
 
   const publishTime = useCallback((t: number, force = false) => {
-    tracksRef.current?.setPlayhead(t);
     const now = performance.now();
     if (force || now - lastDisplayRef.current > 200) {
       lastDisplayRef.current = now;
@@ -409,7 +413,7 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
       frame = requestAnimationFrame(tick);
       const last = lastFrameRef.current;
       lastFrameRef.current = now;
-      if (!playingRef.current || !visibleRef.current || scrubbingRef.current || last === null) return;
+      if (!playingRef.current || !visibleRef.current || last === null) return;
       const tl = timelineRef.current;
       const clip = activeRef.current;
       let t = tRef.current;
@@ -493,11 +497,9 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
     if (!seekRequest) return;
     const clip = timelineRef.current.clips.find(item => item.id === seekRequest.clipId);
     if (!clip) return;
-    setFollowing(true);
     playingRef.current = true;
     setPlaying(true);
     goTo(clip.start, { clipId: clip.id });
-    tracksRef.current?.recenter();
   }, [seekRequest, goTo]);
 
   const play = () => {
@@ -508,8 +510,6 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
     }
     playingRef.current = true;
     setPlaying(true);
-    setFollowing(true);
-    tracksRef.current?.recenter();
     goTo(tRef.current);
   };
 
@@ -537,8 +537,13 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
     burstTimerRef.current = window.setTimeout(() => setBurst(0), 750);
   };
 
-  // One tap plays or pauses; two quick taps like the clip (never unlike).
+  // One tap plays or pauses; two quick taps like the clip (never unlike); a
+  // horizontal swipe goes to the previous / next clip (and is not a tap).
   const onPictureTap = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (swipedRef.current) {
+      swipedRef.current = false;
+      return;
+    }
     const target = event.target as HTMLElement;
     if (!(target === event.currentTarget || target.tagName === 'VIDEO' || target.tagName === 'IMG')) return;
     const tap = tapRef.current;
@@ -573,44 +578,57 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
     goTo(at, { clipId: clip.id });
   }, [goTo]);
 
+  /** Plays `clip` from its first frame (previous / next, a minute, the list). */
+  const jumpTo = useCallback((clip: Clip) => {
+    playingRef.current = true;
+    setPlaying(true);
+    goTo(clip.start, { clipId: clip.id });
+  }, [goTo]);
+
+  const minutes = useMemo(() => groupByMinute(timeline.clips), [timeline.clips]);
+  const minuteIndex = activeMinuteIndex(minutes, activeId, displayTime);
+  const previousClip = adjacentClip(timeline.clips, activeId, displayTime, -1);
+  const nextClip = adjacentClip(timeline.clips, activeId, displayTime, 1);
+
+  const step = (direction: 1 | -1) => {
+    const target = adjacentClip(timelineRef.current.clips, activeRef.current?.id ?? null, tRef.current, direction);
+    if (target) jumpTo(target);
+  };
+
+  const swipeRef = useRef<{ x: number; y: number; id: number } | null>(null);
+  const swipedRef = useRef(false);
+  const onPicturePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    swipedRef.current = false;
+    swipeRef.current = { x: event.clientX, y: event.clientY, id: event.pointerId };
+  };
+  const onPicturePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    const start = swipeRef.current;
+    swipeRef.current = null;
+    if (!start || start.id !== event.pointerId) return;
+    const direction = swipeDirection(event.clientX - start.x, event.clientY - start.y);
+    if (direction === 0) return;
+    swipedRef.current = true;
+    step(direction);
+  };
+
+  // The minute strip keeps the current minute in view (only sideways: the
+  // page's own vertical scroll is never moved).
+  const stripRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const strip = stripRef.current;
+    const chip = strip?.querySelector<HTMLElement>(`[data-minute-index="${minuteIndex}"]`);
+    if (!strip || !chip) return;
+    const target = chip.offsetLeft - (strip.clientWidth - chip.offsetWidth) / 2;
+    if (Math.abs(strip.scrollLeft - target) > 4) {
+      strip.scrollTo({ left: Math.max(0, target), behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    }
+  }, [minuteIndex]);
+
   const cycleAngle = () => {
     if (covering.length < 2 || !active) return;
     const ranked = rankClips(covering, tRef.current);
     const index = ranked.findIndex(clip => clip.id === active.id);
     pickClip(ranked[(index + 1) % ranked.length]);
-  };
-
-  const onSeek = useCallback((t: number, options?: { scrubbing?: boolean }) => {
-    if (options?.scrubbing) {
-      if (!scrubbingRef.current) {
-        wasPlayingRef.current = playingRef.current;
-        scrubbingRef.current = true;
-      }
-      // While dragging, show the frame at the finger without the gap jump.
-      const tl = timelineRef.current;
-      tRef.current = t;
-      const resolved = resolvePlayhead(tl, t, null);
-      activate(resolved.clip);
-      syncVideo(resolved.clip);
-      publishTime(t, true);
-      return;
-    }
-    setManualChoice(null);
-    goTo(t, null);
-  }, [activate, goTo, publishTime, syncVideo]);
-
-  const onScrubEnd = useCallback(() => {
-    if (!scrubbingRef.current) return;
-    scrubbingRef.current = false;
-    playingRef.current = wasPlayingRef.current || playingRef.current;
-    setPlaying(playingRef.current);
-    goTo(tRef.current, null);
-  }, [goTo]);
-
-  const backToNow = () => {
-    setFollowing(true);
-    tracksRef.current?.recenter();
-    if (!playingRef.current && !ended) play();
   };
 
   const registerVideo = (clipId: string) => (node: HTMLVideoElement | null) => {
@@ -632,7 +650,8 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
   const moment = active?.moment ?? null;
   const landscape = moment ? isLandscape(moment) : false;
   const backdrop = moment?.thumbnailUrl || (moment?.mediaType === 'image' ? moment.mediaUrl : null);
-  const handle = active ? timeline.tracks.find(track => track.id === active.trackId)?.label ?? '' : '';
+  const trackLabels = useMemo(() => new Map(timeline.tracks.map(track => [track.id, track.label])), [timeline.tracks]);
+  const handle = active ? trackLabels.get(active.trackId) ?? '@anónimo' : '';
   const angleCount = covering.length;
   // Nothing of the clip on screen yet (its first video frame is still
   // downloading, and no outgoing picture stands in): say it is loading.
@@ -653,8 +672,17 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(255,91,46,0.28),transparent_65%)]" />
       )}
 
-      {/* Picture: fills the screen; a tap plays or pauses, two like. */}
-      <div className="absolute inset-0 z-0 touch-manipulation" onClick={onPictureTap}>
+      {/* Picture: fills the screen; a tap plays or pauses, two like, a
+          sideways swipe changes clip (vertical drags still scroll the page). */}
+      <div
+        className="absolute inset-0 z-0 touch-pan-y"
+        onClick={onPictureTap}
+        onPointerDown={onPicturePointerDown}
+        onPointerUp={onPicturePointerUp}
+        onPointerCancel={() => {
+          swipeRef.current = null;
+        }}
+      >
         {videoClips.map(clip => {
           const isActive = clip.id === active?.id;
           // On top once it shows the right frame (fading in over the
@@ -799,27 +827,39 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
       </div>
 
       {/* Controls over the bottom of the picture, clear of the page's
-          bottom nav and action bar. */}
-      <div className="absolute inset-x-0 bottom-0 z-10 px-3" style={{ paddingBottom: bottomClearance }}>
+          bottom nav and action bar. The wrapper lets taps through to the
+          picture; each control (and the author's @) takes its own. */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-3" style={{ paddingBottom: bottomClearance }}>
         <div className="flex items-end gap-2">
-          {/* Caption */}
-          <div className="pointer-events-none min-w-0 flex-1 pb-1">
+          {/* Caption: the song, then who recorded the clip on screen. */}
+          <div className="min-w-0 flex-1 pb-1">
             {segment ? (
-              <p className="truncate font-mono text-[11px] font-semibold uppercase tracking-[0.06em] text-app-accent">
+              <p className="truncate font-mono text-[11px] font-semibold uppercase tracking-[0.06em] text-app-accent drop-shadow">
                 Suena · {String(segment.ordinal).padStart(2, '0')} {segment.title}
                 {segment.estimated ? ' ~' : ''}
               </p>
             ) : null}
-            <p className="mt-0.5 truncate font-display text-[19px] font-bold leading-tight text-white drop-shadow">
-              {moment ? handle : title}
-              {moment ? <span className="font-mono text-[14px] font-semibold text-white/75"> · {clock(active!.start, false)}</span> : null}
-            </p>
+            {active ? (
+              <div className="mt-1 flex min-w-0 items-center gap-2">
+                <Link
+                  to={`/profile/${active.moment.userId}`}
+                  aria-label={`Ver el perfil de ${handle}`}
+                  className="pointer-events-auto flex min-h-11 min-w-0 items-center gap-2 rounded-full bg-black/55 py-1 pl-1 pr-3.5 text-white backdrop-blur-md"
+                >
+                  <Avatar name={handle.replace('@', '') || 'anónimo'} src={active.moment.avatarUrl} className="h-9 w-9 text-[13px]" />
+                  <span className="min-w-0 truncate font-display text-[17px] font-bold leading-tight">{handle}</span>
+                </Link>
+                <span className="shrink-0 font-mono text-[13px] font-semibold text-white/80 drop-shadow">{clock(active.start, false)}</span>
+              </div>
+            ) : (
+              <p className="mt-0.5 truncate font-display text-[19px] font-bold leading-tight text-white drop-shadow">{title}</p>
+            )}
             {active?.placement === 'song' ? (
-              <p className="mt-0.5 text-[11px] text-white/60">Sin hora exacta: colocado en su canción</p>
+              <p className="mt-0.5 text-[11px] text-white/60 drop-shadow">Sin hora exacta: colocado en su canción</p>
             ) : null}
           </div>
           {/* Right column, stacked like short-video apps. */}
-          <div className="flex shrink-0 flex-col items-center gap-2">
+          <div className="pointer-events-auto flex shrink-0 flex-col items-center gap-2">
             {active ? (
               <button
                 type="button"
@@ -862,70 +902,154 @@ const ConcertPlayer: React.FC<ConcertPlayerProps> = ({
           </div>
         </div>
 
-        {/* Transport */}
-        <div className="flex items-center gap-2 pb-2 pt-2.5">
+        {/* Transport: previous, play, next (big), the clock, the list. */}
+        <div className="pointer-events-auto flex items-center gap-1.5 pb-2 pt-2.5">
+          <button
+            type="button"
+            onClick={() => step(-1)}
+            disabled={!previousClip}
+            aria-label="Vídeo anterior"
+            className="flex h-14 w-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/45 text-white backdrop-blur disabled:opacity-35"
+          >
+            <IconChevronLeft size={26} />
+          </button>
           <button
             type="button"
             onClick={togglePlay}
             aria-label={playing ? 'Pausar' : 'Reproducir'}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-app-accent text-[#14151a]"
+            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-app-accent text-[#14151a]"
           >
-            <PlayPauseIcon playing={playing} />
+            <PlayPauseIcon playing={playing} size={26} />
+          </button>
+          <button
+            type="button"
+            onClick={() => step(1)}
+            disabled={!nextClip}
+            aria-label="Vídeo siguiente"
+            className="flex h-14 w-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/45 text-white backdrop-blur disabled:opacity-35"
+          >
+            <IconChevronRight size={26} />
           </button>
           <div className="min-w-0 flex-1">
-            <p className="font-mono text-[15px] font-bold tabular-nums text-white" aria-live="off">{clock(displayTime)}</p>
-            <p className="truncate text-[11px] text-white/60">
-              {timeline.clips.length} momentos · {timeline.tracks.length} {timeline.tracks.length === 1 ? 'persona' : 'personas'}
-              {angleCount > 1 ? ` · ${angleCount} ángulos ahora` : ''}
+            <p className="font-mono text-[15px] font-bold tabular-nums text-white drop-shadow" aria-live="off">{clock(displayTime)}</p>
+            <p className="truncate text-[11px] text-white/65 drop-shadow">
+              {timeline.clips.length} {timeline.clips.length === 1 ? 'vídeo' : 'vídeos'}
             </p>
           </div>
-          {!following ? (
-            <button
-              type="button"
-              onClick={backToNow}
-              className="h-11 shrink-0 rounded-full border border-app-accent/60 bg-black/40 px-3.5 text-[13px] font-bold text-app-accent backdrop-blur"
-            >
-              Volver al ahora
-            </button>
-          ) : null}
-          <div className="flex shrink-0 overflow-hidden rounded-full border border-white/20 bg-black/35 backdrop-blur">
-            <button
-              type="button"
-              aria-label="Alejar la línea de tiempo"
-              disabled={zoom === 0}
-              onClick={() => setZoom(value => Math.max(0, value - 1))}
-              className="flex h-11 w-11 items-center justify-center text-lg font-bold text-white disabled:text-white/25"
-            >
-              −
-            </button>
-            <button
-              type="button"
-              aria-label="Acercar la línea de tiempo"
-              disabled={zoom === ZOOMS.length - 1}
-              onClick={() => setZoom(value => Math.min(ZOOMS.length - 1, value + 1))}
-              className="flex h-11 w-11 items-center justify-center border-l border-white/20 text-lg font-bold text-white disabled:text-white/25"
-            >
-              +
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setListOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={listOpen}
+            className="flex h-11 shrink-0 items-center gap-1 rounded-full border border-white/20 bg-black/45 pl-3 pr-2 font-mono text-[11px] font-semibold uppercase tracking-[0.06em] text-white backdrop-blur"
+          >
+            Por minuto
+            <IconChevronDown size={16} />
+          </button>
         </div>
 
-        <ConcertTracks
-          ref={tracksRef}
-          overlay
-          timeline={timeline}
-          initialTime={tRef.current}
-          activeClipId={activeId}
-          coveringIds={coveringIds}
-          pxPerSec={ZOOMS[zoom]}
-          following={following}
-          onUserScroll={() => setFollowing(false)}
-          onSeek={onSeek}
-          onScrubEnd={onScrubEnd}
-          onPickClip={pickClip}
-        />
-
+        {/* Minute strip: each minute of the concert with something recorded;
+            a tap plays its first clip. Sideways only. */}
+        {minutes.length > 1 ? (
+          <div
+            ref={stripRef}
+            role="group"
+            aria-label="Minutos del concierto"
+            className="pointer-events-auto -mx-3 flex snap-x gap-2 overflow-x-auto overscroll-x-contain px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {minutes.map((group, index) => {
+              const current = index === minuteIndex;
+              return (
+                <button
+                  key={group.minute}
+                  type="button"
+                  data-minute-index={index}
+                  onClick={() => jumpTo(group.clips[0])}
+                  aria-current={current ? 'true' : undefined}
+                  aria-label={`Minuto ${clock(group.minute, false)}, ${group.clips.length} ${group.clips.length === 1 ? 'vídeo' : 'vídeos'}`}
+                  className={`flex h-12 min-w-[64px] shrink-0 snap-center flex-col items-center justify-center rounded-xl border px-2 font-mono tabular-nums backdrop-blur ${
+                    current ? 'border-white bg-white text-[#14151a]' : 'border-white/20 bg-black/45 text-white'
+                  }`}
+                >
+                  <span className="text-[13px] font-bold leading-none">{clock(group.minute, false)}</span>
+                  <span className={`mt-1 text-[10px] font-semibold leading-none ${current ? 'text-[#14151a]/70' : 'text-white/55'}`}>
+                    {group.clips.length} {group.clips.length === 1 ? 'vídeo' : 'vídeos'}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
+
+      {/* Every moment, by minute or one after another: optional, closed by default. */}
+      <Modal isOpen={listOpen} onDidDismiss={() => setListOpen(false)} initialBreakpoint={0.8} title="Vídeos del concierto">
+        <div className="max-h-[85dvh] overflow-y-auto pb-[calc(20px+env(safe-area-inset-bottom,0px))] pt-3">
+          <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20" aria-hidden />
+          <div className="flex gap-2 px-4" role="group" aria-label="Ver los vídeos">
+            {LIST_MODES.map(([mode, label]) => (
+              <button
+                key={mode}
+                type="button"
+                aria-pressed={listMode === mode}
+                onClick={() => setListMode(mode)}
+                className={`h-11 rounded-full border px-4 text-sm font-semibold ${
+                  listMode === mode ? 'border-white bg-white text-[#14151a]' : 'border-white/20 text-white'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {(listMode === 'minute' ? minutes : [{ minute: -1, clips: minutes.flatMap(group => group.clips) }]).map(group => (
+            <section key={group.minute} className="px-4 pt-4">
+              {group.minute >= 0 ? (
+                <h3 className="font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-white/55">
+                  {clock(group.minute, false)} · {group.clips.length} {group.clips.length === 1 ? 'vídeo' : 'vídeos'}
+                </h3>
+              ) : null}
+              <ul className="mt-2 flex flex-col gap-1">
+                {group.clips.map(clip => {
+                  const label = trackLabels.get(clip.trackId) ?? '@anónimo';
+                  const onScreen = clip.id === activeId;
+                  const thumb = clip.moment.thumbnailUrl;
+                  return (
+                    <li key={clip.id} className={`flex items-center gap-3 rounded-xl p-1.5 ${onScreen ? 'bg-white/10' : ''}`}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          jumpTo(clip);
+                          setListOpen(false);
+                        }}
+                        aria-label={`Ver el vídeo de ${label} de las ${clock(clip.start)}`}
+                        className="relative flex h-16 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white/10 text-white"
+                      >
+                        {thumb ? <img src={thumb} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" /> : null}
+                        <span className="relative flex h-7 w-7 items-center justify-center rounded-full bg-black/55">
+                          <PlayPauseIcon playing={false} size={14} />
+                        </span>
+                      </button>
+                      <div className="min-w-0 flex-1">
+                        <Link
+                          to={`/profile/${clip.moment.userId}`}
+                          onClick={() => setListOpen(false)}
+                          className="flex min-h-11 min-w-0 items-center text-[15px] font-semibold text-white"
+                        >
+                          <span className="truncate">{label}</span>
+                        </Link>
+                        <p className="-mt-2 font-mono text-[11px] text-white/55">
+                          {clock(clip.start)}
+                          {onScreen ? ' · en pantalla' : ''}
+                        </p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
+        </div>
+      </Modal>
     </section>
   );
 };
