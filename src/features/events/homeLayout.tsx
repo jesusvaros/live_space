@@ -6,7 +6,7 @@ export type HomeSectionKey = 'going' | 'friends' | 'forYou' | 'following' | 'fes
 
 export const HOME_SECTION_LABELS: Record<HomeSectionKey, string> = {
   going: 'Voy',
-  friends: 'Tus amigos van',
+  friends: 'Gente que sigues',
   forYou: 'Para ti',
   following: 'Lo que sigues',
   festivals: 'Festivales',

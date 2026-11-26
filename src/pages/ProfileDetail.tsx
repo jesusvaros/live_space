@@ -67,13 +67,6 @@ const ProfileDetail: React.FC = () => {
         if (profileData.subject_id && user && currentUserProfile?.subject_id && profileData.id !== user.id) {
           const current = await friendsService.relation(currentUserProfile.subject_id, profileData.subject_id);
           setRelation(current);
-          // Their upcoming concerts, only for friends (and only if they share them).
-          if (current.iFollow && current.followsMe) {
-            const groups = groupByEvent(await friendsService.going({ friendId: profileData.id }).catch(() => []));
-            setPlans(groups.length ? await fetchEventCards({ eventIds: groups.map(group => group.eventId) }) : []);
-          } else {
-            setPlans([]);
-          }
         }
 
         const authoredMoments = await fetchPostCards({ authorId: profileData.id, from: 0, to: 59 });
@@ -89,6 +82,30 @@ const ProfileDetail: React.FC = () => {
     };
     loadProfile();
   }, [id, user, currentUserProfile?.subject_id]);
+
+  // Their upcoming concerts once you follow them (and only if they share
+  // them): reloads right after tapping «Seguir» / «Siguiendo».
+  const profileId = profile?.id ?? null;
+  const iFollow = relation.iFollow;
+  useEffect(() => {
+    if (!profileId || !user || profileId === user.id || !iFollow) {
+      setPlans([]);
+      return undefined;
+    }
+    let live = true;
+    friendsService
+      .going({ friendId: profileId })
+      .catch(() => [])
+      .then(async rows => {
+        const groups = groupByEvent(rows);
+        const cards = groups.length ? await fetchEventCards({ eventIds: groups.map(group => group.eventId) }) : [];
+        if (live) setPlans(cards);
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [profileId, user, iFollow]);
 
   const eventCards = useMemo(() => new Map(events.map(event => [event.id, event as EventListItem])), [events]);
 

@@ -130,8 +130,9 @@ const LOCATION_LABELS: Record<PermissionState, string> = {
   unknown: 'Se pide al usarla',
 };
 
-// «Tus planes»: friends (people you follow who follow you back) see the
-// concerts you mark «Voy», unless you switch it off.
+// «Tus planes»: people who follow you see the upcoming concerts you mark
+// «Voy», unless you switch it off (stored as plans_visibility 'amigos' /
+// 'nadie'; the value name predates one-way follows).
 const PlansVisibilitySetting: React.FC = () => {
   const { user, profile, refreshProfile } = useAuth();
   const [shared, setShared] = useState(profile?.plans_visibility !== 'nadie');
@@ -143,7 +144,7 @@ const PlansVisibilitySetting: React.FC = () => {
         <SettingsItem icon={<IconUsers size={18} />} title="Tus planes">
           <Switch
             checked={shared}
-            label="Tus amigos ven a qué conciertos vas"
+            label="Quien te sigue ve a qué conciertos vas"
             onChange={value => {
               setShared(value);
               friendsService
@@ -154,7 +155,10 @@ const PlansVisibilitySetting: React.FC = () => {
           />
         </SettingsItem>
       </SettingsGroup>
-      <SettingsHelp>Solo quien te sigue y a quien sigues ve los conciertos donde marcas «Voy».</SettingsHelp>
+      <SettingsHelp>
+        Quien te sigue ve los próximos conciertos donde marcas «Voy». Apágalo para que no los vea nadie; si bloqueas a
+        alguien, tampoco los ve.
+      </SettingsHelp>
     </>
   );
 };
