@@ -4,38 +4,20 @@ import { EventListItem } from '../types';
 import { getEventCoverImage, getEventCoverSources, getPrimaryArtistName } from '../utils';
 import CoverImage from '../../../components/ui/CoverImage';
 import GeneratedPoster from '../../../components/ui/GeneratedPoster';
-import { Modal } from '../../../components/ui/AppPrimitives';
 import EventPosterTile from '../components/EventPosterTile';
 import HomeSectionHeader from './HomeSectionHeader';
 import { IconCalendar, IconUser } from '../../../components/icons';
 import { goingLabel, useGoingCounts } from '../goingCounts';
+import { CityButton } from '../../agenda/CityPicker';
 
 const eventCity = (event: EventListItem) => (event.city || event.venue_place?.city || '').trim();
-
-const PinIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff5b2e" strokeWidth="2" aria-hidden="true">
-    <path d="M12 21s-7-6.2-7-11.5a7 7 0 0114 0C19 14.8 12 21 12 21z" />
-    <circle cx="12" cy="9.5" r="2.5" />
-  </svg>
-);
-
-const ChevronDown = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-    <path d="M6 9l6 6 6-6" />
-  </svg>
-);
-
-export type CityOption = { name: string; count: number };
 
 type CityListingSectionProps = {
   /** The listings; only the chosen city's are shown. */
   events: EventListItem[];
-  /** Cities to pick from, with their number of concerts. */
-  cities: CityOption[];
   city: string;
-  onCityChange: (city: string) => void;
-  /** Follow the device's position instead of a picked city. */
-  onUseLocation?: () => void;
+  /** Opens the home's city picker (the same one as the top of Inicio). */
+  onOpenCityPicker: () => void;
   loading: boolean;
   error?: string | null;
 };
@@ -54,7 +36,7 @@ const timeLabel = (iso: string) =>
   new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
 
 // The city's listings, day by day for the next week, then what comes after.
-const CityListingSection: React.FC<CityListingSectionProps> = ({ events, cities, city, onCityChange, onUseLocation, loading, error }) => {
+const CityListingSection: React.FC<CityListingSectionProps> = ({ events, city, onOpenCityPicker, loading, error }) => {
   const navigate = useNavigate();
 
   const days = useMemo(() => {
@@ -92,7 +74,6 @@ const CityListingSection: React.FC<CityListingSectionProps> = ({ events, cities,
 
   const firstDayWithEvents = days.findIndex(day => (byDay.get(dayKey(day)) || []).length > 0);
   const [selected, setSelected] = useState(0);
-  const [pickerOpen, setPickerOpen] = useState(false);
   useEffect(() => {
     setSelected(firstDayWithEvents >= 0 ? firstDayWithEvents : 0);
   }, [city, firstDayWithEvents]);
@@ -110,19 +91,7 @@ const CityListingSection: React.FC<CityListingSectionProps> = ({ events, cities,
         title="Cartelera"
         kicker={weekTotal > 0 ? `${weekTotal} ${weekTotal === 1 ? 'concierto' : 'conciertos'} esta semana` : 'En tu ciudad'}
         icon={<IconCalendar size={20} />}
-        action={
-          <button
-            type="button"
-            aria-haspopup="dialog"
-            aria-label={`Ciudad: ${city}. Cambiar`}
-            onClick={() => setPickerOpen(true)}
-            className="inline-flex min-h-10 max-w-[45%] shrink-0 items-center gap-1.5 rounded-full border border-app-line bg-app-surface pl-3.5 pr-3 text-sm font-semibold text-app-ink"
-          >
-            <PinIcon />
-            <span className="truncate">{city}</span>
-            <ChevronDown />
-          </button>
-        }
+        action={<CityButton label={city} onClick={onOpenCityPicker} className="max-w-[45%] shrink-0" />}
       />
 
       <div className="-mx-4 flex gap-2 overflow-x-auto px-4" role="tablist" aria-label="Día">
@@ -223,53 +192,6 @@ const CityListingSection: React.FC<CityListingSectionProps> = ({ events, cities,
           </div>
         </div>
       )}
-      <Modal isOpen={pickerOpen} onDidDismiss={() => setPickerOpen(false)} initialBreakpoint={0.5} title="Elegir ciudad">
-        <div className="px-4 pb-[calc(20px+env(safe-area-inset-bottom,0px))] pt-3">
-          <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20" aria-hidden />
-          <h3 className="px-1 pb-2 font-display text-lg font-bold text-app-ink">Ciudad</h3>
-          <ul className="max-h-[60dvh] overflow-y-auto">
-            {onUseLocation ? (
-              <li>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onUseLocation();
-                    setPickerOpen(false);
-                  }}
-                  className="flex min-h-12 w-full items-center gap-2 rounded-xl px-3 text-left text-[15px] font-semibold text-app-accent"
-                >
-                  <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-                    <path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" />
-                    <circle cx="12" cy="9.5" r="2.5" />
-                  </svg>
-                  Usar mi ubicación
-                </button>
-              </li>
-            ) : null}
-            {cities.map(option => {
-              const active = option.name.toLowerCase() === city.toLowerCase();
-              return (
-                <li key={option.name}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onCityChange(option.name);
-                      setPickerOpen(false);
-                    }}
-                    aria-current={active ? 'true' : undefined}
-                    className={`flex min-h-12 w-full items-center justify-between rounded-xl px-3 text-left text-[15px] font-semibold ${
-                      active ? 'bg-white/[0.08] text-app-accent' : 'text-app-ink'
-                    }`}
-                  >
-                    {option.name}
-                    <span className="font-mono text-xs text-white/50">{option.count} conciertos</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      </Modal>
     </section>
   );
 };
