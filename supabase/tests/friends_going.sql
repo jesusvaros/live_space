@@ -1,9 +1,11 @@
--- Local check of friends_going() (migration 20261124000300). Run against a
--- THROWAWAY database with every migration applied (docker setup in
+-- Local check of friends_going() (migrations 20261124000300 and
+-- 20261126001000: following someone is enough, no follow back needed). Run
+-- against a THROWAWAY database with every migration applied (docker setup in
 -- delete_my_account.sql), never production. Everything is rolled back.
 --
--- A and B follow each other (friends); C follows A but A does not follow C;
--- D is a friend of A who hides their plans; E is a friend who blocked A.
+-- A and B follow each other; A follows F, who does not follow A back; C
+-- follows A but A does not follow C; D is followed by A but hides their
+-- plans; E is followed by A but blocked A.
 
 begin;
 
@@ -12,7 +14,8 @@ insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-0000000000b1', 'b@example.test'),
   ('00000000-0000-0000-0000-0000000000c1', 'c@example.test'),
   ('00000000-0000-0000-0000-0000000000d1', 'd@example.test'),
-  ('00000000-0000-0000-0000-0000000000e1', 'e@example.test');
+  ('00000000-0000-0000-0000-0000000000e1', 'e@example.test'),
+  ('00000000-0000-0000-0000-0000000000f1', 'f@example.test');
 insert into public.profiles (id) select id from auth.users where email like '%@example.test' on conflict do nothing;
 insert into public.subjects (type, profile_id)
 select 'user', id from auth.users where email like '%@example.test'
@@ -32,12 +35,13 @@ select e.id, u.id, 'going'
 from public.events e, auth.users u
 where e.id::text like '20000000-%' and u.email like '%@example.test' and u.id <> '00000000-0000-0000-0000-0000000000a1';
 
--- Follows: A<->B, C->A, A<->D, A<->E.
+-- Follows: A<->B, A->F, C->A, A<->D, A<->E.
 insert into public.follows (follower_subject_id, target_subject_id)
 select f.id, t.id from public.subjects f, public.subjects t
 where (f.profile_id, t.profile_id) in (
   ('00000000-0000-0000-0000-0000000000a1'::uuid, '00000000-0000-0000-0000-0000000000b1'::uuid),
   ('00000000-0000-0000-0000-0000000000b1', '00000000-0000-0000-0000-0000000000a1'),
+  ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-0000000000f1'),
   ('00000000-0000-0000-0000-0000000000c1', '00000000-0000-0000-0000-0000000000a1'),
   ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-0000000000d1'),
   ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000a1'),
@@ -55,9 +59,11 @@ do $$
 declare n int; who text;
 begin
   select count(*), string_agg(distinct friend_id::text, ',') into n, who from public.friends_going();
-  if n <> 1 or who <> '00000000-0000-0000-0000-0000000000b1' then
-    raise exception 'expected only B at the upcoming published concert, got % rows (%)', n, who;
+  if n <> 2 or who <> '00000000-0000-0000-0000-0000000000b1,00000000-0000-0000-0000-0000000000f1' then
+    raise exception 'expected B and F at the upcoming published concert, got % rows (%)', n, who;
   end if;
+  select count(*) into n from public.friends_going(p_friend => '00000000-0000-0000-0000-0000000000f1');
+  if n <> 1 then raise exception 'someone A follows (not back) must show, got %', n; end if;
   select count(*) into n from public.friends_going(p_event => '20000000-0000-0000-0000-0000000000e2');
   if n <> 0 then raise exception 'past concert must not show, got %', n; end if;
   select count(*) into n from public.friends_going(p_friend => '00000000-0000-0000-0000-0000000000c1');

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { socialService } from '../services/social.service';
+import { notifyFollowsChanged } from '../features/friends/followsChanged';
 import { useAuth } from '../contexts/AuthContext';
 import { cached, setCached } from '../lib/requestCache';
 import { enableConcertAlerts } from '../features/alerts/concertAlerts';
@@ -108,6 +109,7 @@ export const useFollowedSubjects = () => {
 
         setCached(`follows:${followerSubjectId}`, Array.from(next), { ttlMs: 10_000 });
         saveFollows(userId, next);
+        if (kind === 'profile' || kind === 'subject') notifyFollowsChanged();
         return { ok: true as const };
       } catch (err) {
         // revert

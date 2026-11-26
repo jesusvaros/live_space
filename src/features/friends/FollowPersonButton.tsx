@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { socialService } from '../../services/social.service';
 import { followLabel, type Relation } from '../../services/friends.service';
+import { notifyFollowsChanged } from './followsChanged';
 import { track } from '../analytics/analytics';
 
 // Follow / unfollow a person. Filled while you don't follow them (the action),
@@ -25,6 +26,7 @@ const FollowPersonButton: React.FC<{
         track('follow', { kind: 'profile' });
         onChange({ ...relation, iFollow: true });
       }
+      notifyFollowsChanged();
     } catch {
       // The button keeps its state; the next tap tries again.
     } finally {

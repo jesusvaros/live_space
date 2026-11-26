@@ -4,8 +4,8 @@ import { FriendsSectionView, friendsLabel, type FriendPlan } from '../../feature
 import type { EventListItem } from '../../features/events/types';
 import type { FriendGoing } from '../../services/friends.service';
 
-// DEV ONLY (mounted under import.meta.env.DEV in App.tsx): «Tus amigos van»
-// on Inicio and the row on a concert, with invented data.
+// DEV ONLY (mounted under import.meta.env.DEV in App.tsx): «Gente que sigues»
+// on Inicio (with plans, following people with no plans, following nobody) and the row on a concert, with invented data.
 
 const day = (offsetDays: number) => new Date(Date.now() + offsetDays * 24 * 60 * 60 * 1000).toISOString();
 
@@ -40,9 +40,12 @@ const PLANS: FriendPlan[] = [
   { event: concert('e3', 'Puerto Candelaria', 'Razzmatazz', 11, '/fotos/multitud-escenario.jpg'), friends: [LUIS, ANA] },
 ];
 
+const PEOPLE = [ANA, LUIS, MARTA, PABLO].map(({ friendId, name, avatarUrl }) => ({ id: friendId, name, avatarUrl }));
+
 const FriendsPlayground: React.FC = () => (
   <div className="min-h-dvh bg-app-bg pb-16 pt-4 text-app-ink">
-    <FriendsSectionView plans={PLANS} onOpen={() => undefined} onFind={() => undefined} />
+    <FriendsSectionView plans={PLANS} people={PEOPLE} onOpen={() => undefined} onFind={() => undefined} />
+    <FriendsSectionView plans={[]} people={PEOPLE} onOpen={() => undefined} onFind={() => undefined} />
     <FriendsSectionView plans={[]} onOpen={() => undefined} onFind={() => undefined} />
     <div className="mt-8 flex items-center gap-2.5 px-4">
       <FriendAvatars friends={PLANS[0].friends} max={4} />

@@ -10,7 +10,8 @@ import FollowPersonButton from '../features/friends/FollowPersonButton';
 import { friendsService, type Person, type Relation } from '../services/friends.service';
 
 // Perfil → «Amigos» (/amigos): find people by name or @usuario, follow them,
-// and share your own profile. Friends = you follow each other.
+// and share your own profile. Following someone is enough to see their plans
+// on Inicio; friends = you follow each other.
 
 type Row = Person & Relation;
 
@@ -140,7 +141,7 @@ const Friends: React.FC = () => {
               </section>
             ) : null}
             {mine.length === 0 ? (
-              <p className="text-sm text-white/55">Cuando os sigáis, verás a qué conciertos van.</p>
+              <p className="text-sm text-white/55">Sigue a alguien y verás a qué conciertos va.</p>
             ) : null}
           </>
         )}

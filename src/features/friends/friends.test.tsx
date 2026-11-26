@@ -36,7 +36,7 @@ describe('friends helpers', () => {
 
   it('keeps the poster label short', () => {
     expect(friendsShortLabel([friend('a', 'Ana García')])).toBe('Ana');
-    expect(friendsShortLabel([friend('a', 'Ana'), friend('b', 'Luis')])).toBe('2 amigos');
+    expect(friendsShortLabel([friend('a', 'Ana'), friend('b', 'Luis')])).toBe('2 personas');
   });
 
   it('cleans search text so it cannot break the filter', () => {
@@ -65,6 +65,26 @@ describe('FriendsSectionView', () => {
     );
     fireEvent.click(screen.getByText('Busca a tus amigos'));
     expect(onFind).toHaveBeenCalled();
+    expect(screen.queryByText('La gente que sigues aún no ha marcado conciertos.')).not.toBeInTheDocument();
+  });
+
+  it('lists the people you follow when none of them has marked a concert', () => {
+    const onOpenPerson = vi.fn();
+    render(
+      <MemoryRouter>
+        <FriendsSectionView
+          plans={[]}
+          people={[{ id: 'p1', name: 'Ana García', avatarUrl: null }]}
+          onOpen={vi.fn()}
+          onFind={vi.fn()}
+          onOpenPerson={onOpenPerson}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByText('Busca a tus amigos')).not.toBeInTheDocument();
+    expect(screen.getByText('La gente que sigues aún no ha marcado conciertos.')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Ana'));
+    expect(onOpenPerson).toHaveBeenCalledWith('p1');
   });
 
   it('shows each concert with who is going', () => {
@@ -79,7 +99,8 @@ describe('FriendsSectionView', () => {
         <FriendsSectionView plans={plans} onOpen={vi.fn()} onFind={vi.fn()} />
       </MemoryRouter>,
     );
-    expect(screen.getByText('Tus amigos van')).toBeInTheDocument();
-    expect(screen.getByText('2 amigos')).toBeInTheDocument();
+    expect(screen.getByText('Gente que sigues')).toBeInTheDocument();
+    expect(screen.getByText('2 personas')).toBeInTheDocument();
+    expect(screen.queryByText('Busca a tus amigos')).not.toBeInTheDocument();
   });
 });

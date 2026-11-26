@@ -1,8 +1,10 @@
 import { supabase } from '../api';
 
-// Friends = two people who follow each other. What concerts a friend is going
-// to only comes through the friends_going() function (mutual follow, their
-// «Planes visibles» setting, blocks); attendance stays private otherwise.
+// People = user subjects in public.follows (every «Seguir» button for a person
+// writes there). Friends = two people who follow each other. Which concerts
+// someone you follow is going to only comes through friends_going() (you
+// follow them, their «Tus planes» setting, blocks); attendance stays private
+// otherwise.
 
 export type FriendGoing = {
   eventId: string;
